@@ -10,8 +10,7 @@ function App() {
     const [newProvider, setNewProvider] = useState({
         displayName: '',
         providerType: '',
-        apiKey: '',
-        baseURL: '',
+        config: {},
     });
 
     useEffect(() => {
@@ -39,18 +38,14 @@ function App() {
         axios.post('/llm/configurations', {
             displayName: newProvider.displayName,
             providerType: newProvider.providerType,
-            config: {
-                apiKey: newProvider.apiKey,
-                baseURL: newProvider.baseURL,
-            },
+            config: newProvider.config,
         })
         .then(response => {
             setProviders([...providers, response.data]);
             setNewProvider({
                 displayName: '',
                 providerType: '',
-                apiKey: '',
-                baseURL: '',
+                config: {},
             });
         })
         .catch(error => {
@@ -76,6 +71,8 @@ function App() {
         setSelectedProvider(null);
     };
 
+    const selectedProviderType = providerTypes.find(p => p.name === newProvider.providerType);
+
     return (
         <div className="App">
             <h1>Provider Manager</h1>
@@ -88,7 +85,7 @@ function App() {
                 />
                 <select
                     value={newProvider.providerType}
-                    onChange={e => setNewProvider({ ...newProvider, providerType: e.target.value })}
+                    onChange={e => setNewProvider({ ...newProvider, providerType: e.target.value, config: {} })}
                 >
                     <option value="">Select Provider Type</option>
                     {providerTypes.map(type => (
@@ -97,18 +94,16 @@ function App() {
                         </option>
                     ))}
                 </select>
-                <input
-                    type="text"
-                    placeholder="API Key"
-                    value={newProvider.apiKey}
-                    onChange={e => setNewProvider({ ...newProvider, apiKey: e.target.value })}
-                />
-                <input
-                    type="text"
-                    placeholder="Base URL (optional)"
-                    value={newProvider.baseURL}
-                    onChange={e => setNewProvider({ ...newProvider, baseURL: e.target.value })}
-                />
+                {selectedProviderType && Object.entries(selectedProviderType.configSchema).map(([key, schema]) => (
+                    <input
+                        key={key}
+                        type={schema.type}
+                        placeholder={schema.description}
+                        required={schema.required}
+                        value={newProvider.config[key] || ''}
+                        onChange={e => setNewProvider({ ...newProvider, config: { ...newProvider.config, [key]: e.target.value } })}
+                    />
+                ))}
                 <button type="submit">Add Provider</button>
             </form>
             <table>

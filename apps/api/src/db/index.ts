@@ -78,6 +78,35 @@ export async function createProvider(
   }
 }
 
+export async function updateModel(modelId: string, providerType: string, updates: Record<string, any>): Promise<void> {
+    const client = await pool.connect();
+    try {
+        const fields = Object.keys(updates);
+        const values = Object.values(updates);
+        const setClauses = fields.map((field, i) => `"${field}" = $${i + 1}`).join(', ');
+
+        let tableName = '';
+        switch (providerType) {
+            case 'openai':
+                tableName = 'openai_models';
+                break;
+            case 'vertex-studio':
+                tableName = 'google_models';
+                break;
+            case 'mistral':
+                tableName = 'mistral_models';
+                break;
+            default:
+                throw new Error(`Unsupported provider type: ${providerType}`);
+        }
+
+        const query = `UPDATE ${tableName} SET ${setClauses} WHERE id = $${fields.length + 1}`;
+        await client.query(query, [...values, modelId]);
+    } finally {
+        client.release();
+    }
+}
+
 export async function getProviderById(id: string): Promise<Provider | null> {
   const client = await pool.connect();
   try {
@@ -108,40 +137,82 @@ export async function saveModelsForProvider(providerId: string, providerType: st
     await client.query('BEGIN');
 
     switch (providerType) {
-      case 'openai':
-        await client.query(`DELETE FROM openai_models WHERE provider_id = $1`, [providerId]);
+      case 'openai': {
+        const existingModelsRes = await client.query(`SELECT model_id FROM openai_models WHERE provider_id = $1`, [providerId]);
+        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id));
+        const newModelIds = new Set(models.map(m => m.id));
+
+        // Insert new models
         for (const model of models) {
-          await client.query(
-            `INSERT INTO openai_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
-            [providerId, model.id, model.object, model.created, model.owned_by]
-          );
+          if (!existingModelIds.has(model.id)) {
+            await client.query(
+              `INSERT INTO openai_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
+              [providerId, model.id, model.object, model.created, model.owned_by]
+            );
+          }
+        }
+
+        // Delete old models
+        for (const modelId of existingModelIds) {
+          if (!newModelIds.has(modelId)) {
+            await client.query(`DELETE FROM openai_models WHERE provider_id = $1 AND model_id = $2`, [providerId, modelId]);
+          }
         }
         break;
-      case 'vertex-studio':
-        await client.query(`DELETE FROM google_models WHERE provider_id = $1`, [providerId]);
+      }
+      case 'vertex-studio': {
+        const existingModelsRes = await client.query(`SELECT name FROM google_models WHERE provider_id = $1`, [providerId]);
+        const existingModelNames = new Set(existingModelsRes.rows.map(r => r.name));
+        const newModelNames = new Set(models.map(m => m.name));
+
+        // Insert new models
         for (const model of models) {
-          await client.query(
-            `INSERT INTO google_models (provider_id, name, version, display_name, description) VALUES ($1, $2, $3, $4, $5)`,
-            [providerId, model.name, model.version, model.displayName, model.description]
-          );
+            if (!existingModelNames.has(model.name)) {
+                await client.query(
+                    `INSERT INTO google_models (provider_id, name, version, display_name, description) VALUES ($1, $2, $3, $4, $5)`,
+                    [providerId, model.name, model.version, model.displayName, model.description]
+                );
+            }
+        }
+
+        // Delete old models
+        for (const modelName of existingModelNames) {
+            if (!newModelNames.has(modelName)) {
+                await client.query(`DELETE FROM google_models WHERE provider_id = $1 AND name = $2`, [providerId, modelName]);
+            }
         }
         break;
-      case 'mistral':
-        await client.query(`DELETE FROM mistral_models WHERE provider_id = $1`, [providerId]);
+      }
+      case 'mistral': {
+        const existingModelsRes = await client.query(`SELECT model_id FROM mistral_models WHERE provider_id = $1`, [providerId]);
+        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id));
+        const newModelIds = new Set(models.map(m => m.id));
+
+        // Insert new models
         for (const model of models) {
-          await client.query(
-            `INSERT INTO mistral_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
-            [providerId, model.id, model.object, model.created, model.owned_by]
-          );
+            if (!existingModelIds.has(model.id)) {
+                await client.query(
+                    `INSERT INTO mistral_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
+                    [providerId, model.id, model.object, model.created, model.owned_by]
+                );
+            }
+        }
+
+        // Delete old models
+        for (const modelId of existingModelIds) {
+            if (!newModelIds.has(modelId)) {
+                await client.query(`DELETE FROM mistral_models WHERE provider_id = $1 AND model_id = $2`, [providerId, modelId]);
+            }
         }
         break;
+      }
       default:
         console.warn(`No specific model table handler for provider type: ${providerType}`);
         break;
     }
 
     await client.query('COMMIT');
-    console.log(`Successfully repopulated models for provider ${providerId}`);
+    console.log(`Successfully synchronized models for provider ${providerId}`);
   } catch (error) {
     await client.query('ROLLBACK');
     console.error(`Error saving models for provider ${providerId}:`, error);
@@ -271,7 +342,11 @@ export async function initializeDatabase(): Promise<void> {
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
-          owned_by VARCHAR(255)
+          owned_by VARCHAR(255),
+          rpm INTEGER,
+          tpm INTEGER,
+          rpd INTEGER,
+          is_enabled BOOLEAN DEFAULT FALSE
       );
 
       -- Structured table for Google models
@@ -281,7 +356,11 @@ export async function initializeDatabase(): Promise<void> {
           name VARCHAR(255) NOT NULL,
           version VARCHAR(255),
           display_name VARCHAR(255),
-          description TEXT
+          description TEXT,
+          rpm INTEGER,
+          tpm INTEGER,
+          rpd INTEGER,
+          is_enabled BOOLEAN DEFAULT FALSE
       );
 
       -- Structured table for Mistral models (schema is similar to OpenAI)
@@ -291,7 +370,11 @@ export async function initializeDatabase(): Promise<void> {
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
-          owned_by VARCHAR(255)
+          owned_by VARCHAR(255),
+          rpm INTEGER,
+          tpm INTEGER,
+          rpd INTEGER,
+          is_enabled BOOLEAN DEFAULT FALSE
       );
     `;
     await client.query(schemaSql);

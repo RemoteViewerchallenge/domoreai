@@ -14,6 +14,8 @@ export interface LLMProvider {
 
 export interface LLMCompletionRequest {
   prompt: string;
+  providerId: string;
+  modelId: string;
   maxTokens?: number;
   temperature?: number;
   config?: { [key: string]: any };

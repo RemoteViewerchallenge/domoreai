@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter } from './llm-adapters.js';
-import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider } from './db/index.js';
+import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider, updateModel } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
 import { Provider } from './types.js';
 import { checkProviderHealth } from './utils/healthCheck.js';
@@ -141,6 +141,24 @@ app.post('/llm/configurations/:id/update-models', async (req, res) => {
   }
 });
 
+app.put('/llm/models/:modelId', async (req, res) => {
+    const { modelId } = req.params;
+    const { providerType, ...updates } = req.body;
+
+    if (!providerType) {
+        return res.status(400).json({ error: 'Missing providerType' });
+    }
+
+    try {
+        await updateModel(modelId, providerType, updates);
+        res.status(200).json({ message: 'Model updated successfully' });
+    } catch (error) {
+        const errorMessage = (error as Error).message;
+        console.error(`Error updating model ${modelId}:`, errorMessage);
+        res.status(500).json({ error: `Failed to update model: ${errorMessage}` });
+    }
+});
+
 // Deletes a user-defined configuration
 app.delete('/llm/configurations/:id', async (req, res) => {
   const { id } = req.params;
@@ -154,10 +172,10 @@ app.delete('/llm/configurations/:id', async (req, res) => {
 });
 
 app.post('/llm/complete', async (req, res) => {
-  const { configurationId, model, prompt, maxTokens, temperature } = req.body;
+  const { configurationId, model, modelId, prompt, maxTokens, temperature } = req.body;
 
-  if (!configurationId || !model || !prompt) {
-    return res.status(400).json({ error: 'Missing configurationId, model, or prompt' });
+  if (!configurationId || !model || !modelId || !prompt) {
+    return res.status(400).json({ error: 'Missing configurationId, model, modelId, or prompt' });
   }
 
   try {
@@ -172,7 +190,7 @@ app.post('/llm/complete', async (req, res) => {
       return res.status(400).json({ error: `Unsupported provider type: ${configuredProvider.name}` });
     }
 
-    const completion = await adapter.generateCompletion({ prompt, maxTokens, temperature, config: { apiKey: configuredProvider.apiKey, baseURL: configuredProvider.baseUrl, model: model } });
+    const completion = await adapter.generateCompletion({ providerId: configurationId, modelId, prompt, maxTokens, temperature, config: { apiKey: configuredProvider.apiKey, baseURL: configuredProvider.baseUrl, model: model } });
     res.json({ completion, model, provider: configuredProvider.name, id: configuredProvider.id });
   } catch (error: any) {
     console.error('Error generating completion:', error);
