@@ -1,0 +1,7 @@
+
+> api@1.0.0 dev /home/guy/mono/apps/api
+> node -r dotenv/config dist/index.js
+
+Database initialized: providers table ensured.
+API server listening at http://localhost:4000
+Successfully repopulated models for provider ea3aa7c0-7a45-4da0-85d6-54138d90617e

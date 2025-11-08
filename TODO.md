@@ -1,0 +1,4 @@
+- [x] Fix crypto types in apps/api/src/db/index.ts: Use createSecretKey and cast Buffer.concat
+- [x] Fix llm-adapters.ts: Add model to OpenAI config, use gen() instead of chat.completions.create, remove .output from gen results
+- [x] Run build to verify fixes
+- [x] Create .env file with PG_CONNECTION and ENCRYPTION_KEY
