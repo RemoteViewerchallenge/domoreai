@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import type { LLMProvider } from '@repo/common'; // Import LLMProvider interface
+import MonacoEditor from './components/Editor';
 
 const API_BASE_URL = 'http://localhost:4000'; // Assuming API runs on port 4000
 
@@ -158,6 +159,8 @@ function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>LLM Provider Management</h1>
+
+      <MonacoEditor />
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
 

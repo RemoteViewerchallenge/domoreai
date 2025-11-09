@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@repo/common": "workspace:*",
     "axios": "^1.7.2",
     "react": "^18.3.1",
@@ -25,7 +26,10 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "globals": "^16.5.0",
     "typescript": "^5.2.2",
-    "vite": "^5.3.1"
+    "typescript-eslint": "^8.46.3",
+    "vite": "^5.3.1",
+    "vite-plugin-monaco-editor": "^1.1.0"
   }
 }
