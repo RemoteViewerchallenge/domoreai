@@ -1,0 +1,3 @@
+[submodule "apps/lootbox"]
+	path = apps/lootbox
+	url = https://github.com/jx-codes/lootbox

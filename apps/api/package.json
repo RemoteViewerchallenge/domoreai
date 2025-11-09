@@ -20,7 +20,8 @@
     "pg": "^8.11.5",
     "dotenv": "^16.4.5",
     "uuid": "^13.0.0",
-    "volcano-sdk": "^1.0.4"
+    "volcano-sdk": "^1.0.4",
+    "volcano-sdk": "file:../../packages/repo-volcano-backend-1.0.0.tgz"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
