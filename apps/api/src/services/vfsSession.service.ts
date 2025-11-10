@@ -1,30 +1,44 @@
 import { Jsvfs } from '@jsvfs/core';
 import { NodefsStorage } from '@jsvfs/adapter-node-fs';
 import { VfsSessionToken } from '@repo/common/types/agent.types';
+import { randomBytes } from 'crypto';
 
-/**
- * @deprecated
- *
- * This is a mock implementation of the VfsSessionService.
- * It is intended for use in a temporary branch and will be replaced
- * by a real implementation in the future.
- *
- * The real VfsSessionService will be responsible for generating and
- * validating short-lived, scoped VFS tokens that are linked to a
- * user session.
- */
+interface VfsSession {
+  token: VfsSessionToken;
+  workspaceId: string;
+  createdAt: number;
+}
+
+const SESSION_TTL = 1000 * 60 * 60; // 1 hour
+
 export class VfsSessionService {
-  /**
-   * This is a mock implementation of getScopedVfs.
-   * It returns a VFS instance that is scoped to the root of the
-   * repository.
-   *
-   * In the real implementation, this method will take a VfsSessionToken
-   * and return a VFS instance that is scoped to the user's workspace.
-   *
-   * @param vfsToken The user's VFS token.
-   * @returns A VFS instance.
-   */
+  private sessions: Map<VfsSessionToken, VfsSession> = new Map();
+
+  public createToken(workspaceId: string): VfsSessionToken {
+    const token = randomBytes(32).toString('hex');
+    const session: VfsSession = {
+      token,
+      workspaceId,
+      createdAt: Date.now(),
+    };
+    this.sessions.set(token, session);
+    return token;
+  }
+
+  public validateToken(token: VfsSessionToken): VfsSession | null {
+    const session = this.sessions.get(token);
+    if (!session) {
+      return null;
+    }
+
+    if (Date.now() - session.createdAt > SESSION_TTL) {
+      this.sessions.delete(token);
+      return null;
+    }
+
+    return session;
+  }
+
   public async getScopedVfs(vfsToken: VfsSessionToken): Promise<Jsvfs> {
     console.log('VfsSessionService: Using mock getScopedVfs. Token:', vfsToken);
 
@@ -38,3 +52,5 @@ export class VfsSessionService {
     return vfs;
   }
 }
+
+export const vfsSessionService = new VfsSessionService();
