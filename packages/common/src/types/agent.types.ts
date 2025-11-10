@@ -92,3 +92,4 @@ export interface VfsTokenPayload {
   /** Standard JWT issued-at timestamp (in seconds). */
   iat: number;
 }
+export type VfsSessionToken = string;
