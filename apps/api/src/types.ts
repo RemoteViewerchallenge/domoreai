@@ -5,7 +5,7 @@ export interface Provider {
   baseUrl: string;
   apiKey: string; // This will be encrypted in the database
   isHealthy: boolean;
-  lastCheckedAt: Date;
+  lastCheckedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   models: any[];

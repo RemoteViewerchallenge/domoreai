@@ -18,7 +18,7 @@ const pool = new Pool({
   connectionString: process.env.PG_CONNECTION,
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
@@ -170,7 +170,7 @@ export async function getAllProviders(): Promise<Provider[]> {
       GROUP BY p.id
     `;
     const res = await client.query(query);
-    return res.rows.map((row) => {
+    return res.rows.map((row: any) => {
       return {
         ...row,
         apiKey: row.api_key ? decrypt(row.api_key) : '',
@@ -268,6 +268,7 @@ export async function initializeDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS openai_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
@@ -278,6 +279,7 @@ export async function initializeDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS google_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           name VARCHAR(255) NOT NULL,
           version VARCHAR(255),
           display_name VARCHAR(255),
@@ -288,6 +290,7 @@ export async function initializeDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS mistral_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
@@ -295,6 +298,14 @@ export async function initializeDatabase(): Promise<void> {
       );
     `;
     await client.query(schemaSql);
+
+    // Add the provider_type column if it doesn't exist, to handle migrations from older schema
+    await client.query(`
+      ALTER TABLE openai_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+      ALTER TABLE google_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+      ALTER TABLE mistral_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+    `);
+
 
     // Add the provider_type column if it doesn't exist, to handle migrations from older schema
     const alterTableSql = `

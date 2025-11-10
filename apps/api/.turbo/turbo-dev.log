@@ -1,7 +1,9 @@
 
 > api@1.0.0 dev /home/guy/mono/apps/api
-> node -r dotenv/config dist/index.js
+> dotenv -e ../../.env -- node -r dotenv/config dist/index.js
 
-Database initialized: providers table ensured.
-API server listening at http://localhost:4000
-Successfully repopulated models for provider ea3aa7c0-7a45-4da0-85d6-54138d90617e
+Usage: dotenv [OPTIONS] COMMAND [ARGS]...
+Try 'dotenv --help' for help.
+
+Error: Invalid value for '-e' / '--export': '../../.env' is not a valid boolean.
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 2.[39m

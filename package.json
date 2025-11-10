@@ -8,12 +8,13 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "pnpm --parallel --stream run dev",
     "stop-dev": "bash ./stop-dev.sh",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@types/cors": "^2.8.17",
     "prettier": "^2.8.8",
     "turbo": "latest"

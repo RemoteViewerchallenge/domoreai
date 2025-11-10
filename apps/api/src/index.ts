@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter } from './llm-adapters.js';
@@ -13,78 +13,16 @@ const port = 4000;
 app.use(cors());
 app.use(express.json());
 
-// Define available LLM provider types and their schemas (these are the templates)
-const adapters = {
-  openai: new OpenAIAdapter(),
-  mistral: new MistralAdapter(),
-  llama: new LlamaAdapter(),
-  'vertex-studio': new VertexStudioAdapter(),
+const adapters: { [key: string]: LLMAdapter } = {
+    'openai': new OpenAIAdapter(),
+    'mistral': new MistralAdapter(),
+    'llama': new LlamaAdapter(),
+    'vertex-studio': new VertexStudioAdapter(),
 };
 
-const availableLLMProviderTypes = Object.values(adapters).map(adapter => ({
-  name: adapter.providerName,
-  configSchema: adapter.configSchema,
-  models: [], // This is now just a placeholder; actual models are in the DB.
-}));
 
-app.get('/', (req, res) => {
-  res.send('Hello from the API!');
-});
-
-// Returns the types of providers available (templates)
-app.get('/llm/provider-types', (req, res) => {
-  res.json(availableLLMProviderTypes);
-});
-
-// Returns user-defined configurations
-app.get('/llm/configurations', async (req, res) => {
-  try {
-    const providers = await getAllProviders();
-    res.json(providers.map((p: Provider) => {
-      return {
-        id: p.id,
-        displayName: p.name,
-        providerType: p.providerType,
-        config: { apiKey: p.apiKey, baseURL: p.baseUrl },
-        models: p.models || [], // Directly return the models from the JSONB column
-        isHealthy: p.isHealthy,
-        lastCheckedAt: p.lastCheckedAt,
-      };
-    }));
-  } catch (error) {
-    console.error('Error fetching configurations:', (error as Error).message);
-    res.status(500).json({ error: 'Failed to fetch configurations' });
-  }
-});
-
-// Adds a new user-defined configuration
-app.post('/llm/configurations', async (req, res) => {
-  const { displayName, providerType, config } = req.body;
-
-  // Basic validation
-  if (!displayName || !providerType || !config) {
-    return res.status(400).json({ error: 'Missing displayName, providerType, or config' });
-  }
-
-  const adapter = adapters[providerType as keyof typeof adapters];
-  if (!adapter) {
-    return res.status(400).json({ error: `Unknown provider type: ${providerType}` });
-  }
-
-  try {
-    // 1. Create the provider entry in the database
-    const newProvider = await createProvider({
-      name: displayName,
-      baseUrl: config.baseURL, // This will be undefined for vertex-studio, which is now OK
-      providerType: providerType,
-      models: [], // Initialize with empty models array
-      apiKey: config.apiKey,
-      isHealthy: true, // We can add a health check later if needed
-      lastCheckedAt: new Date(),
-    });
-
-    // 2. Fetch the models from the provider's API, with detailed error logging
-    let models = [];
+// Endpoint to get all provider configurations
+app.get('/llm/configurations', async (req: Request, res: Response) => {
     try {
       models = await adapter.getModels(config);
     } catch (modelError: any) {
@@ -165,12 +103,22 @@ app.post('/llm/complete', async (req, res) => {
     if (!configuredProvider) {
       return res.status(404).json({ error: 'Configured provider not found' });
     }
+});
 
-    const adapter = adapters[configuredProvider.providerType as keyof typeof adapters];
-
-    if (!adapter) {
-      return res.status(400).json({ error: `Unsupported provider type: ${configuredProvider.name}` });
+// Endpoint to update a provider configuration
+app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
+    try {
+        const updatedProvider = await updateProvider(req.params.id, req.body);
+        if (updatedProvider) {
+            res.json(updatedProvider);
+        } else {
+            res.status(404).json({ message: 'Provider not found.' });
+        }
+    } catch (error) {
+        console.error(`Failed to update provider ${req.params.id}:`, error);
+        res.status(500).json({ message: 'Failed to update provider configuration.' });
     }
+});
 
     const completion = await adapter.generateCompletion({ prompt, maxTokens, temperature, config: { apiKey: configuredProvider.apiKey, baseURL: configuredProvider.baseUrl, model: model } });
     res.json({ completion, model, provider: configuredProvider.name, id: configuredProvider.id });
@@ -181,10 +129,7 @@ app.post('/llm/complete', async (req, res) => {
 });
 
 initializeDatabase().then(() => {
-  app.listen(port, () => {
-    console.log(`API server listening at http://localhost:${port}`);
-  });
-}).catch((error: Error) => {
-  console.error('Failed to initialize database:', error);
-  process.exit(1);
-});
+    app.listen(port, () => {
+        console.log(`API server listening at http://localhost:${port}`);
+    });
+}).catch(console.error);
