@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  db:
+  db_gemini:
     image: postgres:13
     restart: always
     environment:
@@ -9,9 +9,54 @@ services:
       POSTGRES_USER: gemini_user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_gemini_data:/var/lib/postgresql/data
+  lootbox:
+    build:
+      context: .
+      dockerfile: ./apps/lootbox/Dockerfile
+    ports:
+      - "3000:3000"
+  registry:
+    build:
+      context: .
+      dockerfile: ./apps/registry/Dockerfile
+    ports:
+      - "8080:8080"
+  proxy:
+    build:
+      context: .
+      dockerfile: ./apps/proxy/Dockerfile
+    ports:
+      - "8000:8000"
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: nonroot
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mcp-registry
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nonroot -d mcp-registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db_mcp_data:/var/lib/postgresql/data
 
 volumes:
-  db_data:
+  db_gemini_data:
+  db_mcp_data:

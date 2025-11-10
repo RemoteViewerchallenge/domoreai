@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import RateLimitManager from './components/RateLimitManager';
+import RateLimitManagerPage from './components/RateLimitManager';
 import './App.css';
+import type { Model } from './types';
 
 interface Provider {
     id: string;
@@ -11,7 +13,7 @@ interface Provider {
         apiKey: string;
         baseURL?: string;
     };
-    models: any[];
+    models: Model[];
 }
 
 interface ProviderType {
@@ -25,10 +27,10 @@ interface NewProviderState {
     baseURL: string;
 }
 
-function App() {
+function ProviderList() {
     const [providers, setProviders] = useState<Provider[]>([]);
     const [providerTypes, setProviderTypes] = useState<ProviderType[]>([]);
-    const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+    const navigate = useNavigate();
     const [newProvider, setNewProvider] = useState<NewProviderState>({
         displayName: '',
         providerType: '',
@@ -90,16 +92,12 @@ function App() {
             });
     };
 
-    const handleManageRateLimits = (provider: Provider) => {
-        setSelectedProvider(provider);
-    };
-
-    const handleCloseModal = () => {
-        setSelectedProvider(null);
+    const handleManageProvider = (providerId: string) => {
+        navigate(`/manage/${providerId}`);
     };
 
     return (
-        <div className="App">
+        <div>
             <h1>Provider Manager</h1>
             <form onSubmit={handleAddProvider}>
                 <input
@@ -145,8 +143,8 @@ function App() {
                         <tr key={provider.id}>
                             <td>{provider.displayName}</td>
                             <td>
-                                <button onClick={() => handleManageRateLimits(provider)}>
-                                    Manage Rate Limits
+                                <button onClick={() => handleManageProvider(provider.id)}>
+                                    Manage Models
                                 </button>
                                 <button onClick={() => handleDeleteProvider(provider.id)}>
                                     Delete
@@ -156,12 +154,17 @@ function App() {
                     ))}
                 </tbody>
             </table>
-            {selectedProvider && (
-                <RateLimitManager
-                    provider={selectedProvider}
-                    onClose={handleCloseModal}
-                />
-            )}
+        </div>
+    );
+}
+
+function App() {
+    return (
+        <div className="App">
+            <Routes>
+                <Route path="/" element={<ProviderList />} />
+                <Route path="/manage/:providerId" element={<RateLimitManagerPage provider={null} onClose={() => {}} />} />
+            </Routes>
         </div>
     );
 }

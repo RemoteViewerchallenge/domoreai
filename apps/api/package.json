@@ -21,12 +21,14 @@
     "pg": "^8.11.5",
     "dotenv": "^16.4.5",
     "uuid": "^13.0.0",
+    "redis": "^4.6.13",
     "volcano-sdk": "^1.0.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^20.12.12",
     "@types/pg": "^8.15.6",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "globals": "^15.0.0"
   }
 }

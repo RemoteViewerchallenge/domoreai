@@ -1,7 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table';
+import type { Model } from '../types';
 
 const API_BASE_URL = 'http://localhost:4000';
 
@@ -13,18 +14,18 @@ interface Provider {
         apiKey: string;
         baseURL?: string;
     };
-    models: any[];
+    models: Model[];
 }
 
 interface RateLimitManagerPageProps {
-    provider: Provider;
+    provider?: Provider | null;
     onClose: () => void;
 }
 
 const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: initialProvider, onClose }) => {
     const { providerId } = useParams<{ providerId: string }>();
-    const [provider, setProvider] = useState<Provider | null>(initialProvider);
-    const [models, setModels] = useState<any[]>([]);
+    const [provider, setProvider] = useState<Provider | null>(initialProvider || null);
+    const [models, setModels] = useState<Model[]>([]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
 
@@ -52,22 +53,22 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
 
     const data = useMemo(() => models, [models]);
     
-    const handleModelChange = (modelId: string, field: string, value: any) => {
+    const handleModelChange = useCallback((modelId: string, field: string, value: string | number | boolean) => {
         setModels(currentModels =>
-            currentModels.map((m: any) =>
+            currentModels.map((m: Model) =>
                 m.id === modelId ? { ...m, [field]: value } : m
             )
         );
-    };
+    }, []);
 
-    const columns: readonly Column<any>[] = useMemo(() => {
+    const columns: readonly Column<Model>[] = useMemo(() => {
         if (models.length === 0) {
             return [];
         }
 
         // Analyze all models to find all unique keys to use as columns
         const allKeys = new Set<string>();
-        models.forEach((model: any) => {
+        models.forEach((model: Model) => {
             Object.keys(model).forEach(key => allKeys.add(key));
         });
         const modelKeys = Array.from(allKeys);
@@ -80,7 +81,7 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
                 return {
                     Header: 'Enabled',
                     accessor: 'is_enabled',
-                    Cell: ({ row }: CellProps<any>) => (
+                    Cell: ({ row }: CellProps<Model>) => (
                         <input
                             type="checkbox" // checked={row.original.enabled}
                             checked={row.original.is_enabled}
@@ -98,8 +99,10 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
             return {
                 Header: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                 accessor: key,
-                Cell: ({ row }: CellProps<any>) => {
-                    const value = row.original[key];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                Cell: ({ row }: CellProps<Model>) => {
+                    const modelKey = key as keyof Model;
+                    const value = row.original[modelKey];
                     const isNumeric = typeof value === 'number' || key.includes('token') || key.includes('request') || key.includes('cost');
                     return (
                         <input

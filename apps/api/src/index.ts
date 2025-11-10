@@ -1,11 +1,9 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { v4 as uuidv4 } from 'uuid';
-import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter } from './llm-adapters.js';
+import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter, LLMAdapter } from './llm-adapters.js';
 import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
 import { Provider } from './types.js';
-import { checkProviderHealth } from './utils/healthCheck.js';
 
 const app = express();
 const port = 4000;
@@ -24,34 +22,66 @@ const adapters: { [key: string]: LLMAdapter } = {
 // Endpoint to get all provider configurations
 app.get('/llm/configurations', async (req: Request, res: Response) => {
     try {
-      models = await adapter.getModels(config);
-    } catch (modelError: any) {
-      // If fetching models fails, we should not create the provider.
-      // Instead, we re-throw the error with more context.
-      console.error(`Failed to fetch models for ${providerType}:`, modelError.response?.data || modelError.message);
-      throw new Error(`Could not fetch models from provider. Please check your credentials. (Reason: ${modelError.message})`);
+        const providers = await getAllProviders();
+        const formattedProviders = providers.map(p => ({
+            id: p.id,
+            displayName: p.name,
+            providerType: p.providerType,
+            config: { apiKey: p.apiKey, baseURL: p.baseUrl },
+            models: p.models || [],
+            isHealthy: p.isHealthy,
+            lastCheckedAt: p.lastCheckedAt,
+        }));
+        res.json(formattedProviders);
+    } catch (error) {
+        console.error('Error getting providers:', (error as Error).message);
+        res.status(500).json({ error: 'Failed to get providers' });
+    }
+});
+
+app.post('/llm/configurations', async (req: Request, res: Response) => {
+    const { providerType, name, config } = req.body;
+
+    if (!providerType || !name || !config) {
+        return res.status(400).json({ error: 'Missing providerType, name, or config' });
     }
 
-    // 3. Save the returned models directly into the new JSONB column
-  await saveModelsForProvider(newProvider.id, providerType, models);
+    const adapter = adapters[providerType as keyof typeof adapters];
+    if (!adapter) {
+        return res.status(400).json({ error: `Unknown provider type: ${providerType}` });
+    }
 
-    // 4. Fetch the complete provider data to return to the client
-    const finalProvider = await getProviderById(newProvider.id);
+    try {
+        const models = await adapter.getModels(config);
 
-    res.status(201).json({
-      id: finalProvider!.id,
-      displayName: finalProvider!.name,
-      providerType: providerType,
-      config: { apiKey: finalProvider!.apiKey, baseURL: finalProvider!.baseUrl },
-      models: finalProvider!.models || [],
-      isHealthy: finalProvider!.isHealthy,
-      lastCheckedAt: finalProvider!.lastCheckedAt,
-    });
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-    console.error('Error creating provider:', errorMessage);
-    res.status(500).json({ error: `Failed to create provider: ${errorMessage}` });
-  }
+        const newProvider = await createProvider({
+            name,
+            providerType,
+            apiKey: config.apiKey,
+            baseUrl: config.baseURL,
+            models: models,
+            isHealthy: true,
+            lastCheckedAt: new Date(),
+        });
+
+        await saveModelsForProvider(newProvider.id, providerType, models);
+
+        const finalProvider = await getProviderById(newProvider.id);
+
+        res.status(201).json({
+            id: finalProvider!.id,
+            displayName: finalProvider!.name,
+            providerType: providerType,
+            config: { apiKey: finalProvider!.apiKey, baseURL: finalProvider!.baseUrl },
+            models: finalProvider!.models || [],
+            isHealthy: finalProvider!.isHealthy,
+            lastCheckedAt: finalProvider!.lastCheckedAt,
+        });
+    } catch (error: any) {
+        const errorMessage = (error as Error).message;
+        console.error(`Failed to create provider for ${providerType}:`, error.response?.data || error.message);
+        res.status(500).json({ error: `Could not create provider. Please check your credentials. (Reason: ${errorMessage})` });
+    }
 });
 
 // Triggers an update for a provider's models
@@ -103,6 +133,13 @@ app.post('/llm/complete', async (req, res) => {
     if (!configuredProvider) {
       return res.status(404).json({ error: 'Configured provider not found' });
     }
+    const adapter = adapters[configuredProvider.providerType as keyof typeof adapters];
+    const completion = await adapter.generateCompletion({ prompt, maxTokens, temperature, config: { apiKey: configuredProvider.apiKey, baseURL: configuredProvider.baseUrl, model: model } });
+    res.json({ completion, model, provider: configuredProvider.name, id: configuredProvider.id });
+  } catch (error: any) {
+    console.error('Error generating completion:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate completion' });
+  }
 });
 
 // Endpoint to update a provider configuration
@@ -118,14 +155,6 @@ app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
         console.error(`Failed to update provider ${req.params.id}:`, error);
         res.status(500).json({ message: 'Failed to update provider configuration.' });
     }
-});
-
-    const completion = await adapter.generateCompletion({ prompt, maxTokens, temperature, config: { apiKey: configuredProvider.apiKey, baseURL: configuredProvider.baseUrl, model: model } });
-    res.json({ completion, model, provider: configuredProvider.name, id: configuredProvider.id });
-  } catch (error: any) {
-    console.error('Error generating completion:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate completion' });
-  }
 });
 
 initializeDatabase().then(() => {

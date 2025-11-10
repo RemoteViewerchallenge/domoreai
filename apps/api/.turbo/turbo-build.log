@@ -1,5 +1,5 @@
 
 
 > api@1.0.0 build /home/guy/mono/apps/api
-> tsc
+> tsc -b
 

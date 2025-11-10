@@ -239,6 +239,7 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS openai_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
@@ -249,6 +250,7 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS google_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           name VARCHAR(255) NOT NULL,
           version VARCHAR(255),
           display_name VARCHAR(255),
@@ -259,6 +261,7 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS mistral_models (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+          provider_name VARCHAR(255),
           model_id VARCHAR(255) NOT NULL,
           object VARCHAR(255),
           created BIGINT,
@@ -266,6 +269,12 @@ export async function initializeDatabase() {
       );
     `;
         await client.query(schemaSql);
+        // Add the provider_type column if it doesn't exist, to handle migrations from older schema
+        await client.query(`
+      ALTER TABLE openai_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+      ALTER TABLE google_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+      ALTER TABLE mistral_models ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255);
+    `);
         // Add the provider_type column if it doesn't exist, to handle migrations from older schema
         const alterTableSql = `
       ALTER TABLE providers
