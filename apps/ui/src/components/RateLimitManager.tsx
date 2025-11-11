@@ -4,8 +4,16 @@ import axios from 'axios';
 import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table';
 import type { Model } from '../types';
 
+/**
+ * The base URL for the API.
+ * @type {string}
+ */
 const API_BASE_URL = 'http://localhost:4000';
 
+/**
+ * @interface Provider
+ * @description Represents a configured LLM provider instance.
+ */
 interface Provider {
     id: string;
     displayName: string;
@@ -17,11 +25,27 @@ interface Provider {
     models: Model[];
 }
 
+/**
+ * @interface RateLimitManagerPageProps
+ * @description Props for the RateLimitManagerPage component.
+ */
 interface RateLimitManagerPageProps {
+    /**
+     * @property {Provider | null} [provider] - The provider to manage. If not provided, it will be fetched based on the URL parameter.
+     */
     provider?: Provider | null;
+    /**
+     * @property {() => void} onClose - The function to call when the modal is closed.
+     */
     onClose: () => void;
 }
 
+/**
+ * @component RateLimitManagerPage
+ * @description A page for managing the rate limits of a provider's models.
+ * @param {RateLimitManagerPageProps} props - The component props.
+ * @returns {JSX.Element} The rendered rate limit manager page.
+ */
 const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: initialProvider, onClose }) => {
     const { providerId } = useParams<{ providerId: string }>();
     const [provider, setProvider] = useState<Provider | null>(initialProvider || null);
@@ -53,6 +77,12 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
 
     const data = useMemo(() => models, [models]);
     
+    /**
+     * Handles changes to a model's properties.
+     * @param {string} modelId - The ID of the model being changed.
+     * @param {string} field - The field of the model being changed.
+     * @param {string | number | boolean} value - The new value of the field.
+     */
     const handleModelChange = useCallback((modelId: string, field: string, value: string | number | boolean) => {
         setModels(currentModels =>
             currentModels.map((m: Model) =>
@@ -61,6 +91,10 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
         );
     }, []);
 
+    /**
+     * The columns for the react-table.
+     * @type {readonly Column<Model>[]}
+     */
     const columns: readonly Column<Model>[] = useMemo(() => {
         if (models.length === 0) {
             return [];
@@ -118,6 +152,9 @@ const RateLimitManagerPage: React.FC<RateLimitManagerPageProps> = ({ provider: i
         });
     }, [models, handleModelChange]);
 
+    /**
+     * Handles saving all changes to the rate limits.
+     */
     const handleSaveAll = async () => {
         try {
             await axios.post(`${API_BASE_URL}/llm/configurations/${providerId}/rate-limits`, { models });

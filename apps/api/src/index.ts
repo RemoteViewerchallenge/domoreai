@@ -7,7 +7,15 @@ import { Provider } from './types.js';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { appRouter } from './routers/index.js';
 
+/**
+ * The Express application instance.
+ * @type {express.Application}
+ */
 const app = express();
+/**
+ * The port the server listens on.
+ * @type {number}
+ */
 const port = 4000;
 
 app.use(cors());
@@ -20,6 +28,10 @@ app.use(
   }),
 );
 
+/**
+ * A map of available LLM adapters, keyed by provider type.
+ * @type {Object.<string, LLMAdapter>}
+ */
 const adapters: { [key: string]: LLMAdapter } = {
     'openai': new OpenAIAdapter(),
     'mistral': new MistralAdapter(),
@@ -27,8 +39,11 @@ const adapters: { [key: string]: LLMAdapter } = {
     'vertex-studio': new VertexStudioAdapter(),
 };
 
-
-// Endpoint to get all provider configurations
+/**
+ * @route GET /llm/configurations
+ * @description Endpoint to get all provider configurations.
+ * @returns {Response} - A JSON response containing the list of providers.
+ */
 app.get('/llm/configurations', async (req: Request, res: Response) => {
     try {
         const providers = await getAllProviders();
@@ -48,6 +63,12 @@ app.get('/llm/configurations', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * @route POST /llm/configurations
+ * @description Endpoint to create a new provider configuration.
+ * @param {Request} req - The request object, containing the provider configuration in the body.
+ * @returns {Response} - A JSON response containing the newly created provider.
+ */
 app.post('/llm/configurations', async (req: Request, res: Response) => {
     const { providerType, name, config } = req.body;
 
@@ -93,7 +114,12 @@ app.post('/llm/configurations', async (req: Request, res: Response) => {
     }
 });
 
-// Triggers an update for a provider's models
+/**
+ * @route POST /llm/configurations/:id/update-models
+ * @description Triggers an update for a provider's models.
+ * @param {Request} req - The request object, containing the provider ID in the params.
+ * @returns {Response} - A JSON response indicating the result of the update.
+ */
 app.post('/llm/configurations/:id/update-models', async (req, res) => {
   const { id } = req.params;
   try {
@@ -118,7 +144,12 @@ app.post('/llm/configurations/:id/update-models', async (req, res) => {
   }
 });
 
-// Deletes a user-defined configuration
+/**
+ * @route DELETE /llm/configurations/:id
+ * @description Deletes a user-defined configuration.
+ * @param {Request} req - The request object, containing the provider ID in the params.
+ * @returns {Response} - A 204 No Content response on success.
+ */
 app.delete('/llm/configurations/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -130,6 +161,12 @@ app.delete('/llm/configurations/:id', async (req, res) => {
   }
 });
 
+/**
+ * @route POST /llm/complete
+ * @description Generates a completion from a specific provider and model.
+ * @param {Request} req - The request object, containing the configuration ID, model, prompt, and other parameters in the body.
+ * @returns {Response} - A JSON response containing the generated completion.
+ */
 app.post('/llm/complete', async (req, res) => {
   const { configurationId, model, prompt, maxTokens, temperature } = req.body;
 
@@ -151,7 +188,12 @@ app.post('/llm/complete', async (req, res) => {
   }
 });
 
-// Endpoint to update a provider configuration
+/**
+ * @route PUT /llm/configurations/:id
+ * @description Endpoint to update a provider configuration.
+ * @param {Request} req - The request object, containing the provider ID in the params and the updated configuration in the body.
+ * @returns {Response} - A JSON response containing the updated provider.
+ */
 app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
     try {
         const updatedProvider = await updateProvider(req.params.id, req.body);
@@ -166,6 +208,9 @@ app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * Initializes the database and starts the Express server.
+ */
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`API server listening at http://localhost:${port}`);

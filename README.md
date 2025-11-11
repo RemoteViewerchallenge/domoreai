@@ -12,18 +12,16 @@ Domoreai is a flexible, extensible system for managing and interacting with vari
 
 ## Architecture
 
-The project is a monorepo managed with `pnpm` and consists of two main applications:
+The project is a monorepo managed with `pnpm` and consists of the following applications and packages:
 
-- **`apps/api`**: A Node.js/Express server that handles all backend logic, including:
-  - Provider configuration and CRUD operations.
-  - Secure encryption and decryption of API keys.
-  - Communication with LLM provider APIs via adapters.
-  - Database initialization and management.
-
-- **`apps/ui`**: A React-based web interface for:
-  - Adding, viewing, and deleting provider configurations.
-  - Triggering model list updates for each provider.
-  - Displaying provider health and model counts.
+-   **`apps/api`**: A Node.js/Express server that handles all backend logic.
+-   **`apps/ui`**: A React-based web interface for the main application.
+-   **`apps/lootbox`**: A Deno-based application for managing RPC functions.
+-   **`apps/lootbox/ui`**: The UI for the `lootbox` application.
+-   **`apps/proxy`**: A simple proxy server.
+-   **`apps/registry`**: A service registry.
+-   **`packages/common`**: Shared types and interfaces.
+-   **`packages/src`**: Additional shared code.
 
 ### Database Design
 
@@ -91,3 +89,36 @@ To extend the system with a new LLM provider, follow these steps:
 5.  **Update the Fetch Query**: In `getAllProviders`, update the `CASE` statement in the main query to `json_agg` the models from your new table when the provider type matches.
 
 After these changes, rebuild the API (`pnpm run build`) and restart the server. Your new provider type will be available in the UI.
+
+## Maintaining the Typesafe Monorepo
+
+This repository is a typesafe monorepo, which means that all code is written in TypeScript and that type safety is enforced across all applications and packages. This provides a number of benefits, including:
+
+-   Improved code quality and reliability.
+-   Better developer experience, with features like autocompletion and type checking.
+-   Easier to refactor and maintain the codebase.
+
+To maintain the typesafe monorepo, please follow these best practices:
+
+### Dependency Management
+
+-   Use `pnpm` to manage dependencies. `pnpm` is a fast and efficient package manager that is well-suited for monorepos.
+-   Install all dependencies from the root of the repository. This will ensure that all applications and packages are using the same versions of the dependencies.
+-   Use the `--filter` flag to install dependencies for a specific application or package. For example, to install a dependency for the `api` application, run the following command:
+    ```bash
+    pnpm install <dependency> --filter api
+    ```
+
+### Code Sharing
+
+-   Share code between applications and packages by creating new packages in the `packages` directory.
+-   Use `tsconfig.json` paths to create aliases for shared packages. This will make it easier to import shared code into your applications.
+-   Ensure that all shared code is properly typed and that there are no type errors.
+
+### Type Safety
+
+-   Write all new code in TypeScript.
+-   Use `ESLint` and `TypeScript` to enforce type safety.
+-   Run `pnpm run lint` and `pnpm run typecheck` regularly to check for type errors.
+-   Avoid using `any` as much as possible. If you must use `any`, please provide a clear explanation for why it is necessary.
+-   Use JSDoc comments to document your code and to provide type information for JavaScript files.

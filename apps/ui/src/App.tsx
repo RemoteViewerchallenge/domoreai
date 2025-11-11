@@ -5,6 +5,10 @@ import RateLimitManagerPage from './components/RateLimitManager';
 import './App.css';
 import type { Model } from './types';
 
+/**
+ * @interface Provider
+ * @description Represents a configured LLM provider instance.
+ */
 interface Provider {
     id: string;
     displayName: string;
@@ -16,10 +20,18 @@ interface Provider {
     models: Model[];
 }
 
+/**
+ * @interface ProviderType
+ * @description Represents an available type of LLM provider.
+ */
 interface ProviderType {
     name: string;
 }
 
+/**
+ * @interface NewProviderState
+ * @description Represents the state of the form for adding a new provider.
+ */
 interface NewProviderState {
     displayName: string;
     providerType: string;
@@ -27,6 +39,10 @@ interface NewProviderState {
     baseURL: string;
 }
 
+/**
+ * @component ProviderList
+ * @description A component for listing, adding, and deleting provider configurations.
+ */
 function ProviderList() {
     const [providers, setProviders] = useState<Provider[]>([]);
     const [providerTypes, setProviderTypes] = useState<ProviderType[]>([]);
@@ -58,6 +74,10 @@ function ProviderList() {
             });
     }, []);
 
+    /**
+     * Handles the submission of the form to add a new provider.
+     * @param {React.FormEvent} e - The form event.
+     */
     const handleAddProvider = (e: React.FormEvent) => {
         e.preventDefault();
         axios.post('/llm/configurations', {
@@ -82,6 +102,10 @@ function ProviderList() {
         });
     };
 
+    /**
+     * Handles the deletion of a provider.
+     * @param {string} id - The ID of the provider to delete.
+     */
     const handleDeleteProvider = (id: string) => {
         axios.delete(`/llm/configurations/${id}`)
             .then(() => {
@@ -92,6 +116,10 @@ function ProviderList() {
             });
     };
 
+    /**
+     * Navigates to the management page for a specific provider.
+     * @param {string} providerId - The ID of the provider to manage.
+     */
     const handleManageProvider = (providerId: string) => {
         navigate(`/manage/${providerId}`);
     };
@@ -158,12 +186,15 @@ function ProviderList() {
     );
 }
 
+/**
+ * @component App
+ * @description The main application component, which sets up the routing.
+ */
 function App() {
     return (
         <div className="App">
             <Routes>
                 <Route path="/" element={<ProviderList />} />
-                <Route path="/manage/:providerId" element={<RateLimitManagerPage provider={null} onClose={() => {}} />} />
             </Routes>
         </div>
     );
