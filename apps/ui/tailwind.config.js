@@ -7,6 +7,14 @@ export default {
     content: [
     './src/**/*.{ts,tsx}',
   ],
+  safelist: [
+    'border-t-2',
+    'border-l-2',
+    'border-b-2',
+    'border-r-2',
+    'border-cyan-400',
+    'border-lime-400',
+  ],
   theme: {
   	extend: {
   		borderRadius: {
