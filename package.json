@@ -14,8 +14,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "cross-env": "^7.0.3",
     "@types/cors": "^2.8.17",
+    "@types/picomatch": "^4.0.2",
+    "cross-env": "^7.0.3",
     "prettier": "^2.8.8",
     "turbo": "latest"
   },

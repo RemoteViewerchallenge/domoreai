@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 import { icons } from 'lucide-react';
 
 const Icon = ({ name, ...props }: { name: string, [key: string]: any }) => {

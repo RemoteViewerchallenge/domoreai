@@ -2,10 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter } from './llm-adapters.js';
 import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider } from './db/index.js';
+import * as trpcExpress from '@trpc/server/adapters/express';
+import { appRouter } from './routers/index.js';
 const app = express();
 const port = 4000;
 app.use(cors());
 app.use(express.json());
+app.use('/trpc', trpcExpress.createExpressMiddleware({
+    router: appRouter,
+}));
 const adapters = {
     'openai': new OpenAIAdapter(),
     'mistral': new MistralAdapter(),

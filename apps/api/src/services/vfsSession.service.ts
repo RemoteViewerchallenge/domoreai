@@ -1,6 +1,6 @@
-import { Jsvfs } from '@jsvfs/core';
-import { NodefsStorage } from '@jsvfs/adapter-node-fs';
-import { VfsSessionToken } from '@repo/common/types/agent.types';
+import { VirtualFileSystem } from '@jsvfs/core';
+import { NodeFSAdapter } from '@jsvfs/adapter-node-fs';
+import { VfsSessionToken } from '@repo/common/agent';
 
 /**
  * @deprecated
@@ -25,14 +25,14 @@ export class VfsSessionService {
    * @param vfsToken The user's VFS token.
    * @returns A VFS instance.
    */
-  public async getScopedVfs(vfsToken: VfsSessionToken): Promise<Jsvfs> {
+  public async getScopedVfs(vfsToken: VfsSessionToken): Promise<VirtualFileSystem> {
     console.log('VfsSessionService: Using mock getScopedVfs. Token:', vfsToken);
 
     // In a real implementation, you would validate the token
     // and fetch the user's workspace path.
     // For now, we'll use the current working directory.
-    const vfs = new Jsvfs(new NodefsStorage({
-      root: process.cwd()
+    const vfs = new VirtualFileSystem(new NodeFSAdapter({
+      cwd: process.cwd()
     }));
 
     return vfs;

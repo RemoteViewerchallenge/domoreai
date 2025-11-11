@@ -4,12 +4,21 @@ import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter, LLMAd
 import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
 import { Provider } from './types.js';
+import * as trpcExpress from '@trpc/server/adapters/express';
+import { appRouter } from './routers/index.js';
 
 const app = express();
 const port = 4000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use(
+  '/trpc',
+  trpcExpress.createExpressMiddleware({
+    router: appRouter,
+  }),
+);
 
 const adapters: { [key: string]: LLMAdapter } = {
     'openai': new OpenAIAdapter(),

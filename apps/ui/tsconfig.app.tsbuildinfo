@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/components/Editor.tsx","./src/components/MonacoEditor.tsx","./src/components/RateLimitManager.tsx","./src/lib/utils.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/components/Editor.tsx","./src/components/MonacoEditor.tsx","./src/components/RateLimitManager.tsx","./src/components/ui/Button.tsx","./src/components/ui/Icon.tsx","./src/components/ui/Panel.tsx","./src/lib/utils.ts"],"version":"5.9.3"}
