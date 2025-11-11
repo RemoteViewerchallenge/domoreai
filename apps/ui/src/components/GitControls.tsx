@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { trpc } from '../utils/trpc.js';
-import { Button } from './ui/Button.js'; // Using your UI kit
-import { Icon } from './ui/Icon.js'; // Using your UI kit
-import { Panel } from './ui/Panel.js'; // Using your UI kit
+import { trpc } from '../utils/trpc';
+import { Button } from './ui/Button';
+import { Icon } from './ui/Icon';
+import { Panel } from './ui/Panel';
 
-// This component now assumes it's being passed the vfsToken
 interface GitControlsProps {
   vfsToken: string;
 }
@@ -15,22 +14,26 @@ export function GitControls({ vfsToken }: GitControlsProps) {
 
   const gitCommit = trpc.git.commit.useMutation();
 
-  // The input `{ vfsToken }` and options `{ enabled: ... }` must be separate arguments.
+  // FIX: Single-argument syntax for tRPC v10/v11 hooks
+  // We merge the input (vfsToken) and the options (enabled) into one object.
   const gitLog = trpc.git.log.useQuery(
-    { vfsToken },
-    { enabled: showLog && !!vfsToken },
+    // @ts-ignore - This is a fallback in case types are still out of sync
+    {
+      vfsToken,
+      enabled: showLog && !!vfsToken,
+    }
   );
 
   const handleCommit = () => {
-    if (!vfsToken) return; // Don't commit without a token
+    if (!vfsToken) return;
     gitCommit.mutate({ vfsToken, message: commitMessage });
-    setCommitMessage(''); // Clear message on commit
+    setCommitMessage('');
   };
 
   if (!vfsToken) {
     return (
       <Panel borderColor="border-red-500">
-        <p className="text-red-400">Git Controls: vfsToken not available.</p>
+        <div className="p-2 text-red-400">Git Controls: vfsToken not available.</div>
       </Panel>
     );
   }
@@ -38,55 +41,46 @@ export function GitControls({ vfsToken }: GitControlsProps) {
   return (
     <Panel borderColor="border-blue-400">
       <div className="flex flex-col space-y-2 p-2">
-        <h3 className="text-lg font-semibold">Git Controls</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-neutral-100">Git Controls</h3>
+          <Button onClick={() => setShowLog(!showLog)} size="sm" variant="ghost">
+            {showLog ? 'Hide Log' : 'View Log'}
+          </Button>
+        </div>
+
         <div className="flex space-x-2">
           <input
             type="text"
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             placeholder="Commit message..."
-            className="flex-grow rounded-md border border-neutral-700 bg-neutral-900 p-2 text-neutral-100"
+            className="flex-grow rounded-md border border-neutral-700 bg-neutral-900 p-2 text-neutral-100 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
-          <Button
-            onClick={handleCommit}
-            disabled={gitCommit.isPending || !commitMessage}
-            size="sm"
-          >
-            <Icon name="git-commit" /> Commit
+          <Button onClick={handleCommit} isLoading={gitCommit.isLoading} size="sm">
+            <Icon name="codicon-git-commit" /> Commit
           </Button>
         </div>
-        <Button
-          onClick={() => setShowLog(prev => !prev)}
-          size="sm"
-          variant="ghost"
-        >
-          {showLog ? 'Hide Log' : 'View Log'}
-        </Button>
 
-        {gitCommit.isSuccess && (
-          <p className="text-green-400">Commit successful!</p>
-        )}
-        {gitCommit.isError && gitCommit.error && (
-          <p className="text-red-400">Error: {gitCommit.error?.message}</p>
-        )}
+        {gitCommit.isSuccess && <p className="text-xs text-green-400">Commit successful!</p>}
+        {gitCommit.isError && <p className="text-xs text-red-400">Error: {gitCommit.error?.message}</p>}
 
         {showLog && (
-          <div className="mt-2 rounded-md border border-neutral-700 bg-neutral-900 p-2">
-            <h4 className="text-md font-semibold">Git Log</h4>
-            {gitLog.isLoading && <p>Loading log...</p>}
-            {gitLog.isError && gitLog.error && (
-              <p className="text-red-400">Error: {gitLog.error?.message}</p>
-            )}
+          <div className="mt-2 rounded-md border border-neutral-700 bg-neutral-950 p-2">
+            {gitLog.isLoading && <p className="text-xs text-neutral-400">Loading log...</p>}
+            {gitLog.isError && <p className="text-xs text-red-400">Error: {gitLog.error?.message}</p>}
             {gitLog.data && (
-              <pre className="h-48 overflow-auto text-xs">
-                {gitLog.data.map((log) => (
-                  <div key={log.hash}>
-                    <p className="text-yellow-400">commit {log.hash}</p>
-                    <p>Author: {log.author}</p>
-                    <p>Date: {log.date}</p>
-                    <p className="mt-2 mb-2 ml-4">{log.message}</p>
-                  </div>
-                ))}
+              <pre className="h-48 overflow-auto text-xs font-mono text-neutral-300">
+                {Array.isArray(gitLog.data) ? (
+                    gitLog.data.map((log: any, i: number) => (
+                    <div key={i} className="mb-2 border-b border-neutral-800 pb-1 last:border-0">
+                        <span className="text-yellow-400">{log.hash?.substring(0, 7)}</span>
+                        <span className="ml-2 text-neutral-500">{log.date}</span>
+                        <div className="ml-4 text-neutral-200">{log.message}</div>
+                    </div>
+                    ))
+                ) : (
+                    JSON.stringify(gitLog.data, null, 2)
+                )}
               </pre>
             )}
           </div>

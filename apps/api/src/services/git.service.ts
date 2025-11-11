@@ -1,80 +1,62 @@
-import { Git, createGit } from 'git-client';
+mport { simpleGit, SimpleGit } from 'simple-git';
+import { TRPCError } from '@trpc/server';
 import { VfsSessionService } from './vfsSession.service';
-import { VfsSessionToken, VfsTokenPayload } from '@repo/common/types/agent.types';
-import { Jsvfs } from '@jsvfs/core';
+import path from 'path';
+
+// Define a safe base directory for all workspaces
+const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces');
 
 export class GitService {
-  private vfsSessionService: VfsSessionService;
+  constructor(private vfsSession: VfsSessionService) {}
 
-  constructor(vfsSessionService: VfsSessionService) {
-    this.vfsSessionService = vfsSessionService;
-  }
-
-  /**
-   * Helper function to get the sandboxed VFS instance and its real disk path.
-   * This assumes your VFS adapter has a 'path' property, like a disk adapter.
-   * @param vfsToken The user's VFS token.
-   * @returns A scoped VFS and the absolute path to its root.
-   */
-  private async getScopedRepo(vfsToken: VfsSessionToken): Promise<{ vfs: Jsvfs, repoPath: string }> {
-    const payload: VfsTokenPayload | null = await this.vfsSessionService.validateToken(vfsToken);
+  private async getGit(vfsToken: string): Promise<{ git: SimpleGit; systemPath: string }> {
+    const payload = this.vfsSession.validateToken(vfsToken);
     if (!payload) {
-      throw new Error('Invalid or expired VFS token.');
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS token' });
     }
 
-    // This is the fix: Construct the path from the token payload,
-    // not from a private property on the adapter.
-    const repoPath = payload.vfsRootPath;
+    // This is the FIX: Construct the path, don't read it from the adapter.
+    // It prevents any path traversal attacks.
+    const systemPath = path.join(WORKSPACE_BASE_DIR, payload.vfsRootPath);
 
-    const vfs = await this.vfsSessionService.getScopedVfs(vfsToken);
-
-    return { vfs, repoPath };
+    // Security Check: Ensure the path is *inside* the allowed workspace
+    if (!path.resolve(systemPath).startsWith(WORKSPACE_BASE_DIR)) {
+       throw new TRPCError({ code: 'FORBIDDEN', message: 'Filesystem access denied' });
+    }
+    
+    return { git: simpleGit(systemPath), systemPath };
   }
 
-  /**
-   * Gets the git log for the workspace specified in the VFS token.
-   * @param vfsToken The user's VFS token.
-   * @param count The number of log entries to retrieve.
-   * @returns An array of log objects.
-   */
-  public async gitLog(vfsToken: VfsSessionToken, count: number = 10) {
-    const { repoPath } = await this.getScopedRepo(vfsToken);
-    const git = createGit({ cwd: repoPath });
-
+  async gitLog(vfsToken: string, count: number = 10) {
     try {
+      const { git } = await this.getGit(vfsToken);
       const log = await git.log({ maxCount: count });
-      return log;
-    } catch (error) {
-      console.error('Git log failed:', error);
-      throw new Error(`Failed to get git log: ${error.message}`);
+      return log.all;
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Git Log failed: ${error.message}`,
+      });
     }
   }
 
-  /**
-   * Commits all changes in the workspace specified in the VFS token.
-   * @param vfsToken The user's VFS token.
-   * @param message The commit message.
-   * @returns An object containing the new commit ID.
-   */
-  public async gitCommit(vfsToken: VfsSessionToken, message: string) {
-    const { repoPath } = await this.getScopedRepo(vfsToken);
-    const git = createGit({ cwd: repoPath });
-
+  async gitCommit(vfsToken: string, message: string) {
     try {
-      // Stage all changes
-      await git.add('.');
-
-      // Commit
-      const commitId = await git.commit(message);
-
-      return { commitId };
-    } catch (error) {
-      console.error('Git commit failed:', error);
-      // Handle "nothing to commit" gracefully
-      if (error.message.includes('nothing to commit')) {
-        return { commitId: null };
+      const { git } = await this.getGit(vfsToken);
+      const status = await git.status();
+      
+      if (status.files.length === 0) {
+        throw new Error('No changes to commit');
       }
-      throw new Error(`Failed to commit: ${error.message}`);
+
+      await git.add('.');
+      const commit = await git.commit(message);
+      return { hash: commit.commit, summary: commit.summary };
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Git Commit failed: ${error.message}`,
+      });
     }
   }
 }
