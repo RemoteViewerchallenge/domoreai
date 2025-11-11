@@ -1,7 +1,7 @@
-import { simpleGit } from 'simple-git';
-import { VfsSessionService } from './vfsSession.service.js';
-import { VfsSessionToken } from '@repo/common/agent';
-import { VirtualFileSystem } from '@jsvfs/core';
+import { Git, createGit } from 'git-client';
+import { VfsSessionService } from './vfsSession.service';
+import { VfsSessionToken, VfsTokenPayload } from '@repo/common/types/agent.types';
+import { Jsvfs } from '@jsvfs/core';
 
 export class GitService {
   private vfsSessionService: VfsSessionService;
@@ -16,17 +16,17 @@ export class GitService {
    * @param vfsToken The user's VFS token.
    * @returns A scoped VFS and the absolute path to its root.
    */
-  private async getScopedRepo(vfsToken: VfsSessionToken): Promise<{ vfs: VirtualFileSystem, repoPath: string }> {
-    const vfs = await this.vfsSessionService.getScopedVfs(vfsToken);
-
-    // This is the critical part. We need the *real* file system path
-    // from the VFS adapter to pass to the 'git-client'.
-    // @ts-ignore - We're assuming the adapter has a 'path' property.
-    const repoPath = vfs.adapter.root;
-
-    if (!repoPath) {
-      throw new Error('VFS adapter does not provide a real file path.');
+  private async getScopedRepo(vfsToken: VfsSessionToken): Promise<{ vfs: Jsvfs, repoPath: string }> {
+    const payload: VfsTokenPayload | null = await this.vfsSessionService.validateToken(vfsToken);
+    if (!payload) {
+      throw new Error('Invalid or expired VFS token.');
     }
+
+    // This is the fix: Construct the path from the token payload,
+    // not from a private property on the adapter.
+    const repoPath = payload.vfsRootPath;
+
+    const vfs = await this.vfsSessionService.getScopedVfs(vfsToken);
 
     return { vfs, repoPath };
   }
@@ -39,12 +39,12 @@ export class GitService {
    */
   public async gitLog(vfsToken: VfsSessionToken, count: number = 10) {
     const { repoPath } = await this.getScopedRepo(vfsToken);
-    const git = simpleGit(repoPath);
+    const git = createGit({ cwd: repoPath });
 
     try {
       const log = await git.log({ maxCount: count });
       return log;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Git log failed:', error);
       throw new Error(`Failed to get git log: ${error.message}`);
     }
@@ -58,17 +58,17 @@ export class GitService {
    */
   public async gitCommit(vfsToken: VfsSessionToken, message: string) {
     const { repoPath } = await this.getScopedRepo(vfsToken);
-    const git = simpleGit(repoPath);
+    const git = createGit({ cwd: repoPath });
 
     try {
       // Stage all changes
       await git.add('.');
 
       // Commit
-      const commit = await git.commit(message);
+      const commitId = await git.commit(message);
 
-      return { commitId: commit.commit };
-    } catch (error: any) {
+      return { commitId };
+    } catch (error) {
       console.error('Git commit failed:', error);
       // Handle "nothing to commit" gracefully
       if (error.message.includes('nothing to commit')) {
