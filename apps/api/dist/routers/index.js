@@ -1,5 +1,13 @@
 import { createTRPCRouter } from '../trpc.js';
-import { gitRouter } from './git.router.js';
+import { workspaceRouter } from './workspace.js';
+import { agentRoleRouter } from './agentRole.js';
+import { vfsRouter } from './vfs.js';
+/**
+ * The main tRPC router for the application.
+ * @type {ReturnType<typeof createTRPCRouter>}
+ */
 export const appRouter = createTRPCRouter({
-    git: gitRouter,
+    workspace: workspaceRouter,
+    agentRole: agentRoleRouter,
+    vfs: vfsRouter,
 });

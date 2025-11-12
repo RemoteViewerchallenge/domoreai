@@ -1,0 +1,17 @@
+{
+  "https://www.npmjs.com/package/simple-git": {
+    "url": "https://www.npmjs.com/package/simple-git",
+    "title": "simple-git - npm",
+    "content": "simple-git\n\nA lightweight interface for running git commands in any node.js application.\n\nInstallation\n\nnpm install simple-git --save\n\nUsage\n\nconst git = simpleGit();\n\n// Example: Check if a repo is a repo\nconst isRepo = await git.checkIsRepo();\n\n// Example: Clone a repo\nawait git.clone(REPO_URL, LOCAL_PATH);\n\n// Example: Get commit log\nconst log = await git.log();\nconsole.log(log.latest.hash);"
+  },
+  "https://trpc.io/docs/react": {
+    "url": "https://trpc.io/docs/react",
+    "title": "React Query Integration | tRPC",
+    "content": "tRPC + React Query\n\nTo use tRPC with React, we recommend using @trpc/react-query.\n\nSetup\n\nInstall the dependencies:\n`npm install @trpc/react-query @tanstack/react-query`\n\nUsing Queries\n\n`const { data, isLoading } = api.post.getAll.useQuery();`"
+  },
+  "httpsDUMMY_URL_ERROR": {
+    "url": "httpsDUMMY_URL_ERROR",
+    "title": "Error: Could not fetch content",
+    "content": "The requested URL could not be scraped. It may be down or block scraping attempts. Please try a different source."
+  }
+}

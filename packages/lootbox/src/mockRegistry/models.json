@@ -1,0 +1,38 @@
+[
+  {
+    "id": "gemini-1.5-pro",
+    "name": "Gemini 1.5 Pro",
+    "provider": "google",
+    "contextWindow": 1048576,
+    "rateLimits": { "requestsPerMinute": 60, "tokensPerMinute": 1000000 },
+    "cost": { "inputPer1M": 3.50, "outputPer1M": 10.50 },
+    "capabilities": ["text", "vision", "tool_use"]
+  },
+  {
+    "id": "openrouter/mistralai/mistral-7b-instruct",
+    "name": "Mistral 7B Instruct (Free)",
+    "provider": "openrouter",
+    "contextWindow": 8192,
+    "rateLimits": { "requestsPerMinute": 20, "tokensPerMinute": 50000 },
+    "cost": { "inputPer1M": 0.00, "outputPer1M": 0.00 },
+    "capabilities": ["text"]
+  },
+  {
+    "id": "openrouter/openai/gpt-4o",
+    "name": "GPT-4o (OpenRouter)",
+    "provider": "openrouter",
+    "contextWindow": 128000,
+    "rateLimits": { "requestsPerMinute": 500, "tokensPerMinute": 3000000 },
+    "cost": { "inputPer1M": 5.00, "outputPer1M": 15.00 },
+    "capabilities": ["text", "vision", "tool_use"]
+  },
+  {
+    "id": "openrouter/anthropic/claude-3-haiku",
+    "name": "Claude 3 Haiku (OpenRouter)",
+    "provider": "openrouter",
+    "contextWindow": 200000,
+    "rateLimits": { "requestsPerMinute": 100, "tokensPerMinute": 1000000 },
+    "cost": { "inputPer1M": 0.25, "outputPer1M": 1.25 },
+    "capabilities": ["text"]
+  }
+]

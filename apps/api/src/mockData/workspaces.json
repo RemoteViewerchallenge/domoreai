@@ -1,0 +1,16 @@
+[
+  {
+    "id": "ws-12345",
+    "name": "Simulated Workspace 1",
+    "createdAt": "2025-11-11T17:00:00Z",
+    "updatedAt": "2025-11-11T17:00:00Z",
+    "userId": "user-sim-001"
+  },
+  {
+    "id": "ws-67890",
+    "name": "Epic 7 - Lootbox Test",
+    "createdAt": "2025-11-10T14:00:00Z",
+    "updatedAt": "2025-11-10T14:00:00Z",
+    "userId": "user-sim-001"
+  }
+]

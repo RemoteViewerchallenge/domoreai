@@ -2,14 +2,26 @@ import pg from 'pg';
 import * as crypto from 'crypto';
 const { Pool } = pg;
 // --- Configuration for Encryption ---
-// Expect a 64-character hex string for a 32-byte key
+/**
+ * The encryption key used for securing provider credentials.
+ * It must be a 64-character hex string representing a 32-byte key.
+ * @type {string}
+ */
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+/**
+ * The length of the initialization vector (IV) for AES encryption.
+ * @type {number}
+ */
 const IV_LENGTH = 16; // For AES, this is always 16
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
     console.error('FATAL: ENCRYPTION_KEY is not set or is not a 64-character hex string. Please set a strong 32-byte key (as 64 hex chars) in your environment variables.');
     process.exit(1);
 }
 // --- Database Connection Pool ---
+/**
+ * The connection pool for the PostgreSQL database.
+ * @type {pg.Pool}
+ */
 const pool = new Pool({
     connectionString: process.env.PG_CONNECTION,
 });
@@ -18,6 +30,11 @@ pool.on('error', (err) => {
     process.exit(-1);
 });
 // --- Encryption/Decryption Functions ---
+/**
+ * Encrypts a given text using AES-256-CBC.
+ * @param {string} text - The text to encrypt.
+ * @returns {string} The encrypted text, formatted as 'iv:encrypted_text'.
+ */
 function encrypt(text) {
     const iv = crypto.randomBytes(IV_LENGTH);
     const key = crypto.createSecretKey(Buffer.from(ENCRYPTION_KEY, 'hex'));
@@ -26,6 +43,11 @@ function encrypt(text) {
     encrypted += cipher.final('hex');
     return iv.toString('hex') + ':' + encrypted;
 }
+/**
+ * Decrypts a given text that was encrypted with the `encrypt` function.
+ * @param {string} text - The encrypted text, formatted as 'iv:encrypted_text'.
+ * @returns {string} The decrypted text.
+ */
 function decrypt(text) {
     // If the text is null, empty, or undefined, there's nothing to decrypt.
     if (!text) {
@@ -41,6 +63,11 @@ function decrypt(text) {
     return decrypted;
 }
 // --- CRUD Operations for Providers ---
+/**
+ * Creates a new provider in the database.
+ * @param {Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>} provider - The provider data to create.
+ * @returns {Promise<Provider>} The newly created provider.
+ */
 export async function createProvider(provider) {
     // apiKey can be optional for providers like Llama
     const encryptedApiKey = provider.apiKey ? encrypt(provider.apiKey) : null;
@@ -64,6 +91,11 @@ export async function createProvider(provider) {
         client.release();
     }
 }
+/**
+ * Retrieves a provider by its ID.
+ * @param {string} id - The ID of the provider to retrieve.
+ * @returns {Promise<Provider | null>} The provider object, or null if not found.
+ */
 export async function getProviderById(id) {
     const client = await pool.connect();
     try {
@@ -88,6 +120,13 @@ export async function getProviderById(id) {
         client.release();
     }
 }
+/**
+ * Saves the models for a given provider, replacing any existing models.
+ * @param {string} providerId - The ID of the provider.
+ * @param {string} providerType - The type of the provider.
+ * @param {any[]} models - The array of models to save.
+ * @returns {Promise<void>}
+ */
 export async function saveModelsForProvider(providerId, providerType, models) {
     const client = await pool.connect();
     try {
@@ -127,6 +166,10 @@ export async function saveModelsForProvider(providerId, providerType, models) {
         client.release();
     }
 }
+/**
+ * Retrieves all providers from the database, along with their associated models.
+ * @returns {Promise<Provider[]>} A list of all providers.
+ */
 export async function getAllProviders() {
     const client = await pool.connect();
     try {
@@ -157,6 +200,12 @@ export async function getAllProviders() {
         client.release();
     }
 }
+/**
+ * Updates a provider's information in the database.
+ * @param {string} id - The ID of the provider to update.
+ * @param {Partial<Provider>} updates - An object containing the fields to update.
+ * @returns {Promise<Provider | null>} The updated provider object, or null if not found.
+ */
 export async function updateProvider(id, updates) {
     const client = await pool.connect();
     try {
@@ -207,6 +256,11 @@ export async function updateProvider(id, updates) {
         client.release();
     }
 }
+/**
+ * Deletes a provider from the database.
+ * @param {string} id - The ID of the provider to delete.
+ * @returns {Promise<void>}
+ */
 export async function deleteProvider(id) {
     const client = await pool.connect();
     try {
@@ -217,6 +271,10 @@ export async function deleteProvider(id) {
     }
 }
 // --- Database Initialization ---
+/**
+ * Initializes the database by creating the necessary tables and applying any required migrations.
+ * @returns {Promise<void>}
+ */
 export async function initializeDatabase() {
     const client = await pool.connect();
     try {

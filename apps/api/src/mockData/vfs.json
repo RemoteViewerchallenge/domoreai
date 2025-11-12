@@ -1,0 +1,39 @@
+{
+  "id": "vfs-root-ws-12345",
+  "name": "Simulated Workspace 1",
+  "type": "folder",
+  "children": [
+    {
+      "id": "vfs-f-src",
+      "name": "src",
+      "type": "folder",
+      "children": [
+        {
+          "id": "vfs-f-pages",
+          "name": "pages",
+          "type": "folder",
+          "children": [
+            {
+              "id": "vfs-file-id-page",
+              "name": "[id].tsx",
+              "type": "file",
+              "content": "// This is the main workspace page.\n// An agent would read this file, modify it, and 'save' it back to the VFS."
+            }
+          ]
+        },
+        {
+          "id": "vfs-file-main-css",
+          "name": "main.css",
+          "type": "file",
+          "content": "/* Your neon-border high-contrast styles would be here */\nbody { background-color: #111; color: #eee; }"
+        }
+      ]
+    },
+    {
+      "id": "vfs-file-readme",
+      "name": "README.md",
+      "type": "file",
+      "content": "# Agent Orchestration IDE\n\nThis is a mock README file in the virtual file system. Agents can read and write to this sandbox.\n"
+    }
+  ]
+}

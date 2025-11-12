@@ -1,4 +1,11 @@
 import { getRedisClient } from './redis.js';
+/**
+ * Checks if a request for a given model is within the defined rate limits.
+ * @param {string} modelId - The identifier of the model to check.
+ * @param {object} limits - An object containing the rate limits to enforce (rpm, tpm, rpd).
+ * @param {number} [tokens=0] - The number of tokens to be consumed by the request.
+ * @returns {Promise<{allowed: boolean, reason?: string}>} An object indicating if the request is allowed and the reason if it is not.
+ */
 export const checkRateLimit = async (modelId, limits, tokens = 0) => {
     const redisClient = await getRedisClient();
     const now = Date.now();
@@ -27,6 +34,13 @@ export const checkRateLimit = async (modelId, limits, tokens = 0) => {
     }
     return { allowed: true };
 };
+/**
+ * Increments the rate limit counters for a given model.
+ * @param {string} modelId - The identifier of the model.
+ * @param {object} limits - An object containing the rate limits to apply (rpm, tpm, rpd).
+ * @param {number} [tokens=0] - The number of tokens consumed by the request.
+ * @returns {Promise<void>}
+ */
 export const incrementRateLimit = async (modelId, limits, tokens = 0) => {
     const redisClient = await getRedisClient();
     const now = Date.now();

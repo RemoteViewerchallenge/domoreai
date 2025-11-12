@@ -1,11 +1,22 @@
 import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from 'volcano-sdk';
 import axios from 'axios';
+/**
+ * @class OpenAIAdapter
+ * @implements {LLMAdapter}
+ * @description Adapter for OpenAI and OpenAI-compatible APIs (e.g., OpenRouter, Together AI).
+ */
 export class OpenAIAdapter {
     providerName = 'openai';
     configSchema = {
         apiKey: { type: 'string', required: true, description: 'Your OpenAI API Key' },
         baseURL: { type: 'string', required: false, description: 'Custom base URL for OpenAI-compatible APIs' },
     };
+    /**
+     * Generates a completion using the OpenAI API.
+     * @param {LLMCompletionRequest} request - The completion request.
+     * @returns {Promise<string>} The generated completion text.
+     * @throws {Error} If the API key is missing.
+     */
     async generateCompletion(request) {
         if (!request.config?.apiKey) {
             throw new Error('OpenAI API Key is required.');
@@ -18,6 +29,12 @@ export class OpenAIAdapter {
         const completion = await openai.gen(request.prompt);
         return completion;
     }
+    /**
+     * Fetches available models from the OpenAI or a compatible API.
+     * @param {object} config - Configuration containing the API key and optional base URL.
+     * @returns {Promise<any[]>} A list of model objects.
+     * @throws {Error} If the API key is missing.
+     */
     async getModels(config) {
         if (!config.apiKey) {
             throw new Error('API Key is required to fetch models.');
@@ -26,10 +43,7 @@ export class OpenAIAdapter {
         const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${config.apiKey}` },
         });
-        // Return the raw data array
         // Handle different response structures for OpenAI-compatible APIs
-        // Standard OpenAI and OpenRouter return { "data": [...] }
-        // TogetherAI and others might return [...] directly.
         if (Array.isArray(response.data)) {
             return response.data;
         }
@@ -39,12 +53,23 @@ export class OpenAIAdapter {
         return []; // Return empty array if format is unexpected
     }
 }
+/**
+ * @class MistralAdapter
+ * @implements {LLMAdapter}
+ * @description Adapter for the Mistral API.
+ */
 export class MistralAdapter {
     providerName = 'mistral';
     configSchema = {
         apiKey: { type: 'string', required: true, description: 'Your Mistral API Key' },
         baseURL: { type: 'string', required: false, description: 'Custom base URL for Mistral API' },
     };
+    /**
+     * Generates a completion using the Mistral API.
+     * @param {LLMCompletionRequest} request - The completion request.
+     * @returns {Promise<string>} The generated completion text.
+     * @throws {Error} If the API key is missing.
+     */
     async generateCompletion(request) {
         if (!request.config?.apiKey) {
             throw new Error('Mistral API Key is required.');
@@ -57,6 +82,12 @@ export class MistralAdapter {
         const completion = await mistral.gen(request.prompt);
         return completion;
     }
+    /**
+     * Fetches available models from the Mistral API.
+     * @param {object} config - Configuration containing the API key and optional base URL.
+     * @returns {Promise<any[]>} A list of model objects.
+     * @throws {Error} If the API key is missing.
+     */
     async getModels(config) {
         if (!config.apiKey) {
             throw new Error('API Key is required to fetch models.');
@@ -68,12 +99,23 @@ export class MistralAdapter {
         return response.data.data;
     }
 }
+/**
+ * @class LlamaAdapter
+ * @implements {LLMAdapter}
+ * @description Adapter for Llama models, often used with local servers like Ollama.
+ */
 export class LlamaAdapter {
     providerName = 'llama';
     configSchema = {
         apiKey: { type: 'string', required: false, description: 'Your Llama API Key (optional)' },
         baseURL: { type: 'string', required: true, description: 'Base URL for Llama API (e.g., Ollama endpoint)' },
     };
+    /**
+     * Generates a completion using a Llama-compatible API.
+     * @param {LLMCompletionRequest} request - The completion request.
+     * @returns {Promise<string>} The generated completion text.
+     * @throws {Error} If the base URL is missing.
+     */
     async generateCompletion(request) {
         if (!request.config?.baseURL) {
             throw new Error('Llama API Base URL is required.');
@@ -86,6 +128,12 @@ export class LlamaAdapter {
         const completion = await llama.gen(request.prompt);
         return completion;
     }
+    /**
+     * Fetches available models from a Llama-compatible API (e.g., Ollama).
+     * @param {object} config - Configuration containing the base URL.
+     * @returns {Promise<any[]>} A list of model objects.
+     * @throws {Error} If the base URL is missing.
+     */
     async getModels(config) {
         if (!config.baseURL) {
             throw new Error('Base URL is required to fetch local models.');
@@ -96,6 +144,11 @@ export class LlamaAdapter {
         return response.data.models;
     }
 }
+/**
+ * @class VertexStudioAdapter
+ * @implements {LLMAdapter}
+ * @description Adapter for Google's Vertex AI / Google AI Studio models.
+ */
 export class VertexStudioAdapter {
     providerName = 'vertex-studio';
     configSchema = {
@@ -105,6 +158,12 @@ export class VertexStudioAdapter {
             description: 'Your Google AI Studio API Key. Get one from Google AI Studio under "Get API key".'
         },
     };
+    /**
+     * Generates a completion using the Google AI Studio API.
+     * @param {LLMCompletionRequest} request - The completion request.
+     * @returns {Promise<string>} The generated completion text.
+     * @throws {Error} If the API key is missing.
+     */
     async generateCompletion(request) {
         if (!request.config?.apiKey) {
             throw new Error('Google Cloud API Key is required for Vertex AI Studio.');
@@ -117,6 +176,12 @@ export class VertexStudioAdapter {
         const completion = await vertexStudio.gen(request.prompt);
         return completion;
     }
+    /**
+     * Fetches available models from the Google AI Studio API.
+     * @param {object} config - Configuration containing the API key.
+     * @returns {Promise<any[]>} A list of model objects.
+     * @throws {Error} If the API key is missing.
+     */
     async getModels(config) {
         if (!config.apiKey) {
             throw new Error('API Key is required to fetch Google AI Studio models.');
