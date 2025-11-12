@@ -84,7 +84,10 @@ importers:
         version: 13.0.0
       volcano-sdk:
         specifier: ^1.0.4
-        version: 1.0.4(@opentelemetry/api@1.9.0)(zod@4.1.12)
+        version: 1.0.4(@opentelemetry/api@1.9.0)(ws@8.18.3)(zod@4.1.12)
+      ws:
+        specifier: 8.18.3
+        version: 8.18.3
       zod:
         specifier: ^4.1.12
         version: 4.1.12
@@ -101,6 +104,9 @@ importers:
       '@types/pg':
         specifier: ^8.15.6
         version: 8.15.6
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
       globals:
         specifier: ^15.0.0
         version: 15.0.0
@@ -182,6 +188,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.4)
+      zustand:
+        specifier: ^5.0.8
+        version: 5.0.8(@types/react@18.3.3)(react@18.3.1)
     devDependencies:
       '@types/node':
         specifier: ^20.12.12
@@ -1817,6 +1826,12 @@ packages:
   /@types/tough-cookie@4.0.5:
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
     dev: false
+
+  /@types/ws@8.18.1:
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+    dependencies:
+      '@types/node': 20.12.12
+    dev: true
 
   /@typescript-eslint/eslint-plugin@7.13.1(@typescript-eslint/parser@7.13.1)(eslint@8.57.0)(typescript@5.9.3):
     resolution: {integrity: sha512-kZqi+WZQaZfPKnsflLJQCz6Ze9FFSMfXrrIOcyargekQxG37ES7DJNpJUE9Q/X5n3yTIP/WPutVNzgknQ7biLg==}
@@ -4106,7 +4121,7 @@ packages:
     dependencies:
       wrappy: 1.0.2
 
-  /openai@6.8.1(zod@4.1.12):
+  /openai@6.8.1(ws@8.18.3)(zod@4.1.12):
     resolution: {integrity: sha512-ACifslrVgf+maMz9vqwMP4+v9qvx5Yzssydizks8n+YUJ6YwUoxj51sKRQ8HYMfR6wgKLSIlaI108ZwCk+8yig==}
     hasBin: true
     peerDependencies:
@@ -4118,6 +4133,7 @@ packages:
       zod:
         optional: true
     dependencies:
+      ws: 8.18.3
       zod: 4.1.12
     dev: false
 
@@ -5258,7 +5274,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /volcano-sdk@1.0.4(@opentelemetry/api@1.9.0)(zod@4.1.12):
+  /volcano-sdk@1.0.4(@opentelemetry/api@1.9.0)(ws@8.18.3)(zod@4.1.12):
     resolution: {integrity: sha512-ljUfbg8W6T3dxZd7nmmBLlDLlTHX7i3Ppx3wSGsK8pC1b3mJI3tzDpC2tSW3rVeEu1tWh+LIbgXtjY4lht948g==}
     engines: {node: '>=18.17'}
     peerDependencies:
@@ -5279,7 +5295,7 @@ packages:
       '@modelcontextprotocol/sdk': 1.21.1
       '@opentelemetry/api': 1.9.0
       ajv: 8.17.1
-      openai: 6.8.1(zod@4.1.12)
+      openai: 6.8.1(ws@8.18.3)(zod@4.1.12)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
@@ -5333,6 +5349,19 @@ packages:
 
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  /ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+    dev: false
 
   /xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
@@ -5393,4 +5422,26 @@ packages:
 
   /zod@4.1.12:
     resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+    dev: false
+
+  /zustand@5.0.8(@types/react@18.3.3)(react@18.3.1):
+    resolution: {integrity: sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+    dependencies:
+      '@types/react': 18.3.3
+      react: 18.3.1
     dev: false
