@@ -27,12 +27,8 @@
     "react-router-dom": "^7.9.5",
     "react-table": "^7.7.20",
     "tailwind-merge": "^3.4.0",
-<<<<<<< HEAD
-    "tailwindcss-animate": "^1.0.7"
-=======
     "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.8"
->>>>>>> feat-real-time-terminal-streaming
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
