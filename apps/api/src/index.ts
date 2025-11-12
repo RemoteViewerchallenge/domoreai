@@ -1,12 +1,13 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import http from 'http';
-import { webSocketService } from './services/websocket.service.js';
+import { WebSocketService } from './services/websocket.service.js';
 import { vfsSessionService } from './services/vfsSession.service.js';
 import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter, LLMAdapter } from './llm-adapters.js';
 import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
 import { Provider } from './types.js';
+export type { AppRouter } from './routers/index.js';
 
 const app = express();
 const port = 4000;
@@ -167,12 +168,12 @@ app.post('/workspaces/:workspaceId/vfs-token', (req, res) => {
     if (!workspaceId) {
         return res.status(400).json({ error: 'Missing workspaceId' });
     }
-    const token = vfsSessionService.createToken(workspaceId);
+    const token = vfsSessionService.createSession(workspaceId);
     res.json({ token });
 });
 
 initializeDatabase().then(() => {
-    webSocketService.initialize(server, vfsSessionService);
+    new WebSocketService(server);
     server.listen(port, () => {
         console.log(`API server listening at http://localhost:${port}`);
     });

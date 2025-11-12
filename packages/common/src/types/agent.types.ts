@@ -92,4 +92,9 @@ export interface VfsTokenPayload {
   /** Standard JWT issued-at timestamp (in seconds). */
   iat: number;
 }
-export type VfsSessionToken = string;
+
+export interface TerminalMessage {
+  timestamp: string;
+  type: 'info' | 'warn' | 'error' | 'command' | 'response';
+  message: string;
+}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { TerminalMessage } from '@repo/common/types/agent.types';
+import type { TerminalMessage } from '@repo/common/agent';
 
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
 

@@ -1,3 +1,5 @@
+export type VfsSessionToken = string;
+
 export interface Provider {
   id: string;
   name: string;

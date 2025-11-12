@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import { createServer } from 'http';
+import { WebSocketService } from './services/websocket.service.js';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { appRouter } from './routers/index.js';
 import {
@@ -19,13 +21,18 @@ import {
   deleteProvider,
   saveModelsForProvider,
 } from './db/index.js';
+import { vfsSessionService } from './services/vfsSession.service.js';
 
 const app = express();
+const server = createServer(app);
 const port = 4000;
 
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Initialize WebSocket service
+new WebSocketService(server);
 
 const createContext = ({
   req,
@@ -185,11 +192,25 @@ app.get('/llm/configurations/:id/debug-models', async (req, res) => {
     res.status(500).json({ error: 'Failed to get raw models list', details: error.message });
   }
 });
+
+// Endpoint to create a VFS session token
+app.post('/vfs/token', (req, res) => {
+  try {
+    const { workspaceId } = req.body;
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'workspaceId is required' });
+    }
+    const token = vfsSessionService.createSession(workspaceId);
+    res.status(201).json({ token });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to create VFS token', details: error.message });
+  }
+});
 // ... (other REST endpoints would go here)
 
 initializeDatabase()
   .then(() => {
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`🟢 API server listening at http://localhost:${port}`);
     });
   })

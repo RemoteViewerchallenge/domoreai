@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import Editor, { OnMount } from '@monaco-editor/react';
-import { TerminalMessage } from '@repo/common/types/agent.types';
+import Editor, { type OnMount } from '@monaco-editor/react';
+import type { TerminalMessage } from '@repo/common/agent';
 
 interface TerminalLogViewerProps {
   messages: TerminalMessage[];
