@@ -16,6 +16,11 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
+/**
+ * A map of provider types to their corresponding adapter instances.
+ * This allows for dynamic handling of different LLM providers.
+ * @type {{ [key: string]: LLMAdapter }}
+ */
 const adapters: { [key: string]: LLMAdapter } = {
     'openai': new OpenAIAdapter(),
     'mistral': new MistralAdapter(),
@@ -24,7 +29,12 @@ const adapters: { [key: string]: LLMAdapter } = {
 };
 
 
-// Endpoint to get all provider configurations
+/**
+ * @route GET /llm/configurations
+ * @description Fetches all LLM provider configurations, including their models and health status.
+ * @returns {Response<LLMProvider[]>} A JSON array of provider objects.
+ * @throws {500} If there is an error fetching the providers from the database.
+ */
 app.get('/llm/configurations', async (req: Request, res: Response) => {
     try {
         const providers = await getAllProviders();
@@ -44,6 +54,18 @@ app.get('/llm/configurations', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * @route POST /llm/configurations
+ * @description Creates a new LLM provider configuration. It validates the provider type,
+ * fetches models from the provider's API, and saves the new configuration to the database.
+ * @param {object} req.body - The request body.
+ * @param {string} req.body.providerType - The type of the provider (e.g., 'openai', 'mistral').
+ * @param {string} req.body.name - A display name for the provider configuration.
+ * @param {object} req.body.config - The configuration object, including API key and base URL.
+ * @returns {Response<LLMProvider>} The newly created provider object.
+ * @throws {400} If the provider type is unknown or required fields are missing.
+ * @throws {500} If there is an error fetching models or saving the provider.
+ */
 app.post('/llm/configurations', async (req: Request, res: Response) => {
     const { providerType, name, config } = req.body;
 
@@ -89,7 +111,17 @@ app.post('/llm/configurations', async (req: Request, res: Response) => {
     }
 });
 
-// Triggers an update for a provider's models
+/**
+ * @route POST /llm/configurations/:id/update-models
+ * @description Triggers a manual update of the model list for a specific provider.
+ * It fetches the latest models from the provider's API and saves them to the database.
+ * @param {object} req.params - The URL parameters.
+ * @param {string} req.params.id - The ID of the provider configuration to update.
+ * @returns {Response<{ message: string }>} A success message with the number of models found.
+ * @throws {404} If the provider is not found.
+ * @throws {400} If the provider type is unknown.
+ * @throws {500} If there is an error fetching or saving the models.
+ */
 app.post('/llm/configurations/:id/update-models', async (req, res) => {
   const { id } = req.params;
   try {
@@ -114,7 +146,14 @@ app.post('/llm/configurations/:id/update-models', async (req, res) => {
   }
 });
 
-// Deletes a user-defined configuration
+/**
+ * @route DELETE /llm/configurations/:id
+ * @description Deletes a provider configuration from the database.
+ * @param {object} req.params - The URL parameters.
+ * @param {string} req.params.id - The ID of the provider configuration to delete.
+ * @returns {Response<void>} A 204 No Content response on successful deletion.
+ * @throws {500} If there is an error deleting the provider.
+ */
 app.delete('/llm/configurations/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -126,6 +165,20 @@ app.delete('/llm/configurations/:id', async (req, res) => {
   }
 });
 
+/**
+ * @route POST /llm/complete
+ * @description Generates a completion from a specified model using a given provider configuration.
+ * @param {object} req.body - The request body.
+ * @param {string} req.body.configurationId - The ID of the provider configuration to use.
+ * @param {string} req.body.model - The model to use for the completion.
+ * @param {string} req.body.prompt - The prompt to send to the model.
+ * @param {number} [req.body.maxTokens] - The maximum number of tokens to generate.
+ * @param {number} [req.body.temperature] - The temperature for the completion.
+ * @returns {Response<{ completion: any, model: string, provider: string, id: string }>} The completion response.
+ * @throws {400} If required fields are missing.
+ * @throws {404} If the provider configuration is not found.
+ * @throws {500} If there is an error generating the completion.
+ */
 app.post('/llm/complete', async (req, res) => {
   const { configurationId, model, prompt, maxTokens, temperature } = req.body;
 
@@ -147,7 +200,16 @@ app.post('/llm/complete', async (req, res) => {
   }
 });
 
-// Endpoint to update a provider configuration
+/**
+ * @route PUT /llm/configurations/:id
+ * @description Updates an existing provider configuration.
+ * @param {object} req.params - The URL parameters.
+ * @param {string} req.params.id - The ID of the provider configuration to update.
+ * @param {object} req.body - The provider fields to update.
+ * @returns {Response<Provider>} The updated provider object.
+ * @throws {404} If the provider is not found.
+ * @throws {500} If there is an error updating the provider.
+ */
 app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
     try {
         const updatedProvider = await updateProvider(req.params.id, req.body);
@@ -162,7 +224,15 @@ app.put('/llm/configurations/:id', async (req: Request, res: Response) => {
     }
 });
 
-// Endpoint to get a VFS token for a given workspace
+/**
+ * @route POST /workspaces/:workspaceId/vfs-token
+ * @description Creates a virtual file system (VFS) session token for a given workspace.
+ * This token can be used to authenticate subsequent VFS operations.
+ * @param {object} req.params - The URL parameters.
+ * @param {string} req.params.workspaceId - The ID of the workspace to create a session for.
+ * @returns {Response<{ token: string }>} A JSON object containing the VFS session token.
+ * @throws {400} If the workspaceId is missing.
+ */
 app.post('/workspaces/:workspaceId/vfs-token', (req, res) => {
     const { workspaceId } = req.params;
     if (!workspaceId) {
@@ -172,6 +242,11 @@ app.post('/workspaces/:workspaceId/vfs-token', (req, res) => {
     res.json({ token });
 });
 
+/**
+ * Initializes the database and starts the Express server.
+ * This function ensures that the database is ready before the server starts accepting requests.
+ * It also initializes the WebSocket service.
+ */
 initializeDatabase().then(() => {
     new WebSocketService(server);
     server.listen(port, () => {

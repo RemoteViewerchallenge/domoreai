@@ -2,8 +2,22 @@ import { LLMCompletionRequest } from '@repo/common';
 import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from 'volcano-sdk';
 import axios from 'axios';
 
+/**
+ * Defines the interface for a Large Language Model (LLM) adapter.
+ * Each adapter is responsible for communicating with a specific LLM provider,
+ * handling API requests for model listings and completions.
+ */
 export interface LLMAdapter {
+  /**
+   * The unique name of the provider (e.g., 'openai', 'mistral').
+   * @type {string}
+   */
   readonly providerName: string;
+  /**
+   * A schema defining the configuration options for this provider.
+   * This is used to validate and describe the required credentials and settings.
+   * @type {object}
+   */
   readonly configSchema: {
     [key: string]: {
       type: string;
@@ -11,7 +25,17 @@ export interface LLMAdapter {
       description: string;
     };
   };
+  /**
+   * Generates a text completion based on a given prompt and configuration.
+   * @param {LLMCompletionRequest} request - The completion request object.
+   * @returns {Promise<string>} The generated text completion.
+   */
   generateCompletion(request: LLMCompletionRequest): Promise<string>;
+  /**
+   * Fetches the list of available models from the provider's API.
+   * @param {object} config - The configuration object containing API credentials.
+   * @returns {Promise<any[]>} A promise that resolves to an array of model objects.
+   */
   getModels(config: {
     apiKey?: string;
     baseURL?: string;
@@ -19,6 +43,11 @@ export interface LLMAdapter {
     location?: string;
   }): Promise<any[]>;
 }
+
+/**
+ * An adapter for OpenAI and OpenAI-compatible APIs.
+ * It handles model discovery and completion generation for services like OpenAI, OpenRouter, and TogetherAI.
+ */
 export class OpenAIAdapter implements LLMAdapter {
   public readonly providerName = 'openai';
   public readonly configSchema = {
@@ -26,6 +55,12 @@ export class OpenAIAdapter implements LLMAdapter {
     baseURL: { type: 'string', required: false, description: 'Custom base URL for OpenAI-compatible APIs' },
   };
 
+  /**
+   * Generates a completion using the OpenAI API.
+   * @param {LLMCompletionRequest} request - The completion request details.
+   * @returns {Promise<string>} The completed text.
+   * @throws {Error} If the API key is missing.
+   */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
     if (!request.config?.apiKey) {
       throw new Error('OpenAI API Key is required.');
@@ -39,6 +74,15 @@ export class OpenAIAdapter implements LLMAdapter {
     return completion;
   }
 
+  /**
+   * Fetches available models from an OpenAI-compatible API.
+   * It handles different response structures from various providers.
+   * @param {object} config - The configuration containing the API key and optional base URL.
+   * @param {string} [config.apiKey] - The API key for authentication.
+   * @param {string} [config.baseURL] - The base URL of the API endpoint.
+   * @returns {Promise<any[]>} A list of model objects.
+   * @throws {Error} If the API key is missing.
+   */
   async getModels(config: { apiKey?: string; baseURL?: string }): Promise<any[]> {
     if (!config.apiKey) {
       throw new Error('API Key is required to fetch models.');
@@ -61,6 +105,9 @@ export class OpenAIAdapter implements LLMAdapter {
   }
 }
 
+/**
+ * An adapter for the Mistral API.
+ */
 export class MistralAdapter implements LLMAdapter {
   public readonly providerName = 'mistral';
   public readonly configSchema = {
@@ -68,6 +115,12 @@ export class MistralAdapter implements LLMAdapter {
     baseURL: { type: 'string', required: false, description: 'Custom base URL for Mistral API' },
   };
 
+  /**
+   * Generates a completion using the Mistral API.
+   * @param {LLMCompletionRequest} request - The completion request details.
+   * @returns {Promise<string>} The completed text.
+   * @throws {Error} If the API key is missing.
+   */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
     if (!request.config?.apiKey) {
       throw new Error('Mistral API Key is required.');
@@ -82,6 +135,14 @@ export class MistralAdapter implements LLMAdapter {
     return completion;
   }
 
+  /**
+   * Fetches available models from the Mistral API.
+   * @param {object} config - The configuration containing the API key and optional base URL.
+   * @param {string} [config.apiKey] - The API key for authentication.
+   * @param {string} [config.baseURL] - The base URL of the API endpoint.
+   * @returns {Promise<any[]>} A list of model objects.
+   * @throws {Error} If the API key is missing.
+   */
   async getModels(config: { apiKey?: string; baseURL?: string }): Promise<any[]> {
     if (!config.apiKey) {
       throw new Error('API Key is required to fetch models.');
@@ -94,6 +155,9 @@ export class MistralAdapter implements LLMAdapter {
   }
 }
 
+/**
+ * An adapter for Llama-based models, typically served via local endpoints like Ollama.
+ */
 export class LlamaAdapter implements LLMAdapter {
   public readonly providerName = 'llama';
   public readonly configSchema = {
@@ -101,6 +165,12 @@ export class LlamaAdapter implements LLMAdapter {
     baseURL: { type: 'string', required: true, description: 'Base URL for Llama API (e.g., Ollama endpoint)' },
   };
 
+  /**
+   * Generates a completion using a Llama-compatible API.
+   * @param {LLMCompletionRequest} request - The completion request details.
+   * @returns {Promise<string>} The completed text.
+   * @throws {Error} If the base URL is missing.
+   */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
     if (!request.config?.baseURL) {
       throw new Error('Llama API Base URL is required.');
@@ -115,6 +185,14 @@ export class LlamaAdapter implements LLMAdapter {
     return completion;
   }
 
+  /**
+   * Fetches available models from a Llama-compatible API (e.g., Ollama).
+   * It assumes an endpoint that lists installed models.
+   * @param {object} config - The configuration containing the base URL.
+   * @param {string} [config.baseURL] - The base URL of the local API endpoint.
+   * @returns {Promise<any[]>} A list of model objects.
+   * @throws {Error} If the base URL is missing.
+   */
   async getModels(config: { apiKey?: string; baseURL?: string }): Promise<any[]> {
     if (!config.baseURL) {
       throw new Error('Base URL is required to fetch local models.');
@@ -126,6 +204,9 @@ export class LlamaAdapter implements LLMAdapter {
   }
 }
 
+/**
+ * An adapter for Google's Vertex AI Studio API.
+ */
 export class VertexStudioAdapter implements LLMAdapter {
   public readonly providerName = 'vertex-studio';
   public readonly configSchema = {
@@ -136,6 +217,12 @@ export class VertexStudioAdapter implements LLMAdapter {
     },
   };
 
+  /**
+   * Generates a completion using the Vertex AI Studio API.
+   * @param {LLMCompletionRequest} request - The completion request details.
+   * @returns {Promise<string>} The completed text.
+   * @throws {Error} If the API key is missing.
+   */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
     if (!request.config?.apiKey) {
       throw new Error('Google Cloud API Key is required for Vertex AI Studio.');
@@ -150,6 +237,13 @@ export class VertexStudioAdapter implements LLMAdapter {
     return completion;
   }
 
+  /**
+   * Fetches available models from the Google AI Studio API.
+   * @param {object} config - The configuration containing the API key.
+   * @param {string} [config.apiKey] - The API key for authentication.
+   * @returns {Promise<any[]>} A list of model objects.
+   * @throws {Error} If the API key is missing.
+   */
   async getModels(config: {
     apiKey?: string;
   }): Promise<any[]> {

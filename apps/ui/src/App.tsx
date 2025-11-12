@@ -3,7 +3,11 @@ import RateLimitManagerPage from './components/RateLimitManager';
 import MyWorkspacePage from './pages/workspace/[id]';
 import './App.css';
 
-// A simple component to list workspaces. In a real app, this would be dynamic.
+/**
+ * A simple component to list available workspaces.
+ * In a real application, this would be dynamic and fetch data from an API.
+ * @returns {JSX.Element} The rendered workspace list.
+ */
 function WorkspaceList() {
     return (
         <div>
@@ -18,6 +22,11 @@ function WorkspaceList() {
     );
 }
 
+/**
+ * The main application component.
+ * It sets up the routing for the entire application.
+ * @returns {JSX.Element} The rendered application.
+ */
 export function App() {
     return (
         <div className="App">

@@ -1,8 +1,16 @@
+/**
+ * Represents an LLM provider.
+ */
 export interface LLMProvider {
+  /** The unique identifier for the provider. */
   id: string;
-  name: string;
+  /** The name of the provider. */
+  name:string;
+  /** The display name of the provider. */
   displayName: string;
+  /** A list of models available from the provider. */
   models: string[];
+  /** The configuration schema for the provider. */
   configSchema: {
     [key: string]: {
       type: string;
@@ -12,9 +20,16 @@ export interface LLMProvider {
   };
 }
 
+/**
+ * Represents a request to an LLM for a completion.
+ */
 export interface LLMCompletionRequest {
+  /** The prompt to send to the LLM. */
   prompt: string;
+  /** The maximum number of tokens to generate. */
   maxTokens?: number;
+  /** The temperature to use for the completion. */
   temperature?: number;
+  /** Additional configuration for the request. */
   config?: { [key: string]: any };
 }

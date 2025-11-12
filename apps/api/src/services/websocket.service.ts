@@ -2,13 +2,26 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { vfsSessionService } from './vfsSession.service.js';
 
+/**
+ * Manages the WebSocket server for handling Virtual File System (VFS) operations.
+ * It initializes the server, handles incoming connections, and validates VFS session tokens.
+ */
 export class WebSocketService {
   private wss: WebSocketServer | null = null;
 
+  /**
+   * Creates an instance of WebSocketService and initializes the WebSocket server.
+   * @param {Server} server - The HTTP server instance to attach the WebSocket server to.
+   */
   constructor(server: Server) {
     this.initialize(server);
   }
 
+  /**
+   * Initializes the WebSocket server and sets up connection handling.
+   * @param {Server} server - The HTTP server instance.
+   * @private
+   */
   private initialize(server: Server) {
     this.wss = new WebSocketServer({ server, path: '/vfs' });
 

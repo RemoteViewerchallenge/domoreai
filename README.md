@@ -2,13 +2,16 @@
 
 Domoreai is a flexible, extensible system for managing and interacting with various Large Language Model (LLM) providers. It provides a unified API and a simple web interface to configure providers and query their models.
 
-## Core Features
+## Key Features
 
 - **Multi-Provider Support**: Easily configure and switch between different LLM providers like OpenAI, Mistral, Google AI Studio, and any OpenAI-compatible service (e.g., OpenRouter, Together AI).
 - **Secure Credential Storage**: API keys are encrypted at rest using AES-256-CBC to ensure your credentials are safe.
 - **Dynamic Model Discovery**: The system automatically fetches and stores available models for each configured provider.
 - **Structured & Relational Database**: Model information is stored in a structured, relational format, with dedicated tables for each provider type, allowing for robust querying and data analysis.
 - **Extensible Adapter Architecture**: Adding a new LLM provider is as simple as creating a new adapter class and registering it.
+- **Virtual File System (VFS)**: A sandboxed file system for agents, with a session-based token system for secure access.
+- **Real-time Updates**: WebSocket integration for real-time communication between the frontend and backend.
+- **Rate Limiting**: A UI for managing rate limits for each provider's models.
 
 ## Architecture
 
@@ -19,11 +22,15 @@ The project is a monorepo managed with `pnpm` and consists of two main applicati
   - Secure encryption and decryption of API keys.
   - Communication with LLM provider APIs via adapters.
   - Database initialization and management.
+  - WebSocket server for real-time communication.
+  - VFS session management.
 
 - **`apps/ui`**: A React-based web interface for:
   - Adding, viewing, and deleting provider configurations.
   - Triggering model list updates for each provider.
   - Displaying provider health and model counts.
+  - Managing rate limits for each model.
+  - Interacting with the VFS.
 
 ### Database Design
 
