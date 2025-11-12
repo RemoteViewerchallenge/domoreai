@@ -49,15 +49,14 @@ export async function createProvider(provider) {
     try {
         const res = await client.query(`INSERT INTO providers (name, base_url, api_key, provider_type) VALUES ($1, $2, $3, $4) RETURNING *`, [provider.name, provider.baseUrl || null, encryptedApiKey, provider.providerType]);
         const newProvider = {
-            ...res.rows[0],
-            apiKey: res.rows[0].api_key ? decrypt(res.rows[0].api_key) : '', // Decrypt for immediate return
-            baseUrl: res.rows[0].base_url,
-            isHealthy: res.rows[0].is_healthy,
-            lastCheckedAt: res.rows[0].last_checked_at,
-            createdAt: res.rows[0].created_at,
-            models: [], // Initialize with empty models array
+            id: res.rows[0].id,
+            displayName: res.rows[0].name,
             providerType: res.rows[0].provider_type,
-            updatedAt: res.rows[0].updated_at,
+            config: {
+                apiKey: res.rows[0].api_key ? decrypt(res.rows[0].api_key) : '',
+                baseURL: res.rows[0].base_url,
+            },
+            models: res.rows[0].models || [],
         };
         return newProvider;
     }
@@ -68,21 +67,28 @@ export async function createProvider(provider) {
 export async function getProviderById(id) {
     const client = await pool.connect();
     try {
-        const res = await client.query(`SELECT * FROM providers WHERE id = $1`, [id]);
+        const query = `
+      SELECT 
+        p.*,
+        CASE
+          WHEN p.provider_type = 'openai' THEN (SELECT json_agg(om) FROM openai_models om WHERE om.provider_id = p.id)
+          WHEN p.provider_type = 'vertex-studio' THEN (SELECT json_agg(gm) FROM google_models gm WHERE gm.provider_id = p.id)
+          WHEN p.provider_type = 'mistral' THEN (SELECT json_agg(mm) FROM mistral_models mm WHERE mm.provider_id = p.id)
+          ELSE '[]'::json
+        END as models
+      FROM providers p
+      WHERE p.id = $1
+      GROUP BY p.id
+    `;
+        const res = await client.query(query, [id]);
         if (res.rows.length === 0) {
             return null;
         }
-        const provider = {
-            ...res.rows[0],
-            apiKey: res.rows[0].api_key ? decrypt(res.rows[0].api_key) : '',
-            providerType: res.rows[0].provider_type,
-            baseUrl: res.rows[0].base_url,
-            isHealthy: res.rows[0].is_healthy,
-            lastCheckedAt: res.rows[0].last_checked_at,
-            createdAt: res.rows[0].created_at,
-            models: res.rows[0].models || [], // Directly use the JSONB column
-            updatedAt: res.rows[0].updated_at,
-        };
+        const row = res.rows[0];
+        const provider = { ...row };
+        provider.apiKey = row.api_key ? decrypt(row.api_key) : '';
+        provider.providerType = row.provider_type;
+        provider.baseUrl = row.base_url;
         return provider;
     }
     finally {
@@ -151,6 +157,8 @@ export async function getAllProviders() {
             return {
                 ...row,
                 apiKey: row.api_key ? decrypt(row.api_key) : '',
+                providerType: row.provider_type,
+                baseUrl: row.base_url,
             };
         });
     }

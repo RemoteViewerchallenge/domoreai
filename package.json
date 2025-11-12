@@ -2,7 +2,7 @@
   "name": "mono-repo",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
+  "workspaces": [ 
     "apps/*",
     "packages/*"
   ],

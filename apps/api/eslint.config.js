@@ -14,6 +14,10 @@ export default tseslint.config(
       globals: {
         ...globals.node,
       },
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        project: ['./tsconfig.json'],
+      },
     },
   },
 );

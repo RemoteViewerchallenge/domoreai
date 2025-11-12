@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
+import { logger } from './utils/logger';
 import axios from 'axios';
 import RateLimitManagerPage from './components/RateLimitManager';
 import './App.css';
@@ -21,7 +22,7 @@ function ProviderList() {
             setProviders(response.data);
         })
             .catch(error => {
-            console.error('Error fetching providers:', error);
+            logger.error('Error fetching providers:', error);
         });
         // Fetch the list of available provider types
         axios.get('/llm/provider-types')
@@ -29,7 +30,7 @@ function ProviderList() {
             setProviderTypes(response.data);
         })
             .catch(error => {
-            console.error('Error fetching provider types:', error);
+            logger.error('Error fetching provider types:', error);
         });
     }, []);
     const handleAddProvider = (e) => {
@@ -52,7 +53,7 @@ function ProviderList() {
             });
         })
             .catch(error => {
-            console.error('Error adding provider:', error);
+            logger.error('Error adding provider:', error);
         });
     };
     const handleDeleteProvider = (id) => {
@@ -61,7 +62,7 @@ function ProviderList() {
             setProviders(providers.filter(p => p.id !== id));
         })
             .catch(error => {
-            console.error('Error deleting provider:', error);
+            logger.error('Error deleting provider:', error);
         });
     };
     const handleManageProvider = (providerId) => {

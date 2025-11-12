@@ -7,11 +7,12 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b",
-    "dev": "cross-env DOTENV_CONFIG_PATH=../../.env node -r dotenv/config dist/index.js",
+    "dev": "cross-env PGPASSWORD=app_password DOTENV_CONFIG_PATH=../../.env tsx watch --import dotenv/config src/server.ts",
     "start": "node dist/index.js",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "@google-cloud/aiplatform": "^3.22.0",
     "@jsvfs/adapter-node-fs": "^1.0.0",
     "@jsvfs/core": "^1.0.0",
@@ -22,8 +23,8 @@
     "@trpc/server": "^11.7.1",
     "axios": "^1.7.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "morgan": "^1.10.0",
     "pg": "^8.11.5",
     "redis": "^4.6.13",
     "simple-git": "^3.30.0",
@@ -33,9 +34,11 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
+    "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
     "@types/pg": "^8.15.6",
     "globals": "^15.0.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.9.3",
+    "tsx": "^4.15.6"
   }
 }

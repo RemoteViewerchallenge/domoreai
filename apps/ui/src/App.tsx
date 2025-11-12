@@ -17,7 +17,8 @@ interface Provider {
 }
 
 interface ProviderType {
-    name: string;
+    id: string;
+    displayName: string;
 }
 
 interface NewProviderState {
@@ -111,9 +112,9 @@ function ProviderList() {
                     onChange={e => setNewProvider({ ...newProvider, providerType: e.target.value })}
                 >
                     <option value="">Select Provider Type</option>
-                    {providerTypes.map(type => (
-                        <option key={type.name} value={type.name}>
-                            {type.name}
+                    {providerTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                            {type.displayName}
                         </option>
                     ))}
                 </select>

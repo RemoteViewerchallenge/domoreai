@@ -1,22 +1,8 @@
 {
-    "workbench.colorCustomizations": {
-        "activityBar.activeBackground": "#96dae0",
-        "activityBar.background": "#96dae0",
-        "activityBar.foreground": "#15202b",
-        "activityBar.inactiveForeground": "#15202b99",
-        "activityBarBadge.background": "#cc53c2",
-        "activityBarBadge.foreground": "#15202b",
-        "commandCenter.border": "#15202b99",
-        "sash.hoverBorder": "#96dae0",
-        "statusBar.background": "#6fccd5",
-        "statusBar.foreground": "#15202b",
-        "statusBarItem.hoverBackground": "#47bec9",
-        "statusBarItem.remoteBackground": "#6fccd5",
-        "statusBarItem.remoteForeground": "#15202b",
-        "titleBar.activeBackground": "#6fccd5",
-        "titleBar.activeForeground": "#15202b",
-        "titleBar.inactiveBackground": "#6fccd599",
-        "titleBar.inactiveForeground": "#15202b99"
-    },
-    "peacock.color": "#6fccd5"
+  "eslint.workingDirectories": [
+    { "pattern": "apps/*/" },
+    { "pattern": "packages/*/" }
+  ],
+  "typescript.preferences.importModuleSpecifierEnding": "js",
+  "CodeGPT.apiKey": "OpenRouter"
 }
