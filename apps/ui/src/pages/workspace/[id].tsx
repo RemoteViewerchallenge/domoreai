@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useParams } from 'react-router-dom';
 import { trpc } from '../../utils/trpc';
 import { VfsViewer } from '../../components/VfsViewer';
 import { GitControls } from '../../components/GitControls';
@@ -6,14 +6,13 @@ import { useState, useEffect } from 'react';
 import { Panel } from '../../components/ui/Panel';
 
 const MyWorkspacePage = () => {
-  const router = useRouter();
-  const { id } = router.query;
-  const workspaceName = typeof id === 'string' ? id : 'default';
+  const { id } = useParams<{ id: string }>();
+  const workspaceName = id || 'default';
 
   const [vfsToken, setVfsToken] = useState<string | null>(null);
 
-  const tokenMutation = trpc.vfs.getToken.useMutation({
-    onSuccess: (data) => setVfsToken(data.token),
+  const tokenMutation = trpc.vfs.getToken.useMutation<any>({
+    onSuccess: (data: any) => setVfsToken(data.token),
   });
 
   useEffect(() => {
@@ -28,8 +27,8 @@ const MyWorkspacePage = () => {
     isError,
     error,
   } = trpc.vfs.listFiles.useQuery(
-    { vfsToken: vfsToken! },
-    { enabled: !!vfsToken }
+    { vfsToken: vfsToken! }, // Input
+    { enabled: !!vfsToken }  // Options
   );
 
   return (
@@ -47,8 +46,8 @@ const MyWorkspacePage = () => {
                     <div className="flex-grow overflow-hidden">
                         <VfsViewer
                         files={files || []}
-                        workspaceName={workspaceName}
-                        isLoading={isLoading || tokenMutation.isPending}
+                        workspaceName={workspaceName!}
+                        isLoading={isLoading || tokenMutation.isPending }
                         />
                     </div>
                     {isError && <p className="p-2 text-xs text-red-500">Error: {error?.message}</p>}

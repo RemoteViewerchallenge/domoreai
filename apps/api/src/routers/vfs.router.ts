@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure } from '../trpc';
-import { VfsSessionService } from '../services/vfsSession.service';
+import { createTRPCRouter, protectedProcedure } from '../trpc.js';
+import { VfsSessionService } from '../services/vfsSession.service.js';
 import { TRPCError } from '@trpc/server';
 import path from 'path';
 
@@ -12,7 +12,7 @@ export type VfsFile = {
 export const vfsRouter = createTRPCRouter({
   getToken: protectedProcedure
     .input(z.object({ workspaceId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }: { ctx: any, input: any }) => {
       // Use the real VfsSessionService from the context
       const vfsRootPath = `user-${ctx.auth.userId}/${input.workspaceId}`;
       const token = ctx.vfsSession.generateToken({
@@ -24,7 +24,7 @@ export const vfsRouter = createTRPCRouter({
 
   listFiles: protectedProcedure
     .input(z.object({ vfsToken: z.string() }))
-    .query(async ({ ctx, input }): Promise<VfsFile[]> => {
+    .query(async ({ ctx, input }: { ctx: any, input: any }): Promise<VfsFile[]> => {
       const vfs = await ctx.vfsSession.getScopedVfs(input.vfsToken);
       if (!vfs) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS Token' });

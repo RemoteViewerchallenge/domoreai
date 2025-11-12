@@ -158,7 +158,7 @@ function ProviderList() {
     );
 }
 
-function App() {
+export function App() {
     return (
         <div className="App">
             <Routes>

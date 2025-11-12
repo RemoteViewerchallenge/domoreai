@@ -1,0 +1,12 @@
+diff --git a/index.ts b/index.ts
+index 232f992e02737387952ba9ddaf94175e4a007585..7b1bd42ebf0d5ff3c84be3a75258fd42c1d1ef6e 100644
+--- a/index.ts
++++ b/index.ts
+@@ -78,6 +78,7 @@ export class NodeFSAdapter implements Adapter {
+               contents: await readFile(join(this.root, newPath))
+             }]
+             break
++    // @ts-ignore - Silencing incorrect type error from dependency
+           case entry.isSymbolicLink():
+             yield [newPath, {
+               type: 'softlink',

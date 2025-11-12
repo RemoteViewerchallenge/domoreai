@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../utils/trpc';
 import { Button } from './ui/Button';
-import { Icon } from './ui/Icon';
+import Icon from './ui/Icon';
 import { Panel } from './ui/Panel';
 
 interface GitControlsProps {
@@ -14,14 +14,9 @@ export function GitControls({ vfsToken }: GitControlsProps) {
 
   const gitCommit = trpc.git.commit.useMutation();
 
-  // FIX: Single-argument syntax for tRPC v10/v11 hooks
-  // We merge the input (vfsToken) and the options (enabled) into one object.
   const gitLog = trpc.git.log.useQuery(
-    // @ts-ignore - This is a fallback in case types are still out of sync
-    {
-      vfsToken,
-      enabled: showLog && !!vfsToken,
-    }
+    { vfsToken }, // Input
+    { enabled: showLog && !!vfsToken } // Options
   );
 
   const handleCommit = () => {
@@ -56,8 +51,8 @@ export function GitControls({ vfsToken }: GitControlsProps) {
             placeholder="Commit message..."
             className="flex-grow rounded-md border border-neutral-700 bg-neutral-900 p-2 text-neutral-100 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
-          <Button onClick={handleCommit} isLoading={gitCommit.isLoading} size="sm">
-            <Icon name="codicon-git-commit" /> Commit
+          <Button onClick={handleCommit} disabled={gitCommit.isPending} size="sm">
+            <Icon name="git-commit" /> Commit
           </Button>
         </div>
 

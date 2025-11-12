@@ -1,0 +1,12 @@
+diff --git a/index.ts b/index.ts
+index 50543f5f9aab1fb73791c6c2297eccd0e3ded4bd..3c3ab15567eee95ff72281faf4ecbb10745dc95f 100644
+--- a/index.ts
++++ b/index.ts
+@@ -78,6 +78,7 @@ export class NodeFSAdapter implements Adapter {
+     if (typeof contents === 'undefined') contents = Buffer.alloc(0)
+ 
+     await mkdir(parent, { recursive: true })
++    // @ts-ignore - Silencing incorrect type error from dependency
+     await writeFile(newPath, contents)
+   }
+ 
