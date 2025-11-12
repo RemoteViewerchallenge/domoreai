@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:13
@@ -13,24 +11,24 @@ services:
     volumes:
       - db_gemini_data:/var/lib/postgresql/data
     command: postgres -c password_encryption=md5
-  lootbox:
-    build:
-      context: .
-      dockerfile: ./apps/lootbox/Dockerfile
-    ports:
-      - "3000:3000"
-  registry:
-    build:
-      context: .
-      dockerfile: ./apps/registry/Dockerfile
-    ports:
-      - "8080:8080"
-  proxy:
-    build:
-      context: .
-      dockerfile: ./apps/proxy/Dockerfile
-    ports:
-      - "8000:8000"
+  # lootbox:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/lootbox/Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  # registry:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/registry/Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  # proxy:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/proxy/Dockerfile
+  #   ports:
+  #     - "8000:8000"
 
 volumes:
   db_gemini_data:

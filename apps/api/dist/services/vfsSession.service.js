@@ -55,9 +55,17 @@ export class VfsSessionService {
         if (!session) {
             return null;
         }
-        // In a real implementation, you would resolve the workspaceId to a path.
-        // For now, we'll assume the workspaceId is the path.
-        const workspacePath = session.workspaceId;
+        // --- Workspace Path Resolution ---
+        // In a real system, this would look up the workspace path from a database.
+        // For now, we'll hardcode a path for the "default" workspace.
+        const workspacePaths = {
+            'default': '/home/guy/mono/'
+        };
+        const workspacePath = workspacePaths[session.workspaceId];
+        if (!workspacePath) {
+            console.warn(`VfsSessionService: No path defined for workspace ${session.workspaceId}`);
+            return null;
+        }
         return new VirtualFileSystem(new NodeFSAdapter({ cwd: workspacePath }));
     }
 }
