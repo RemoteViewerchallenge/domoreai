@@ -5,6 +5,12 @@ import { GitControls } from '../../components/GitControls';
 import { useState, useEffect } from 'react';
 import { Panel } from '../../components/ui/Panel';
 
+/**
+ * Renders the main workspace page for a given workspace ID.
+ * This component fetches a VFS token, lists the files in the workspace's virtual file system,
+ * and displays the file explorer, a placeholder for the editor, and Git controls.
+ * @returns {JSX.Element} The rendered workspace page.
+ */
 const MyWorkspacePage = () => {
   const { id } = useParams<{ id: string }>();
   const workspaceName = id || 'default';

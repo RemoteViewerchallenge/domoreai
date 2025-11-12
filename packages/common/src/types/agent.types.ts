@@ -93,8 +93,14 @@ export interface VfsTokenPayload {
   iat: number;
 }
 
+/**
+ * Represents a message to be displayed in a terminal-like interface.
+ */
 export interface TerminalMessage {
+  /** The timestamp of the message. */
   timestamp: string;
+  /** The type of the message, used for color-coding and filtering. */
   type: 'info' | 'warn' | 'error' | 'command' | 'response';
+  /** The content of the message. */
   message: string;
 }

@@ -22,8 +22,8 @@ export class VfsSessionService {
 
   /**
    * Creates a new VFS session for a given workspace.
-   * @param workspaceId The ID of the workspace to scope the session to.
-   * @returns The session token.
+   * @param {string} workspaceId The ID of the workspace to scope the session to.
+   * @returns {VfsSessionToken} The session token.
    */
   public createSession(workspaceId: string): VfsSessionToken {
     const token = randomBytes(16).toString('hex');
@@ -39,8 +39,9 @@ export class VfsSessionService {
 
   /**
    * Validates a session token and returns the session if it is valid.
-   * @param token The session token to validate.
-   * @returns The session if valid, otherwise null.
+   * @param {VfsSessionToken} token The session token to validate.
+   * @returns {VfsSession | null} The session if valid, otherwise null.
+   * @private
    */
   private getValidSession(token: VfsSessionToken): VfsSession | null {
     const session = this.sessions.get(token);
@@ -60,8 +61,8 @@ export class VfsSessionService {
 
   /**
    * Returns a VFS instance scoped to the workspace of the given token.
-   * @param vfsToken The user's VFS token.
-   * @returns A VFS instance, or null if the token is invalid.
+   * @param {VfsSessionToken} vfsToken The user's VFS token.
+   * @returns {VirtualFileSystem | null} A VFS instance, or null if the token is invalid.
    */
   public getScopedVfs(vfsToken: VfsSessionToken): VirtualFileSystem | null {
     const session = this.getValidSession(vfsToken);
