@@ -1,6 +1,7 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import RateLimitManagerPage from './components/RateLimitManager';
 import MyWorkspacePage from './pages/workspace/[id]';
+import ContextsPage from './pages/admin/contexts';
 import './App.css';
 
 /**
@@ -15,6 +16,9 @@ function WorkspaceList() {
             <ul>
                 <li>
                     <Link to="/workspace/default">Default Workspace</Link>
+                </li>
+                <li>
+                    <Link to="/admin/contexts">Context Library</Link>
                 </li>
                 {/* In the future, more workspaces would be listed here */}
             </ul>
@@ -34,6 +38,7 @@ export function App() {
                 <Route path="/" element={<WorkspaceList />} />
                 <Route path="/manage/:providerId" element={<RateLimitManagerPage provider={null} onClose={() => {}} />} />
                 <Route path="/workspace/:id" element={<MyWorkspacePage />} />
+                <Route path="/admin/contexts" element={<ContextsPage />} />
             </Routes>
         </div>
     );
