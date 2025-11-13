@@ -1,0 +1,5 @@
+[
+{ "id": "ctx-1", "name": "VFS File List", "description": "Injects the `ls -R` of the current VFS." },
+{ "id": "ctx-2", "name": "Current Git Branch", "description": "Injects the `git branch --show-current`." },
+{ "id": "ctx-3", "name": "Open File Content", "description": "Injects the content of the active file." }
+]
