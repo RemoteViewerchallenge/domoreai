@@ -1,5 +1,28 @@
 
-
-> api@1.0.0 build /home/guy/mono/apps/api
+> api@1.0.0 build /app/apps/api
 > tsc -b
 
+src/orchestrator/modelSelector.test.ts(9,8): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './modelSelector.js'?
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(60,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(99,11): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(116,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(138,11): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(142,32): error TS2345: Argument of type 'Buffer' is not assignable to parameter of type 'string | ArrayBufferView | Iterable<string | ArrayBufferView> | AsyncIterable<string | ArrayBufferView> | Stream'.
+  Type 'Buffer' is not assignable to type 'Uint8Array<ArrayBufferLike> | DataView<ArrayBufferLike> | Iterable<string | ArrayBufferView> | AsyncIterable<...> | Stream'.
+    Type 'Buffer' is not assignable to type 'Uint8Array<ArrayBufferLike>'.
+      The types of 'slice(...).buffer' are incompatible between these types.
+        Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+          Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+            Types of property '[Symbol.toStringTag]' are incompatible.
+              Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(148,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(164,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(188,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(214,9): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(231,11): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+adapter-node-fs@1.0.0_patch_hash=sxmnsqhxrblrsph6uccupppehy/node_modules/@jsvfs/adapter-node-fs/index.ts(253,13): error TS2322: Type 'unknown' is not assignable to type 'Error'.
+../../node_modules/.pnpm/@jsvfs+extras@1.0.0/node_modules/@jsvfs/extras/index.ts(128,18): error TS2349: This expression is not callable.
+  Type 'typeof picomatch' has no call signatures.
+../../node_modules/.pnpm/@jsvfs+extras@1.0.0/node_modules/@jsvfs/extras/index.ts(132,30): error TS2344: Type 'typeof picomatch' does not satisfy the constraint '(...args: any) => any'.
+  Type 'typeof picomatch' provides no match for the signature '(...args: any): any'.
+ ELIFECYCLE  Command failed with exit code 1.
