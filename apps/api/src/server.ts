@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { createServer } from 'http';
 import { WebSocketService } from './services/websocket.service.js';
+import { LanguageServerService } from './services/languageServer.service.js';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { appRouter } from './routers/index.js';
 import {
@@ -33,6 +34,7 @@ app.use(express.json());
 
 // Initialize WebSocket service
 new WebSocketService(server);
+new LanguageServerService(server);
 
 const createContext = ({
   req,
