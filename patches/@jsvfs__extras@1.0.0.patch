@@ -1,0 +1,8 @@
+diff --git a/index.ts b/index.ts
+index 3f95825..b691097 100644
+import { type Journal, type JournalEntry, type Extras, type Promisify, type ToAsync } from '@jsvfs/types'
+import * as picomatch from 'picomatch'
+import { type Ajv, type ValidateFunction } from 'ajv'
+
+/** A class to provide extra methods to a journal. */
+

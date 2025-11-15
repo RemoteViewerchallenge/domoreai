@@ -1,8 +1,65 @@
 {
-  "eslint.workingDirectories": [
-    { "pattern": "apps/*/" },
-    { "pattern": "packages/*/" }
+  // Use the workspace version of TypeScript
+  "typescript.tsdk": "node_modules/typescript/lib",
+
+  // --- Editor & Formatting ---
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // --- ESLint ---
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
   ],
-  "typescript.preferences.importModuleSpecifierEnding": "js",
-  "CodeGPT.apiKey": "OpenRouter"
+
+  // --- File Explorer ---
+  "explorer.excludeGitIgnore": true,
+
+  // --- Monorepo Workspace Extension ---
+  // Use the "Monorepo: Select..." command to choose visible projects.
+  // The selection is remembered automatically.
+
+  // --- Search ---
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.turbo": true,
+    "**/dist": true
+  },
+
+  // --- Deno Specific Settings (for apps/lootbox) ---
+  "deno.enable": true,
+  "deno.enablePaths": ["./apps/lootbox"],
+  // Let the Deno extension handle linting for its paths, disabling ESLint for them.
+  "deno.lint": true,
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#3399ff",
+    "activityBar.background": "#3399ff",
+    "activityBar.foreground": "#15202b",
+    "activityBar.inactiveForeground": "#15202b99",
+    "activityBarBadge.background": "#bf0060",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#3399ff",
+    "statusBar.background": "#007fff",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#3399ff",
+    "statusBarItem.remoteBackground": "#007fff",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#007fff",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#007fff99",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#007fff"
 }

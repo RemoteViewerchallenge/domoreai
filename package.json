@@ -26,7 +26,8 @@
   "packageManager": "pnpm@8.6.10",
   "pnpm": {
     "patchedDependencies": {
-      "@jsvfs/adapter-node-fs@1.0.0": "patches/@jsvfs__adapter-node-fs@1.0.0.patch"
+      "@jsvfs/adapter-node-fs@1.0.0": "patches/@jsvfs__adapter-node-fs@1.0.0.patch",
+      "@jsvfs/extras@1.0.0": "patches/@jsvfs__extras@1.0.0.patch"
     }
   }
 }

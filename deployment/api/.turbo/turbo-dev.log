@@ -1,0 +1,9 @@
+
+> api@1.0.0 dev /home/guy/mono/apps/api
+> dotenv -e ../../.env -- node -r dotenv/config dist/index.js
+
+Usage: dotenv [OPTIONS] COMMAND [ARGS]...
+Try 'dotenv --help' for help.
+
+Error: Invalid value for '-e' / '--export': '../../.env' is not a valid boolean.
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 2.[39m

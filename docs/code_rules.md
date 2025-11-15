@@ -23,34 +23,34 @@ The system must attempt to complete a task using all available free resources be
 - Do not read, write, or overwrite the `.env` file.
 - Assume the human operator knows how to use an `.env` file or will learn.
 
-# Provider keys are available and operational 
+# Provider keys are available and operational
 
 ---
 
 ### modularity
 
-- One responsibility per file/class  
-- Max 300 lines per file  
-- No side effects on import  
-- Clear exports  
+- One responsibility per file/class
+- Max 300 lines per file
+- No side effects on import
+- Clear exports
 
 ### naming
 
-- Use descriptive names  
-- Prefer `getUserById()` over `get()`  
-- Use abbreviations only if standard (e.g., API, HTTP)  
+- Use descriptive names
+- Prefer `getUserById()` over `get()`
+- Use abbreviations only if standard (e.g., API, HTTP)
 
 ### documentation
 
-- JSDoc on all public functions with examples  
-- Inline comments only for non-obvious logic  
-- README per module with purpose and usage  
+- JSDoc on all public functions with examples
+- Inline comments only for non-obvious logic
+- README per module with purpose and usage
 
 ## typescript
 
 ### strictness
 
-```ts
+````ts
 // tsconfig.json
 {
   "strict": true,
@@ -308,3 +308,4 @@ async function processOnce(id: string, fn: () => Promise<void>) {
 }
 golden-rule
 If another agent (or human) can't understand your code in 5 minutes, simplify it.
+````

@@ -16,16 +16,12 @@ pnpm-debug.log*
 # Local Environment Variables
 # Never commit .env files! They contain secrets.
 .env
-.env.*.local
-.env.local
 
 # IDE and Editor directories
 .idea
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# Ignore the .vscode folder by default...
+.vscode/
+# ...but DO commit the following files inside it.
 
 # OS-specific files
 .DS_Store
