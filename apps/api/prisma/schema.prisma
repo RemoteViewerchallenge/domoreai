@@ -1,0 +1,55 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+// -----------------------------------------------------------------
+// Stores the provider-specific credentials and configuration
+// -----------------------------------------------------------------
+model Provider {
+  id           String @id @default(cuid())
+  createdAt    DateTime @default(now())
+  
+  name         String // e.g., "OpenRouter", "My Local Ollama"
+  providerType String // e.g., "openai", "llama", "anthropic"
+  baseURL      String @unique
+  
+  // !!! IMPORTANT: This should be encrypted before saving
+  encryptedApiKey String?
+
+  // --- Relations ---
+  // A Provider has many Models
+  models Model[]
+}
+
+// -----------------------------------------------------------------
+// Stores the individual models from all providers
+// -----------------------------------------------------------------
+model Model {
+  id        String @id @default(cuid())
+  
+  // --- Relation to Provider ---
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  // --- Normalized Data (What YOU care about) ---
+  // This is the data you query for your "free only" feature.
+  modelId      String  // The ID from the provider (e.g., "gpt-4o-mini")
+  name         String  // The human-readable name
+  isFree       Boolean @default(false)
+  rateLimit    String? // e.g., "100/day" (for your enrich agent to fill)
+  contextWindow Int?    // e.g., 128000 (for your enrich agent to fill)
+
+  // --- The Solution (What the AI is missing) ---
+  // Stores the *entire, raw JSON* from the provider's API.
+  // This bypasses the schema problem entirely.
+  providerData Json
+
+  @@unique([providerId, modelId]) // Prevent duplicate models
+}

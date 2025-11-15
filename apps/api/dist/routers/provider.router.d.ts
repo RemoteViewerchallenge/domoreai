@@ -1,59 +1,35 @@
-export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import("@trpc/server").RootConfig<{
+export declare const providerRouter: import("@trpc/server").CreateRouterInner<import("@trpc/server").RootConfig<{
     ctx: import("../trpc.js").Context;
     meta: object;
     errorShape: import("@trpc/server").DefaultErrorShape;
     transformer: import("@trpc/server").DefaultDataTransformer;
 }>, {
-    getToken: import("@trpc/server").BuildProcedure<"mutation", {
-        _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
-            meta: object;
-            errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
-        }>;
-        _meta: object;
-        _ctx_out: import("../trpc.js").Context;
-        _input_in: {
-            workspaceId: string;
-        };
-        _input_out: {
-            workspaceId: string;
-        };
-        _output_in: typeof import("@trpc/server").unsetMarker;
-        _output_out: typeof import("@trpc/server").unsetMarker;
-    }, {
-        token: string;
-    }>;
     /**
-     * List files and directories
+     * Get all configured providers (except their API keys)
      */
-    listFiles: import("@trpc/server").BuildProcedure<"query", {
+    list: import("@trpc/server").BuildProcedure<"query", {
         _config: import("@trpc/server").RootConfig<{
             ctx: import("../trpc.js").Context;
             meta: object;
             errorShape: import("@trpc/server").DefaultErrorShape;
             transformer: import("@trpc/server").DefaultDataTransformer;
         }>;
-        _meta: object;
         _ctx_out: import("../trpc.js").Context;
-        _input_in: {
-            vfsToken: string;
-            path?: string | undefined;
-        };
-        _input_out: {
-            path: string;
-            vfsToken: string;
-        };
+        _input_in: typeof import("@trpc/server").unsetMarker;
+        _input_out: typeof import("@trpc/server").unsetMarker;
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
+        _meta: object;
     }, {
         name: string;
-        type: string;
+        providerType: string;
+        baseURL: string;
+        id: string;
     }[]>;
     /**
-     * Read the content of a file
+     * Add a new provider configuration
      */
-    readFile: import("@trpc/server").BuildProcedure<"query", {
+    add: import("@trpc/server").BuildProcedure<"mutation", {
         _config: import("@trpc/server").RootConfig<{
             ctx: import("../trpc.js").Context;
             meta: object;
@@ -63,42 +39,50 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
         _meta: object;
         _ctx_out: import("../trpc.js").Context;
         _input_in: {
-            path: string;
-            vfsToken: string;
+            name: string;
+            providerType: string;
+            baseURL: string;
+            apiKey?: string | undefined;
         };
         _input_out: {
-            path: string;
-            vfsToken: string;
-        };
-        _output_in: typeof import("@trpc/server").unsetMarker;
-        _output_out: typeof import("@trpc/server").unsetMarker;
-    }, string>;
-    /**
-     * Write content to a file
-     */
-    writeFile: import("@trpc/server").BuildProcedure<"mutation", {
-        _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
-            meta: object;
-            errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
-        }>;
-        _meta: object;
-        _ctx_out: import("../trpc.js").Context;
-        _input_in: {
-            path: string;
-            vfsToken: string;
-            content: string;
-        };
-        _input_out: {
-            path: string;
-            vfsToken: string;
-            content: string;
+            name: string;
+            providerType: string;
+            baseURL: string;
+            apiKey?: string | undefined;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
-        success: boolean;
+        id: string;
+        createdAt: Date;
+        name: string;
+        providerType: string;
+        baseURL: string;
+        encryptedApiKey: string | null;
+    }>;
+    /**
+     * Step 1: Fetch and Normalize Models (The "Dumb Scrape")
+     * Fetches models from the provider's API and upserts them into our DB.
+     */
+    fetchAndNormalizeModels: import("@trpc/server").BuildProcedure<"mutation", {
+        _config: import("@trpc/server").RootConfig<{
+            ctx: import("../trpc.js").Context;
+            meta: object;
+            errorShape: import("@trpc/server").DefaultErrorShape;
+            transformer: import("@trpc/server").DefaultDataTransformer;
+        }>;
+        _meta: object;
+        _ctx_out: import("../trpc.js").Context;
+        _input_in: {
+            providerId: string;
+        };
+        _input_out: {
+            providerId: string;
+        };
+        _output_in: typeof import("@trpc/server").unsetMarker;
+        _output_out: typeof import("@trpc/server").unsetMarker;
+    }, {
+        count: number;
     }>;
 }>;
-//# sourceMappingURL=vfs.router.d.ts.map
+//# sourceMappingURL=provider.router.d.ts.map

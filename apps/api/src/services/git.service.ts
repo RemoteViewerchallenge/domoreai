@@ -1,13 +1,13 @@
 import { simpleGit, SimpleGit } from 'simple-git';
 import { TRPCError } from '@trpc/server';
-import { VfsSessionService } from './vfsSession.service.js';
+import { getVfsForWorkspace, FsPromises } from './vfsService.js';
 import path from 'path';
 
 // Define a safe base directory for all workspaces
 const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces');
 
 export class GitService {
-  constructor(private vfsSession: VfsSessionService) {}
+  constructor(private getVfs: (workspaceId: string) => FsPromises) {}
 
   private async getGit(vfsToken: string): Promise<{ git: SimpleGit; systemPath: string }> {
     // const payload = this.vfsSession.validateToken(vfsToken);

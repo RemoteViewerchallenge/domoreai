@@ -51,7 +51,7 @@ export function GitControls({ vfsToken }: GitControlsProps) {
             placeholder="Commit message..."
             className="flex-grow rounded-md border border-neutral-700 bg-neutral-900 p-2 text-neutral-100 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
-          <Button onClick={handleCommit} disabled={gitCommit.isPending} size="sm">
+          <Button onClick={handleCommit} disabled={gitCommit.isLoading} size="sm">
             <Icon name="git-commit" /> Commit
           </Button>
         </div>

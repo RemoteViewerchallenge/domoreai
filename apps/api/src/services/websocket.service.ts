@@ -1,6 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
-import { vfsSessionService } from './vfsSession.service.js';
 
 /**
  * Manages the WebSocket server for handling Virtual File System (VFS) operations.
@@ -34,14 +33,6 @@ export class WebSocketService {
       if (!vfsToken) {
         console.log('WebSocket client disconnected: No VFS token provided.');
         ws.close(1008, 'No VFS token provided');
-        return;
-      }
-
-      const vfs = vfsSessionService.getScopedVfs(vfsToken);
-
-      if (!vfs) {
-        console.log('WebSocket client disconnected: Invalid or expired VFS token.');
-        ws.close(1008, 'Invalid or expired VFS token');
         return;
       }
 

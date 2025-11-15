@@ -1,36 +1,78 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres:13
-    restart: always
-    environment:
-      POSTGRES_DB: gemini_db # Database name
-      POSTGRES_USER: app_user # User for the application
-      POSTGRES_PASSWORD: app_password # Password for the application
-    ports:
-      - "5432:5432" # Map to the default postgres port on the host
-    volumes:
-      - db_gemini_data:/var/lib/postgresql/data
-    command: postgres -c password_encryption=md5
-  lootbox:
+  # --- Application Services ---
+
+  api:
     build:
       context: .
-      dockerfile: ./apps/lootbox/Dockerfile
+      dockerfile: apps/api/Dockerfile
     ports:
-      - "3000:3000"
-  registry:
-    build:
-      context: .
-      dockerfile: ./apps/registry/Dockerfile
-    ports:
-      - "8080:8080"
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app-network
+
   proxy:
     build:
       context: .
-      dockerfile: ./apps/proxy/Dockerfile
+      dockerfile: apps/proxy/Dockerfile
     ports:
       - "8000:8000"
+    depends_on:
+      - registry
+    networks:
+      - app-network
+
+  registry:
+    build:
+      context: .
+      dockerfile: apps/registry/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  ui:
+    build:
+      context: .
+      dockerfile: apps/ui/Dockerfile
+    ports:
+      - "3000:80" # Expose Nginx on port 3000 on the host
+    environment:
+      - VITE_API_URL=http://api:4000/trpc
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+  # --- Backend Dependencies ---
+
+  postgres:
+    image: postgres:15-alpine
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
 
 volumes:
-  db_gemini_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

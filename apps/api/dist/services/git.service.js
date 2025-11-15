@@ -4,9 +4,9 @@ import path from 'path';
 // Define a safe base directory for all workspaces
 const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces');
 export class GitService {
-    vfsSession;
-    constructor(vfsSession) {
-        this.vfsSession = vfsSession;
+    getVfs;
+    constructor(getVfs) {
+        this.getVfs = getVfs;
     }
     async getGit(vfsToken) {
         // const payload = this.vfsSession.validateToken(vfsToken);

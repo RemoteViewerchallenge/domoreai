@@ -51,9 +51,9 @@ const MyWorkspacePage = () => {
                     <div className="p-2 font-bold border-b border-neutral-800">Explorer</div>
                     <div className="flex-grow overflow-hidden">
                         <VfsViewer
-                        files={files || []}
+                        files={files?.map(file => ({ path: file.name, type: file.type === 'directory' ? 'dir' : 'file' })) || []}
                         workspaceName={workspaceName!}
-                        isLoading={isLoading || tokenMutation.isPending }
+                        isLoading={isLoading || tokenMutation.isLoading }
                         />
                     </div>
                     {isError && <p className="p-2 text-xs text-red-500">Error: {error?.message}</p>}

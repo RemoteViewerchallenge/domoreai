@@ -1,38 +1,27 @@
-# Stage 1: Build
-FROM node:18-alpine AS builder
+# Base image
+FROM node:18-alpine AS base
+RUN npm install -g pnpm@8.6.10 turbo
 
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-
+# Builder stage
+FROM base as builder
 WORKDIR /app
 
-# First, copy only the files needed for dependency installation
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches/ patches/
-
-# Install all dependencies
-# Using --frozen-lockfile is recommended for CI/CD to ensure reproducible builds
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
+COPY . .
+RUN turbo build --filter=api
 
-# Now, copy the rest of your source code
-COPY apps/ apps/
-COPY packages/ packages/
-
-# Build the 'api' app
-RUN pnpm --filter=api build
-
-# Create a pruned production deployment of the 'api' app to the /prod directory
-RUN pnpm deploy --filter=api --prod /prod/
-
-# Stage 2: Production
+# Final stage
 FROM node:18-alpine
-
+RUN npm install -g pnpm@8.6.10
 WORKDIR /app
 
-# Copy the deployed application from the builder stage
-COPY --from=builder /prod/ .
+# Copy the entire monorepo from the builder stage
+COPY --from=builder /app .
+
+# Install only production dependencies for the API
+RUN pnpm install --prod --filter=api
 
 EXPOSE 4000
-
-CMD ["node", "dist/index.js"]
+CMD ["node", "apps/api/dist/index.js"]

@@ -1,25 +1,22 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc.js';
 import { GitService } from '../services/git.service.js';
-import { VfsSessionService } from '../services/vfsSession.service.js';
+import { getVfsForWorkspace } from '../services/vfsService.js';
 
-/**
- * This is the tRPC router for the GitService.
- * It exposes the gitLog and gitCommit methods to the client.
- */
+const logInputSchema = z.object({ vfsToken: z.string(), count: z.number().optional() });
+const commitInputSchema = z.object({ vfsToken: z.string(), message: z.string() });
 
 // In your main context/DI setup:
-const vfsSessionService = new VfsSessionService();
-const gitService = new GitService(vfsSessionService);
+const gitService = new GitService(getVfsForWorkspace);
 
 export const gitRouter = createTRPCRouter({
   log: protectedProcedure
-    .input(z.object({ vfsToken: z.string(), count: z.number().optional() }))
+    .input(logInputSchema)
     .query(({ input }) => {
       return gitService.gitLog(input.vfsToken, input.count);
     }),
   commit: protectedProcedure
-    .input(z.object({ vfsToken: z.string(), message: z.string() }))
+    .input(commitInputSchema)
     .mutation(({ input }) => {
       return gitService.gitCommit(input.vfsToken, input.message);
     }),

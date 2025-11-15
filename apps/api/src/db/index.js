@@ -12,7 +12,7 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
 }
 // --- Database Connection Pool ---
 const pool = new Pool({
-    connectionString: process.env.PG_CONNECTION,
+    connectionString: process.env.DATABASE_URL,
 });
 pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);

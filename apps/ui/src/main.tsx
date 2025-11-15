@@ -14,7 +14,7 @@ function Main() {
     trpc.createClient({
       links: [
         httpBatchLink({
-          url: 'http://localhost:4000/trpc', // URL of your tRPC server
+          url: import.meta.env.VITE_API_URL || 'http://localhost:4000/trpc', // URL of your tRPC server
         }),
       ],
     })
