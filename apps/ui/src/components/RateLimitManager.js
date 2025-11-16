@@ -112,6 +112,26 @@ const RateLimitManagerPage = ({ provider: initialProvider, onClose }) => {
                                                 : '' })] }))) }))) }), _jsx("tbody", { ...getTableBodyProps(), children: rows.map(row => {
                                 prepareRow(row);
                                 return (_jsx("tr", { ...row.getRowProps(), children: row.cells.map(cell => (_jsx("td", { ...cell.getCellProps(), style: { borderBottom: '1px solid #ddd', padding: '8px' }, children: cell.render('Cell') }))) }));
-                            }) })] }), _jsx("button", { onClick: handleSaveAll, style: { marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }, children: "Save All Changes" })] }) }));
+                            }) })] }), _jsx("button", { onClick: handleSaveAll, style: { marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }, children: "Save All Changes" }), "======= } = useTable(", (columns, data), ": models }, useFilters, useSortBy); const handleInputChange = (e, model, field) => ", , "const updatedModel = ", ...(model, [field]), ": e.target.value }; setModels(models.map(m => m.id === model.id ? updatedModel : m)); }; const handleToggleEnabled = (model) => ", , "const updatedModel = ", ...(model, is_enabled), ": !model.is_enabled }; setModels(models.map(m => m.id === model.id ? updatedModel : m)); }; const handleSave = (model) => ", axios.put(`/llm/models/${model.id}`, {
+                    providerType: provider.providerType,
+                    rpm: model.rpm,
+                    tpm: model.tpm,
+                    rpd: model.rpd,
+                    is_enabled: model.is_enabled,
+                })
+                    .then(() => {
+                    alert('Model updated successfully');
+                })
+                    .catch(error => {
+                    console.error('Error updating model:', error);
+                    alert('Error updating model');
+                }), "; }; return (", _jsx("div", { className: "rate-limit-manager-modal", children: _jsxs("div", { className: "rate-limit-manager-content", children: [_jsxs("h2", { children: [provider.displayName, " Rate Limits"] }), _jsx("button", { onClick: onClose, className: "close-button", children: "Close" }), _jsxs("table", { ...getTableProps(), children: [_jsx("thead", { children: headerGroups.map(headerGroup => (_jsx("tr", { ...headerGroup.getHeaderGroupProps(), children: headerGroup.headers.map(column => (_jsxs("th", { ...column.getHeaderProps(column.getSortByToggleProps()), children: [column.render('Header'), _jsx("span", { children: column.isSorted
+                                                            ? column.isSortedDesc
+                                                                ? ' 🔽'
+                                                                : ' 🔼'
+                                                            : '' })] }))) }))) }), _jsx("tbody", { ...getTableBodyProps(), children: rows.map(row => {
+                                            prepareRow(row);
+                                            return (_jsx("tr", { ...row.getRowProps(), children: row.cells.map(cell => (_jsx("td", { ...cell.getCellProps(), children: cell.render('Cell') }))) }));
+                                        }) })] }), ">>>>>>> feature-rate-limiter"] }) })] }) }));
+    export default RateLimitManagerPage;
 };
-export default RateLimitManagerPage;

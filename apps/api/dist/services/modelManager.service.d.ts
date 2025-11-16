@@ -23,17 +23,17 @@ export declare function getBestModel(roleId: string): Promise<{
     model: {
         provider: {
             name: string;
-            baseURL: string;
-            providerType: string;
             id: string;
             createdAt: Date;
+            providerType: string;
+            baseURL: string;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         };
     } & {
         name: string;
-        providerId: string;
         id: string;
+        providerId: string;
         modelId: string;
         isFree: boolean;
         rateLimit: string | null;
@@ -44,9 +44,9 @@ export declare function getBestModel(roleId: string): Promise<{
         providerData: import("@prisma/client/runtime/library").JsonValue;
     };
 } & {
-    providerId: string;
     id: string;
     createdAt: Date;
+    providerId: string;
     modelId: string;
     maxTokens: number | null;
     temperature: number | null;

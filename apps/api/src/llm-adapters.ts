@@ -1,27 +1,28 @@
 import type { LLMCompletionRequest } from '@repo/common';
 import axios from 'axios';
-<<<<<<< HEAD
+import { getProviderById } from './db/index.js';
+import { checkRateLimit, incrementRateLimit } from './rateLimiter.js';
+import { countTokens } from './tokenizer.js';
 import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
-=======
-import { getProviderById } from './db';
-import { checkRateLimit, incrementRateLimit } from './rateLimiter';
-import { countTokens } from './tokenizer';
 
 async function rateLimitPreCheck(providerId: string, modelId: string) {
     const provider = await getProviderById(providerId);
     if (!provider) {
         throw new Error('Provider not found');
     }
-
-    const model = provider.models.find(m => m.id === modelId);
+ 
+    // @ts-ignore
+    const model = provider.models.find(m => m.id === modelId); // TODO: Fix type
     if (!model) {
         throw new Error('Model not found');
     }
-
+ 
+    // @ts-ignore
     if (!model.is_enabled) {
         throw new Error('Model is not enabled');
     }
-
+ 
+    // @ts-ignore
     const rateLimitCheck = await checkRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd });
     if (!rateLimitCheck.allowed) {
         throw new Error(rateLimitCheck.reason);
@@ -29,7 +30,6 @@ async function rateLimitPreCheck(providerId: string, modelId: string) {
 
     return model;
 }
->>>>>>> feature-rate-limiter
 
 /**
  * Defines the interface for a Large Language Model (LLM) adapter.

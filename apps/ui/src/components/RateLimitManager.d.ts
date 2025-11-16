@@ -23,4 +23,4 @@ interface RateLimitManagerPageProps {
  * @returns {JSX.Element} The rendered rate limit manager page.
  */
 declare const RateLimitManagerPage: React.FC<RateLimitManagerPageProps>;
-export default RateLimitManagerPage;
+export {};

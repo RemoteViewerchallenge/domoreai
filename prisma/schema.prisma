@@ -25,8 +25,9 @@ model Role {
   // A role has a set of preferred models
   preferredModels ModelConfig[]
 
-  // A role can be used in many usage logs
-  modelUsage ModelUsage[]
+  // A role can be used in many usage logs.
+  // This is the other side of the `role` relation in `ModelUsage`.
+  usageLogs ModelUsage[]
 }
 
 // -----------------------------------------------------------------
@@ -52,7 +53,8 @@ model ModelProvider {
   requestsPerMinute Int?
 
   // This provider offers these models
-  models ModelConfig[]
+  // This is the other side of the `provider` relation in `ModelConfig`.
+  modelConfigs ModelConfig[]
 }
 
 model ModelConfig {
@@ -67,7 +69,9 @@ model ModelConfig {
   providerId String
 
   // This model is a preference for these roles
-  preferredByRoles Role[]
+  // This is the other side of the `preferredModels` relation in `Role`.
+  roles Role[] @relation(fields: [roleId], references: [id])
+  roleId String
 
   // This model is used in these usage logs
   usageLogs ModelUsage[]

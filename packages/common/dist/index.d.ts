@@ -25,6 +25,10 @@ export interface LLMProvider {
 export interface LLMCompletionRequest {
     /** The prompt to send to the LLM. */
     prompt: string;
+    /** The ID of the provider configuration to use. */
+    providerId: string;
+    /** The ID of the model to use. */
+    modelId: string;
     /** The maximum number of tokens to generate. */
     maxTokens?: number;
     /** The temperature to use for the completion. */

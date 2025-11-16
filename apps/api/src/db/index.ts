@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import crypto from 'crypto';
-import type { Provider } from '../types';
+import type { Provider } from '../types.js';
 
 const prisma = new PrismaClient();
 
