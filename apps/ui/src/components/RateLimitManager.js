@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { useTable, useSortBy, useFilters } from 'react-table'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { useTable, useSortBy, useFilters } from 'react-table';
 const API_BASE_URL = 'http://localhost:4000';
 /**
  * A component for managing rate limits for a specific LLM provider.
@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:4000';
  * @param {() => void} props.onClose - A function to call when the manager is closed.
  * @returns {JSX.Element} The rendered rate limit manager page.
  */
-const RateLimitManager = ({ provider: initialProvider }) => {
+const RateLimitManager = ({ provider: initialProvider, onClose }) => {
     const { providerId } = useParams();
     const [provider, setProvider] = useState(initialProvider || null);
     const [models, setModels] = useState([]);
@@ -105,13 +105,13 @@ const RateLimitManager = ({ provider: initialProvider }) => {
         return _jsx("div", { children: "Provider not found." });
     }
     const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow, } = useTable({ columns, data }, useFilters, useSortBy);
-    return (_jsxs("div", { style: { padding: '20px', fontFamily: 'Arial, sans-serif' }, children: [_jsx(Link, { to: "/providers", children: "\u2190 Back to Providers" }), _jsxs("h2", { style: { marginTop: '20px' }, children: ["Rate Limit Manager for ", provider.displayName] }), _jsxs("table", { ...getTableProps(), style: { width: '100%', borderCollapse: 'collapse', marginTop: '20px' }, children: [_jsx("thead", { children: headerGroups.map(headerGroup => (_jsx("tr", { ...headerGroup.getHeaderGroupProps(), children: headerGroup.headers.map(column => (_jsxs("th", { ...column.getHeaderProps(column.getSortByToggleProps()), style: { borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }, children: [column.render('Header'), _jsx("span", { children: column.isSorted
-                                            ? column.isSortedDesc
-                                                ? ' 🔽'
-                                                : ' 🔼'
-                                            : '' })] }))) }))) }), _jsx("tbody", { ...getTableBodyProps(), children: rows.map(row => {
-                            prepareRow(row);
-                            return (_jsx("tr", { ...row.getRowProps(), children: row.cells.map(cell => (_jsx("td", { ...cell.getCellProps(), style: { borderBottom: '1px solid #ddd', padding: '8px' }, children: cell.render('Cell') }))) }));
-                        }) })] }), _jsx("button", { onClick: handleSaveAll, style: { marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }, children: "Save All Changes" })] }));
+    return (_jsx("div", { className: "modal-overlay", onClick: onClose, children: _jsxs("div", { className: "modal-content", onClick: e => e.stopPropagation(), style: { padding: '20px', fontFamily: 'Arial, sans-serif' }, children: [_jsx(Link, { to: "/providers", children: "\u2190 Back to Providers" }), _jsxs("h2", { style: { marginTop: '20px' }, children: ["Rate Limit Manager for ", provider.displayName] }), _jsxs("table", { ...getTableProps(), style: { width: '100%', borderCollapse: 'collapse', marginTop: '20px' }, children: [_jsx("thead", { children: headerGroups.map(headerGroup => (_jsx("tr", { ...headerGroup.getHeaderGroupProps(), children: headerGroup.headers.map(column => (_jsxs("th", { ...column.getHeaderProps(column.getSortByToggleProps()), style: { borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }, children: [column.render('Header'), _jsx("span", { children: column.isSorted
+                                                ? column.isSortedDesc
+                                                    ? ' 🔽'
+                                                    : ' 🔼'
+                                                : '' })] }))) }))) }), _jsx("tbody", { ...getTableBodyProps(), children: rows.map(row => {
+                                prepareRow(row);
+                                return (_jsx("tr", { ...row.getRowProps(), children: row.cells.map(cell => (_jsx("td", { ...cell.getCellProps(), style: { borderBottom: '1px solid #ddd', padding: '8px' }, children: cell.render('Cell') }))) }));
+                            }) })] }), _jsx("button", { onClick: handleSaveAll, style: { marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }, children: "Save All Changes" })] }) }));
 };
 export default RateLimitManager;

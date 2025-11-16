@@ -26,3 +26,9 @@
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Ignore generated JavaScript and declaration files in source folders
+**/*.js
+**/*.d.ts
+**/*.d.ts.map
+*.tsbuildinfo
