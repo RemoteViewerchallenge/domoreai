@@ -1,5 +1,7 @@
-declare const Icon: ({ name, ...props }: {
+import { FC } from 'react';
+import { LucideProps } from 'lucide-react';
+interface IconProps extends LucideProps {
     name: string;
-    [key: string]: any;
-}) => import("react/jsx-runtime").JSX.Element | null;
-export default Icon;
+}
+declare const Icon: FC<IconProps>;
+export { Icon };

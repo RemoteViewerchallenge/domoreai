@@ -1,7 +1,6 @@
 import React from 'react';
 interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
-    borderColor?: string;
-    borderDirection?: 't' | 'l' | 'b' | 'r';
+    borderColor: string;
 }
-declare const Panel: React.ForwardRefExoticComponent<PanelProps & React.RefAttributes<HTMLDivElement>>;
+declare const Panel: React.FC<PanelProps>;
 export { Panel };
