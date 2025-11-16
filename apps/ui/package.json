@@ -11,26 +11,24 @@
     "tailwind:init": "tailwindcss init -p"
   },
   "dependencies": {
-    "api": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@repo/common": "workspace:*",
     "@tanstack/react-query": "^4.36.1",
     "@trpc/client": "^10.45.2",
     "@trpc/react-query": "^10.45.2",
+    "api": "workspace:*",
     "axios": "^1.7.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.553.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.9.5",
-    "react-table": "^7.7.20",
+    "react-router-dom": "^6.23.1",
+    "react-table": "^7.8.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^5.0.8",
-    "@trpc/server": "^10.45.2",
-    "superjson": "^2.2.5"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

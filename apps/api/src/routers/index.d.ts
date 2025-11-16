@@ -131,8 +131,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
                 path?: string | undefined;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -156,12 +156,12 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
                 session: null;
             };
             _input_in: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -182,14 +182,14 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
                 session: null;
             };
             _input_in: {
-                path: string;
-                vfsToken: string;
                 content: string;
+                vfsToken: string;
+                path: string;
             };
             _input_out: {
-                path: string;
-                vfsToken: string;
                 content: string;
+                vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -226,12 +226,13 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
+            id: string;
             name: string;
             baseURL: string;
             providerType: string;
-            id: string;
             createdAt: Date;
             encryptedApiKey: string | null;
+            requestsPerMinute: number | null;
         }[]>;
         add: import("@trpc/server").BuildProcedure<"mutation", {
             _config: import("@trpc/server").RootConfig<{
@@ -263,12 +264,13 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
+            id: string;
             name: string;
             baseURL: string;
             providerType: string;
-            id: string;
             createdAt: Date;
             encryptedApiKey: string | null;
+            requestsPerMinute: number | null;
         }>;
         fetchAndNormalizeModels: import("@trpc/server").BuildProcedure<"mutation", {
             _config: import("@trpc/server").RootConfig<{
@@ -326,8 +328,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            name: string;
             id: string;
+            name: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -371,8 +373,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            name: string;
             id: string;
+            name: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -418,8 +420,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            name: string;
             id: string;
+            name: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -451,8 +453,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            name: string;
             id: string;
+            name: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;

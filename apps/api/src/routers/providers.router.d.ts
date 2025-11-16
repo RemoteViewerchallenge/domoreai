@@ -27,12 +27,13 @@ export declare const providerRouter: import("@trpc/server").CreateRouterInner<im
         _output_out: typeof import("@trpc/server").unsetMarker;
         _meta: object;
     }, {
+        id: string;
         name: string;
         baseURL: string;
         providerType: string;
-        id: string;
         createdAt: Date;
         encryptedApiKey: string | null;
+        requestsPerMinute: number | null;
     }[]>;
     add: import("@trpc/server").BuildProcedure<"mutation", {
         _config: import("@trpc/server").RootConfig<{
@@ -64,12 +65,13 @@ export declare const providerRouter: import("@trpc/server").CreateRouterInner<im
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
+        id: string;
         name: string;
         baseURL: string;
         providerType: string;
-        id: string;
         createdAt: Date;
         encryptedApiKey: string | null;
+        requestsPerMinute: number | null;
     }>;
     /**
      * Step 1: Fetch and Normalize Models (The "Dumb Scrape")

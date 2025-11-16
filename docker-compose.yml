@@ -10,10 +10,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
-      - redis
-      - lootbox:
-          condition: service_healthy
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      lootbox:
+        condition: service_healthy
     networks:
       - app-network
     environment:

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { RawProviderOutput } from './modelManager.mocks';
+import type { RawProviderOutput } from './modelManager.mocks.ts';
 
 // This would be your singleton Prisma client, passed in or imported
 const prisma = new PrismaClient();
@@ -58,7 +58,11 @@ export async function getBestModel(roleId: string) {
     include: {
       preferredModels: {
         include: {
-          provider: true // Include the provider to check its rate limits
+          model: { // Include the Model relation
+            include: {
+              provider: true // Then include the Provider through the Model
+            }
+          }
         }
       }
     },
@@ -76,7 +80,7 @@ export async function getBestModel(roleId: string) {
 
   // Go through preferred models and find the first one that isn't rate-limited
   for (const modelConfig of role.preferredModels) {
-    const provider = modelConfig.provider;
+    const provider = modelConfig.model.provider; // Access provider through model
 
     // If provider has no rate limit defined, it's good to go
     if (!provider.requestsPerMinute) {
@@ -86,8 +90,12 @@ export async function getBestModel(roleId: string) {
     // Check usage in the last minute
     const usageCount = await prisma.modelUsage.count({
       where: {
-        model: { providerId: provider.id },
-        timestamp: { gte: oneMinuteAgo },
+        modelConfig: { // Filter through modelConfig
+          model: { // Then through model
+            providerId: provider.id
+          }
+        },
+        createdAt: { gte: oneMinuteAgo }, // Use createdAt instead of timestamp
       },
     });
 

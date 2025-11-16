@@ -1,6 +1,35 @@
 import type { LLMCompletionRequest } from '@repo/common';
 import axios from 'axios';
+<<<<<<< HEAD
 import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
+=======
+import { getProviderById } from './db';
+import { checkRateLimit, incrementRateLimit } from './rateLimiter';
+import { countTokens } from './tokenizer';
+
+async function rateLimitPreCheck(providerId: string, modelId: string) {
+    const provider = await getProviderById(providerId);
+    if (!provider) {
+        throw new Error('Provider not found');
+    }
+
+    const model = provider.models.find(m => m.id === modelId);
+    if (!model) {
+        throw new Error('Model not found');
+    }
+
+    if (!model.is_enabled) {
+        throw new Error('Model is not enabled');
+    }
+
+    const rateLimitCheck = await checkRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd });
+    if (!rateLimitCheck.allowed) {
+        throw new Error(rateLimitCheck.reason);
+    }
+
+    return model;
+}
+>>>>>>> feature-rate-limiter
 
 /**
  * Defines the interface for a Large Language Model (LLM) adapter.
@@ -62,6 +91,8 @@ export class OpenAIAdapter implements LLMAdapter {
    * @throws {Error} If the API key is missing.
    */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
+    const model = await rateLimitPreCheck(request.providerId, request.modelId);
+
     if (!request.config?.apiKey) {
       throw new Error('OpenAI API Key is required.');
     }
@@ -71,6 +102,10 @@ export class OpenAIAdapter implements LLMAdapter {
       baseURL: request.config.baseURL,
     });
     const completion = await openai.gen(request.prompt);
+    const tokenCount = countTokens(completion);
+
+    await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
+
     return completion;
   }
 
@@ -122,6 +157,8 @@ export class MistralAdapter implements LLMAdapter {
    * @throws {Error} If the API key is missing.
    */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
+    const model = await rateLimitPreCheck(request.providerId, request.modelId);
+
     if (!request.config?.apiKey) {
       throw new Error('Mistral API Key is required.');
     }
@@ -132,6 +169,10 @@ export class MistralAdapter implements LLMAdapter {
     });
 
     const completion = await mistral.gen(request.prompt);
+    const tokenCount = countTokens(completion);
+
+    await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
+
     return completion;
   }
 
@@ -224,6 +265,8 @@ export class VertexStudioAdapter implements LLMAdapter {
    * @throws {Error} If the API key is missing.
    */
   async generateCompletion(request: LLMCompletionRequest): Promise<string> {
+    const model = await rateLimitPreCheck(request.providerId, request.modelId);
+
     if (!request.config?.apiKey) {
       throw new Error('Google Cloud API Key is required for Vertex AI Studio.');
     }
@@ -234,6 +277,10 @@ export class VertexStudioAdapter implements LLMAdapter {
     });
 
     const completion = await vertexStudio.gen(request.prompt);
+    const tokenCount = countTokens(completion);
+
+    await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
+
     return completion;
   }
 
