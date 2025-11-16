@@ -1,0 +1,108 @@
+// This is your Prisma schema file.
+// learn more about it in the docs: [https://pris.ly/d/prisma-schema](https://pris.ly/d/prisma-schema)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------
+// AGENT AND ROLE DEFINITIONS
+// -----------------------------------------------------------------
+
+model Role {
+  id               String       @id @default(cuid())
+  name             String       @unique
+  systemPrompt     String       @db.Text
+  allowedTools     String[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // A role has a set of preferred models
+  preferredModels  ModelConfig[]
+
+  // A role can be used in many usage logs
+  modelUsage       ModelUsage[]
+}
+
+// -----------------------------------------------------------------
+// MODEL PROVIDER AND CONFIGURATION
+// -----------------------------------------------------------------
+
+enum ProviderType {
+  DIRECT // e.g., OpenAI, Anthropic
+  ROUTER // e.g., OpenRouter, LiteLLM
+  FREE   // e.g., A free, rate-limited endpoint
+}
+
+model ModelProvider {
+  id           String       @id @default(cuid())
+  name         String       @unique // e.g., "openai-main", "openrouter-free-tier"
+  providerType ProviderType @default(DIRECT)
+
+  // Store the encrypted API key.
+  // You will need a service to handle encryption/decryption.
+  apiKeyEncrypted String? @db.Text
+
+  // Store rate limit info (simple example)
+  requestsPerMinute Int?
+
+  // This provider offers these models
+  models       ModelConfig[]
+}
+
+model ModelConfig {
+  id         String @id @default(cuid())
+  modelId    String // The ID the provider uses (e.g., "gpt-4o", "claude-3-sonnet")
+  name       String // Human-readable name
+
+  // A list of tags for matching (from Role.modelPreferences)
+  tags       String[]
+
+  provider   ModelProvider @relation(fields: [providerId], references: [id])
+  providerId String
+
+  // This model is a preference for these roles
+  preferredByRoles Role[]
+
+  // This model is used in these usage logs
+  usageLogs    ModelUsage[]
+
+  @@unique([modelId, providerId]) // Can't have the same model on the same provider twice
+}
+
+// -----------------------------------------------------------------
+// MODEL USAGE AND RATE LIMITING
+// -----------------------------------------------------------------
+
+model ModelUsage {
+  id        String @id @default(cuid())
+  timestamp DateTime @default(now())
+
+  // Flexible token counts for free providers
+  promptTokens     Int?
+  completionTokens Int?
+
+  // Cost can be 0 for free models
+  cost             Float    @default(0.0)
+
+  // The 'escape hatch' for messy data from routers like OpenRouter
+  metadata         Json?
+
+  // Relations
+  model       ModelConfig @relation(fields: [modelConfigId], references: [id])
+  modelConfigId String
+
+  role        Role     @relation(fields: [roleId], references: [id])
+  roleId      String
+
+  userId      String   // Assuming user IDs are strings
+
+  @@index([modelConfigId])
+  @@index([roleId])
+  @@index([userId])
+}
