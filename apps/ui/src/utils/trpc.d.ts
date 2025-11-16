@@ -137,8 +137,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 path?: string | undefined;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -162,12 +162,12 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -188,14 +188,14 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                content: string;
-                path: string;
                 vfsToken: string;
+                path: string;
+                content: string;
             };
             _input_out: {
-                content: string;
-                path: string;
                 vfsToken: string;
+                path: string;
+                content: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -232,11 +232,11 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            id: string;
-            providerType: string;
             name: string;
-            createdAt: Date;
+            providerType: string;
             baseURL: string;
+            id: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }[]>;
@@ -256,25 +256,25 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                providerType: string;
                 name: string;
+                providerType: string;
                 baseURL: string;
                 apiKey?: string | undefined;
             };
             _input_out: {
-                providerType: string;
                 name: string;
+                providerType: string;
                 baseURL: string;
                 apiKey?: string | undefined;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
-            providerType: string;
             name: string;
-            createdAt: Date;
+            providerType: string;
             baseURL: string;
+            id: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }>;
@@ -334,8 +334,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -379,8 +379,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -426,8 +426,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -459,8 +459,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -594,8 +594,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 path?: string | undefined;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -619,12 +619,12 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _input_out: {
-                path: string;
                 vfsToken: string;
+                path: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -645,14 +645,14 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                content: string;
-                path: string;
                 vfsToken: string;
+                path: string;
+                content: string;
             };
             _input_out: {
-                content: string;
-                path: string;
                 vfsToken: string;
+                path: string;
+                content: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -689,11 +689,11 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            id: string;
-            providerType: string;
             name: string;
-            createdAt: Date;
+            providerType: string;
             baseURL: string;
+            id: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }[]>;
@@ -713,25 +713,25 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
                 session: null;
             };
             _input_in: {
-                providerType: string;
                 name: string;
+                providerType: string;
                 baseURL: string;
                 apiKey?: string | undefined;
             };
             _input_out: {
-                providerType: string;
                 name: string;
+                providerType: string;
                 baseURL: string;
                 apiKey?: string | undefined;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
-            providerType: string;
             name: string;
-            createdAt: Date;
+            providerType: string;
             baseURL: string;
+            id: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }>;
@@ -791,8 +791,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -836,8 +836,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -883,8 +883,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;
@@ -916,8 +916,8 @@ export declare const trpc: import("node_modules/@trpc/react-query/dist/createTRP
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
             name: string;
+            id: string;
             basePrompt: string;
             minContext: number | null;
             maxContext: number | null;

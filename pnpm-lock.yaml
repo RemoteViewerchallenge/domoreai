@@ -47,6 +47,9 @@ importers:
       '@repo/common':
         specifier: workspace:*
         version: link:../../packages/common
+      '@repo/volcano-sdk':
+        specifier: workspace:*
+        version: link:../../packages/volcano-sdk
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.2
@@ -83,9 +86,6 @@ importers:
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
-      volcano-sdk:
-        specifier: ^1.1.0
-        version: 1.1.0(@opentelemetry/api@1.9.0)(ws@8.18.3)(zod@3.25.76)
       ws:
         specifier: ^8.17.0
         version: 8.18.3
@@ -165,6 +165,9 @@ importers:
       '@trpc/react-query':
         specifier: ^10.45.2
         version: 10.45.2(@tanstack/react-query@4.42.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@trpc/client@10.45.2(@trpc/server@10.45.2))(@trpc/server@10.45.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@trpc/server':
+        specifier: ^10.45.2
+        version: 10.45.2
       api:
         specifier: workspace:*
         version: link:../api
@@ -192,6 +195,9 @@ importers:
       react-table:
         specifier: ^7.8.0
         version: 7.8.0(react@18.3.1)
+      superjson:
+        specifier: ^2.2.5
+        version: 2.2.5
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
