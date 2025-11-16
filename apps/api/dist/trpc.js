@@ -1,19 +1,24 @@
 import { initTRPC } from '@trpc/server';
-import { db } from './db/index.js';
+import superjson from 'superjson';
+import { db } from './db.js';
 /**
- * Initialization of tRPC backend
- * Should be done only once per backend!
+ * 1. CONTEXT
+ *
+ * This section defines the "contexts" that are available in the backend API.
+ *
+ * These allow you to access things when processing a request, like the database, the session, etc.
  */
-const t = initTRPC.context().create();
+export const createTRPCContext = (opts) => {
+    // In a real app, you'd get the session from the request
+    return { db, session: null };
+};
 /**
- * Export reusable router and procedure helpers
- * that can be used throughout the router
+ * 2. INITIALIZATION
+ *
+ * This is where the tRPC API is initialized, connecting the context and transformer.
  */
+const t = initTRPC.context().create({ transformer: superjson, });
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure;
-// A simple example of a context function
-export function createContext({ req, res }) {
-    // You can add authentication, database connections, etc. here
-    return { db };
-}
+//# sourceMappingURL=trpc.js.map

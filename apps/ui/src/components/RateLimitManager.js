@@ -4,6 +4,15 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useTable, useSortBy, useFilters } from 'react-table';
 const API_BASE_URL = 'http://localhost:4000';
+/**
+ * A component for managing rate limits for a specific LLM provider.
+ * It displays a table of models for the provider, allowing the user to enable/disable models
+ * and configure rate limit settings.
+ * @param {RateLimitManagerPageProps} props - The component props.
+ * @param {Provider | null} [props.provider] - The initial provider data.
+ * @param {() => void} props.onClose - A function to call when the manager is closed.
+ * @returns {JSX.Element} The rendered rate limit manager page.
+ */
 const RateLimitManagerPage = ({ provider: initialProvider, onClose }) => {
     const { providerId } = useParams();
     const [provider, setProvider] = useState(initialProvider || null);

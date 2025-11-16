@@ -4,21 +4,20 @@ import { WebSocketServer } from 'ws';
  * It initializes the server, handles incoming connections, and validates VFS session tokens.
  */
 export class WebSocketService {
-    wss = null;
+    wss;
     /**
      * Creates an instance of WebSocketService and initializes the WebSocket server.
-     * @param {Server} server - The HTTP server instance to attach the WebSocket server to.
+     * @param server - The HTTP server instance to attach the WebSocket server to.
      */
     constructor(server) {
-        this.initialize(server);
+        this.wss = new WebSocketServer({ server, path: '/vfs' });
+        this.initialize();
     }
     /**
      * Initializes the WebSocket server and sets up connection handling.
-     * @param {Server} server - The HTTP server instance.
      * @private
      */
-    initialize(server) {
-        this.wss = new WebSocketServer({ server, path: '/vfs' });
+    initialize() {
         this.wss.on('connection', (ws, req) => {
             console.log('WebSocket client connected');
             const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -40,4 +39,12 @@ export class WebSocketService {
             });
         });
     }
+    /**
+     * Closes the WebSocket server and terminates all client connections.
+     */
+    close() {
+        console.log('Closing WebSocket server...');
+        this.wss.close();
+    }
 }
+//# sourceMappingURL=websocket.service.js.map

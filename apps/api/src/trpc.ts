@@ -1,28 +1,27 @@
 import { initTRPC } from '@trpc/server';
 import type { CreateExpressContextOptions } from '@trpc/server/adapters/express';
-import { db } from './db/index.js';
-
-// Define your context type
-export interface Context {
-  db: typeof db;
-}
+import superjson from 'superjson';
+import { db } from './db.js';
 
 /**
- * Initialization of tRPC backend
- * Should be done only once per backend!
+ * 1. CONTEXT
+ *
+ * This section defines the "contexts" that are available in the backend API.
+ *
+ * These allow you to access things when processing a request, like the database, the session, etc.
  */
-const t = initTRPC.context<Context>().create();
+export const createTRPCContext = (opts: CreateExpressContextOptions) => {
+  // In a real app, you'd get the session from the request
+  return { db, session: null };
+};
 
 /**
- * Export reusable router and procedure helpers
- * that can be used throughout the router
+ * 2. INITIALIZATION
+ *
+ * This is where the tRPC API is initialized, connecting the context and transformer.
  */
+const t = initTRPC.context<typeof createTRPCContext>().create({ transformer: superjson, });
+
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure;
-
-// A simple example of a context function
-export function createContext({ req, res }: CreateExpressContextOptions) {
-  // You can add authentication, database connections, etc. here
-  return { db };
-}

@@ -1,0 +1,16 @@
+{
+  "name": "@repo/volcano-sdk",
+  "version": "1.0.0",
+  "main": "dist/llm-adapter.js",
+  "types": "dist/llm-adapter.d.ts",
+  "dependencies": {
+    "volcano-sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "build": "tsc",
+    "pack": "pnpm pack"
+  }
+}

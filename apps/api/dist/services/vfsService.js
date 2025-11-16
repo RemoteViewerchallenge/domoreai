@@ -42,3 +42,4 @@ export function clearVfsForWorkspace(workspaceId) {
     vfsCache.delete(workspaceId);
     console.log(`VFS Service: Cleared VFS for workspace: ${workspaceId}`);
 }
+//# sourceMappingURL=vfsService.js.map

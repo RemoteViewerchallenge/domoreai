@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { getVfsForWorkspace } from '../services/vfsService.js';
 import { resolve } from 'path';
-import { Dirent } from '../services/vfsService.js';
+import type { Dirent } from '../services/vfsService.js';
 
 // DUMMY: Replace this with your actual token/auth logic
 // This function will convert a VFS token into a workspaceId.
@@ -14,7 +14,7 @@ const getWorkspaceIdFromToken = (token: string): string => {
 };
 
 // Helper to sanitize paths and prevent directory traversal
-const getSanitizedPath = (workspaceFs: any, userPath: string): string => {
+const getSanitizedPath = (_workspaceFs: any, userPath: string): string => {
   const root = '/'; // The root of our virtual volume
   const resolvedPath = resolve(root, userPath);
 

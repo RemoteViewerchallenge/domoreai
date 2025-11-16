@@ -12,8 +12,12 @@ services:
     depends_on:
       - postgres
       - redis
+      - lootbox:
+          condition: service_healthy
     networks:
       - app-network
+    environment:
+      LOOTBOX_URL: 'http://lootbox:3000'
 
   proxy:
     build:
@@ -47,6 +51,18 @@ services:
       - api
     networks:
       - app-network
+
+  lootbox:
+    build: ./apps/lootbox
+    networks:
+      - app-network
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # --- Backend Dependencies ---
 

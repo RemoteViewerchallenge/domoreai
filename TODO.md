@@ -1,4 +1,5 @@
-- [x] Fix crypto types in apps/api/src/db/index.ts: Use createSecretKey and cast Buffer.concat
-- [x] Fix llm-adapters.ts: Add model to OpenAI config, use gen() instead of chat.completions.create, remove .output from gen results
-- [x] Run build to verify fixes
-- [x] Create .env file with PG_CONNECTION and ENCRYPTION_KEY
+- [x] Remove unused AppRouter import in apps/api/src/index.ts
+- [x] Remove unused TRPCError import and unused destructuring in apps/api/src/trpc.ts
+- [x] Remove unused VOLCANO_PROVIDER_TYPES in apps/api/src/routers/providers.router.ts
+- [x] Add list and add procedures to providerRouter in apps/api/src/routers/providers.router.ts
+- [ ] Run build command to verify fixes

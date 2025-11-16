@@ -1,3 +1,6 @@
 import { createTRPCReact } from '@trpc/react-query';
-// Create the typed tRPC client
+import {} from '@trpc/server';
+/**
+ * This is the tRPC client for your React app.
+ */
 export const trpc = createTRPCReact();

@@ -11,7 +11,7 @@ const getWorkspaceIdFromToken = (token) => {
     return token;
 };
 // Helper to sanitize paths and prevent directory traversal
-const getSanitizedPath = (workspaceFs, userPath) => {
+const getSanitizedPath = (_workspaceFs, userPath) => {
     const root = '/'; // The root of our virtual volume
     const resolvedPath = resolve(root, userPath);
     // Security Check: Ensure path doesn't escape the root
@@ -79,3 +79,4 @@ export const vfsRouter = createTRPCRouter({
     // Add other procedures as needed (mkdir, rm, rename, etc.)
     // ...
 });
+//# sourceMappingURL=vfs.router.js.map

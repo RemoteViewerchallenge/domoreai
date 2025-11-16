@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { httpBatchLink } from '@trpc/client';
+import superjson from 'superjson';
 
 import App from './App.js';
 import { trpc } from './utils/trpc';
@@ -17,6 +18,7 @@ function Main() {
           url: import.meta.env.VITE_API_URL || 'http://localhost:4000/trpc', // URL of your tRPC server
         }),
       ],
+      transformer: superjson,
     })
   );
 

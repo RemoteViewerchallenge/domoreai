@@ -1,4 +1,4 @@
-import { LLMCompletionRequest } from '@repo/common';
+import type { LLMCompletionRequest } from '@repo/common';
 /**
  * Defines the interface for a Large Language Model (LLM) adapter.
  * Each adapter is responsible for communicating with a specific LLM provider,

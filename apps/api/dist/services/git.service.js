@@ -1,14 +1,12 @@
 import { simpleGit } from 'simple-git';
 import { TRPCError } from '@trpc/server';
-import path from 'path';
+// import { getVfsForWorkspace, type FsPromises } from './vfsService.js'; // Commented out as unused
+// import path from 'path'; // Commented out as unused
 // Define a safe base directory for all workspaces
-const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces');
+// const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces'); // Commented out as unused
 export class GitService {
-    getVfs;
-    constructor(getVfs) {
-        this.getVfs = getVfs;
-    }
-    async getGit(vfsToken) {
+    // constructor(private _getVfs: (workspaceId: string) => FsPromises) {} // Commented out as unused
+    async getGit(_vfsToken) {
         // const payload = this.vfsSession.validateToken(vfsToken);
         // if (!payload) {
         //   throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS token' });
@@ -55,3 +53,4 @@ export class GitService {
         }
     }
 }
+//# sourceMappingURL=git.service.js.map

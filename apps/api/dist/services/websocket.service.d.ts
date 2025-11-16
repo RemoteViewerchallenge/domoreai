@@ -7,14 +7,17 @@ export declare class WebSocketService {
     private wss;
     /**
      * Creates an instance of WebSocketService and initializes the WebSocket server.
-     * @param {Server} server - The HTTP server instance to attach the WebSocket server to.
+     * @param server - The HTTP server instance to attach the WebSocket server to.
      */
     constructor(server: Server);
     /**
      * Initializes the WebSocket server and sets up connection handling.
-     * @param {Server} server - The HTTP server instance.
      * @private
      */
     private initialize;
+    /**
+     * Closes the WebSocket server and terminates all client connections.
+     */
+    close(): void;
 }
 //# sourceMappingURL=websocket.service.d.ts.map

@@ -1,28 +1,28 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # Dependencies
-**/node_modules/
+**/node_modules
 
 # Build artifacts
 /dist
 /.turbo
 
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.log*
 
 # Local Environment Variables
 # Never commit .env files! They contain secrets.
 .env
+.env.local
+.env.*
 
 # IDE and Editor directories
 .idea
 # Ignore the .vscode folder by default...
 .vscode/
 # ...but DO commit the following files inside it.
-
+!.vscode/settings.json
+!.vscode/extensions.json
 # OS-specific files
 .DS_Store
 Thumbs.db

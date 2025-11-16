@@ -1,32 +1,30 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
+import type { IncomingMessage } from 'http';
 
 /**
  * Manages the WebSocket server for handling Virtual File System (VFS) operations.
  * It initializes the server, handles incoming connections, and validates VFS session tokens.
  */
 export class WebSocketService {
-  private wss: WebSocketServer | null = null;
+  private wss: WebSocketServer;
 
   /**
    * Creates an instance of WebSocketService and initializes the WebSocket server.
-   * @param {Server} server - The HTTP server instance to attach the WebSocket server to.
+   * @param server - The HTTP server instance to attach the WebSocket server to.
    */
   constructor(server: Server) {
-    this.initialize(server);
+    this.wss = new WebSocketServer({ server, path: '/vfs' });
+    this.initialize();
   }
 
   /**
    * Initializes the WebSocket server and sets up connection handling.
-   * @param {Server} server - The HTTP server instance.
    * @private
    */
-  private initialize(server: Server) {
-    this.wss = new WebSocketServer({ server, path: '/vfs' });
-
-    this.wss.on('connection', (ws: WebSocket, req) => {
+  private initialize(): void {
+    this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       console.log('WebSocket client connected');
-
       const url = new URL(req.url || '', `http://${req.headers.host}`);
       const vfsToken = url.searchParams.get('vfs_token');
 
@@ -50,4 +48,13 @@ export class WebSocketService {
       });
     });
   }
+
+  /**
+   * Closes the WebSocket server and terminates all client connections.
+   */
+  public close(): void {
+    console.log('Closing WebSocket server...');
+    this.wss.close();
+  }
 }
+  

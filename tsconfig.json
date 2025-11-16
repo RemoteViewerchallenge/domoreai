@@ -9,7 +9,11 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@repo/*": ["packages/*"]
+    }
   },
   "exclude": ["node_modules", "dist", "patches"]
 }

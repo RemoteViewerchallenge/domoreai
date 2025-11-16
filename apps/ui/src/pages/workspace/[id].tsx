@@ -51,7 +51,7 @@ const MyWorkspacePage = () => {
                     <div className="p-2 font-bold border-b border-neutral-800">Explorer</div>
                     <div className="flex-grow overflow-hidden">
                         <VfsViewer
-                        files={files?.map(file => ({ path: file.name, type: file.type === 'directory' ? 'dir' : 'file' })) || []}
+                        files={files?.map((file: { name: string; type: string }) => ({ path: file.name, type: file.type === 'directory' ? 'dir' : 'file' })) || []}
                         workspaceName={workspaceName!}
                         isLoading={isLoading || tokenMutation.isLoading }
                         />

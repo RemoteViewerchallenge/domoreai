@@ -1,6 +1,6 @@
-import { LLMCompletionRequest } from '@repo/common';
-import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from 'volcano-sdk';
+import type { LLMCompletionRequest } from '@repo/common';
 import axios from 'axios';
+import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
 
 /**
  * Defines the interface for a Large Language Model (LLM) adapter.

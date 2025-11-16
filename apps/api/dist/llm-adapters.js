@@ -1,5 +1,5 @@
-import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from 'volcano-sdk';
 import axios from 'axios';
+import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
 /**
  * An adapter for OpenAI and OpenAI-compatible APIs.
  * It handles model discovery and completion generation for services like OpenAI, OpenRouter, and TogetherAI.
@@ -196,3 +196,4 @@ export class VertexStudioAdapter {
         return response.data.models || [];
     }
 }
+//# sourceMappingURL=llm-adapters.js.map

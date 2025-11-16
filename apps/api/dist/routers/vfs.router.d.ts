@@ -1,18 +1,27 @@
 export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import("@trpc/server").RootConfig<{
-    ctx: import("../trpc.js").Context;
+    ctx: {
+        db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+        session: null;
+    };
     meta: object;
     errorShape: import("@trpc/server").DefaultErrorShape;
-    transformer: import("@trpc/server").DefaultDataTransformer;
+    transformer: typeof import("superjson").default;
 }>, {
     getToken: import("@trpc/server").BuildProcedure<"mutation", {
         _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
+            ctx: {
+                db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+                session: null;
+            };
             meta: object;
             errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
+            transformer: typeof import("superjson").default;
         }>;
         _meta: object;
-        _ctx_out: import("../trpc.js").Context;
+        _ctx_out: {
+            db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+            session: null;
+        };
         _input_in: {
             workspaceId: string;
         };
@@ -29,13 +38,19 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
      */
     listFiles: import("@trpc/server").BuildProcedure<"query", {
         _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
+            ctx: {
+                db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+                session: null;
+            };
             meta: object;
             errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
+            transformer: typeof import("superjson").default;
         }>;
         _meta: object;
-        _ctx_out: import("../trpc.js").Context;
+        _ctx_out: {
+            db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+            session: null;
+        };
         _input_in: {
             vfsToken: string;
             path?: string | undefined;
@@ -55,13 +70,19 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
      */
     readFile: import("@trpc/server").BuildProcedure<"query", {
         _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
+            ctx: {
+                db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+                session: null;
+            };
             meta: object;
             errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
+            transformer: typeof import("superjson").default;
         }>;
         _meta: object;
-        _ctx_out: import("../trpc.js").Context;
+        _ctx_out: {
+            db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+            session: null;
+        };
         _input_in: {
             path: string;
             vfsToken: string;
@@ -78,13 +99,19 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
      */
     writeFile: import("@trpc/server").BuildProcedure<"mutation", {
         _config: import("@trpc/server").RootConfig<{
-            ctx: import("../trpc.js").Context;
+            ctx: {
+                db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+                session: null;
+            };
             meta: object;
             errorShape: import("@trpc/server").DefaultErrorShape;
-            transformer: import("@trpc/server").DefaultDataTransformer;
+            transformer: typeof import("superjson").default;
         }>;
         _meta: object;
-        _ctx_out: import("../trpc.js").Context;
+        _ctx_out: {
+            db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
+            session: null;
+        };
         _input_in: {
             path: string;
             vfsToken: string;

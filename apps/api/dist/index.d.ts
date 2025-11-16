@@ -1,2 +1,2 @@
-export type { AppRouter } from './routers/index.js';
+export {};
 //# sourceMappingURL=index.d.ts.map

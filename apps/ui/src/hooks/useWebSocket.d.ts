@@ -1,6 +1,6 @@
 declare const useWebSocket: (vfsToken: string | null) => {
-    status: "connecting" | "disconnected" | "connected";
-    messages: import("@repo/common/agent").TerminalMessage[];
+    status: "disconnected" | "connecting" | "connected";
+    messages: import("@repo/common/dist/types/agent.types").TerminalMessage[];
     sendMessage: (payload: any) => void;
 };
 export default useWebSocket;
