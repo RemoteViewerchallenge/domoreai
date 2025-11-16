@@ -1,4 +1,5 @@
 import { WebSocketServer } from 'ws';
+<<<<<<< HEAD
 /**
  * Manages the WebSocket server for handling Virtual File System (VFS) operations.
  * It initializes the server, handles incoming connections, and validates VFS session tokens.
@@ -18,6 +19,16 @@ export class WebSocketService {
      * @private
      */
     initialize() {
+=======
+import { vfsSessionService } from './vfsSession.service.js';
+export class WebSocketService {
+    wss = null;
+    constructor(server) {
+        this.initialize(server);
+    }
+    initialize(server) {
+        this.wss = new WebSocketServer({ server, path: '/vfs' });
+>>>>>>> integration/ide-layout
         this.wss.on('connection', (ws, req) => {
             console.log('WebSocket client connected');
             const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -27,6 +38,15 @@ export class WebSocketService {
                 ws.close(1008, 'No VFS token provided');
                 return;
             }
+<<<<<<< HEAD
+=======
+            const vfs = vfsSessionService.getScopedVfs(vfsToken);
+            if (!vfs) {
+                console.log('WebSocket client disconnected: Invalid or expired VFS token.');
+                ws.close(1008, 'Invalid or expired VFS token');
+                return;
+            }
+>>>>>>> integration/ide-layout
             console.log('VFS session validated for WebSocket client.');
             ws.on('message', (message) => {
                 console.log('received: %s', message);
@@ -39,6 +59,7 @@ export class WebSocketService {
             });
         });
     }
+<<<<<<< HEAD
     /**
      * Closes the WebSocket server and terminates all client connections.
      */
@@ -48,3 +69,6 @@ export class WebSocketService {
     }
 }
 //# sourceMappingURL=websocket.service.js.map
+=======
+}
+>>>>>>> integration/ide-layout

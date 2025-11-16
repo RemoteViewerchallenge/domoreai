@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Represents a session token for the Virtual File System (VFS).
  * It's a string that uniquely identifies a user's VFS session.
@@ -6,6 +7,9 @@ export type VfsSessionToken = string;
 /**
  * Represents an LLM provider configuration stored in the database.
  */
+=======
+export type VfsSessionToken = string;
+>>>>>>> integration/ide-layout
 export interface Provider {
     /** The unique identifier for the provider. */
     id: string;

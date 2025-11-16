@@ -1,4 +1,5 @@
 import { Server } from 'http';
+<<<<<<< HEAD
 /**
  * Manages the WebSocket server for handling Virtual File System (VFS) operations.
  * It initializes the server, handles incoming connections, and validates VFS session tokens.
@@ -19,5 +20,11 @@ export declare class WebSocketService {
      * Closes the WebSocket server and terminates all client connections.
      */
     close(): void;
+=======
+export declare class WebSocketService {
+    private wss;
+    constructor(server: Server);
+    private initialize;
+>>>>>>> integration/ide-layout
 }
 //# sourceMappingURL=websocket.service.d.ts.map
