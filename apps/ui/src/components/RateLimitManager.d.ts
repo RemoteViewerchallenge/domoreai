@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Model } from '../types';
+import type { Model } from '../types.js';
 interface Provider {
     id: string;
     displayName: string;
