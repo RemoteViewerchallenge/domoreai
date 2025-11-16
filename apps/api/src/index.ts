@@ -4,17 +4,9 @@ import http from 'http';
 import { WebSocketService } from './services/websocket.service.js';
 import { appRouter } from './routers/index.js';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
-import { applyWSSHandler } from '@trpc/server/adapters/ws';
+// import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { createContext } from './trpc.js';
-
-export type { AppRouter } from './routers/index.js';
-
-const app = express();
-const port = 4000;
-const server = http.createServer(app);
-
-app.use(cors());
-app.use(express.json());
+import type { AppRouter } from './routers/types.ts';
 
 app.use(
   '/trpc',
