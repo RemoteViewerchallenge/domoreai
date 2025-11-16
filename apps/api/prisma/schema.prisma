@@ -21,6 +21,9 @@ model Provider {
   // !!! IMPORTANT: This should be encrypted before saving
   encryptedApiKey String?
 
+  // --- Rate Limiting ---
+  requestsPerMinute Int?
+
   // --- Relations ---
   // A Provider has many Models
   models Model[]
@@ -74,4 +77,51 @@ model Role {
   needsCoding    Boolean @default(false)
 
   // TODO: Add Tool & Task relations later
+  preferredModels ModelConfig[] @relation("PreferredModels")
+}
+
+// -----------------------------------------------------------------
+// Stores the configuration for a specific model within a role
+// This allows for role-specific overrides or settings for a model
+// -----------------------------------------------------------------
+model ModelConfig {
+  id         String @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  // --- Relation to Model ---
+  modelId    String
+  model      Model    @relation(fields: [modelId], references: [id])
+
+  // --- Relation to Provider (for convenience/denormalization) ---
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  // --- Role-specific settings for this model ---
+  // e.g., max tokens, temperature, etc.
+  // These would override global model settings for this specific role
+  maxTokens  Int?
+  temperature Float?
+
+  // --- Relations ---
+  roles      Role[]       @relation("PreferredModels")
+  modelUsage ModelUsage[]
+}
+
+// -----------------------------------------------------------------
+// Stores the usage logs for models
+// -----------------------------------------------------------------
+model ModelUsage {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  userId         String
+  modelConfigId  String
+  roleId         String
+  promptTokens   Int?
+  completionTokens Int?
+  cost           Float
+  metadata       Json?
+
+  // Relations
+  modelConfig    ModelConfig @relation(fields: [modelConfigId], references: [id])
+  role           Role        @relation(fields: [roleId], references: [id])
 }

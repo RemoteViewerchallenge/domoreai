@@ -15,18 +15,18 @@ datasource db {
 // -----------------------------------------------------------------
 
 model Role {
-  id               String       @id @default(cuid())
-  name             String       @unique
-  systemPrompt     String       @db.Text
-  allowedTools     String[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id           String   @id @default(cuid())
+  name         String   @unique
+  systemPrompt String   @db.Text
+  allowedTools String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // A role has a set of preferred models
-  preferredModels  ModelConfig[]
+  preferredModels ModelConfig[]
 
   // A role can be used in many usage logs
-  modelUsage       ModelUsage[]
+  modelUsage ModelUsage[]
 }
 
 // -----------------------------------------------------------------
@@ -36,7 +36,7 @@ model Role {
 enum ProviderType {
   DIRECT // e.g., OpenAI, Anthropic
   ROUTER // e.g., OpenRouter, LiteLLM
-  FREE   // e.g., A free, rate-limited endpoint
+  FREE // e.g., A free, rate-limited endpoint
 }
 
 model ModelProvider {
@@ -52,16 +52,16 @@ model ModelProvider {
   requestsPerMinute Int?
 
   // This provider offers these models
-  models       ModelConfig[]
+  models ModelConfig[]
 }
 
 model ModelConfig {
-  id         String @id @default(cuid())
-  modelId    String // The ID the provider uses (e.g., "gpt-4o", "claude-3-sonnet")
-  name       String // Human-readable name
+  id      String @id @default(cuid())
+  modelId String // The ID the provider uses (e.g., "gpt-4o", "claude-3-sonnet")
+  name    String // Human-readable name
 
   // A list of tags for matching (from Role.modelPreferences)
-  tags       String[]
+  tags String[]
 
   provider   ModelProvider @relation(fields: [providerId], references: [id])
   providerId String
@@ -70,7 +70,7 @@ model ModelConfig {
   preferredByRoles Role[]
 
   // This model is used in these usage logs
-  usageLogs    ModelUsage[]
+  usageLogs ModelUsage[]
 
   @@unique([modelId, providerId]) // Can't have the same model on the same provider twice
 }
@@ -80,7 +80,7 @@ model ModelConfig {
 // -----------------------------------------------------------------
 
 model ModelUsage {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   timestamp DateTime @default(now())
 
   // Flexible token counts for free providers
@@ -88,19 +88,19 @@ model ModelUsage {
   completionTokens Int?
 
   // Cost can be 0 for free models
-  cost             Float    @default(0.0)
+  cost Float @default(0.0)
 
   // The 'escape hatch' for messy data from routers like OpenRouter
-  metadata         Json?
+  metadata Json?
 
   // Relations
-  model       ModelConfig @relation(fields: [modelConfigId], references: [id])
+  model         ModelConfig @relation(fields: [modelConfigId], references: [id])
   modelConfigId String
 
-  role        Role     @relation(fields: [roleId], references: [id])
-  roleId      String
+  role   Role   @relation(fields: [roleId], references: [id])
+  roleId String
 
-  userId      String   // Assuming user IDs are strings
+  userId String // Assuming user IDs are strings
 
   @@index([modelConfigId])
   @@index([roleId])

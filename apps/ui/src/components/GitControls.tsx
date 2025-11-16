@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../utils/trpc';
 import { Button } from './ui/Button';
-import Icon from './ui/Icon';
+import { Icon } from './ui/Icon';
 import { Panel } from './ui/Panel';
 
 interface GitControlsProps {

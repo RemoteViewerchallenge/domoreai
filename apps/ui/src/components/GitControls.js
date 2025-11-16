@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { trpc } from '../utils/trpc';
 import { Button } from './ui/Button';
-import Icon from './ui/Icon';
+import { Icon } from './ui/Icon';
 import { Panel } from './ui/Panel';
 export function GitControls({ vfsToken }) {
     const [commitMessage, setCommitMessage] = useState('');

@@ -1,13 +1,13 @@
 # Base image
 FROM node:18-alpine AS base
-RUN npm install -g pnpm@8.6.10 turbo
+RUN npm install -g pnpm turbo
 
 # Builder stage
 FROM base as builder
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY patches ./patches
+
 RUN pnpm install --frozen-lockfile
 COPY . .
 

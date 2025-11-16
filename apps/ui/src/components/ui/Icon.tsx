@@ -1,11 +1,12 @@
-import React, { FC, lazy, Suspense } from 'react';
-import { LucideProps } from 'lucide-react';
+import { lazy, Suspense, forwardRef } from 'react';
+import type { FC } from 'react';
+import type { LucideProps } from 'lucide-react';
 
 interface IconProps extends LucideProps {
   name: string;
 }
 
-const Icon: FC<IconProps> = ({ name, ...props }) => {
+const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, ...props }, ref) => {
   if (name.startsWith('codicon-')) {
     return <span className={`codicon ${name}`} />;
   }
@@ -23,9 +24,9 @@ const Icon: FC<IconProps> = ({ name, ...props }) => {
 
   return (
     <Suspense fallback={<div style={{ width: 24, height: 24 }} />}>
-      <LucideIcon {...props} />
+      <LucideIcon ref={ref} {...props} />
     </Suspense>
   );
-};
+}); // Closing parenthesis for forwardRef
 
 export { Icon };
