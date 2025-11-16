@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table'; // eslint-disable-line @typescript-eslint/no-unused-vars
-import type { Model } from '../types';
+import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table';
+import type { Model } from '../types.js';
 
 const API_BASE_URL = 'http://localhost:4000';
 
@@ -31,7 +31,7 @@ interface RateLimitManagerPageProps {
  * @param {() => void} props.onClose - A function to call when the manager is closed.
  * @returns {JSX.Element} The rendered rate limit manager page.
  */
-const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initialProvider }) => {
+const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initialProvider, onClose }) => {
     const { providerId } = useParams<{ providerId: string }>();
     const [provider, setProvider] = useState<Provider | null>(initialProvider || null);
     const [models, setModels] = useState<Model[]>([]);
@@ -158,7 +158,8 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
     } = useTable({ columns, data }, useFilters, useSortBy);
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
             <Link to="/providers">&larr; Back to Providers</Link>
             <h2 style={{ marginTop: '20px' }}>Rate Limit Manager for {provider.displayName}</h2>
             <table {...getTableProps()} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
@@ -198,6 +199,7 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
             <button onClick={handleSaveAll} style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}>
                 Save All Changes
             </button>
+            </div>
         </div>
     );
 };
