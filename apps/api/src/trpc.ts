@@ -1,5 +1,4 @@
 import { initTRPC } from '@trpc/server';
-import type { CreateExpressContextOptions } from '@trpc/server/adapters/express';
 import superjson from 'superjson';
 import { db } from './db.js';
 
@@ -10,7 +9,7 @@ import { db } from './db.js';
  *
  * These allow you to access things when processing a request, like the database, the session, etc.
  */
-export const createTRPCContext = (opts: CreateExpressContextOptions) => {
+export const createTRPCContext = () => {
   // In a real app, you'd get the session from the request
   return { db, session: null };
 };
