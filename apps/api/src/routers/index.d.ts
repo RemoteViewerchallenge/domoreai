@@ -58,12 +58,12 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
                 session: null;
             };
             _input_in: {
-                message: string;
                 vfsToken: string;
+                message: string;
             };
             _input_out: {
-                message: string;
                 vfsToken: string;
+                message: string;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
@@ -227,8 +227,8 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _meta: object;
         }, {
             name: string;
-            providerType: string;
             baseURL: string;
+            providerType: string;
             id: string;
             createdAt: Date;
             encryptedApiKey: string | null;
@@ -250,22 +250,22 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             };
             _input_in: {
                 name: string;
-                providerType: string;
                 baseURL: string;
+                providerType: string;
                 apiKey?: string | undefined;
             };
             _input_out: {
                 name: string;
-                providerType: string;
                 baseURL: string;
+                providerType: string;
                 apiKey?: string | undefined;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
             name: string;
-            providerType: string;
             baseURL: string;
+            providerType: string;
             id: string;
             createdAt: Date;
             encryptedApiKey: string | null;

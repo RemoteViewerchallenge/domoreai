@@ -113,14 +113,14 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
             session: null;
         };
         _input_in: {
-            content: string;
             path: string;
             vfsToken: string;
+            content: string;
         };
         _input_out: {
-            content: string;
             path: string;
             vfsToken: string;
+            content: string;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;

@@ -10,5 +10,8 @@
   "exports": {
     ".": "./dist/index.js",
     "./agent": "./dist/types/agent.types.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
   }
 }

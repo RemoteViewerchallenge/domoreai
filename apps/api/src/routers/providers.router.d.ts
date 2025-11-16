@@ -28,8 +28,8 @@ export declare const providerRouter: import("@trpc/server").CreateRouterInner<im
         _meta: object;
     }, {
         name: string;
-        providerType: string;
         baseURL: string;
+        providerType: string;
         id: string;
         createdAt: Date;
         encryptedApiKey: string | null;
@@ -51,22 +51,22 @@ export declare const providerRouter: import("@trpc/server").CreateRouterInner<im
         };
         _input_in: {
             name: string;
-            providerType: string;
             baseURL: string;
+            providerType: string;
             apiKey?: string | undefined;
         };
         _input_out: {
             name: string;
-            providerType: string;
             baseURL: string;
+            providerType: string;
             apiKey?: string | undefined;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
         name: string;
-        providerType: string;
         baseURL: string;
+        providerType: string;
         id: string;
         createdAt: Date;
         encryptedApiKey: string | null;

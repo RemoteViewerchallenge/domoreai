@@ -1,4 +1,3 @@
-import type { CreateExpressContextOptions } from '@trpc/server/adapters/express';
 import superjson from 'superjson';
 /**
  * 1. CONTEXT
@@ -7,7 +6,7 @@ import superjson from 'superjson';
  *
  * These allow you to access things when processing a request, like the database, the session, etc.
  */
-export declare const createTRPCContext: (opts: CreateExpressContextOptions) => {
+export declare const createTRPCContext: () => {
     db: import("@prisma/client").PrismaClient<import("@prisma/client").Prisma.PrismaClientOptions, never, import("@prisma/client/runtime/library").DefaultArgs>;
     session: null;
 };

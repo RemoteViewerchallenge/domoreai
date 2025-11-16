@@ -30,8 +30,8 @@ export declare const roleRouter: import("@trpc/server").CreateRouterInner<import
         _output_out: typeof import("@trpc/server").unsetMarker;
         _meta: object;
     }, {
-        id: string;
         name: string;
+        id: string;
         basePrompt: string;
         minContext: number | null;
         maxContext: number | null;
@@ -78,8 +78,8 @@ export declare const roleRouter: import("@trpc/server").CreateRouterInner<import
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
-        id: string;
         name: string;
+        id: string;
         basePrompt: string;
         minContext: number | null;
         maxContext: number | null;
@@ -128,8 +128,8 @@ export declare const roleRouter: import("@trpc/server").CreateRouterInner<import
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
-        id: string;
         name: string;
+        id: string;
         basePrompt: string;
         minContext: number | null;
         maxContext: number | null;
@@ -164,8 +164,8 @@ export declare const roleRouter: import("@trpc/server").CreateRouterInner<import
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
     }, {
-        id: string;
         name: string;
+        id: string;
         basePrompt: string;
         minContext: number | null;
         maxContext: number | null;
