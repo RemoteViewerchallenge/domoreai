@@ -1,22 +1,31 @@
-import { Suspense } from 'react';
-import { icons } from 'lucide-react';
+import React, { FC, lazy, Suspense } from 'react';
+import { LucideProps } from 'lucide-react';
 
-const Icon = ({ name, ...props }: { name: string, [key: string]: any }) => {
+interface IconProps extends LucideProps {
+  name: string;
+}
+
+const Icon: FC<IconProps> = ({ name, ...props }) => {
   if (name.startsWith('codicon-')) {
-    return <span className={`codicon ${name}`} {...props} />;
+    return <span className={`codicon ${name}`} />;
   }
 
-  const LucideIcon = icons[name as keyof typeof icons];
+  const LucideIcon = lazy(() =>
+    import('lucide-react').then(module => {
+      const iconName = name as keyof typeof module;
+      if (iconName in module) {
+        return { default: module[iconName] as FC<LucideProps> };
+      }
+      // Return a fallback component or null if the icon is not found
+      return { default: () => null };
+    })
+  );
 
-  if (LucideIcon) {
-    return (
-      <Suspense fallback={<div />}>
-        <LucideIcon {...props} />
-      </Suspense>
-    );
-  }
-
-  return null;
+  return (
+    <Suspense fallback={<div style={{ width: 24, height: 24 }} />}>
+      <LucideIcon {...props} />
+    </Suspense>
+  );
 };
 
-export default Icon;
+export { Icon };

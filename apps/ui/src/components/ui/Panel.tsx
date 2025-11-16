@@ -1,30 +1,28 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
-  borderColor?: string;
-  borderDirection?: 't' | 'l' | 'b' | 'r';
+  borderColor: string;
 }
 
-const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
-  ({ className, borderColor = 'border-cyan-400', borderDirection = 't', ...props }, ref) => {
-    const borderClass = `border-${borderDirection}-2`;
-
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'bg-neutral-900',
-          borderClass,
-          borderColor,
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-
-Panel.displayName = 'Panel';
+const Panel: React.FC<PanelProps> = ({
+  className,
+  borderColor,
+  children,
+  ...props
+}) => {
+  return (
+    <div
+      className={cn(
+        'bg-neutral-900 border-t-2',
+        borderColor,
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
 
 export { Panel };
