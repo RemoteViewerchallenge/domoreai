@@ -26,7 +26,9 @@ model Provider {
 
   // --- Relations ---
   // A Provider has many Models
-  models Model[]
+  models       Model[]
+  // This is the other side of the `provider` relation in `ModelConfig`.
+  modelConfigs ModelConfig[]
 }
 
 // -----------------------------------------------------------------
@@ -56,6 +58,9 @@ model Model {
   // Stores the *entire, raw JSON* from the provider's API.
   providerData Json
 
+  // This is the other side of the `model` relation in `ModelConfig`.
+  modelConfigs ModelConfig[]
+
   @@unique([providerId, modelId]) // Prevent duplicate models
 }
 
@@ -78,6 +83,9 @@ model Role {
 
   // TODO: Add Tool & Task relations later
   preferredModels ModelConfig[] @relation("PreferredModels")
+
+  // This is the other side of the `role` relation in `ModelUsage`.
+  modelUsage      ModelUsage[]
 }
 
 // -----------------------------------------------------------------

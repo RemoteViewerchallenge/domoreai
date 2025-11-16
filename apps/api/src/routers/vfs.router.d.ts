@@ -56,8 +56,8 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
             path?: string | undefined;
         };
         _input_out: {
-            vfsToken: string;
             path: string;
+            vfsToken: string;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
@@ -84,12 +84,12 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
             session: null;
         };
         _input_in: {
-            vfsToken: string;
             path: string;
+            vfsToken: string;
         };
         _input_out: {
-            vfsToken: string;
             path: string;
+            vfsToken: string;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;
@@ -114,13 +114,13 @@ export declare const vfsRouter: import("@trpc/server").CreateRouterInner<import(
         };
         _input_in: {
             content: string;
-            vfsToken: string;
             path: string;
+            vfsToken: string;
         };
         _input_out: {
             content: string;
-            vfsToken: string;
             path: string;
+            vfsToken: string;
         };
         _output_in: typeof import("@trpc/server").unsetMarker;
         _output_out: typeof import("@trpc/server").unsetMarker;

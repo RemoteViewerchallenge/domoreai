@@ -8,12 +8,12 @@ export declare function logUsage(data: RawProviderOutput): Promise<{
     id: string;
     cost: number;
     createdAt: Date;
-    modelConfigId: string;
-    roleId: string;
     userId: string;
-    metadata: import("@prisma/client/runtime/library").JsonValue | null;
     promptTokens: number | null;
     completionTokens: number | null;
+    metadata: import("@prisma/client/runtime/library").JsonValue | null;
+    modelConfigId: string;
+    roleId: string;
 } | undefined>;
 /**
  * The "Brain" for model selection.
@@ -23,10 +23,10 @@ export declare function getBestModel(roleId: string): Promise<{
     model: {
         provider: {
             id: string;
-            name: string;
-            baseURL: string;
             providerType: string;
+            name: string;
             createdAt: Date;
+            baseURL: string;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         };

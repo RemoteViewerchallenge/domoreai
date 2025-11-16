@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { getRedisClient } from './redis.js';
-=======
-import { getRedisClient } from './redis';
->>>>>>> feature-rate-limiter
 
 export const checkRateLimit = async (modelId: string, limits: { rpm?: number; tpm?: number; rpd?: number }, tokens: number = 0) => {
     const redisClient = await getRedisClient();

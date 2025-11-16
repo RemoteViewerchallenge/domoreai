@@ -5,4 +5,3 @@ import './App.css';
  * @returns {JSX.Element} The rendered application.
  */
 export declare function App(): import("react/jsx-runtime").JSX.Element;
-export default App;

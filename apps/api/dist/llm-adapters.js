@@ -1,5 +1,29 @@
 import axios from 'axios';
+import { getProviderById } from './db/index.js';
+import { checkRateLimit, incrementRateLimit } from './rateLimiter.js';
+import { countTokens } from './tokenizer.js';
 import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
+async function rateLimitPreCheck(providerId, modelId) {
+    const provider = await getProviderById(providerId);
+    if (!provider) {
+        throw new Error('Provider not found');
+    }
+    // @ts-ignore
+    const model = provider.models.find(m => m.id === modelId); // TODO: Fix type
+    if (!model) {
+        throw new Error('Model not found');
+    }
+    // @ts-ignore
+    if (!model.is_enabled) {
+        throw new Error('Model is not enabled');
+    }
+    // @ts-ignore
+    const rateLimitCheck = await checkRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd });
+    if (!rateLimitCheck.allowed) {
+        throw new Error(rateLimitCheck.reason);
+    }
+    return model;
+}
 /**
  * An adapter for OpenAI and OpenAI-compatible APIs.
  * It handles model discovery and completion generation for services like OpenAI, OpenRouter, and TogetherAI.
@@ -17,6 +41,7 @@ export class OpenAIAdapter {
      * @throws {Error} If the API key is missing.
      */
     async generateCompletion(request) {
+        const model = await rateLimitPreCheck(request.providerId, request.modelId);
         if (!request.config?.apiKey) {
             throw new Error('OpenAI API Key is required.');
         }
@@ -26,6 +51,8 @@ export class OpenAIAdapter {
             baseURL: request.config.baseURL,
         });
         const completion = await openai.gen(request.prompt);
+        const tokenCount = countTokens(completion);
+        await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
         return completion;
     }
     /**
@@ -74,6 +101,7 @@ export class MistralAdapter {
      * @throws {Error} If the API key is missing.
      */
     async generateCompletion(request) {
+        const model = await rateLimitPreCheck(request.providerId, request.modelId);
         if (!request.config?.apiKey) {
             throw new Error('Mistral API Key is required.');
         }
@@ -83,6 +111,8 @@ export class MistralAdapter {
             baseURL: request.config.baseURL,
         });
         const completion = await mistral.gen(request.prompt);
+        const tokenCount = countTokens(completion);
+        await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
         return completion;
     }
     /**
@@ -168,6 +198,7 @@ export class VertexStudioAdapter {
      * @throws {Error} If the API key is missing.
      */
     async generateCompletion(request) {
+        const model = await rateLimitPreCheck(request.providerId, request.modelId);
         if (!request.config?.apiKey) {
             throw new Error('Google Cloud API Key is required for Vertex AI Studio.');
         }
@@ -177,6 +208,8 @@ export class VertexStudioAdapter {
             baseURL: request.config.baseURL,
         });
         const completion = await vertexStudio.gen(request.prompt);
+        const tokenCount = countTokens(completion);
+        await incrementRateLimit(model.id, { rpm: model.rpm, tpm: model.tpm, rpd: model.rpd }, tokenCount);
         return completion;
     }
     /**
