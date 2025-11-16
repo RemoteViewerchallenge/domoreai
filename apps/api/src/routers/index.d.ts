@@ -226,11 +226,11 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
             _output_out: typeof import("@trpc/server").unsetMarker;
             _meta: object;
         }, {
-            id: string;
-            providerType: string;
-            name: string;
-            createdAt: Date;
             baseURL: string;
+            id: string;
+            name: string;
+            providerType: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }[]>;
@@ -250,25 +250,25 @@ export declare const appRouter: import("@trpc/server").CreateRouterInner<import(
                 session: null;
             };
             _input_in: {
-                providerType: string;
-                name: string;
                 baseURL: string;
+                name: string;
+                providerType: string;
                 apiKey?: string | undefined;
             };
             _input_out: {
-                providerType: string;
-                name: string;
                 baseURL: string;
+                name: string;
+                providerType: string;
                 apiKey?: string | undefined;
             };
             _output_in: typeof import("@trpc/server").unsetMarker;
             _output_out: typeof import("@trpc/server").unsetMarker;
         }, {
-            id: string;
-            providerType: string;
-            name: string;
-            createdAt: Date;
             baseURL: string;
+            id: string;
+            name: string;
+            providerType: string;
+            createdAt: Date;
             encryptedApiKey: string | null;
             requestsPerMinute: number | null;
         }>;

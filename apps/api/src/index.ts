@@ -7,11 +7,10 @@ import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
 import { db } from './db.js';
-import { OpenAIAdapter, MistralAdapter, LlamaAdapter, VertexStudioAdapter } from './llm-adapters.js';
-import { initializeDatabase, createProvider, getAllProviders, getProviderById, updateProvider, deleteProvider, saveModelsForProvider, updateModel } from './db/index.js';
+import { LlamaAdapter, MistralAdapter, OpenAIAdapter, VertexStudioAdapter } from './llm-adapters.js';
+import { createProvider, getAllProviders, getProviderById, saveModelsForProvider, updateModel } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
-import { Provider } from './types.js';
-import { checkProviderHealth } from './utils/healthCheck.js';
+import type { Provider } from './types.js';
 
 /**
  * Initializes and starts the application server.
@@ -62,12 +61,12 @@ async function startServer() {
   );
 
   // Returns the types of providers available (templates)
-  app.get('/llm/provider-types', (req, res) => {
+  app.get('/llm/provider-types', (_req, res) => {
     res.json(availableLLMProviderTypes);
   });
 
   // Returns user-defined configurations
-  app.get('/llm/configurations', async (req, res) => {
+  app.get('/llm/configurations', async (_req, res) => {
     try {
       const providers = await getAllProviders();
       res.json(providers.map((p: Provider) => {

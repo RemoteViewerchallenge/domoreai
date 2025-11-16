@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getProviderById } from './db/index.js';
 import { checkRateLimit, incrementRateLimit } from './rateLimiter.js';
 import { countTokens } from './tokenizer.js';
-import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk/dist/llm-adapter.js';
+import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk';
 async function rateLimitPreCheck(providerId, modelId) {
     const provider = await getProviderById(providerId);
     if (!provider) {

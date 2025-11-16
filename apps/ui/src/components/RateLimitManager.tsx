@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table';
+import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import type { Model } from '../types';
 
 const API_BASE_URL = 'http://localhost:4000';
@@ -15,6 +15,12 @@ interface Provider {
         baseURL?: string;
     };
     models: Model[];
+}
+
+interface RateLimitManagerPageProps {
+    provider?: Provider | null;
+    onClose?: () => void;
+}
 
 /**
  * A component for managing rate limits for a specific LLM provider.
@@ -25,7 +31,7 @@ interface Provider {
  * @param {() => void} props.onClose - A function to call when the manager is closed.
  * @returns {JSX.Element} The rendered rate limit manager page.
  */
-const RateLimitManager: React.FC = () => {
+const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initialProvider }) => {
     const { providerId } = useParams<{ providerId: string }>();
     const [provider, setProvider] = useState<Provider | null>(initialProvider || null);
     const [models, setModels] = useState<Model[]>([]);
@@ -192,9 +198,8 @@ const RateLimitManager: React.FC = () => {
             <button onClick={handleSaveAll} style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}>
                 Save All Changes
             </button>
-            </div>
         </div>
     );
 };
 
-export default RateLimitManagerPage;
+export default RateLimitManager;
