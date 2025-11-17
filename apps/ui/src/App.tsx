@@ -3,6 +3,7 @@ import RateLimitManagerPage from './components/RateLimitManager';
 import MyWorkspacePage from './pages/workspace/[id]';
 import ProviderManagerPage from './pages/ProviderManager';
 import WorkspaceListPage from './pages/WorkspaceList';
+import WorkspaceGrid from './components/core/WorkspaceGrid';
 import './App.css';
 
 /**
@@ -17,6 +18,7 @@ function App() {
         <Route path="/providers" element={<ProviderManagerPage />} />
         <Route path="/manage/:providerId" element={<RateLimitManagerPage provider={null} onClose={() => { }} />} />
         <Route path="/workspace/:id" element={<MyWorkspacePage />} />
+        <Route path="/grid-test" element={<WorkspaceGrid />} />
       </Routes>
     </div>
   );
