@@ -7,7 +7,7 @@ import superjson from 'superjson';
 
 import App from './App'; // Import from the TypeScript source file
 import { trpc } from './utils/trpc';
-import './index.css'
+import './index.css'; // Import the main stylesheet with Tailwind directives
 
 function Main() {
   const [queryClient] = useState(() => new QueryClient());
