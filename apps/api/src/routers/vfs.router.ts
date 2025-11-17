@@ -1,80 +1,85 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { vfsSessionService } from '../services/vfsSession.service.js';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 import type { Dirent } from 'fs';
 
-// This function will get the vfsRootPath from a token.
-// In a real app, this would involve token validation and DB lookup.
-const getVfsRootFromToken = (token: string): string => {
-  // For now, we'll use the token directly as the root path.
-  // This simulates different users/workspaces having different root dirs.
-  return `/${token}`;
-};
-
 // Helper to sanitize paths and prevent directory traversal
-const getScopedPath = (vfsRoot: string, userPath: string): string => {
-  const resolvedPath = resolve(vfsRoot, userPath);
-  if (!resolvedPath.startsWith(vfsRoot)) {
+const getSanitizedPath = (userPath: string): string => {
+  const root = '/'; // The root of our virtual volume
+  const resolvedPath = resolve(root, userPath);
+
+  // Security Check: Ensure path doesn't escape the root
+  if (!resolvedPath.startsWith(root)) {
     throw new Error('Access Denied: Invalid path');
   }
   return resolvedPath;
 };
 
 export const vfsRouter = createTRPCRouter({
-  getTree: publicProcedure
-    .input(z.object({ vfsToken: z.string(), path: z.string().default('/') }))
+  getToken: publicProcedure
+    .input(z.object({ workspaceId: z.string() }))
+    .mutation(({ input }) => {
+      // This creates a short-lived, secure token for the VFS.
+      const token = vfsSessionService.createSession(input.workspaceId);
+      return { token };
+    }),
+
+  /**
+   * List files and directories
+   */
+  listFiles: publicProcedure
+    .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const vfsRoot = getVfsRootFromToken(input.vfsToken);
-      const fs = vfsSessionService.getFs();
-      const safePath = getScopedPath(vfsRoot, input.path);
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
-      const entries = (await fs.promises.readdir(safePath, { withFileTypes: true })) as Dirent[];
+      const safePath = getSanitizedPath(input.path);
 
+      const entries = (await workspaceFs.readdir(safePath, { withFileTypes: true })) as Dirent[];
+
+      // Map to the format your VfsViewer component expects
       return entries.map((entry: Dirent) => ({
         name: entry.name,
         type: entry.isDirectory() ? 'directory' : 'file',
       }));
     }),
 
+  /**
+   * Read the content of a file
+   */
   readFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const vfsRoot = getVfsRootFromToken(input.vfsToken);
-      const fs = vfsSessionService.getFs();
-      const safePath = getScopedPath(vfsRoot, input.path);
-      return (await fs.promises.readFile(safePath, 'utf-8')) as string;
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
+
+      const safePath = getSanitizedPath(input.path);
+
+      const content = await workspaceFs.readFile(safePath, 'utf-8');
+      return content as string;
     }),
 
+  /**
+   * Write content to a file
+   */
   writeFile: publicProcedure
-    .input(z.object({ vfsToken: z.string(), path: z.string(), content: z.string() }))
+    .input(z.object({
+      vfsToken: z.string(),
+      path: z.string(),
+      content: z.string(),
+    }))
     .mutation(async ({ input }) => {
-      const vfsRoot = getVfsRootFromToken(input.vfsToken);
-      const fs = vfsSessionService.getFs();
-      const safePath = getScopedPath(vfsRoot, input.path);
-      await fs.promises.writeFile(safePath, input.content);
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
+
+      const safePath = getSanitizedPath(input.path);
+
+      await workspaceFs.writeFile(safePath, input.content);
       return { success: true };
     }),
 
-  moveFile: publicProcedure
-    .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
-    .mutation(async ({ input }) => {
-      const vfsRoot = getVfsRootFromToken(input.vfsToken);
-      const fs = vfsSessionService.getFs();
-      const fromPath = getScopedPath(vfsRoot, input.from);
-      const toPath = getScopedPath(vfsRoot, input.to);
-      await fs.promises.rename(fromPath, toPath);
-      return { success: true };
-    }),
-
-  copyFile: publicProcedure
-    .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
-    .mutation(async ({ input }) => {
-      const vfsRoot = getVfsRootFromToken(input.vfsToken);
-      const fs = vfsSessionService.getFs();
-      const fromPath = getScopedPath(vfsRoot, input.from);
-      const toPath = getScopedPath(vfsRoot, input.to);
-      await fs.promises.copyFile(fromPath, toPath);
-      return { success: true };
-    }),
+  // Add other procedures as needed (mkdir, rm, rename, etc.)
+  // ...
 });
