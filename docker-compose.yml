@@ -48,11 +48,13 @@ services:
       - app-network
 
   lootbox:
-    build: ./apps/lootbox
+    build:
+      context: .
+      dockerfile: apps/lootbox/Dockerfile
     networks:
       - app-network
     ports:
-      - "3000:3000"
+      - "3001:3000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 10s

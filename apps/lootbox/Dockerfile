@@ -20,4 +20,5 @@ EXPOSE 3000
 
 # The README command to start the server is 'lootbox server'
 # We run the binary we just built.
+
 CMD ["./lootbox", "server"]
