@@ -1,8 +1,7 @@
 import { useParams } from 'react-router-dom';
-import { trpc } from '../../utils/trpc';
-import { VfsViewer } from '../../components/VfsViewer';
+
 import { GitControls } from '../../components/GitControls';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Panel } from '../../components/ui/Panel';
 
 /**
@@ -15,27 +14,7 @@ const MyWorkspacePage = () => {
   const { id } = useParams<{ id: string }>();
   const workspaceName = id || 'default';
 
-  const [vfsToken, setVfsToken] = useState<string | null>(null);
-
-  const tokenMutation = trpc.vfs.getToken.useMutation<any>({
-    onSuccess: (data: any) => setVfsToken(data.token),
-  });
-
-  useEffect(() => {
-    if (workspaceName) {
-      tokenMutation.mutate({ workspaceId: workspaceName });
-    }
-  }, [workspaceName, tokenMutation.mutate]); // Added tokenMutation.mutate to dependency array
-
-  const {
-    data: files,
-    isLoading,
-    isError,
-    error,
-  } = trpc.vfs.listFiles.useQuery(
-    { vfsToken: vfsToken! }, // Input
-    { enabled: !!vfsToken }  // Options
-  );
+  const [vfsToken] = useState<string>('mock-token-for-now'); // Placeholder
 
   return (
     <div className="flex h-screen flex-col gap-4 bg-neutral-900 p-4 text-neutral-100">
@@ -49,14 +28,11 @@ const MyWorkspacePage = () => {
             <Panel borderColor="border-purple-500">
                 <div className="h-full flex flex-col">
                     <div className="p-2 font-bold border-b border-neutral-800">Explorer</div>
-                    <div className="flex-grow overflow-hidden">
-                        <VfsViewer
-                        files={files?.map((file: { name: string; type: string }) => ({ path: file.name, type: file.type === 'directory' ? 'dir' : 'file' })) || []}
-                        workspaceName={workspaceName!}
-                        isLoading={isLoading || tokenMutation.isLoading }
-                        />
+                    <div className="flex-grow overflow-auto p-2">
+                        <p className="text-sm text-neutral-400">
+                            File viewer coming soon.
+                        </p>
                     </div>
-                    {isError && <p className="p-2 text-xs text-red-500">Error: {error?.message}</p>}
                 </div>
             </Panel>
         </div>

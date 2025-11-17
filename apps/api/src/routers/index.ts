@@ -5,7 +5,6 @@ import { roleRouter } from './role.router.js';
 
 export const appRouter = createTRPCRouter({
   git: gitRouter,
-  vfs: vfsRouter,
   providers: providerRouter,
   role: roleRouter,
 });
