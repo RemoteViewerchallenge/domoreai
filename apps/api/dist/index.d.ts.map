@@ -1,5 +1,0 @@
-<<<<<<< HEAD
-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":""}
-=======
-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AASA,YAAY,EAAE,SAAS,EAAE,MAAM,oBAAoB,CAAC"}
->>>>>>> integration/ide-layout
