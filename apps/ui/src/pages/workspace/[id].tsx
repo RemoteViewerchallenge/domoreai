@@ -3,6 +3,9 @@ import { useParams } from 'react-router-dom';
 import { GitControls } from '../../components/GitControls';
 import { useState } from 'react';
 import { Panel } from '../../components/ui/Panel';
+import CommandBar from '../../components/core/CommandBar';
+import OptionsPanel from '../../components/core/OptionsPanel';
+import { useCoreStore } from '../../stores/core';
 
 /**
  * Renders the main workspace page for a given workspace ID.
@@ -13,7 +16,7 @@ import { Panel } from '../../components/ui/Panel';
 const MyWorkspacePage = () => {
   const { id } = useParams<{ id: string }>();
   const workspaceName = id || 'default';
-
+  const activePage = useCoreStore((state) => state.activePage);
   const [vfsToken] = useState<string>('mock-token-for-now'); // Placeholder
 
   return (
@@ -48,9 +51,10 @@ const MyWorkspacePage = () => {
 
         {/* Right Sidebar: Git & Tools */}
         <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-            {vfsToken && <GitControls vfsToken={vfsToken} />}
+            {activePage === 'options' ? <OptionsPanel /> : (vfsToken && <GitControls vfsToken={vfsToken} />)}
         </div>
       </div>
+      <CommandBar />
     </div>
   );
 };

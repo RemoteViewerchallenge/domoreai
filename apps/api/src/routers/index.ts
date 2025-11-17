@@ -6,8 +6,10 @@ import { externalRouter } from './external.router.js';
 import { vfsRouter } from './vfs.router.ts';
 import { lootboxRouter } from './lootbox.router.js';
 import { modelRouter } from './model.router.js';
+import { agentRouter } from './agent.router.js';
 
 export const appRouter = createTRPCRouter({
+  agent: agentRouter,
   git: gitRouter,
   providers: providerRouter,
   role: roleRouter,
