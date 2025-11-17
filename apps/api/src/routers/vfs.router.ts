@@ -1,97 +1,80 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { getVfsForWorkspace } from '../services/vfsService.js';
-import { resolve } from 'path';
-import type { Dirent } from '../services/vfsService.js';
+import { vfsSessionService } from '../services/vfsSession.service.js';
+import { resolve, join } from 'path';
+import type { Dirent } from 'fs';
 
-// DUMMY: Replace this with your actual token/auth logic
-// This function will convert a VFS token into a workspaceId.
-// For the 'Agent Orchestration IDE', the workspaceId is the key.
-const getWorkspaceIdFromToken = (token: string): string => {
-  // In your real app, you'd validate this token
-  // For now, we assume the token IS the workspaceId.
-  return token;
+// This function will get the vfsRootPath from a token.
+// In a real app, this would involve token validation and DB lookup.
+const getVfsRootFromToken = (token: string): string => {
+  // For now, we'll use the token directly as the root path.
+  // This simulates different users/workspaces having different root dirs.
+  return `/${token}`;
 };
 
 // Helper to sanitize paths and prevent directory traversal
-const getSanitizedPath = (_workspaceFs: any, userPath: string): string => {
-  const root = '/'; // The root of our virtual volume
-  const resolvedPath = resolve(root, userPath);
-
-  // Security Check: Ensure path doesn't escape the root
-  if (!resolvedPath.startsWith(root)) {
+const getScopedPath = (vfsRoot: string, userPath: string): string => {
+  const resolvedPath = resolve(vfsRoot, userPath);
+  if (!resolvedPath.startsWith(vfsRoot)) {
     throw new Error('Access Denied: Invalid path');
   }
   return resolvedPath;
 };
 
-
 export const vfsRouter = createTRPCRouter({
-  
-  // This procedure is just for the UI.
-  // The 'token' is the workspaceId from the URL.
-  getToken: publicProcedure
-    .input(z.object({ workspaceId: z.string() }))
-    .mutation(({ input }) => {
-      // In a real app, you'd generate a secure, short-lived token.
-      // For us, we just confirm the workspaceId is the "token"
-      // and ensure the VFS is initialized.
-      getVfsForWorkspace(input.workspaceId); // This ensures the VFS is loaded
-      return { token: input.workspaceId };
-    }),
-
-  /**
-   * List files and directories
-   */
-  listFiles: publicProcedure
+  getTree: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string().default('/') }))
     .query(async ({ input }) => {
-      const workspaceId = getWorkspaceIdFromToken(input.vfsToken);
-      const workspaceFs = getVfsForWorkspace(workspaceId);
-      const safePath = getSanitizedPath(workspaceFs, input.path);
+      const vfsRoot = getVfsRootFromToken(input.vfsToken);
+      const fs = vfsSessionService.getFs();
+      const safePath = getScopedPath(vfsRoot, input.path);
 
-      const entries = (await workspaceFs.readdir(safePath, { withFileTypes: true })) as Dirent[];
+      const entries = (await fs.promises.readdir(safePath, { withFileTypes: true })) as Dirent[];
 
-      // Map to the format your VfsViewer component expects
       return entries.map((entry: Dirent) => ({
         name: entry.name,
         type: entry.isDirectory() ? 'directory' : 'file',
       }));
     }),
 
-  /**
-   * Read the content of a file
-   */
   readFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const workspaceId = getWorkspaceIdFromToken(input.vfsToken);
-      const workspaceFs = getVfsForWorkspace(workspaceId);
-      const safePath = getSanitizedPath(workspaceFs, input.path);
-
-      const content = await workspaceFs.readFile(safePath, 'utf-8');
-      return content as string;
+      const vfsRoot = getVfsRootFromToken(input.vfsToken);
+      const fs = vfsSessionService.getFs();
+      const safePath = getScopedPath(vfsRoot, input.path);
+      return (await fs.promises.readFile(safePath, 'utf-8')) as string;
     }),
 
-  /**
-   * Write content to a file
-   */
   writeFile: publicProcedure
-    .input(z.object({
-      vfsToken: z.string(),
-      path: z.string(),
-      content: z.string(),
-    }))
+    .input(z.object({ vfsToken: z.string(), path: z.string(), content: z.string() }))
     .mutation(async ({ input }) => {
-      const workspaceId = getWorkspaceIdFromToken(input.vfsToken);
-      const workspaceFs = getVfsForWorkspace(workspaceId);
-      const safePath = getSanitizedPath(workspaceFs, input.path);
-
-      await workspaceFs.writeFile(safePath, input.content);
+      const vfsRoot = getVfsRootFromToken(input.vfsToken);
+      const fs = vfsSessionService.getFs();
+      const safePath = getScopedPath(vfsRoot, input.path);
+      await fs.promises.writeFile(safePath, input.content);
       return { success: true };
     }),
-    
-  // Add other procedures as needed (mkdir, rm, rename, etc.)
-  // ...
 
+  moveFile: publicProcedure
+    .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
+    .mutation(async ({ input }) => {
+      const vfsRoot = getVfsRootFromToken(input.vfsToken);
+      const fs = vfsSessionService.getFs();
+      const fromPath = getScopedPath(vfsRoot, input.from);
+      const toPath = getScopedPath(vfsRoot, input.to);
+      await fs.promises.rename(fromPath, toPath);
+      return { success: true };
+    }),
+
+  copyFile: publicProcedure
+    .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
+    .mutation(async ({ input }) => {
+      const vfsRoot = getVfsRootFromToken(input.vfsToken);
+      const fs = vfsSessionService.getFs();
+      const fromPath = getScopedPath(vfsRoot, input.from);
+      const toPath = getScopedPath(vfsRoot, input.to);
+      await fs.promises.copyFile(fromPath, toPath);
+      return { success: true };
+    }),
 });
