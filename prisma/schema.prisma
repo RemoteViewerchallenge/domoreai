@@ -1,112 +1,135 @@
-// This is your Prisma schema file.
-// learn more about it in the docs: [https://pris.ly/d/prisma-schema](https://pris.ly/d/prisma-schema)
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// -----------------------------------------------------------------
-// AGENT AND ROLE DEFINITIONS
-// -----------------------------------------------------------------
+generator client {
+  provider = "prisma-client-js"
+}
 
-model Role {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  systemPrompt String   @db.Text
-  allowedTools String[]
+// -----------------------------------------------------------------
+// Stores the provider-specific credentials and configuration
+// -----------------------------------------------------------------
+model Provider {
+  id           String @id @default(cuid())
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // A role has a set of preferred models
-  preferredModels ModelConfig[]
-
-  // A role can be used in many usage logs.
-  // This is the other side of the `role` relation in `ModelUsage`.
-  usageLogs ModelUsage[]
-}
-
-// -----------------------------------------------------------------
-// MODEL PROVIDER AND CONFIGURATION
-// -----------------------------------------------------------------
-
-enum ProviderType {
-  DIRECT // e.g., OpenAI, Anthropic
-  ROUTER // e.g., OpenRouter, LiteLLM
-  FREE // e.g., A free, rate-limited endpoint
-}
-
-model ModelProvider {
-  id           String       @id @default(cuid())
-  name         String       @unique // e.g., "openai-main", "openrouter-free-tier"
-  providerType ProviderType @default(DIRECT)
-
-  // Store the encrypted API key.
-  // You will need a service to handle encryption/decryption.
-  apiKeyEncrypted String? @db.Text
+  
+  name         String // e.g., "OpenRouter", "My Local Ollama"
+  providerType String // e.g., "openai", "llama", "anthropic"
+  baseURL      String @unique
+  
+  // !!! IMPORTANT: This should be encrypted before saving
+  encryptedApiKey String?
 
   // Store rate limit info (simple example)
   requestsPerMinute Int?
 
-  // This provider offers these models
+  // --- Relations ---
+  // A Provider has many Models
+  models       Model[]
   // This is the other side of the `provider` relation in `ModelConfig`.
   modelConfigs ModelConfig[]
 }
 
-model ModelConfig {
-  id      String @id @default(cuid())
-  modelId String // The ID the provider uses (e.g., "gpt-4o", "claude-3-sonnet")
-  name    String // Human-readable name
-
-  // A list of tags for matching (from Role.modelPreferences)
-  tags String[]
-
-  provider   ModelProvider @relation(fields: [providerId], references: [id])
+// -----------------------------------------------------------------
+// Stores the individual models from all providers
+// -----------------------------------------------------------------
+model Model {
+  id        String @id @default(cuid())
+  
+  // --- Relation to Provider ---
   providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  // This model is a preference for these roles
-  // This is the other side of the `preferredModels` relation in `Role`.
-  roles Role[] @relation(fields: [roleId], references: [id])
-  roleId String
+  // --- Normalized Data (What YOU care about) ---
+  modelId      String  // The ID from the provider (e.g., "gpt-4o-mini")
+  name         String  // The human-readable name
+  isFree       Boolean @default(false)
+  rateLimit    String? // (for your enrich agent to fill)
 
-  // This model is used in these usage logs
-  usageLogs ModelUsage[]
+  // --- Fields for the "Role Fiddler" ---
+  // These will be populated by your "Enrichment Agent"
+  contextWindow  Int?
+  hasVision      Boolean @default(false)
+  hasReasoning   Boolean @default(false)
+  hasCoding      Boolean @default(false)
+
+  // --- The Solution ---
+  // Stores the *entire, raw JSON* from the provider's API.
+  providerData Json
+
+  // This is the other side of the `model` relation in `ModelConfig`.
+  modelConfigs ModelConfig[]
 
   @@unique([modelId, providerId]) // Can't have the same model on the same provider twice
 }
 
 // -----------------------------------------------------------------
-// MODEL USAGE AND RATE LIMITING
+// Stores the Roles for your agents
 // -----------------------------------------------------------------
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  basePrompt  String @db.Text
+  
+  // Role Parameters (for the "fiddler")
+  minContext  Int?
+  maxContext  Int?
+  
+  // Feature Booleans
+  needsVision    Boolean @default(false)
+  needsReasoning Boolean @default(false)
+  needsCoding    Boolean @default(false)
 
+  // TODO: Add Tool & Task relations later
+  preferredModels ModelConfig[] @relation("PreferredModels")
+
+  // This is the other side of the `role` relation in `ModelUsage`.
+  modelUsage      ModelUsage[]
+}
+
+// -----------------------------------------------------------------
+// Stores the configuration for a specific model within a role
+// This allows for role-specific overrides or settings for a model
+// -----------------------------------------------------------------
+model ModelConfig {
+  id         String @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  // --- Relation to Model ---
+  modelId    String
+  model      Model    @relation(fields: [modelId], references: [id])
+
+  // --- Relation to Provider (for convenience/denormalization) ---
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  // --- Role-specific settings for this model ---
+  // e.g., max tokens, temperature, etc.
+  // These would override global model settings for this specific role
+  maxTokens  Int?
+  temperature Float?
+
+  // --- Relations ---
+  roles      Role[]       @relation("PreferredModels")
+  modelUsage ModelUsage[]
+}
+
+// -----------------------------------------------------------------
+// Stores the usage logs for models
+// -----------------------------------------------------------------
 model ModelUsage {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-
-  // Flexible token counts for free providers
-  promptTokens     Int?
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  userId         String
+  modelConfigId  String
+  roleId         String
+  promptTokens   Int?
   completionTokens Int?
-
-  // Cost can be 0 for free models
-  cost Float @default(0.0)
-
-  // The 'escape hatch' for messy data from routers like OpenRouter
-  metadata Json?
+  cost           Float
+  metadata       Json?
 
   // Relations
-  model         ModelConfig @relation(fields: [modelConfigId], references: [id])
-  modelConfigId String
-
-  role   Role   @relation(fields: [roleId], references: [id])
-  roleId String
-
-  userId String // Assuming user IDs are strings
-
-  @@index([modelConfigId])
-  @@index([roleId])
-  @@index([userId])
+  modelConfig    ModelConfig @relation(fields: [modelConfigId], references: [id])
+  role           Role        @relation(fields: [roleId], references: [id])
 }
