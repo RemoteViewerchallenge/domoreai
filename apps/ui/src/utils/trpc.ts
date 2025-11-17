@@ -1,5 +1,5 @@
 import { createTRPCReact, type inferReactQueryProcedureOptions } from '@trpc/react-query';
-import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
+import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/client';
 
 // 1. Import the AppRouter type from your 'api' package
 // (Adjust this import path to match your monorepo structure)

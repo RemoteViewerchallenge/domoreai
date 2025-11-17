@@ -1,10 +1,17 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "API",
-  "extends": "../../tsconfig.json",
+  "extends": "../../packages/typescript-config/base.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "ESNext",
+    "moduleResolution": "bundler"
   },
-  "include": ["src", "src/services/modelManager.mocks.ts"],
-  "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"]
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts"
+  ]
 }

@@ -14,5 +14,15 @@ export default defineConfig({
     proxy: {
       '/llm': 'http://localhost:4000',
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      external: [
+        /^@codingame\/monaco-vscode-api\/.*/,
+      ],
+    },
+  },
+  optimizeDeps: {
+    include: ['@codingame/monaco-vscode-api'],
+  },
 })

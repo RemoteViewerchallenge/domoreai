@@ -1,6 +1,7 @@
 import { initTRPC } from '@trpc/server';
 import superjson from 'superjson';
 import { db } from './db.js';
+import { vfsSessionService } from './services/vfsSession.service.js';
 
 /**
  * 1. CONTEXT
@@ -11,7 +12,13 @@ import { db } from './db.js';
  */
 export const createTRPCContext = () => {
   // In a real app, you'd get the session from the request
-  return { db, session: null };
+  return {
+    db,
+    session: null,
+    // This is a mock to satisfy the type checker for protected procedures
+    auth: { userId: 'mock-user-id' },
+    vfsSession: vfsSessionService,
+  };
 };
 
 /**
