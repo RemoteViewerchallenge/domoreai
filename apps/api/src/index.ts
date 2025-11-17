@@ -10,6 +10,7 @@ import { db } from './db.js';
 import { LlamaAdapter, MistralAdapter, OpenAIAdapter, VertexStudioAdapter } from './llm-adapters.js';
 import { createProvider, getAllProviders, getProviderById, saveModelsForProvider, updateModel } from './db/index.js';
 import type { LLMProvider } from '@repo/common';
+import { LanguageServerService } from './services/language-server.service.js';
 import type { Provider } from './types.js';
 
 /**
@@ -45,6 +46,9 @@ async function startServer() {
 
   // Initialize WebSocket service
   const wsService = new WebSocketService(server);
+
+  // Initialize Language Server service
+  const lspService = new LanguageServerService(server);
 
   const adapters = {
     openai: new OpenAIAdapter(),
