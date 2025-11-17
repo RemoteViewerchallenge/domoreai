@@ -1,5 +1,3 @@
 
-
-> @repo/common@1.0.0 build /home/guy/mono/packages/common
+> @repo/common@1.0.0 build /app/packages/common
 > tsc
-

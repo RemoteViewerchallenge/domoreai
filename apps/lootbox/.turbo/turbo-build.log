@@ -1,0 +1,9 @@
+
+> lootbox@1.0.0 build /app/apps/lootbox
+> pnpm --dir ./ui run build
+
+
+> lootbox-ui@1.0.0 build /app/apps/lootbox/ui
+> echo 'no build needed'
+
+no build needed

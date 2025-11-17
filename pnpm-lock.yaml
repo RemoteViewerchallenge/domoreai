@@ -149,6 +149,9 @@ importers:
 
   apps/ui:
     dependencies:
+      '@jspreadsheet/react':
+        specifier: ^11.28.1
+        version: 11.28.1
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.54.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -185,6 +188,9 @@ importers:
       flyonui:
         specifier: ^1.0.0-alpha.22
         version: 1.3.1(postcss@8.5.6)
+      jspreadsheet-ce:
+        specifier: ^5.0.4
+        version: 5.0.4
       lucide-react:
         specifier: ^0.553.0
         version: 0.553.0(react@18.3.1)
@@ -788,6 +794,12 @@ packages:
     engines: {node: '>=10.0'}
     peerDependencies:
       tslib: '2'
+
+  '@jspreadsheet/formula@2.0.2':
+    resolution: {integrity: sha512-PDQYf9REQA53I7tVYkvkeyQxrd5jcjUeHgItYnRpjN2QiIQwawSqBDtGGEVQTSboTG+JwgGCuhvOpj7FxeKwew==}
+
+  '@jspreadsheet/react@11.28.1':
+    resolution: {integrity: sha512-BIZs6ZSdbC+6xX4xQt9SnKpLZAGG4cZN+3ZROnQho/nlm8HoIO/gmbt3HSz5X4PoBQlMxCBVA85lpsm6pplwmQ==}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -2319,6 +2331,15 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  jspreadsheet-ce@5.0.4:
+    resolution: {integrity: sha512-ra1JI1n+tEGgRMzTzNkPZjG0HZz8W6bFGAiTiHl+eYarXdRmS5qDc/ua3l2ev7oZ6Og9kjfrXYHVLUWiVc308w==}
+
+  jspreadsheet@11.28.1:
+    resolution: {integrity: sha512-RAIvvyU4d4w7oEAZ2MBDyfGCbm1gwOOHaIgzzctNHxw3lzIKPy5jvlx7a1cP+GCNLTTpCsjHpbtCBIdI0d3dtw==}
+
+  jsuites@5.13.4:
+    resolution: {integrity: sha512-7tcUo4njh5IuhttacrPgzOZHzin43XFAxUpnzJgwInR5mEDl2jp8ofhZ2xgYpgg/t7Oz+bQOoyL4Wj8IQDKDTg==}
+
   jwa@2.0.1:
     resolution: {integrity: sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==}
 
@@ -3737,6 +3758,12 @@ snapshots:
       '@jsonjoy.com/buffers': 1.2.1(tslib@2.8.1)
       '@jsonjoy.com/codegen': 1.0.0(tslib@2.8.1)
       tslib: 2.8.1
+
+  '@jspreadsheet/formula@2.0.2': {}
+
+  '@jspreadsheet/react@11.28.1':
+    dependencies:
+      jspreadsheet: 11.28.1
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -5486,6 +5513,18 @@ snapshots:
   json-stable-stringify-without-jsonify@1.0.1: {}
 
   json5@2.2.3: {}
+
+  jspreadsheet-ce@5.0.4:
+    dependencies:
+      '@jspreadsheet/formula': 2.0.2
+      jsuites: 5.13.4
+
+  jspreadsheet@11.28.1:
+    dependencies:
+      '@jspreadsheet/formula': 2.0.2
+      jsuites: 5.13.4
+
+  jsuites@5.13.4: {}
 
   jwa@2.0.1:
     dependencies:

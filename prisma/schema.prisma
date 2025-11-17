@@ -61,7 +61,7 @@ model Model {
   // This is the other side of the `model` relation in `ModelConfig`.
   modelConfigs ModelConfig[]
 
-  @@unique([modelId, providerId]) // Can't have the same model on the same provider twice
+  @@unique([modelId, providerId])
 }
 
 // -----------------------------------------------------------------

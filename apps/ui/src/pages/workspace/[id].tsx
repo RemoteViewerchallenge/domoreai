@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import VfsPage from '../../components/pages/VfsPage';
 
 import { GitControls } from '../../components/GitControls';
 import { useState } from 'react';
@@ -29,9 +30,7 @@ const MyWorkspacePage = () => {
                 <div className="h-full flex flex-col">
                     <div className="p-2 font-bold border-b border-neutral-800">Explorer</div>
                     <div className="flex-grow overflow-auto p-2">
-                        <p className="text-sm text-neutral-400">
-                            File viewer coming soon.
-                        </p>
+                        <VfsPage />
                     </div>
                 </div>
             </Panel>

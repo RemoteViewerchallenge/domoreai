@@ -1,5 +1,10 @@
 
-
-> api@1.0.0 build /home/guy/mono/apps/api
+> api@1.0.0 build /app/apps/api
 > tsc -b
 
+src/routers/vfs.router.ts(25,39): error TS2339: Property 'createSession' does not exist on type 'VfsSessionService'.
+src/routers/vfs.router.ts(35,45): error TS2339: Property 'getScopedVfs' does not exist on type 'VfsSessionService'.
+src/routers/vfs.router.ts(55,45): error TS2339: Property 'getScopedVfs' does not exist on type 'VfsSessionService'.
+src/routers/vfs.router.ts(74,45): error TS2339: Property 'getScopedVfs' does not exist on type 'VfsSessionService'.
+src/services/model.service.ts(31,9): error TS2353: Object literal may only specify known properties, and 'modelId_providerId' does not exist in type 'ModelWhereUniqueInput'.
+ ELIFECYCLE  Command failed with exit code 1.
