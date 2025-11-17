@@ -28,10 +28,7 @@ export class ModelService {
 
     return db.model.upsert({
       where: {
-        modelId_providerId: {
-          modelId: modelId,
-          providerId: providerId,
-        },
+        id: modelId, // Assuming modelId from input is the unique ID for the model config
       },
       update: modelData,
       create: {

@@ -3,3 +3,77 @@
 > api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
+[96msrc/orchestrator/modelSelector.test.ts[0m:[93m3[0m:[93m71[0m - [91merror[0m[90m TS2307: [0mCannot find module 'vitest' or its corresponding type declarations.
+
+[7m3[0m import { describe, it, expect, vi, beforeEach, afterEach, test } from 'vitest';
+[7m [0m [91m                                                                      ~~~~~~~~[0m
+
+[96msrc/orchestrator/modelSelector.test.ts[0m:[93m9[0m:[93m8[0m - [91merror[0m[90m TS2835: [0mRelative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './modelSelector.js'?
+
+[7m9[0m } from './modelSelector'; // Import the code to be tested
+[7m [0m [91m       ~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/llm.router.ts[0m:[93m16[0m:[93m14[0m - [91merror[0m[90m TS2742: [0mThe inferred type of 'llmRouter' cannot be named without a reference to '.pnpm/@types+express-serve-static-core@4.19.7/node_modules/@types/express-serve-static-core'. This is likely not portable. A type annotation is necessary.
+
+[7m16[0m export const llmRouter = Router();
+[7m  [0m [91m             ~~~~~~~~~[0m
+
+[96msrc/routers/lootbox.ts[0m:[93m1[0m:[93m51[0m - [91merror[0m[90m TS2835: [0mRelative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../trpc.js'?
+
+[7m1[0m import { createTRPCRouter, publicProcedure } from '../trpc';
+[7m [0m [91m                                                  ~~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m25[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'createVFSSession' does not exist on type 'VfsSessionService'.
+
+[7m25[0m       const token = vfsSessionService.createVFSSession(input.workspaceId);
+[7m  [0m [91m                                      ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m35[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+
+[7m35[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
+[7m  [0m [91m                                            ~~~~~~[0m
+
+  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
+    [7m24[0m   getFs(): IFS {
+    [7m  [0m [96m  ~~~~~[0m
+    'getFs' is declared here.
+
+[96msrc/routers/vfs.router.ts[0m:[93m55[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+
+[7m55[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
+[7m  [0m [91m                                            ~~~~~~[0m
+
+  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
+    [7m24[0m   getFs(): IFS {
+    [7m  [0m [96m  ~~~~~[0m
+    'getFs' is declared here.
+
+[96msrc/routers/vfs.router.ts[0m:[93m74[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+
+[7m74[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
+[7m  [0m [91m                                            ~~~~~~[0m
+
+  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
+    [7m24[0m   getFs(): IFS {
+    [7m  [0m [96m  ~~~~~[0m
+    'getFs' is declared here.
+
+[96msrc/services/model.service.ts[0m:[93m31[0m:[93m9[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'modelId_providerId' does not exist in type 'ModelWhereUniqueInput'.
+
+[7m31[0m         modelId_providerId: {
+[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~[0m
+
+  [96m../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/index.d.ts[0m:[93m3357[0m:[93m5[0m
+    [7m3357[0m     where: ModelWhereUniqueInput
+    [7m    [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type '{ select?: ModelSelect<DefaultArgs> | null | undefined; include?: ModelInclude<DefaultArgs> | null | undefined; where: ModelWhereUniqueInput; create: (Without<...> & ModelUncheckedCreateInput) | (Without<...> & ModelCreateInput); update: (Without<...> & ModelUncheckedUpdateInput) | (Without<...> & ModelUpdateInput); }'
+
+[96msrc/services/vfsSession.service.ts[0m:[93m2[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module 'memfs/lib/fs.js' or its corresponding type declarations.
+
+[7m2[0m import type { IFS } from 'memfs/lib/fs.js';
+[7m [0m [91m                         ~~~~~~~~~~~~~~~~~[0m
+
+
+Found 10 errors.
+
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

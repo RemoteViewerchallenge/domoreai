@@ -1,8 +1,8 @@
 {
   "name": "@repo/volcano-sdk",
   "version": "1.0.0",
-  "main": "dist/llm-adapter.js",
-  "types": "dist/llm-adapter.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "dependencies": {
     "volcano-sdk": "^1.0.4"
   },
