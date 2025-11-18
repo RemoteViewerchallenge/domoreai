@@ -1,18 +1,16 @@
-import { z } from 'zod';
 import { appRouter } from './index.js';
+import { z } from 'zod';
+
 export type AppRouter = typeof appRouter;
 
 export const modelInputSchema = z.object({
+  providerId: z.string(),
   modelId: z.string(),
   name: z.string(),
-  isFree: z.boolean().optional(),
-  contextWindow: z.number().optional(),
-  hasVision: z.boolean().optional(),
-  hasReasoning: z.boolean().optional(),
-  hasCoding: z.boolean().optional(),
-  providerData: z.object({
-    ModelPricing: z.record(z.string(), z.any()).optional(),
-    ModelArchitecture: z.record(z.string(), z.any()).optional(),
-  }),
-  providerId: z.string(),
+  isFree: z.boolean(),
+  contextWindow: z.number(),
+  hasVision: z.boolean(),
+  hasReasoning: z.boolean(),
+  hasCoding: z.boolean(),
+  providerData: z.any(),
 });

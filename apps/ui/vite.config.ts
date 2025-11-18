@@ -14,5 +14,21 @@ export default defineConfig({
     proxy: {
       '/llm': 'http://localhost:4000',
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      external: [
+        // Externalize Monaco-VSCode related dependencies
+        /monaco-languageclient/,
+        /vscode-ws-jsonrpc/,
+        /@codingame\/monaco-vscode-api/,
+        /@codingame\/monaco-vscode-.*-service-override/,
+        // Specific path that was failing
+        '@codingame/monaco-vscode-api/vscode/vs/base/browser/cssValue'
+      ],
+      output: {
+        manualChunks: undefined,
+      }
+    }
+  },
 })

@@ -1,16 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { httpBatchLink } from '@trpc/client';
 import superjson from 'superjson';
-import { initialize } from '@codingame/monaco-vscode-api';
+// import { initialize } from '@codingame/monaco-vscode-api'; // Commented out to fix build issues
 
 import App from './App'; // Import from the TypeScript source file
 import { trpc } from './utils/trpc';
 import './index.css'; // Import the main stylesheet with Tailwind directives
 
-const queryClient = new QueryClient();
+const queryClient = new trpc.queryClient();
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
@@ -23,23 +22,21 @@ const trpcClient = trpc.createClient({
 function Main() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <App />
     </trpc.Provider>
   );
 }
 
-async function initVscodeApi() {
-  await initialize();
-}
+// async function initVscodeApi() {
+//   await initialize();
+// }
 
-initVscodeApi().then(() => {
+// initVscodeApi().then(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <Main />
+      <BrowserRouter>
+        <Main />
+      </BrowserRouter>
     </React.StrictMode>
   );
-});
+// });

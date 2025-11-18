@@ -6,7 +6,7 @@ import {
   selectModel,
   HardStopError,
   RateLimitError,
-} from './modelSelector'; // Import the code to be tested
+} from './modelSelector.js'; // Import the code to be tested
 
 // --- 1. The "Hoisted" Mock ---
 // This block runs *before* all other code, including imports.

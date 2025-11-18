@@ -1,4 +1,4 @@
-import { createTRPCRouter } from '../trpc.js';
+import { createTRPCRouter } from '@repo/api-contract';
 import { gitRouter } from './git.router.js';
 import { providerRouter } from './providers.router.js';
 import { roleRouter } from './role.router.js';

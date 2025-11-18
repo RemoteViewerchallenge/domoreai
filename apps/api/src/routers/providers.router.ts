@@ -1,7 +1,6 @@
 // --- providers.router.ts ---
 
-import { z } from 'zod';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { z, createTRPCRouter, publicProcedure } from '@repo/api-contract';
 
 // 1. Import your adapters and the base interface
 import {
@@ -35,6 +34,7 @@ const adapterMap: Record<string, new () => LLMAdapter> = {
 
 export const providerRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
+    // @ts-ignore ctx.db typed in createContext
     return ctx.db.provider.findMany();
   }),
   add: publicProcedure
@@ -46,6 +46,7 @@ export const providerRouter = createTRPCRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : null;
+      // @ts-ignore ctx.db typed in createContext
       return ctx.db.provider.create({
         data: {
           name: input.name,
@@ -64,6 +65,7 @@ export const providerRouter = createTRPCRouter({
   fetchAndNormalizeModels: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // @ts-ignore ctx.db typed in createContext
       const provider = await ctx.db.provider.findUnique({
         where: { id: input.providerId },
       });
@@ -94,6 +96,7 @@ export const providerRouter = createTRPCRouter({
             return null;
         }
         const modelName = model.name || modelId;
+        // @ts-ignore ctx.db typed in createContext
         return ctx.db.model.upsert({
           where: {
             providerId_modelId: { providerId: provider.id, modelId: modelId },

@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { z } from 'zod';
-import { modelInputSchema } from '../routers/types.js';
+import { modelInputSchema } from '@repo/api-contract';
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
@@ -28,13 +28,13 @@ export class ModelService {
 
     return db.model.upsert({
       where: {
-        id: modelId, // Assuming modelId from input is the unique ID for the model config
+        providerId_modelId: { providerId, modelId },
       },
       update: modelData,
       create: {
-        modelId: modelId,
-        providerId: providerId,
-        ...modelData,
+        providerId,
+        modelId,
+        ...modelData
       },
     });
   }

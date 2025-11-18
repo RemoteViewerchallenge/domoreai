@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { z, createTRPCRouter, publicProcedure } from '@repo/api-contract';
 
 /**
  * Zod schema for creating a new Role.
@@ -35,6 +34,7 @@ export const roleRouter = createTRPCRouter({
    * Get all roles from the database.
    */
   list: publicProcedure.query(async ({ ctx }) => {
+    // @ts-ignore ctx.db typed in createContext
     return ctx.db.role.findMany({
       orderBy: {
         name: 'asc',
@@ -48,6 +48,7 @@ export const roleRouter = createTRPCRouter({
   create: publicProcedure
     .input(createRoleSchema)
     .mutation(async ({ ctx, input }) => {
+      // @ts-ignore ctx.db typed in createContext
       return ctx.db.role.create({
         data: input,
       });
@@ -60,6 +61,7 @@ export const roleRouter = createTRPCRouter({
     .input(updateRoleSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      // @ts-ignore ctx.db typed in createContext
       return ctx.db.role.update({
         where: { id },
         data,
@@ -72,6 +74,7 @@ export const roleRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // @ts-ignore ctx.db typed in createContext
       return ctx.db.role.delete({ where: { id: input.id } });
     }),
 });

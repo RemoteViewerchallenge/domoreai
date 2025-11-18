@@ -3,77 +3,382 @@
 > api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
-[96msrc/orchestrator/modelSelector.test.ts[0m:[93m3[0m:[93m71[0m - [91merror[0m[90m TS2307: [0mCannot find module 'vitest' or its corresponding type declarations.
+[96msrc/db.ts[0m:[93m1[0m:[93m30[0m - [91merror[0m[90m TS2792: [0mCannot find module '@prisma/client'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { PrismaClient } from '@prisma/client';
+[7m [0m [91m                             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/db/index.ts[0m:[93m1[0m:[93m30[0m - [91merror[0m[90m TS2792: [0mCannot find module '@prisma/client'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { PrismaClient } from '@prisma/client';
+[7m [0m [91m                             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/index.ts[0m:[93m3[0m:[93m75[0m - [91merror[0m[90m TS2792: [0mCannot find module '@trpc/server/adapters/express'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m3[0m import { createExpressMiddleware, type CreateExpressContextOptions } from '@trpc/server/adapters/express';
+[7m [0m [91m                                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/index.ts[0m:[93m37[0m:[93m17[0m - [91merror[0m[90m TS7031: [0mBinding element 'path' implicitly has an 'any' type.
+
+[7m37[0m       onError({ path, error }) {
+[7m  [0m [91m                ~~~~[0m
+
+[96msrc/index.ts[0m:[93m37[0m:[93m23[0m - [91merror[0m[90m TS7031: [0mBinding element 'error' implicitly has an 'any' type.
+
+[7m37[0m       onError({ path, error }) {
+[7m  [0m [91m                      ~~~~~[0m
+
+[96msrc/llm-adapters.ts[0m:[93m1[0m:[93m43[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/common'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import type { LLMCompletionRequest } from '@repo/common';
+[7m [0m [91m                                          ~~~~~~~~~~~~~~[0m
+
+[96msrc/llm-adapters.ts[0m:[93m2[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'axios'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import axios from 'axios';
+[7m [0m [91m                  ~~~~~~~[0m
+
+[96msrc/llm-adapters.ts[0m:[93m6[0m:[93m66[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/volcano-sdk'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m6[0m import { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from '@repo/volcano-sdk';
+[7m [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/orchestrator/modelSelector.test.ts[0m:[93m3[0m:[93m71[0m - [91merror[0m[90m TS2792: [0mCannot find module 'vitest'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
 
 [7m3[0m import { describe, it, expect, vi, beforeEach, afterEach, test } from 'vitest';
 [7m [0m [91m                                                                      ~~~~~~~~[0m
 
-[96msrc/orchestrator/modelSelector.test.ts[0m:[93m9[0m:[93m8[0m - [91merror[0m[90m TS2835: [0mRelative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './modelSelector.js'?
+[96msrc/orchestrator/modelSelector.ts[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2459: [0mModule '"redis"' declares 'createClient' locally, but it is not exported.
 
-[7m9[0m } from './modelSelector'; // Import the code to be tested
-[7m [0m [91m       ~~~~~~~~~~~~~~~~~[0m
+[7m4[0m import { createClient, RedisClientType } from 'redis';
+[7m [0m [91m         ~~~~~~~~~~~~[0m
 
-[96msrc/routers/llm.router.ts[0m:[93m16[0m:[93m14[0m - [91merror[0m[90m TS2742: [0mThe inferred type of 'llmRouter' cannot be named without a reference to '.pnpm/@types+express-serve-static-core@4.19.7/node_modules/@types/express-serve-static-core'. This is likely not portable. A type annotation is necessary.
+  [96msrc/redis.ts[0m:[93m1[0m:[93m10[0m
+    [7m1[0m import { createClient } from 'redis';
+    [7m [0m [96m         ~~~~~~~~~~~~[0m
+    'createClient' is declared here.
 
-[7m16[0m export const llmRouter = Router();
-[7m  [0m [91m             ~~~~~~~~~[0m
+[96msrc/orchestrator/modelSelector.ts[0m:[93m4[0m:[93m24[0m - [91merror[0m[90m TS2305: [0mModule '"redis"' has no exported member 'RedisClientType'.
 
-[96msrc/routers/lootbox.ts[0m:[93m1[0m:[93m51[0m - [91merror[0m[90m TS2835: [0mRelative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../trpc.js'?
+[7m4[0m import { createClient, RedisClientType } from 'redis';
+[7m [0m [91m                       ~~~~~~~~~~~~~~~[0m
 
-[7m1[0m import { createTRPCRouter, publicProcedure } from '../trpc';
-[7m [0m [91m                                                  ~~~~~~~~~[0m
+[96msrc/orchestrator/modelSelector.ts[0m:[93m50[0m:[93m23[0m - [91merror[0m[90m TS7006: [0mParameter 'err' implicitly has an 'any' type.
 
-[96msrc/routers/vfs.router.ts[0m:[93m25[0m:[93m39[0m - [91merror[0m[90m TS2339: [0mProperty 'createVFSSession' does not exist on type 'VfsSessionService'.
+[7m50[0m   client.on('error', (err) => console.error('Redis Client Error', err));
+[7m  [0m [91m                      ~~~[0m
 
-[7m25[0m       const token = vfsSessionService.createVFSSession(input.workspaceId);
-[7m  [0m [91m                                      ~~~~~~~~~~~~~~~~[0m
+[96msrc/redis.ts[0m:[93m1[0m:[93m10[0m - [91merror[0m[90m TS2303: [0mCircular definition of import alias 'createClient'.
 
-[96msrc/routers/vfs.router.ts[0m:[93m35[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+[7m1[0m import { createClient } from 'redis';
+[7m [0m [91m         ~~~~~~~~~~~~[0m
 
-[7m35[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
-[7m  [0m [91m                                            ~~~~~~[0m
+[96msrc/redis.ts[0m:[93m1[0m:[93m10[0m - [91merror[0m[90m TS2459: [0mModule '"redis"' declares 'createClient' locally, but it is not exported.
 
-  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
-    [7m24[0m   getFs(): IFS {
-    [7m  [0m [96m  ~~~~~[0m
-    'getFs' is declared here.
+[7m1[0m import { createClient } from 'redis';
+[7m [0m [91m         ~~~~~~~~~~~~[0m
 
-[96msrc/routers/vfs.router.ts[0m:[93m55[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+  [96msrc/redis.ts[0m:[93m1[0m:[93m10[0m
+    [7m1[0m import { createClient } from 'redis';
+    [7m [0m [96m         ~~~~~~~~~~~~[0m
+    'createClient' is declared here.
 
-[7m55[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
-[7m  [0m [91m                                            ~~~~~~[0m
+[96msrc/routers/external.router.ts[0m:[93m1[0m:[93m54[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
 
-  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
-    [7m24[0m   getFs(): IFS {
-    [7m  [0m [96m  ~~~~~[0m
-    'getFs' is declared here.
+[7m1[0m import { createTRPCRouter, publicProcedure, z } from '@repo/api-contract';
+[7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~[0m
 
-[96msrc/routers/vfs.router.ts[0m:[93m74[0m:[93m45[0m - [91merror[0m[90m TS2551: [0mProperty 'getVFS' does not exist on type 'VfsSessionService'. Did you mean 'getFs'?
+[96msrc/routers/external.router.ts[0m:[93m2[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'axios'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
 
-[7m74[0m       const workspaceFs = vfsSessionService.getVFS(input.vfsToken);
-[7m  [0m [91m                                            ~~~~~~[0m
+[7m2[0m import axios from 'axios';
+[7m [0m [91m                  ~~~~~~~[0m
 
-  [96msrc/services/vfsSession.service.ts[0m:[93m24[0m:[93m3[0m
-    [7m24[0m   getFs(): IFS {
-    [7m  [0m [96m  ~~~~~[0m
-    'getFs' is declared here.
+[96msrc/routers/git.router.ts[0m:[93m1[0m:[93m57[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
 
-[96msrc/services/model.service.ts[0m:[93m31[0m:[93m9[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'modelId_providerId' does not exist in type 'ModelWhereUniqueInput'.
+[7m1[0m import { z, createTRPCRouter, protectedProcedure } from '@repo/api-contract';
+[7m [0m [91m                                                        ~~~~~~~~~~~~~~~~~~~~[0m
 
-[7m31[0m         modelId_providerId: {
-[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/routers/git.router.ts[0m:[93m14[0m:[93m15[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
 
-  [96m../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/index.d.ts[0m:[93m3357[0m:[93m5[0m
-    [7m3357[0m     where: ModelWhereUniqueInput
-    [7m    [0m [96m    ~~~~~[0m
-    The expected type comes from property 'where' which is declared here on type '{ select?: ModelSelect<DefaultArgs> | null | undefined; include?: ModelInclude<DefaultArgs> | null | undefined; where: ModelWhereUniqueInput; create: (Without<...> & ModelUncheckedCreateInput) | (Without<...> & ModelCreateInput); update: (Without<...> & ModelUncheckedUpdateInput) | (Without<...> & ModelUpdateInput); }'
+[7m14[0m     .query(({ input }) => {
+[7m  [0m [91m              ~~~~~[0m
 
-[96msrc/services/vfsSession.service.ts[0m:[93m2[0m:[93m26[0m - [91merror[0m[90m TS2307: [0mCannot find module 'memfs/lib/fs.js' or its corresponding type declarations.
+[96msrc/routers/git.router.ts[0m:[93m19[0m:[93m18[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
 
-[7m2[0m import type { IFS } from 'memfs/lib/fs.js';
-[7m [0m [91m                         ~~~~~~~~~~~~~~~~~[0m
+[7m19[0m     .mutation(({ input }) => {
+[7m  [0m [91m                 ~~~~~[0m
+
+[96msrc/routers/index.ts[0m:[93m1[0m:[93m34[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { createTRPCRouter } from '@repo/api-contract';
+[7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/llm.router.ts[0m:[93m4[0m:[93m34[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/common'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m4[0m import type { LLMProvider } from '@repo/common';
+[7m [0m [91m                                 ~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/model.router.ts[0m:[93m1[0m:[93m57[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { createTRPCRouter, protectedProcedure, z } from '@repo/api-contract';
+[7m [0m [91m                                                        ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/model.router.ts[0m:[93m3[0m:[93m34[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m3[0m import { modelInputSchema } from '@repo/api-contract';
+[7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/model.router.ts[0m:[93m10[0m:[93m18[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m10[0m     .mutation(({ input }) => {
+[7m  [0m [91m                 ~~~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m3[0m:[93m54[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m3[0m import { z, createTRPCRouter, publicProcedure } from '@repo/api-contract';
+[7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m36[0m:[93m40[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m36[0m   list: publicProcedure.query(async ({ ctx }) => {
+[7m  [0m [91m                                       ~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m47[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m47[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m47[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m47[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m67[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m67[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/providers.router.ts[0m:[93m67[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m67[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m1[0m:[93m54[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { z, createTRPCRouter, publicProcedure } from '@repo/api-contract';
+[7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m36[0m:[93m40[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m36[0m   list: publicProcedure.query(async ({ ctx }) => {
+[7m  [0m [91m                                       ~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m50[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m50[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m50[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m50[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m62[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m62[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m62[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m62[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m76[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m76[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/role.router.ts[0m:[93m76[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m76[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/types.ts[0m:[93m2[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'zod'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import { z } from 'zod';
+[7m [0m [91m                  ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m1[0m:[93m54[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { createTRPCRouter, publicProcedure, z } from '@repo/api-contract';
+[7m [0m [91m                                                     ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m3[0m:[93m27[0m - [91merror[0m[90m TS2792: [0mCannot find module '@trpc/server'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m3[0m import { TRPCError } from '@trpc/server';
+[7m [0m [91m                          ~~~~~~~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m29[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m29[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m29[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m29[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m45[0m:[93m21[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m45[0m     .query(async ({ ctx, input }): Promise<VfsFile[]> => {
+[7m  [0m [91m                    ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m45[0m:[93m26[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m45[0m     .query(async ({ ctx, input }): Promise<VfsFile[]> => {
+[7m  [0m [91m                         ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m50[0m:[93m37[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m50[0m         const fileNames = await vfs.promises.readdir(dirPath) as string[];
+[7m  [0m [91m                                    ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m56[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m56[0m             const stat = await vfs.promises.stat(fullPath);
+[7m  [0m [91m                                   ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m79[0m:[93m21[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m79[0m     .query(async ({ ctx, input }) => {
+[7m  [0m [91m                    ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m79[0m:[93m26[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m79[0m     .query(async ({ ctx, input }) => {
+[7m  [0m [91m                         ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m82[0m:[93m35[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m82[0m         const content = await vfs.promises.readFile(input.path, 'utf-8');
+[7m  [0m [91m                                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m94[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m94[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                       ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m94[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m94[0m     .mutation(async ({ ctx, input }) => {
+[7m  [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m99[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m99[0m         await vfs.promises.mkdir(dir, { recursive: true });
+[7m  [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m101[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m101[0m         await vfs.promises.writeFile(input.path, input.content, { encoding: 'utf-8' });
+[7m   [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m113[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m113[0m     .mutation(async ({ ctx, input }) => {
+[7m   [0m [91m                       ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m113[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m113[0m     .mutation(async ({ ctx, input }) => {
+[7m   [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m118[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m118[0m         await vfs.promises.mkdir(dir, { recursive: true });
+[7m   [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m120[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m120[0m         await vfs.promises.rename(input.from, input.to);
+[7m   [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m132[0m:[93m24[0m - [91merror[0m[90m TS7031: [0mBinding element 'ctx' implicitly has an 'any' type.
+
+[7m132[0m     .mutation(async ({ ctx, input }) => {
+[7m   [0m [91m                       ~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m132[0m:[93m29[0m - [91merror[0m[90m TS7031: [0mBinding element 'input' implicitly has an 'any' type.
+
+[7m132[0m     .mutation(async ({ ctx, input }) => {
+[7m   [0m [91m                            ~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m137[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m137[0m         await vfs.promises.mkdir(dir, { recursive: true });
+[7m   [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/routers/vfs.router.ts[0m:[93m139[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'promises' does not exist on type 'Promise<any>'.
+
+[7m139[0m         await vfs.promises.copyFile(input.from, input.to);
+[7m   [0m [91m                  ~~~~~~~~[0m
+
+[96msrc/services/git.service.ts[0m:[93m1[0m:[93m43[0m - [91merror[0m[90m TS2792: [0mCannot find module 'simple-git'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { simpleGit, type SimpleGit } from 'simple-git';
+[7m [0m [91m                                          ~~~~~~~~~~~~[0m
+
+[96msrc/services/git.service.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2792: [0mCannot find module '@trpc/server'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import { TRPCError } from '@trpc/server';
+[7m [0m [91m                          ~~~~~~~~~~~~~~[0m
+
+[96msrc/services/lootbox.service.ts[0m:[93m1[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'axios'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import axios from 'axios';
+[7m [0m [91m                  ~~~~~~~[0m
+
+[96msrc/services/lootbox.service.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2792: [0mCannot find module '@trpc/server'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import { TRPCError } from '@trpc/server';
+[7m [0m [91m                          ~~~~~~~~~~~~~~[0m
+
+[96msrc/services/model.service.ts[0m:[93m2[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'zod'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import { z } from 'zod';
+[7m [0m [91m                  ~~~~~[0m
+
+[96msrc/services/model.service.ts[0m:[93m3[0m:[93m34[0m - [91merror[0m[90m TS2792: [0mCannot find module '@repo/api-contract'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m3[0m import { modelInputSchema } from '@repo/api-contract';
+[7m [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/modelManager.service.ts[0m:[93m1[0m:[93m30[0m - [91merror[0m[90m TS2792: [0mCannot find module '@prisma/client'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { PrismaClient } from '@prisma/client';
+[7m [0m [91m                             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/vfsSession.service.ts[0m:[93m1[0m:[93m54[0m - [91merror[0m[90m TS2792: [0mCannot find module 'memfs'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { Volume, createFsFromVolume, type IFs } from 'memfs';
+[7m [0m [91m                                                     ~~~~~~~[0m
+
+[96msrc/trpc.ts[0m:[93m1[0m:[93m26[0m - [91merror[0m[90m TS2792: [0mCannot find module '@trpc/server'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import { initTRPC } from '@trpc/server';
+[7m [0m [91m                         ~~~~~~~~~~~~~~[0m
+
+[96msrc/trpc.ts[0m:[93m2[0m:[93m23[0m - [91merror[0m[90m TS2792: [0mCannot find module 'superjson'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m2[0m import superjson from 'superjson';
+[7m [0m [91m                      ~~~~~~~~~~~[0m
+
+[96msrc/utils/healthCheck.ts[0m:[93m1[0m:[93m19[0m - [91merror[0m[90m TS2792: [0mCannot find module 'axios'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+
+[7m1[0m import axios from 'axios';
+[7m [0m [91m                  ~~~~~~~[0m
 
 
-Found 10 errors.
+Found 73 errors.
 
 [41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m
