@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { GitControls } from '../../components/GitControls';
 import { useState } from 'react';
 import { Panel } from '../../components/ui/Panel';
+import WorkspaceGrid from '../../components/core/WorkspaceGrid';
+import CommandBar from '../../components/core/CommandBar';
 
 /**
  * Renders the main workspace page for a given workspace ID.
@@ -39,11 +41,7 @@ const MyWorkspacePage = () => {
 
         {/* Main Content Area (Placeholder for Editor) */}
         <div className="flex-grow">
-             <Panel borderColor="border-green-400">
-                <div className="flex items-center justify-center h-full text-neutral-500">
-                    Select a file to edit (Editor Component coming in Epic 12)
-                </div>
-             </Panel>
+             <WorkspaceGrid />
         </div>
 
         {/* Right Sidebar: Git & Tools */}
@@ -51,6 +49,7 @@ const MyWorkspacePage = () => {
             {vfsToken && <GitControls vfsToken={vfsToken} />}
         </div>
       </div>
+      <CommandBar />
     </div>
   );
 };

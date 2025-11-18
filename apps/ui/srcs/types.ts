@@ -1,4 +1,4 @@
-export {};
+export type PageType = 'VFS' | 'TERMINAL' | 'SPREADSHEET' | 'TASKS';
 
 declare global {
   interface Window {

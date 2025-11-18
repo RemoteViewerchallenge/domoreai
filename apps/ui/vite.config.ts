@@ -14,5 +14,10 @@ export default defineConfig({
     proxy: {
       '/llm': 'http://localhost:4000',
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      external: ['vscode', 'monaco-editor'],
+    },
+  },
 })
