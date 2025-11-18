@@ -1,37 +1,29 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { vfsSessionService } from '../services/vfsSession.service.js';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 import type { Dirent } from 'fs';
 
-// Helper to get the root path for a given workspace
-const getWorkspaceRoot = (workspaceId: string): string => {
-  // A real implementation would have a more robust mapping.
-  // For now, we'll use a simple convention.
-  return join('/', `workspaces/${workspaceId}`);
-};
-
-
 // Helper to sanitize paths and prevent directory traversal
-const getSanitizedPath = (workspaceRoot: string, userPath: string): string => {
-  const resolvedPath = resolve(workspaceRoot, userPath);
+const getSanitizedPath = (userPath: string): string => {
+  const root = '/'; // The root of our virtual volume
+  const resolvedPath = resolve(root, userPath);
 
-  // Security Check: Ensure path doesn't escape the workspace root
-  if (!resolvedPath.startsWith(workspaceRoot)) {
+  // Security Check: Ensure path doesn't escape the root
+  if (!resolvedPath.startsWith(root)) {
     throw new Error('Access Denied: Invalid path');
   }
   return resolvedPath;
 };
 
 export const vfsRouter = createTRPCRouter({
-  // Note: getToken is now just a placeholder and doesn't create a real session.
-  // This can be adapted for real auth later.
   getToken: publicProcedure
     .input(z.object({ workspaceId: z.string() }))
     .mutation(({ input }) => {
-      // In a real app, you'd generate a JWT or session token here.
-      // For now, we'll just pass the workspaceId back as a "token".
-      return { token: input.workspaceId };
+      // This creates a short-lived, secure token for the VFS.
+      const token = vfsSessionService.createSession(input.workspaceId);
+      return { token };
     }),
 
   /**
@@ -40,21 +32,18 @@ export const vfsRouter = createTRPCRouter({
   listFiles: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getFs();
-      const workspaceRoot = getWorkspaceRoot(input.vfsToken); // vfsToken is workspaceId
-      const safePath = getSanitizedPath(workspaceRoot, input.path);
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
-      try {
-        const entries = (await workspaceFs.promises.readdir(safePath, { withFileTypes: true })) as Dirent[];
-        return entries.map((entry: Dirent) => ({
-          name: entry.name,
-          type: entry.isDirectory() ? 'directory' : 'file',
-        }));
-      } catch (error) {
-        // Create the directory if it doesn't exist to provide a better UX
-        await workspaceFs.promises.mkdir(workspaceRoot, { recursive: true });
-        return [];
-      }
+      const safePath = getSanitizedPath(input.path);
+
+      const entries = (await workspaceFs.readdir(safePath, { withFileTypes: true })) as Dirent[];
+
+      // Map to the format your VfsViewer component expects
+      return entries.map((entry: Dirent) => ({
+        name: entry.name,
+        type: entry.isDirectory() ? 'directory' : 'file',
+      }));
     }),
 
   /**
@@ -63,11 +52,12 @@ export const vfsRouter = createTRPCRouter({
   readFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getFs();
-      const workspaceRoot = getWorkspaceRoot(input.vfsToken);
-      const safePath = getSanitizedPath(workspaceRoot, input.path);
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
-      const content = await workspaceFs.promises.readFile(safePath, 'utf-8');
+      const safePath = getSanitizedPath(input.path);
+
+      const content = await workspaceFs.readFile(safePath, 'utf-8');
       return content as string;
     }),
 
@@ -81,11 +71,15 @@ export const vfsRouter = createTRPCRouter({
       content: z.string(),
     }))
     .mutation(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getFs();
-      const workspaceRoot = getWorkspaceRoot(input.vfsToken);
-      const safePath = getSanitizedPath(workspaceRoot, input.path);
+      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
-      await workspaceFs.promises.writeFile(safePath, input.content);
+      const safePath = getSanitizedPath(input.path);
+
+      await workspaceFs.writeFile(safePath, input.content);
       return { success: true };
     }),
+
+  // Add other procedures as needed (mkdir, rm, rename, etc.)
+  // ...
 });

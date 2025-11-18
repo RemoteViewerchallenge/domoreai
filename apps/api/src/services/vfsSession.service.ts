@@ -1,9 +1,9 @@
 import { Volume, createFsFromVolume } from 'memfs';
-import type { IFs } from 'memfs';
+import type { IFS } from 'memfs/lib/fs.js';
 
 export class VfsSessionService {
   private globalVolume: Volume;
-  public readonly fs: IFs; // Expose the memfs instance directly
+  public readonly fs: IFS; // Expose the memfs instance directly
 
   constructor() {
     // Initialize a single, global memfs volume with some default data
@@ -21,7 +21,7 @@ export class VfsSessionService {
    * We return the global VFS, and the router will be responsible
    * for prepending the correct root path to all operations.
    */
-  getFs(): IFs {
+  getFs(): IFS {
     return this.fs;
   }
 }
