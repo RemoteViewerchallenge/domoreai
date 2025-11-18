@@ -9,7 +9,6 @@
 
 # Logs
 .log*
-*.log
 
 # Local Environment Variables
 # Never commit .env files! They contain secrets.
