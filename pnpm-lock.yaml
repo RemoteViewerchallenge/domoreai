@@ -271,9 +271,9 @@ importers:
       vite:
         specifier: ^5.3.1
         version: 5.4.21(@types/node@20.19.25)
-      vite-plugin-monaco-editor:
-        specifier: ^1.1.0
-        version: 1.1.0(monaco-editor@0.54.0)
+      vite-plugin-monaco-editor-esm:
+        specifier: ^2.0.2
+        version: 2.0.2(monaco-editor@0.54.0)
 
   packages/api-contract:
     dependencies:
@@ -283,6 +283,10 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/common:
     devDependencies:
@@ -290,7 +294,7 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.9.3
         version: 5.9.3
 
   packages/eslint-config:
@@ -3820,8 +3824,8 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
 
-  vite-plugin-monaco-editor@1.1.0:
-    resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
+  vite-plugin-monaco-editor-esm@2.0.2:
+    resolution: {integrity: sha512-XVkOpL/r0rw1NpbO30vUwG4S0THkC9KB1vjjV8olGd49h4/EQsKl3DrxB6KRDwyZNC9mKiiZgk2L6njUYj3oKQ==}
     peerDependencies:
       monaco-editor: '>=0.33.0'
 
@@ -8252,7 +8256,7 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-monaco-editor@1.1.0(monaco-editor@0.54.0):
+  vite-plugin-monaco-editor-esm@2.0.2(monaco-editor@0.54.0):
     dependencies:
       monaco-editor: 0.54.0
 

@@ -43,6 +43,19 @@ export class VfsSessionService {
   getFs(): IFs {
     return this.fs;
   }
+
+  /**
+   * Validates a token and returns its payload.
+   */
+  async validateToken(
+    token: string
+  ): Promise<{ userId: string; vfsRootPath: string } | null> {
+    const session = this.tokens.get(token);
+    if (!session) {
+      return null;
+    }
+    return { userId: session.userId, vfsRootPath: session.rootPath };
+  }
 }
 
 // Export a singleton instance of the service

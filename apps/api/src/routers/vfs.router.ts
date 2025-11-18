@@ -1,18 +1,16 @@
 import { createTRPCRouter, publicProcedure, z } from '@repo/api-contract';
-import { VfsSessionService, vfsSessionService } from '../services/vfsSession.service.js';
+import { vfsSessionService } from '../services/vfsSession.service.js';
 import { TRPCError } from '@trpc/server';
 import path from 'path';
+import { IFs } from 'memfs';
 
 export type VfsFile = {
   path: string;
   type: 'file' | 'dir';
 };
 
-const getVfsOrThrow = (ctx: { vfsSession?: VfsSessionService }, token: string) => {
-  if (!ctx.vfsSession) {
-    throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'VFS service not available' });
-  }
-  const vfs = ctx.vfsSession.getScopedVfs(token);
+const getVfsOrThrow = async (token: string): Promise<IFs> => {
+  const vfs = await vfsSessionService.getScopedVfs(token);
   if (!vfs) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS Token' });
   }
@@ -22,18 +20,14 @@ const getVfsOrThrow = (ctx: { vfsSession?: VfsSessionService }, token: string) =
 export const vfsRouter = createTRPCRouter({
   /**
    * Generates a VFS token.
-   * Assumes you have auth middleware setting ctx.auth
    */
   getToken: publicProcedure
     .input(z.object({ workspaceId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const userId = ctx.auth?.userId || 'simulated-user';
+    .mutation(async ({ input }) => {
+      const userId = 'simulated-user';
       const vfsRootPath = `workspaces/${userId}/${input.workspaceId}`;
 
-      if (!ctx.vfsSession) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'VFS service not available' });
-      }
-      const token = await ctx.vfsSession.generateToken(userId, vfsRootPath);
+      const token = await vfsSessionService.generateToken(userId, vfsRootPath);
       return { token };
     }),
 
@@ -42,8 +36,8 @@ export const vfsRouter = createTRPCRouter({
    */
   getTree: publicProcedure
     .input(z.object({ vfsToken: z.string() }))
-    .query(async ({ ctx, input }): Promise<VfsFile[]> => {
-      const vfs = getVfsOrThrow(ctx, input.vfsToken);
+    .query(async ({ input }): Promise<VfsFile[]> => {
+      const vfs = await getVfsOrThrow(input.vfsToken);
 
       const readDirRecursive = async (dirPath: string): Promise<VfsFile[]> => {
         let entries: VfsFile[] = [];
@@ -76,8 +70,8 @@ export const vfsRouter = createTRPCRouter({
    */
   readFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const vfs = getVfsOrThrow(ctx, input.vfsToken);
+    .query(async ({ input }) => {
+      const vfs = await getVfsOrThrow(input.vfsToken);
       try {
         const content = await vfs.promises.readFile(input.path, 'utf-8');
         return { content };
@@ -91,8 +85,8 @@ export const vfsRouter = createTRPCRouter({
    */
   writeFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string(), content: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const vfs = getVfsOrThrow(ctx, input.vfsToken);
+    .mutation(async ({ input }) => {
+      const vfs = await getVfsOrThrow(input.vfsToken);
       try {
         // Ensure directory exists
         const dir = path.dirname(input.path);
@@ -110,8 +104,8 @@ export const vfsRouter = createTRPCRouter({
    */
   moveFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const vfs = getVfsOrThrow(ctx, input.vfsToken);
+    .mutation(async ({ input }) => {
+      const vfs = await getVfsOrThrow(input.vfsToken);
       try {
         // Ensure destination directory exists
         const dir = path.dirname(input.to);
@@ -129,8 +123,8 @@ export const vfsRouter = createTRPCRouter({
    */
   copyFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), from: z.string(), to: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const vfs = getVfsOrThrow(ctx, input.vfsToken);
+    .mutation(async ({ input }) => {
+      const vfs = await getVfsOrThrow(input.vfsToken);
       try {
         // Ensure destination directory exists
         const dir = path.dirname(input.to);

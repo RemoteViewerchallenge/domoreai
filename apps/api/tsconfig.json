@@ -1,16 +1,14 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "API",
-  "compilerOptions": {
-    "target": "es2022",
-    "outDir": "dist",
-    "declaration": true, // Add this to generate .d.ts files
-    "declarationMap": true, // Good for debugging types
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true, // <--- It's already here.
-    "allowImportingTsExtensions": false
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"]
+"extends": "../../packages/typescript-config/base.json",
+"compilerOptions": {
+"strict": true,
+"skipLibCheck": true,
+"outDir": "dist",
+"rootDir": "src",
+"module": "ESNext",
+"target": "ES2022",
+"moduleResolution": "bundler"
+},
+"include": ["src"],
+"exclude": ["node_modules", "dist", "test"]
 }

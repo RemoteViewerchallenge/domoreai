@@ -1,41 +1,33 @@
-import { db } from '../db.js';
-import { z } from 'zod';
-import { modelInputSchema } from '@repo/api-contract';
-
-type ModelInput = z.infer<typeof modelInputSchema>;
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 export class ModelService {
-  async saveNormalizedModel(input: ModelInput) {
-    const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = input;
+async saveNormalizedModel(modelData: any) {
+const { id, architecture, pricing, topProvider, ...rest } = modelData;
+const createdDate = new Date(modelData.created * 1000);
 
-    const provider = await db.provider.findUnique({
-      where: { id: providerId },
-    });
-
-    if (!provider) {
-      throw new Error(`Provider with id ${providerId} not found.`);
-    }
-
-    const modelData = {
-      name,
-      isFree,
-      contextWindow,
-      hasVision,
-      hasReasoning,
-      hasCoding,
-      providerData,
-    };
-
-    return db.model.upsert({
-      where: {
-        providerId_modelId: { providerId, modelId },
-      },
-      update: modelData,
-      create: {
-        providerId,
-        modelId,
-        ...modelData
-      },
-    });
-  }
+try {
+const result = await prisma.modelConfig.upsert({
+where: { id: id }, // FIX: Use 'id', not 'modelId_providerId'
+update: {
+...rest,
+created: createdDate,
+architecture: { update: architecture },
+pricing: { update: pricing },
+topProvider: { update: topProvider }
+},
+create: {
+id,
+...rest,
+created: createdDate,
+architecture: { create: architecture },
+pricing: { create: pricing },
+topProvider: { create: topProvider }
+}
+});
+return result;
+} catch (error: any) {
+throw new Error(`Failed to save model ${id}: ${error.message}`);
+}
+}
 }
