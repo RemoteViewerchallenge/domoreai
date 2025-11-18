@@ -5,8 +5,10 @@ import { roleRouter } from './role.router.js';
 import { externalRouter } from './external.router.js';
 import { vfsRouter } from './vfs.router.js';
 import { modelRouter } from './model.router.js'; // Existing 
+import { agentRouter } from './agent.router';
 
 export const appRouter = createTRPCRouter({
+  agent: agentRouter,
   git: gitRouter,
   providers: providerRouter,
   role: roleRouter,
