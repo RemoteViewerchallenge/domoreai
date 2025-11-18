@@ -1,4 +1,4 @@
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, z } from '@repo/api-contract';
 import axios from 'axios';
 
 export const externalRouter = createTRPCRouter({

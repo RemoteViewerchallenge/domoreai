@@ -1,6 +1,0 @@
-
-
-> api@1.0.0 lint /home/guy/mono/apps/api
-> eslint . --max-warnings 0
-
-[41m[30m ELIFECYCLE [39m[49m [31mCommand failed.[39m

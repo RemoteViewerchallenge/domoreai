@@ -1,13 +1,15 @@
 {
   "name": "@repo/volcano-sdk",
   "version": "1.0.0",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
     "volcano-sdk": "^1.0.4"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@repo/typescript-config": "workspace:*"
   },
   "scripts": {
     "build": "tsc",
