@@ -3,7 +3,7 @@ import { Volume, createFsFromVolume, type IFs } from 'memfs';
 export class VfsSessionService {
   private globalVolume: Volume;
   public readonly fs: IFs; // Expose the memfs instance directly
-  private tokens = new Map<string, { userId: string; rootPath: string }>();
+  private tokens = new Map<string, { userId: string; vfsRootPath: string }>();
 
   constructor() {
     // Initialize a single, global memfs volume with some default data
@@ -21,7 +21,7 @@ export class VfsSessionService {
    */
   async generateToken(userId: string, vfsRootPath: string): Promise<string> {
     const token = Math.random().toString(36).substring(2);
-    this.tokens.set(token, { userId, rootPath: vfsRootPath });
+    this.tokens.set(token, { userId, vfsRootPath });
     return token;
   }
 
@@ -42,6 +42,16 @@ export class VfsSessionService {
    */
   getFs(): IFs {
     return this.fs;
+  }
+
+  /**
+   * Validates a token and returns the payload.
+   */
+  async validateToken(token: string): Promise<{ userId: string; vfsRootPath: string } | null> {
+    if (!this.tokens.has(token)) {
+      return null;
+    }
+    return this.tokens.get(token)!;
   }
 }
 

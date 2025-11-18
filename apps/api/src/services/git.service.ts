@@ -1,31 +1,30 @@
-import { simpleGit, type SimpleGit } from 'simple-git';
+import { simpleGit, SimpleGit } from 'simple-git';
 import { TRPCError } from '@trpc/server';
-// import { getVfsForWorkspace, type FsPromises } from './vfsService.js'; // Commented out as unused
-// import path from 'path'; // Commented out as unused
+import { VfsSessionService } from './vfsSession.service.js';
+import path from 'path';
 
 // Define a safe base directory for all workspaces
-// const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces'); // Commented out as unused
+const WORKSPACE_BASE_DIR = path.resolve(process.cwd(), 'workspaces');
 
 export class GitService {
-  // constructor(private _getVfs: (workspaceId: string) => FsPromises) {} // Commented out as unused
+  constructor(private vfsSession: VfsSessionService) {}
 
-  private async getGit(_vfsToken: string): Promise<{ git: SimpleGit; systemPath: string }> {
-    // const payload = this.vfsSession.validateToken(vfsToken);
-    // if (!payload) {
-    //   throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS token' });
-    // }
+  private async getGit(vfsToken: string): Promise<{ git: SimpleGit; systemPath: string }> {
+    const payload = await this.vfsSession.validateToken(vfsToken);
+    if (!payload) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS token' });
+    }
 
-    // // This is the FIX: Construct the path, don't read it from the adapter.
-    // // It prevents any path traversal attacks.
-    // const systemPath = path.join(WORKSPACE_BASE_DIR, payload.vfsRootPath);
+    // This is the FIX: Construct the path, don't read it from the adapter.
+    // It prevents any path traversal attacks.
+    const systemPath = path.join(WORKSPACE_BASE_DIR, payload.vfsRootPath);
 
     // Security Check: Ensure the path is *inside* the allowed workspace
-    // if (!path.resolve(systemPath).startsWith(WORKSPACE_BASE_DIR)) {
-    //    throw new TRPCError({ code: 'FORBIDDEN', message: 'Filesystem access denied' });
-    // }
+    if (!path.resolve(systemPath).startsWith(WORKSPACE_BASE_DIR)) {
+       throw new TRPCError({ code: 'FORBIDDEN', message: 'Filesystem access denied' });
+    }
     
-    // return { git: simpleGit(systemPath), systemPath };
-    return { git: simpleGit(), systemPath: '' };
+    return { git: simpleGit(systemPath), systemPath };
   }
 
   async gitLog(vfsToken: string, count: number = 10) {

@@ -1,22 +1,31 @@
-import { createTRPCRouter, protectedProcedure, z } from '@repo/api-contract';
-import { GitService } from '../services/git.service.js';
-// import { getVfsForWorkspace } from '../services/vfsService.js';
+import { z } from "zod";
+import { protectedProcedure, router } from "../trpc.js";
+import { GitService } from "../services/git.service.js";
+import { VfsSessionService } from "../services/vfsSession.service.js";
 
-const logInputSchema = z.object({ vfsToken: z.string(), count: z.number().optional() });
-const commitInputSchema = z.object({ vfsToken: z.string(), message: z.string() });
+const vfsSessionService = new VfsSessionService();
 
-// In your main context/DI setup:
-const gitService = new GitService();
-
-export const gitRouter = createTRPCRouter({
-  log: protectedProcedure
-    .input(logInputSchema)
-    .query(({ input }) => {
-      return gitService.gitLog(input.vfsToken, input.count);
+export const gitRouter = router({
+  getRepo: protectedProcedure
+    .input(z.object({ repoUrl: z.string(), vfsToken: z.string() }))
+    .mutation(async ({ input }: { input: { repoUrl: string, vfsToken: string } }) => {
+      const gitService = new GitService(vfsSessionService);
+      // This is a placeholder for the actual clone operation
+      // const repo = await gitService.clone(input.repoUrl, vfs);
+      return { success: true };
     }),
-  commit: protectedProcedure
-    .input(commitInputSchema)
-    .mutation(({ input }) => {
-      return gitService.gitCommit(input.vfsToken, input.message);
+  getBranches: protectedProcedure
+    .input(z.object({ vfsToken: z.string() }))
+    .query(async ({ input }: { input: { vfsToken: string } }) => {
+      const gitService = new GitService(vfsSessionService);
+      const branches = await gitService.gitLog(input.vfsToken);
+      return branches;
+  }),
+  gitCommit: protectedProcedure
+    .input(z.object({ vfsToken: z.string(), message: z.string() }))
+    .mutation(async ({ input }: { input: { vfsToken: string, message: string } }) => {
+      const gitService = new GitService(vfsSessionService);
+      const commit = await gitService.gitCommit(input.vfsToken, input.message);
+      return commit;
     }),
 });

@@ -1,5 +1,3 @@
 
-
-> @repo/api-contract@1.0.0 build /home/guy/mono/packages/api-contract
+> @repo/api-contract@1.0.0 build /app/packages/api-contract
 > tsc
-

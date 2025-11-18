@@ -1,0 +1,3 @@
+
+> api@1.0.0 lint /app/apps/api
+> eslint . --max-warnings 0 --fix

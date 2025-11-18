@@ -20,23 +20,24 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.52.1",
     "@opentelemetry/sdk-node": "^0.52.1",
     "@prisma/client": "^5.22.0",
+    "@repo/api-contract": "workspace:*",
     "@repo/common": "workspace:*",
     "@repo/volcano-sdk": "workspace:*",
     "@trpc/server": "^10.45.2",
-    "axios": "^1.7.2",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "memfs": "^4.51.0",
     "morgan": "^1.10.0",
+    "openai": "^6.9.1",
     "pg": "^8.11.5",
-    "redis": "^4.6.13",
-    "simple-git": "^3.25.0",
+    "redis": "^4.7.1",
+    "simple-git": "^3.30.0",
     "superjson": "^2.2.5",
     "uuid": "^9.0.1",
     "ws": "^8.17.0",
-    "zod": "^3.23.8",
-    "@repo/api-contract": "workspace:*"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -49,6 +50,6 @@
     "prisma": "^5.22.0",
     "tsx": "^4.15.6",
     "typescript": "^5.9.3",
-    "vitest": "^2.0.1"
+    "vitest": "^2.1.9"
   }
 }

@@ -1,8 +1,9 @@
-/**
- * This file acts as a facade for the external 'volcano-sdk'.
- * It re-exports all named exports from the original package.
- */
-export * from 'volcano-sdk';
+import { OpenAI } from "openai";
+import { z } from "zod";
 
-// Explicitly export local LLM adapters to override external ones
-export { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from './llm-adapter';
+import type { LLMProvider, LLMCompletionRequest } from "@repo/common";
+import { createClient } from "redis";
+import { LLMAdapter } from "./llm-adapter.js";
+
+export { LLMAdapter, createClient, OpenAI, z };
+export type { LLMProvider, LLMCompletionRequest };
