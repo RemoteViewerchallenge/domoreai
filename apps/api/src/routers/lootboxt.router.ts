@@ -1,5 +1,5 @@
-import { createTRPCRouter, publicProcedure } from '../trpc';
-import { LootboxService } from '../services/lootbox.service';
+import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { LootboxService } from '../services/lootbox.service.js';
 import { z } from 'zod';
 
 // Initialize the service as a singleton
@@ -23,7 +23,7 @@ export const lootboxRouter = createTRPCRouter({
         args: z.any(), // We can be more specific later
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }: { input: any }) => {
       return await lootboxService.executeTool(input.toolName, input.args);
     }),
 });

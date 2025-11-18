@@ -10,6 +10,10 @@ import App from './App'; // Import from the TypeScript source file
 import { trpc } from './utils/trpc';
 import './index.css'; // Import the main stylesheet with Tailwind directives
 
+// Import react-grid-layout and react-resizable styles
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+
 const queryClient = new QueryClient();
 const trpcClient = trpc.createClient({
   links: [
