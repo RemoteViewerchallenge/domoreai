@@ -31,4 +31,5 @@ Thumbs.db
 **/*.js
 **/*.d.ts
 **/*.d.ts.map
-*.tsbuildinfo
+*.tsbuildinfoui_dev.log
+*.log

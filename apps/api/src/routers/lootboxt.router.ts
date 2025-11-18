@@ -1,5 +1,5 @@
-import { createTRPCRouter, publicProcedure } from '../trpc';
-import { LootboxService } from '../services/lootbox.service';
+import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { LootboxService } from '../services/lootbox.service.js';
 import { z } from 'zod';
 
 // Initialize the service as a singleton
