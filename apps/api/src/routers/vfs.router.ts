@@ -32,7 +32,7 @@ export const vfsRouter = createTRPCRouter({
   listFiles: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      const workspaceFs: any = vfsSessionService.getScopedVfs(input.vfsToken);
       if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
       const safePath = getSanitizedPath(input.path);
@@ -52,12 +52,12 @@ export const vfsRouter = createTRPCRouter({
   readFile: publicProcedure
     .input(z.object({ vfsToken: z.string(), path: z.string() }))
     .query(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      const workspaceFs: any = vfsSessionService.getScopedVfs(input.vfsToken);
       if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
       const safePath = getSanitizedPath(input.path);
 
-      const content = await workspaceFs.readFile(safePath, 'utf-8');
+      const content = await (workspaceFs as any).readFile(safePath, 'utf-8');
       return content as string;
     }),
 
@@ -71,12 +71,12 @@ export const vfsRouter = createTRPCRouter({
       content: z.string(),
     }))
     .mutation(async ({ input }) => {
-      const workspaceFs = vfsSessionService.getScopedVfs(input.vfsToken);
+      const workspaceFs: any = vfsSessionService.getScopedVfs(input.vfsToken);
       if (!workspaceFs) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid or expired VFS token' });
 
       const safePath = getSanitizedPath(input.path);
 
-      await workspaceFs.writeFile(safePath, input.content);
+      await (workspaceFs as any).writeFile(safePath, input.content);
       return { success: true };
     }),
 

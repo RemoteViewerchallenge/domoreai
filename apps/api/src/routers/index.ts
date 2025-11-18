@@ -5,6 +5,7 @@ import { roleRouter } from './role.router.js';
 import { externalRouter } from './external.router.js';
 import { vfsRouter } from './vfs.router.js';
 import { modelRouter } from './model.router.js'; // Existing 
+import { agentRouter } from './agent.router.js';
 
 export const appRouter = createTRPCRouter({
   git: gitRouter,
@@ -13,4 +14,5 @@ export const appRouter = createTRPCRouter({
   external: externalRouter,
   vfs: vfsRouter,
   model: modelRouter,
+  agent: agentRouter,
 });

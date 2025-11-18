@@ -14,5 +14,18 @@ export default defineConfig({
     proxy: {
       '/llm': 'http://localhost:4000',
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      external: [
+        '@codingame/monaco-vscode-api',
+        'flyonui/components/ui/Button',
+        'flyonui/components/ui/Select',
+        'flyonui/components/ui/IconButton',
+        'flyonui/components/ui/Tooltip',
+        'react-icons/vsc',
+        'vscode-ws-jsonrpc',
+      ],
+    },
+  },
 })
