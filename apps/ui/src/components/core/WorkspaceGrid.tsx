@@ -5,9 +5,7 @@ import PageRenderer from './PageRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from 'flyonui';
 import { X } from 'lucide-react';
 
-// Import RGL styles
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+// RGL styles are imported in main.tsx
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
