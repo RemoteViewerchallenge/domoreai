@@ -5,4 +5,4 @@
 export * from 'volcano-sdk';
 
 // Explicitly export local LLM adapters to override external ones
-export { llmOpenAI, llmMistral, llmLlama, llmVertexStudio } from './llm-adapter.js';
+export { llmOpenAI, llmMistral, llmLlama, llmVertexStudio, llmLootbox } from './llm-adapter.js';

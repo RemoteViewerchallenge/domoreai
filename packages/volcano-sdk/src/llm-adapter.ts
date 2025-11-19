@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 export interface LLMCompletionRequest {
   prompt: string;
   maxTokens?: number;
@@ -37,5 +39,20 @@ export const llmLlama = (config: any) => ({
 
 export const llmVertexStudio = (config: any) => ({
   gen: (prompt: string) => Promise.resolve(`Vertex Studio completion for: ${prompt}`),
+  listModels: () => Promise.resolve([]),
+});
+
+export const llmLootbox = (config: any) => ({
+  gen: async (prompt: string) => {
+    // TODO: Replace with the actual lootbox API endpoint
+    const response = await fetch('https://mcp.ai/api/lootbox', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    });
+    return response.json();
+  },
   listModels: () => Promise.resolve([]),
 });
