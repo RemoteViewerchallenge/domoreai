@@ -1,496 +1,418 @@
 
-
-> api@1.0.0 lint /home/guy/mono/apps/api
+> api@1.0.0 lint /app/apps/api
 > eslint -c eslint.config.mjs .
 
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/db/index.ts[24m[0m
-[0m   [2m30:9[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m30:47[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m31:38[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `ArrayBufferView<ArrayBufferLike>`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m31:77[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m32:60[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `BinaryLike | null`                 [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m35:10[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                                             [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m35:13[22m  [33mwarning[39m  Unsafe member access .toString on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m44:9[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m44:56[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m46:38[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `ArrayBufferView<ArrayBufferLike>`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m46:77[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m47:64[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `BinaryLike | null`                 [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m66:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m68:27[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m68:45[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                            [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m68:57[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m69:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m69:28[22m  [33mwarning[39m  Unsafe member access .base_url on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m70:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m70:30[22m  [33mwarning[39m  Unsafe member access .is_healthy on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m71:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m71:34[22m  [33mwarning[39m  Unsafe member access .last_checked_at on an `any` value                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m72:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m72:30[22m  [33mwarning[39m  Unsafe member access .created_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m74:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m74:33[22m  [33mwarning[39m  Unsafe member access .provider_type on an `any` value                                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m75:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m75:30[22m  [33mwarning[39m  Unsafe member access .updated_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m83:98[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m106:36[22m  [33mwarning[39m  Unsafe spread of an `any` value in an array                                                       [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m119:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m121:27[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m121:45[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                            [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m121:57[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m122:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m122:33[22m  [33mwarning[39m  Unsafe member access .provider_type on an `any` value                                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m123:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m123:28[22m  [33mwarning[39m  Unsafe member access .base_url on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m124:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m124:30[22m  [33mwarning[39m  Unsafe member access .is_healthy on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m125:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m125:34[22m  [33mwarning[39m  Unsafe member access .last_checked_at on an `any` value                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m126:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m126:30[22m  [33mwarning[39m  Unsafe member access .created_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m127:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m127:27[22m  [33mwarning[39m  Unsafe member access .models on an `any` value                                                    [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m128:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m128:30[22m  [33mwarning[39m  Unsafe member access .updated_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m136:95[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m144:74[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m144:76[22m  [33mwarning[39m  Unsafe member access .model_id on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m145:53[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m145:55[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m149:43[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m152:34[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m152:44[22m  [33mwarning[39m  Unsafe member access .object on an `any` value                                                    [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m152:58[22m  [33mwarning[39m  Unsafe member access .created on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m152:73[22m  [33mwarning[39m  Unsafe member access .owned_by on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m167:76[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m167:78[22m  [33mwarning[39m  Unsafe member access .name on an `any` value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m168:55[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m168:57[22m  [33mwarning[39m  Unsafe member access .name on an `any` value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m172:47[22m  [33mwarning[39m  Unsafe member access .name on an `any` value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m175:40[22m  [33mwarning[39m  Unsafe member access .name on an `any` value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m175:52[22m  [33mwarning[39m  Unsafe member access .version on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m175:67[22m  [33mwarning[39m  Unsafe member access .displayName on an `any` value                                               [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m175:86[22m  [33mwarning[39m  Unsafe member access .description on an `any` value                                               [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m190:74[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m190:76[22m  [33mwarning[39m  Unsafe member access .model_id on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m191:53[22m  [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m191:55[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m195:45[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m198:40[22m  [33mwarning[39m  Unsafe member access .id on an `any` value                                                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m198:50[22m  [33mwarning[39m  Unsafe member access .object on an `any` value                                                    [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m198:64[22m  [33mwarning[39m  Unsafe member access .created on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m198:79[22m  [33mwarning[39m  Unsafe member access .owned_by on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m246:5[22m   [33mwarning[39m  Unsafe return of a value of type `any[]`                                                          [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m247:7[22m   [33mwarning[39m  Unsafe return of a value of type `any`                                                            [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m249:21[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m249:39[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                            [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m249:43[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m261:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m297:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m299:23[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                            [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m299:35[22m  [33mwarning[39m  Unsafe member access .api_key on an `any` value                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m300:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m300:28[22m  [33mwarning[39m  Unsafe member access .base_url on an `any` value                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m301:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m301:30[22m  [33mwarning[39m  Unsafe member access .is_healthy on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m302:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m302:34[22m  [33mwarning[39m  Unsafe member access .last_checked_at on an `any` value                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m303:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m303:30[22m  [33mwarning[39m  Unsafe member access .created_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m304:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                               [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m304:30[22m  [33mwarning[39m  Unsafe member access .updated_at on an `any` value                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/index.ts[24m[0m
-[0m   [2m3:40[22m  [33mwarning[39m  'CreateExpressContextOptions' is defined but never used. Allowed unused vars must match /^_/u                                                                       [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m15:1[22m   [33mwarning[39m  Async function 'startServer' has no 'await' expression                                                                                                              [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m65:18[22m  [33mwarning[39m  Promise returned in function argument where a void return was expected                                                                                              [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m  [2m78:1[22m   [33mwarning[39m  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  [2m@typescript-eslint/no-floating-promises[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/llm-adapters.ts[24m[0m
-[0m   [2m14:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m15:11[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m15:47[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m20:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m21:16[22m   [33mwarning[39m  Unsafe member access .is_enabled on an `any` value                                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m25:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m26:49[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m26:55[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m26:61[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m26:72[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m26:77[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m26:88[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m26:93[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m26:104[22m  [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m31:5[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m73:15[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m94:11[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m99:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m99:20[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m100:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m101:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m102:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m104:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m104:30[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m104:37[22m   [33mwarning[39m  Unsafe member access .gen on an `error` typed value                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m105:36[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m107:30[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m107:36[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m107:42[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m107:53[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m107:58[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m107:69[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m107:74[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m107:85[22m   [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m109:5[22m    [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m121:75[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m136:54[22m   [33mwarning[39m  Unsafe member access .data on an `any` value                                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m137:7[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m137:28[22m   [33mwarning[39m  Unsafe member access .data on an `any` value                                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m160:11[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m165:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m165:21[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m166:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m167:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m168:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m171:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m171:30[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m171:38[22m   [33mwarning[39m  Unsafe member access .gen on an `error` typed value                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m172:36[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m174:30[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m174:36[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m174:42[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m174:53[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m174:58[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m174:69[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m174:74[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m174:85[22m   [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m176:5[22m    [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m187:75[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m195:5[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m195:26[22m   [33mwarning[39m  Unsafe member access .data on an `any` value                                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m219:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m219:19[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m220:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m221:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m222:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m225:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m225:30[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m225:36[22m   [33mwarning[39m  Unsafe member access .gen on an `error` typed value                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m226:5[22m    [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m237:75[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m244:5[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m244:26[22m   [33mwarning[39m  Unsafe member access .models on an `any` value                                                                       [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m268:11[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m273:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m273:26[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m274:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m275:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m276:7[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m279:11[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m279:30[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m279:43[22m   [33mwarning[39m  Unsafe member access .gen on an `error` typed value                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m280:36[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m282:30[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m282:36[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m282:42[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m282:53[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m282:58[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m282:69[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m282:74[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m282:85[22m   [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m284:5[22m    [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m296:15[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m305:5[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m305:26[22m   [33mwarning[39m  Unsafe member access .models on an `any` value                                                                       [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/mcp-adapters.ts[24m[0m
-[0m  [2m15:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m16:11[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m16:47[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m21:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m22:16[22m   [33mwarning[39m  Unsafe member access .is_enabled on an `any` value                                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m26:5[22m    [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m27:49[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m27:55[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m27:61[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m27:72[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m27:77[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m27:88[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m27:93[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m27:104[22m  [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m32:5[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m43:13[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m48:13[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m48:19[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m49:9[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m50:9[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m51:9[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m53:13[22m   [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m53:32[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m53:36[22m   [33mwarning[39m  Unsafe member access .gen on an `error` typed value                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m54:38[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m56:32[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                               [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m56:38[22m   [33mwarning[39m  Unsafe member access .id on an `any` value                                                                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:44[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m56:55[22m   [33mwarning[39m  Unsafe member access .rpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:60[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m56:71[22m   [33mwarning[39m  Unsafe member access .tpm on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:76[22m   [33mwarning[39m  Unsafe assignment of an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m56:87[22m   [33mwarning[39m  Unsafe member access .rpd on an `any` value                                                                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m58:7[22m    [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m61:77[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m72:56[22m   [33mwarning[39m  Unsafe member access .data on an `any` value                                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m73:9[22m    [33mwarning[39m  Unsafe return of a value of type `any`                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m73:30[22m   [33mwarning[39m  Unsafe member access .data on an `any` value                                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/orchestrator/modelSelector.test.ts[24m[0m
-[0m   [2m35:26[22m  [33mwarning[39m  Unsafe return of a value of type error                                        [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m36:34[22m  [33mwarning[39m  Unsafe return of a value of type error                                        [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m36:37[22m  [33mwarning[39m  Unsafe member access .promises on an `error` typed value                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m43:33[22m  [33mwarning[39m  Unsafe return of a value of type error                                        [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m43:33[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m43:48[22m  [33mwarning[39m  Unsafe member access .get on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m44:48[22m  [33mwarning[39m  Unsafe return of a value of type error                                        [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m44:48[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m44:63[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m46:29[22m  [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m46:29[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m46:44[22m  [33mwarning[39m  Unsafe member access .get on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m47:7[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m47:22[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m62:23[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                [2m@typescript-eslint/require-await[22m[0m
-[0m   [2m64:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m64:9[22m   [33mwarning[39m  Unsafe member access .reset on an `error` typed value                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m65:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m65:20[22m  [33mwarning[39m  Unsafe member access .clear on an `error` typed value                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m76:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m76:9[22m   [33mwarning[39m  Unsafe member access .fromJSON on an `error` typed value                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m140:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m140:20[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m141:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m141:20[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m142:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m142:20[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m143:5[22m   [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                  [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m143:20[22m  [33mwarning[39m  Unsafe member access .set on an `error` typed value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/orchestrator/modelSelector.ts[24m[0m
-[0m  [2m68:17[22m  [33mwarning[39m  Unsafe spread of an `any` type  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/rateLimiter.ts[24m[0m
-[0m   [2m4:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m14:15[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m14:34[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m14:46[22m  [33mwarning[39m  Unsafe member access .get on an `any` value                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m15:36[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m21:15[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m21:34[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m21:46[22m  [33mwarning[39m  Unsafe member access .get on an `any` value                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m22:23[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m28:15[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m28:34[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m28:46[22m  [33mwarning[39m  Unsafe member access .get on an `any` value                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m29:36[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m38:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m47:11[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m47:19[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m47:31[22m  [33mwarning[39m  Unsafe member access .multi on an `any` value                           [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m50:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m50:15[22m  [33mwarning[39m  Unsafe member access .incr on an `any` value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m51:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m51:15[22m  [33mwarning[39m  Unsafe member access .expire on an `any` value                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m55:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m55:15[22m  [33mwarning[39m  Unsafe member access .incrBy on an `any` value                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m56:15[22m  [33mwarning[39m  Unsafe member access .expire on an `any` value                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m60:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m60:15[22m  [33mwarning[39m  Unsafe member access .incr on an `any` value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m61:9[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m61:15[22m  [33mwarning[39m  Unsafe member access .expire on an `any` value                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m64:11[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                   [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m64:17[22m  [33mwarning[39m  Unsafe member access .exec on an `any` value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/redis.ts[24m[0m
-[0m   [2m3:18[22m  [33mwarning[39m  Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m3:18[22m  [33mwarning[39m  'any' overrides all other types in this union type  [2m@typescript-eslint/no-redundant-type-constituents[22m[0m
-[0m   [2m5:49[22m  [33mwarning[39m  Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m10:5[22m   [33mwarning[39m  Unsafe call of a(n) `any` typed value               [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m10:17[22m  [33mwarning[39m  Unsafe member access .on on an `any` value          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m10:35[22m  [33mwarning[39m  Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m11:11[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value               [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m11:23[22m  [33mwarning[39m  Unsafe member access .connect on an `any` value     [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/external.router.ts[24m[0m
-[0m  [2m1:45[22m  [33mwarning[39m  'z' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m7:5[22m   [33mwarning[39m  Unsafe return of a value of type `any`                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/llm.router.ts[24m[0m
-[0m    [2m4:83[22m   [33mwarning[39m  'updateModel' is defined but never used. Allowed unused vars must match /^_/u                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m12:88[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                                        [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m55:9[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m67:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m68:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m68:21[22m   [33mwarning[39m  Unsafe member access .baseURL on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m69:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m71:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m71:20[22m   [33mwarning[39m  Unsafe member access .apiKey on an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m78:38[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `{ apiKey?: string | undefined; baseURL?: string | undefined; }`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m79:24[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                                        [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m80:77[22m   [33mwarning[39m  Unsafe member access .response on an `any` value                                                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m80:106[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m81:113[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m84:47[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                                          [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m90:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m99:53[22m   [33mwarning[39m  Promise returned in function argument where a void return was expected                                                          [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m   [2m99:60[22m   [33mwarning[39m  'req' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m99:65[22m   [33mwarning[39m  'res' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m103:35[22m   [33mwarning[39m  Promise returned in function argument where a void return was expected                                                          [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m  [2m103:42[22m   [33mwarning[39m  'req' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m103:47[22m   [33mwarning[39m  'res' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/model.router.ts[24m[0m
-[0m  [2m1:48[22m  [33mwarning[39m  'z' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/providers.router.ts[24m[0m
-[0m   [2m36:47[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m   [2m37:5[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m38:5[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m38:12[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m38:19[22m  [33mwarning[39m  Unsafe member access .provider on an `error` typed value                                                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m47:38[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m   [2m49:7[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m50:7[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m   [2m50:14[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m50:21[22m  [33mwarning[39m  Unsafe member access .provider on an `error` typed value                                                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m68:7[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m   [2m69:13[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m69:30[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m69:37[22m  [33mwarning[39m  Unsafe member access .provider on an `error` typed value                                                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m77:31[22m  [33mwarning[39m  Unsafe member access .encryptedApiKey on an `error` typed value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m78:19[22m  [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string | undefined`                             [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m78:28[22m  [33mwarning[39m  Unsafe member access .encryptedApiKey on an `error` typed value                                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m84:9[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m84:18[22m  [33mwarning[39m  Unsafe member access .providerType on an `error` typed value                                                         [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m85:9[22m   [33mwarning[39m  Unsafe argument of type error typed assigned to a parameter of type `string`                                         [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m85:18[22m  [33mwarning[39m  Unsafe member access .baseURL on an `error` typed value                                                              [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m99:9[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m100:9[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m100:16[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m100:23[22m  [33mwarning[39m  Unsafe member access .model on an `error` typed value                                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m102:35[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m102:56[22m  [33mwarning[39m  Unsafe member access .id on an `error` typed value                                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m105:13[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m105:34[22m  [33mwarning[39m  Unsafe member access .id on an `error` typed value                                                                   [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m174:5[22m   [33mwarning[39m  Unsafe return of a value of type `any[]`                                                                             [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/role.router.ts[24m[0m
-[0m  [2m36:47[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m37:5[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m38:5[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m38:12[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m38:19[22m  [33mwarning[39m  Unsafe member access .role on an `error` typed value                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m50:38[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m51:7[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m52:7[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m52:14[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m52:21[22m  [33mwarning[39m  Unsafe member access .role on an `error` typed value                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m62:38[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m64:7[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m65:7[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m65:14[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m65:21[22m  [33mwarning[39m  Unsafe member access .role on an `error` typed value                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m76:38[22m  [33mwarning[39m  Async arrow function has no 'await' expression                                                                       [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m77:7[22m   [33mwarning[39m  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  [2m@typescript-eslint/ban-ts-comment[22m[0m
-[0m  [2m78:7[22m   [33mwarning[39m  Unsafe return of a value of type error                                                                               [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m78:14[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m78:21[22m  [33mwarning[39m  Unsafe member access .role on an `error` typed value                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/vfs.router.ts[24m[0m
-[0m    [2m2:29[22m  [33mwarning[39m  'vfsSessionService' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m16:8[22m   [33mwarning[39m  Expected non-Promise value in a boolean conditional                                  [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m   [2m30:13[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m30:32[22m  [33mwarning[39m  Unsafe member access .userId on an `error` typed value                               [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m36:13[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m36:27[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m36:42[22m  [33mwarning[39m  Unsafe member access .generateToken on an `error` typed value                        [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m37:16[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m50:33[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m50:46[22m  [33mwarning[39m  Unsafe member access .readdir on an `error` typed value                              [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m56:19[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m56:32[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m56:45[22m  [33mwarning[39m  Unsafe member access .stat on an `error` typed value                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m57:17[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m57:22[22m  [33mwarning[39m  Unsafe member access .isDirectory on an `error` typed value                          [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m61:24[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m61:29[22m  [33mwarning[39m  Unsafe member access .isFile on an `error` typed value                               [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m64:23[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m65:66[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m82:15[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m82:31[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m82:44[22m  [33mwarning[39m  Unsafe member access .readFile on an `error` typed value                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m83:18[22m  [33mwarning[39m  Unsafe assignment of an error typed value                                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m84:16[22m  [33mwarning[39m  'e' is defined but never used                                                        [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m84:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m99:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m   [2m99:28[22m  [33mwarning[39m  Unsafe member access .mkdir on an `error` typed value                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m101:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m101:28[22m  [33mwarning[39m  Unsafe member access .writeFile on an `error` typed value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m103:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m104:62[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m104:73[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m118:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m118:28[22m  [33mwarning[39m  Unsafe member access .mkdir on an `error` typed value                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m120:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m120:28[22m  [33mwarning[39m  Unsafe member access .rename on an `error` typed value                               [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m122:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m123:62[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m123:73[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m137:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m137:28[22m  [33mwarning[39m  Unsafe member access .mkdir on an `error` typed value                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m139:15[22m  [33mwarning[39m  Unsafe call of a(n) `error` type typed value                                         [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m139:28[22m  [33mwarning[39m  Unsafe member access .copyFile on an `error` typed value                             [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m141:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m142:62[22m  [33mwarning[39m  Unsafe assignment of an `any` value                                                  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m142:73[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/git.service.ts[24m[0m
-[0m  [2m12:3[22m   [33mwarning[39m  Async method 'getGit' has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m36:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m39:43[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m59:46[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/languageServer.service.ts[24m[0m
-[0m  [2m21:17[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `BufferLike`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m21:17[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                       [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m21:22[22m  [33mwarning[39m  Unsafe member access .toString on an `any` value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/lootbox.service.ts[24m[0m
-[0m  [2m22:7[22m   [33mwarning[39m  Unsafe return of a value of type `any`           [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m23:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m24:66[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m32:45[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m35:81[22m  [33mwarning[39m  Unsafe assignment of an `any` value              [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m36:7[22m   [33mwarning[39m  Unsafe return of a value of type `any`           [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m37:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m38:62[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/model.service.ts[24m[0m
-[0m   [2m9:99[22m  [33mwarning[39m  Unsafe object destructuring of a property with an `any` value  [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m26:7[22m   [33mwarning[39m  Unsafe assignment of an `any` value                            [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/vfsSession.service.ts[24m[0m
-[0m  [2m22:3[22m  [33mwarning[39m  Async method 'generateToken' has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m31:3[22m  [33mwarning[39m  Async method 'getScopedVfs' has no 'await' expression   [2m@typescript-eslint/require-await[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/trpc.ts[24m[0m
-[0m  [2m15:18[22m  [33mwarning[39m  Unsafe assignment of an `any` value       [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m15:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m23:14[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/types.ts[24m[0m
-[0m  [2m30:11[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m[0m
-[0m[33m[1m✖ 446 problems (0 errors, 446 warnings)[22m[39m[0m
-[0m[33m[1m[22m[39m[0m
+
+/app/apps/api/src/db/index.ts
+   30:9   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   30:47  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   31:38  warning  Unsafe argument of type `any` assigned to a parameter of type `ArrayBufferView<ArrayBufferLike>`  @typescript-eslint/no-unsafe-argument
+   31:77  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   32:60  warning  Unsafe argument of type `any` assigned to a parameter of type `BinaryLike | null`                 @typescript-eslint/no-unsafe-argument
+   35:10  warning  Unsafe call of a(n) `any` typed value                                                             @typescript-eslint/no-unsafe-call
+   35:13  warning  Unsafe member access .toString on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+   44:9   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   44:56  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   46:38  warning  Unsafe argument of type `any` assigned to a parameter of type `ArrayBufferView<ArrayBufferLike>`  @typescript-eslint/no-unsafe-argument
+   46:77  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+   47:64  warning  Unsafe argument of type `any` assigned to a parameter of type `BinaryLike | null`                 @typescript-eslint/no-unsafe-argument
+   66:11  warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   68:27  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+   68:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                            @typescript-eslint/no-unsafe-argument
+   68:57  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+   69:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   69:28  warning  Unsafe member access .base_url on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+   70:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   70:30  warning  Unsafe member access .is_healthy on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+   71:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   71:34  warning  Unsafe member access .last_checked_at on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+   72:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   72:30  warning  Unsafe member access .created_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+   74:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   74:33  warning  Unsafe member access .provider_type on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+   75:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+   75:30  warning  Unsafe member access .updated_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+   83:98  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  106:36  warning  Unsafe spread of an `any` value in an array                                                       @typescript-eslint/no-unsafe-assignment
+  119:11  warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  121:27  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  121:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                            @typescript-eslint/no-unsafe-argument
+  121:57  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  122:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  122:33  warning  Unsafe member access .provider_type on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  123:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  123:28  warning  Unsafe member access .base_url on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  124:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  124:30  warning  Unsafe member access .is_healthy on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  125:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  125:34  warning  Unsafe member access .last_checked_at on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  126:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  126:30  warning  Unsafe member access .created_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  127:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  127:27  warning  Unsafe member access .models on an `any` value                                                    @typescript-eslint/no-unsafe-member-access
+  128:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  128:30  warning  Unsafe member access .updated_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  136:95  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  144:74  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  144:76  warning  Unsafe member access .model_id on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  145:53  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  145:55  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  149:43  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  152:34  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  152:44  warning  Unsafe member access .object on an `any` value                                                    @typescript-eslint/no-unsafe-member-access
+  152:58  warning  Unsafe member access .created on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  152:73  warning  Unsafe member access .owned_by on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  167:76  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  167:78  warning  Unsafe member access .name on an `any` value                                                      @typescript-eslint/no-unsafe-member-access
+  168:55  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  168:57  warning  Unsafe member access .name on an `any` value                                                      @typescript-eslint/no-unsafe-member-access
+  172:47  warning  Unsafe member access .name on an `any` value                                                      @typescript-eslint/no-unsafe-member-access
+  175:40  warning  Unsafe member access .name on an `any` value                                                      @typescript-eslint/no-unsafe-member-access
+  175:52  warning  Unsafe member access .version on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  175:67  warning  Unsafe member access .displayName on an `any` value                                               @typescript-eslint/no-unsafe-member-access
+  175:86  warning  Unsafe member access .description on an `any` value                                               @typescript-eslint/no-unsafe-member-access
+  190:74  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  190:76  warning  Unsafe member access .model_id on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  191:53  warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  191:55  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  195:45  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  198:40  warning  Unsafe member access .id on an `any` value                                                        @typescript-eslint/no-unsafe-member-access
+  198:50  warning  Unsafe member access .object on an `any` value                                                    @typescript-eslint/no-unsafe-member-access
+  198:64  warning  Unsafe member access .created on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  198:79  warning  Unsafe member access .owned_by on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  246:5   warning  Unsafe return of a value of type `any[]`                                                          @typescript-eslint/no-unsafe-return
+  247:7   warning  Unsafe return of a value of type `any`                                                            @typescript-eslint/no-unsafe-return
+  249:21  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  249:39  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                            @typescript-eslint/no-unsafe-argument
+  249:43  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  261:19  warning  Unexpected any. Specify a different type                                                          @typescript-eslint/no-explicit-any
+  297:11  warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  299:23  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                            @typescript-eslint/no-unsafe-argument
+  299:35  warning  Unsafe member access .api_key on an `any` value                                                   @typescript-eslint/no-unsafe-member-access
+  300:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  300:28  warning  Unsafe member access .base_url on an `any` value                                                  @typescript-eslint/no-unsafe-member-access
+  301:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  301:30  warning  Unsafe member access .is_healthy on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  302:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  302:34  warning  Unsafe member access .last_checked_at on an `any` value                                           @typescript-eslint/no-unsafe-member-access
+  303:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  303:30  warning  Unsafe member access .created_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+  304:7   warning  Unsafe assignment of an `any` value                                                               @typescript-eslint/no-unsafe-assignment
+  304:30  warning  Unsafe member access .updated_at on an `any` value                                                @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/index.ts
+   3:40  warning  'CreateExpressContextOptions' is defined but never used. Allowed unused vars must match /^_/u                                                                       @typescript-eslint/no-unused-vars
+  15:1   warning  Async function 'startServer' has no 'await' expression                                                                                                              @typescript-eslint/require-await
+  65:18  warning  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  78:1   warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/app/apps/api/src/llm-adapters.ts
+   14:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   15:11   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+   15:47   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+   20:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   21:16   warning  Unsafe member access .is_enabled on an `any` value                                                                   @typescript-eslint/no-unsafe-member-access
+   25:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   26:49   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+   26:55   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+   26:61   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+   26:72   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+   26:77   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+   26:88   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+   26:93   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+   26:104  warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+   31:5    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+   73:15   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   94:11   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  100:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  101:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  102:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  107:30   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+  107:36   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  107:42   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  107:53   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  107:58   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  107:69   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  107:74   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  107:85   warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  121:75   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  136:54   warning  Unsafe member access .data on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  137:7    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  137:28   warning  Unsafe member access .data on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  160:11   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  166:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  167:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  168:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  174:30   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+  174:36   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  174:42   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  174:53   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  174:58   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  174:69   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  174:74   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  174:85   warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  187:75   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  195:5    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  195:26   warning  Unsafe member access .data on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  220:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  221:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  222:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  237:75   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  244:5    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  244:26   warning  Unsafe member access .models on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+  268:11   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  274:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  275:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  276:7    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  282:30   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+  282:36   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  282:42   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  282:53   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  282:58   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  282:69   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  282:74   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  282:85   warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  296:15   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  305:5    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  305:26   warning  Unsafe member access .models on an `any` value                                                                       @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/mcp-adapters.ts
+  15:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  16:11   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  16:47   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  21:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  22:16   warning  Unsafe member access .is_enabled on an `any` value                                                                   @typescript-eslint/no-unsafe-member-access
+  26:5    warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  27:49   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+  27:55   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  27:61   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  27:72   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  27:77   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  27:88   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  27:93   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  27:104  warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  32:5    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  43:13   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  49:9    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  50:9    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  51:9    warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  56:32   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                               @typescript-eslint/no-unsafe-argument
+  56:38   warning  Unsafe member access .id on an `any` value                                                                           @typescript-eslint/no-unsafe-member-access
+  56:44   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  56:55   warning  Unsafe member access .rpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  56:60   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  56:71   warning  Unsafe member access .tpm on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  56:76   warning  Unsafe assignment of an `any` value                                                                                  @typescript-eslint/no-unsafe-assignment
+  56:87   warning  Unsafe member access .rpd on an `any` value                                                                          @typescript-eslint/no-unsafe-member-access
+  61:77   warning  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  72:56   warning  Unsafe member access .data on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+  73:9    warning  Unsafe return of a value of type `any`                                                                               @typescript-eslint/no-unsafe-return
+  73:30   warning  Unsafe member access .data on an `any` value                                                                         @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/orchestrator/modelSelector.test.ts
+  64:23  warning  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+
+/app/apps/api/src/orchestrator/modelSelector.ts
+  68:17  warning  Unsafe spread of an `any` type  @typescript-eslint/no-unsafe-argument
+
+/app/apps/api/src/rateLimiter.ts
+   4:11  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  14:15  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  14:34  warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  14:46  warning  Unsafe member access .get on an `any` value                             @typescript-eslint/no-unsafe-member-access
+  15:36  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  21:15  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  21:34  warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  21:46  warning  Unsafe member access .get on an `any` value                             @typescript-eslint/no-unsafe-member-access
+  22:23  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  28:15  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  28:34  warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  28:46  warning  Unsafe member access .get on an `any` value                             @typescript-eslint/no-unsafe-member-access
+  29:36  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  38:11  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  47:11  warning  Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  47:19  warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  47:31  warning  Unsafe member access .multi on an `any` value                           @typescript-eslint/no-unsafe-member-access
+  50:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  50:15  warning  Unsafe member access .incr on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  51:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  51:15  warning  Unsafe member access .expire on an `any` value                          @typescript-eslint/no-unsafe-member-access
+  55:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  55:15  warning  Unsafe member access .incrBy on an `any` value                          @typescript-eslint/no-unsafe-member-access
+  56:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  56:15  warning  Unsafe member access .expire on an `any` value                          @typescript-eslint/no-unsafe-member-access
+  60:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  60:15  warning  Unsafe member access .incr on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  61:9   warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  61:15  warning  Unsafe member access .expire on an `any` value                          @typescript-eslint/no-unsafe-member-access
+  64:11  warning  Unsafe call of a(n) `any` typed value                                   @typescript-eslint/no-unsafe-call
+  64:17  warning  Unsafe member access .exec on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/redis.ts
+   3:18  warning  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+   3:18  warning  'any' overrides all other types in this union type  @typescript-eslint/no-redundant-type-constituents
+   5:49  warning  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  10:5   warning  Unsafe call of a(n) `any` typed value               @typescript-eslint/no-unsafe-call
+  10:17  warning  Unsafe member access .on on an `any` value          @typescript-eslint/no-unsafe-member-access
+  10:35  warning  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  11:11  warning  Unsafe call of a(n) `any` typed value               @typescript-eslint/no-unsafe-call
+  11:23  warning  Unsafe member access .connect on an `any` value     @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/routers/external.router.ts
+  1:45  warning  'z' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  7:5   warning  Unsafe return of a value of type `any`                               @typescript-eslint/no-unsafe-return
+
+/app/apps/api/src/routers/llm.router.ts
+    4:83   warning  'updateModel' is defined but never used. Allowed unused vars must match /^_/u                                                   @typescript-eslint/no-unused-vars
+   12:88   warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   55:9    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   67:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   68:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   68:21   warning  Unsafe member access .baseURL on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   69:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   71:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   71:20   warning  Unsafe member access .apiKey on an `any` value                                                                                  @typescript-eslint/no-unsafe-member-access
+   78:38   warning  Unsafe argument of type `any` assigned to a parameter of type `{ apiKey?: string | undefined; baseURL?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+   79:24   warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   80:77   warning  Unsafe member access .response on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+   80:106  warning  Unsafe member access .message on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   81:113  warning  Unsafe member access .message on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   84:47   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                          @typescript-eslint/no-unsafe-argument
+   90:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   99:53   warning  Promise returned in function argument where a void return was expected                                                          @typescript-eslint/no-misused-promises
+   99:60   warning  'req' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+   99:65   warning  'res' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+  103:35   warning  Promise returned in function argument where a void return was expected                                                          @typescript-eslint/no-misused-promises
+  103:42   warning  'req' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+  103:47   warning  'res' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/routers/lootbox.router.ts
+   9:7  warning  Unsafe return of a value of type `Promise<any>`  @typescript-eslint/no-unsafe-return
+  15:7  warning  Unsafe return of a value of type `Promise<any>`  @typescript-eslint/no-unsafe-return
+
+/app/apps/api/src/routers/model.router.ts
+  1:65  warning  'z' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/routers/providers.router.ts
+   36:47  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+   37:5   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   38:5   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+   38:12  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+   38:19  warning  Unsafe member access .provider on an `error` typed value                                                             @typescript-eslint/no-unsafe-member-access
+   47:38  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+   49:7   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   50:7   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+   50:14  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+   50:21  warning  Unsafe member access .provider on an `error` typed value                                                             @typescript-eslint/no-unsafe-member-access
+   68:7   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+   69:13  warning  Unsafe assignment of an error typed value                                                                            @typescript-eslint/no-unsafe-assignment
+   69:30  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+   69:37  warning  Unsafe member access .provider on an `error` typed value                                                             @typescript-eslint/no-unsafe-member-access
+   77:31  warning  Unsafe member access .encryptedApiKey on an `error` typed value                                                      @typescript-eslint/no-unsafe-member-access
+   78:19  warning  Unsafe argument of type error typed assigned to a parameter of type `string | undefined`                             @typescript-eslint/no-unsafe-argument
+   78:28  warning  Unsafe member access .encryptedApiKey on an `error` typed value                                                      @typescript-eslint/no-unsafe-member-access
+   84:9   warning  Unsafe argument of type error typed assigned to a parameter of type `string`                                         @typescript-eslint/no-unsafe-argument
+   84:18  warning  Unsafe member access .providerType on an `error` typed value                                                         @typescript-eslint/no-unsafe-member-access
+   85:9   warning  Unsafe argument of type error typed assigned to a parameter of type `string`                                         @typescript-eslint/no-unsafe-argument
+   85:18  warning  Unsafe member access .baseURL on an `error` typed value                                                              @typescript-eslint/no-unsafe-member-access
+   99:9   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  100:9   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+  100:16  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+  100:23  warning  Unsafe member access .model on an `error` typed value                                                                @typescript-eslint/no-unsafe-member-access
+  102:35  warning  Unsafe assignment of an error typed value                                                                            @typescript-eslint/no-unsafe-assignment
+  102:56  warning  Unsafe member access .id on an `error` typed value                                                                   @typescript-eslint/no-unsafe-member-access
+  105:13  warning  Unsafe assignment of an error typed value                                                                            @typescript-eslint/no-unsafe-assignment
+  105:34  warning  Unsafe member access .id on an `error` typed value                                                                   @typescript-eslint/no-unsafe-member-access
+  174:5   warning  Unsafe return of a value of type `any[]`                                                                             @typescript-eslint/no-unsafe-return
+
+/app/apps/api/src/routers/role.router.ts
+  36:47  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+  37:5   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  38:5   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+  38:12  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+  38:19  warning  Unsafe member access .role on an `error` typed value                                                                 @typescript-eslint/no-unsafe-member-access
+  50:38  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+  51:7   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  52:7   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+  52:14  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+  52:21  warning  Unsafe member access .role on an `error` typed value                                                                 @typescript-eslint/no-unsafe-member-access
+  62:38  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+  64:7   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  65:7   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+  65:14  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+  65:21  warning  Unsafe member access .role on an `error` typed value                                                                 @typescript-eslint/no-unsafe-member-access
+  76:38  warning  Async arrow function has no 'await' expression                                                                       @typescript-eslint/require-await
+  77:7   warning  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  78:7   warning  Unsafe return of a value of type error                                                                               @typescript-eslint/no-unsafe-return
+  78:14  warning  Unsafe call of a(n) `error` type typed value                                                                         @typescript-eslint/no-unsafe-call
+  78:21  warning  Unsafe member access .role on an `error` typed value                                                                 @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/routers/vfs.router.ts
+    2:29  warning  'vfsSessionService' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+    5:10  warning  'Context' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+   31:13  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+   31:31  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   32:13  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+   32:31  warning  Unsafe member access .auth on an `any` value                                         @typescript-eslint/no-unsafe-member-access
+   35:21  warning  Unsafe member access .vfsSession on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+   38:13  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+   38:27  warning  Unsafe call of a(n) `any` typed value                                                @typescript-eslint/no-unsafe-call
+   38:36  warning  Unsafe member access .vfsSession on an `any` value                                   @typescript-eslint/no-unsafe-member-access
+   39:16  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+   65:23  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+   66:66  warning  Unsafe member access .message on an `any` value                                      @typescript-eslint/no-unsafe-member-access
+   85:16  warning  'e' is defined but never used                                                        @typescript-eslint/no-unused-vars
+   85:19  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  104:19  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  105:62  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+  105:73  warning  Unsafe member access .message on an `any` value                                      @typescript-eslint/no-unsafe-member-access
+  123:19  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  124:62  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+  124:73  warning  Unsafe member access .message on an `any` value                                      @typescript-eslint/no-unsafe-member-access
+  142:19  warning  Unexpected any. Specify a different type                                             @typescript-eslint/no-explicit-any
+  143:62  warning  Unsafe assignment of an `any` value                                                  @typescript-eslint/no-unsafe-assignment
+  143:73  warning  Unsafe member access .message on an `any` value                                      @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/git.service.ts
+  12:3   warning  Async method 'getGit' has no 'await' expression  @typescript-eslint/require-await
+  36:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  39:43  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  56:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  59:46  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/languageServer.service.ts
+  21:17  warning  Unsafe argument of type `any` assigned to a parameter of type `BufferLike`  @typescript-eslint/no-unsafe-argument
+  21:17  warning  Unsafe call of a(n) `any` typed value                                       @typescript-eslint/no-unsafe-call
+  21:22  warning  Unsafe member access .toString on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/lootbox.service.ts
+  22:7   warning  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  23:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  24:66  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  32:45  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  35:81  warning  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  36:7   warning  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  37:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  38:62  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/model.service.ts
+   9:99  warning  Unsafe object destructuring of a property with an `any` value  @typescript-eslint/no-unsafe-assignment
+  26:7   warning  Unsafe assignment of an `any` value                            @typescript-eslint/no-unsafe-assignment
+
+/app/apps/api/src/services/vfsSession.service.ts
+  22:3  warning  Async method 'generateToken' has no 'await' expression  @typescript-eslint/require-await
+  31:3  warning  Async method 'getScopedVfs' has no 'await' expression   @typescript-eslint/require-await
+
+/app/apps/api/src/trpc.ts
+  17:9   warning  Unsafe assignment of an `any` value             @typescript-eslint/no-unsafe-assignment
+  17:26  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  28:14  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  40:92  warning  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  40:99  warning  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+  42:3   warning  Unsafe return of a value of type `any`          @typescript-eslint/no-unsafe-return
+  42:10  warning  Unsafe call of a(n) `any` typed value           @typescript-eslint/no-unsafe-call
+
+/app/apps/api/src/types.ts
+  30:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 368 problems (0 errors, 368 warnings)
