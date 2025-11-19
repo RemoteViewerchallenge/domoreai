@@ -9,7 +9,8 @@
     "build": "tsc -b",
     "dev": "tsx watch --env-file=../../.env.local src/index.ts",
     "start": "node dist/index.js",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint -c eslint.config.mjs .",
+    "lint:fix": "eslint -c eslint.config.mjs . --fix",
     "postinstall": "prisma generate",
     "migrate:dev": "dotenv -e ../../.env.local -- prisma migrate dev"
   },
@@ -20,6 +21,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.52.1",
     "@opentelemetry/sdk-node": "^0.52.1",
     "@prisma/client": "^5.22.0",
+    "@repo/api-contract": "workspace:*",
     "@repo/common": "workspace:*",
     "@repo/volcano-sdk": "workspace:*",
     "@trpc/server": "^10.45.2",
@@ -35,20 +37,21 @@
     "superjson": "^2.2.5",
     "uuid": "^9.0.1",
     "ws": "^8.17.0",
-    "zod": "^3.23.8",
-    "@repo/api-contract": "workspace:*"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
     "@types/pg": "^8.15.6",
     "@types/ws": "^8.5.10",
     "dotenv-cli": "^11.0.0",
-    "globals": "^15.0.0",
+    "globals": "^15.15.0",
     "prisma": "^5.22.0",
     "tsx": "^4.15.6",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0",
     "vitest": "^2.0.1"
   }
 }

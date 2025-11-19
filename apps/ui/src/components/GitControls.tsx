@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { trpc } from '../utils/trpc';
-import { Button } from './ui/Button';
-import { Icon } from './ui/Icon';
-import { Panel } from './ui/Panel';
+import { trpc } from '../utils/trpc.js';
+import { Button } from './ui/Button.js';
+import { Icon } from './ui/Icon.js';
+import { Panel } from './ui/Panel.js';
+
+interface GitLogEntry {
+  hash: string;
+  date: string;
+  message: string;
+}
 
 interface GitControlsProps {
   vfsToken: string;
@@ -65,8 +71,8 @@ export function GitControls({ vfsToken }: GitControlsProps) {
             {gitLog.isError && <p className="text-xs text-red-400">Error: {gitLog.error?.message}</p>}
             {gitLog.data && (
               <pre className="h-48 overflow-auto text-xs font-mono text-neutral-300">
-                {Array.isArray(gitLog.data) ? (
-                    gitLog.data.map((log: any, i: number) => (
+                {Array.isArray(gitLog.data) ? ( // Assuming gitLog.data is an array of GitLogEntry
+                    gitLog.data.map((log: GitLogEntry, i: number) => (
                     <div key={i} className="mb-2 border-b border-neutral-800 pb-1 last:border-0">
                         <span className="text-yellow-400">{log.hash?.substring(0, 7)}</span>
                         <span className="ml-2 text-neutral-500">{log.date}</span>

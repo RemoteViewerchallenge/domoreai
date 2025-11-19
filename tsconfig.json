@@ -1,14 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "moduleResolution": "bundler",
+    "moduleResolution": "NodeNext", // Change to NodeNext
+    "module": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "paths": {
+      "api/*": ["./apps/api/dist/*"]
+    }
   },
-  "exclude": ["node_modules", "dist", "patches"]
+  "exclude": ["node_modules", "dist", "patches", "frontend", "out"]
 }

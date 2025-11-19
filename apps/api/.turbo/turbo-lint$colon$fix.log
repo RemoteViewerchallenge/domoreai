@@ -1,0 +1,21 @@
+
+> api@1.0.0 lint:fix /home/guy/mono/apps/api
+> eslint . --fix
+
+
+Oops! Something went wrong! :(
+
+ESLint: 8.57.1
+
+ConfigError: Config (unnamed): Key "linterOptions": Unexpected key "maxWarnings" found.
+    at rethrowConfigError (/home/guy/mono/node_modules/.pnpm/@humanwhocodes+config-array@0.13.0/node_modules/@humanwhocodes/config-array/api.js:230:8)
+    at /home/guy/mono/node_modules/.pnpm/@humanwhocodes+config-array@0.13.0/node_modules/@humanwhocodes/config-array/api.js:1032:5
+    at Array.reduce (<anonymous>)
+    at FlatConfigArray.getConfig (/home/guy/mono/node_modules/.pnpm/@humanwhocodes+config-array@0.13.0/node_modules/@humanwhocodes/config-array/api.js:1028:39)
+    at FlatConfigArray.isFileIgnored (/home/guy/mono/node_modules/.pnpm/@humanwhocodes+config-array@0.13.0/node_modules/@humanwhocodes/config-array/api.js:1060:15)
+    at /home/guy/mono/node_modules/.pnpm/eslint@8.57.1/node_modules/eslint/lib/eslint/eslint-helpers.js:336:57
+    at Array.reduce (<anonymous>)
+    at /home/guy/mono/node_modules/.pnpm/eslint@8.57.1/node_modules/eslint/lib/eslint/eslint-helpers.js:323:36
+    at /home/guy/mono/node_modules/.pnpm/eslint@8.57.1/node_modules/eslint/lib/eslint/eslint-helpers.js:286:32
+    at Object.isAppliedFilter (/home/guy/mono/node_modules/.pnpm/@nodelib+fs.walk@1.2.8/node_modules/@nodelib/fs.walk/out/readers/common.js:12:31)
+ ELIFECYCLE  Command failed with exit code 2.

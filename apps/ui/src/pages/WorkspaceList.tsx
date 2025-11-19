@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Button } from 'flyonui';
 
 /**
  * A simple component to list available workspaces.
@@ -9,7 +8,6 @@ import { Button } from 'flyonui';
 export default function WorkspaceListPage() {
   return (
     <div>
-      <Button>Flyon UI Button</Button>
       <h1>Workspaces</h1>
       <ul>
         <li><Link to="/workspace/default">Default Workspace</Link></li>

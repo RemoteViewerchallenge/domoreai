@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { trpc } from '@/utils/trpc';
-import { Panel } from '@/components/ui/Panel';
+import { trpc } from '../utils/trpc.js';
+import { Panel } from '../components/ui/Panel.js';
+import { Link } from 'react-router-dom';
 
 // This is the full list of provider types your Volcano SDK supports
 const VOLCANO_PROVIDER_TYPES = [
   { value: 'openai', label: 'OpenAI / Azure / Compatible (OpenRouter, TogetherAI, etc.)' },
   { value: 'anthropic', label: 'Anthropic (Claude)' },
   { value: 'vertex', label: 'Google Vertex AI (Gemini)' },
-  { value: 'mistral', label: 'Mistral (Official API)' },
+  // Note: Mistral official API is OpenAI-compatible. This is for a direct integration if needed.
+  { value: 'mistral', label: 'Mistral (Direct API)' },
   { value: 'llama', label: 'Llama (Ollama / Local)' },
   { value: 'bedrock', label: 'AWS Bedrock' },
 ];
@@ -17,7 +19,7 @@ const ProviderManager = () => {
   const [name, setName] = useState('');
   const [baseURL, setBaseURL] = useState('');
   const [apiKey, setApiKey] = useState('');
-  // Default to 'openai' as it's the most common compatible type
+  // Default to 'openai' as it's a common compatible type
   const [providerType, setProviderType] = useState(VOLCANO_PROVIDER_TYPES[0].value);
 
   const utils = trpc.useUtils();
@@ -130,7 +132,12 @@ const ProviderManager = () => {
         {/* Right Panel: Configured Providers List */}
         <div className="w-1/2 flex-shrink-0 flex flex-col">
           <Panel borderColor="border-purple-500" className="flex-grow">
-            <div className="p-2 font-bold border-b border-neutral-800">Configured Providers</div>
+            <div className="flex justify-between items-center p-2 font-bold border-b border-neutral-800">
+              <span>Configured Providers</span>
+              <Link to="/admin/models" className="text-sm font-normal text-cyan-400 hover:underline">
+                View All Models &rarr;
+              </Link>
+            </div>
             <div className="flex flex-col gap-2 p-4 overflow-y-auto">
               {isLoadingProviders && <p>Loading...</p>}
               {error && (

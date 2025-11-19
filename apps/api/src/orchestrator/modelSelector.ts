@@ -1,7 +1,7 @@
 // --- modelSelector.ts ---
 
 import * as fs from 'node:fs';
-import { createClient, RedisClientType } from 'redis';
+import { createClient, type RedisClientType } from 'redis';
 
 // --- Error Classes ---
 export class HardStopError extends Error {

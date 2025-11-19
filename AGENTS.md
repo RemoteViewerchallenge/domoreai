@@ -86,3 +86,7 @@ The `tsconfig.json` is configured with `"strict": true`. You must write code tha
 ### Golden Rule
 
 If another agent (or human) can't understand your code in 5 minutes, simplify it.
+
+### MCP Server Config
+
+The config file for all MCP servers should be in the config file for AI agents.

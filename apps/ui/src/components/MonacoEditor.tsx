@@ -1,5 +1,4 @@
-import React from 'react';
-import Editor, { type OnChange } from '@monaco-editor/react';
+import { Editor, type OnChange, type OnMount } from '@monaco-editor/react'; // Import OnMount
 import { MonacoLanguageClient } from 'monaco-languageclient';
 import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc';
 
@@ -10,14 +9,12 @@ interface MonacoEditorProps {
 }
 
 function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
-  function handleEditorDidMount(editor: any, monaco: any) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleEditorDidMount(_editor: unknown) { // Correctly type monaco
     const url = 'ws://localhost:4000/language-server';
     const webSocket = new WebSocket(url);
 
     webSocket.onopen = () => {
-      const socket = toSocket(webSocket);
-      const reader = new WebSocketMessageReader(socket);
-      const writer = new WebSocketMessageWriter(socket);
       const languageClient = new MonacoLanguageClient({
         name: 'TypeScript Language Client',
         clientOptions: {
@@ -27,10 +24,9 @@ function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
             closed: () => ({ action: 1 })
           }
         },
-        connectionProvider: {
-          get: (errorHandler, closeHandler) => {
-            return Promise.resolve({ reader, writer });
-          }
+        messageTransports: {
+          reader: new WebSocketMessageReader(toSocket(webSocket)),
+          writer: new WebSocketMessageWriter(toSocket(webSocket))
         }
       });
       languageClient.start();
@@ -44,7 +40,7 @@ function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
       value={value}
       onChange={onChange}
       theme="vs-dark"
-      onMount={handleEditorDidMount}
+      onMount={handleEditorDidMount as OnMount} // Cast to OnMount
     />
   );
 }

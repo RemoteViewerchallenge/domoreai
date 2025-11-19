@@ -108,7 +108,7 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
             return {
                 Header: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                 accessor: key,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 Cell: ({ row }: CellProps<Model>) => {
                     const modelKey = key as keyof Model;
                     const value = row.original[modelKey];
@@ -137,6 +137,14 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
         }
     };
 
+    const {
+        getTableProps,
+        getTableBodyProps,
+        headerGroups,
+        rows,
+        prepareRow,
+    } = useTable({ columns, data }, useFilters, useSortBy);
+
     if (loading) {
         return <div>Loading...</div>;
     }
@@ -149,14 +157,6 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
         return <div>Provider not found.</div>;
     }
 
-    const {
-        getTableProps,
-        getTableBodyProps,
-        headerGroups,
-        rows,
-        prepareRow,
-    } = useTable({ columns, data }, useFilters, useSortBy);
-
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()} style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -165,13 +165,13 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
             <table {...getTableProps()} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
                 <thead>
                     {headerGroups.map(headerGroup => (
-                        <tr {...headerGroup.getHeaderGroupProps()} >
-                            {headerGroup.headers.map(column => (
-                                <th {...column.getHeaderProps((column as any).getSortByToggleProps())} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
+                        <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.getHeaderGroupProps().key}>
+                            {headerGroup.headers.map((column: any) => (
+                                <th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.getHeaderProps().key} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
                                     {column.render('Header')}
                                     <span>
-                                        {(column as any).isSorted
-                                            ? (column as any).isSortedDesc
+                                        {column.isSorted
+                                            ? column.isSortedDesc
                                                 ? ' 🔽'
                                                 : ' 🔼'
                                             : ''}
@@ -185,9 +185,9 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
                     {rows.map(row => {
                         prepareRow(row);
                         return (
-                            <tr {...row.getRowProps()}>
+                            <tr {...row.getRowProps()} key={row.getRowProps().key}>
                                 {row.cells.map(cell => (
-                                    <td {...cell.getCellProps()} style={{ borderBottom: '1px solid #ddd', padding: '8px' }}>
+                                    <td {...cell.getCellProps()} key={cell.getCellProps().key} style={{ borderBottom: '1px solid #ddd', padding: '8px' }}>
                                         {cell.render('Cell')}
                                     </td>
                                 ))}
