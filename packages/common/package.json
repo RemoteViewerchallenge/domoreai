@@ -12,7 +12,7 @@
     "./agent": "./dist/types/agent.types.js"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@repo/typescript-config": "workspace:*"
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^5.9.3"
   }
 }
