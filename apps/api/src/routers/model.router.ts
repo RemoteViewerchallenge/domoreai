@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure, z } from '@repo/api-contract';
+import { createTRPCRouter, protectedProcedure, publicProcedure, z } from '@repo/api-contract';
 import { ModelService } from '../services/model.service.js';
 import { modelInputSchema } from '@repo/api-contract';
 
@@ -9,5 +9,10 @@ export const modelRouter = createTRPCRouter({
     .input(modelInputSchema)
     .mutation(({ input }) => {
       return modelService.saveNormalizedModel(input);
+    }),
+
+  list: publicProcedure
+    .query(() => {
+      return modelService.listModels();
     }),
 });

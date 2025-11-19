@@ -32,9 +32,4 @@ export const modelInputSchema = z.object({
 // --- THIS PART IS TEMPORARY ---
 // For now, we'll use a simple placeholder to get the build passing.
 // We will replace this in Phase 2.
-// Import the *type* of the implemented router
-// We must use 'apps/api/src' for the TS path alias to work
-// import type { appRouter } from 'apps/api/src/routers';
 
-// Export the *type*
-// export type AppRouter = typeof appRouter;

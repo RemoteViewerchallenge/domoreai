@@ -29,4 +29,6 @@ const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, ...props }, ref) => {
   );
 }); // Closing parenthesis for forwardRef
 
+Icon.displayName = 'Icon';
+
 export { Icon };

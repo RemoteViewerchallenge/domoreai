@@ -11,8 +11,8 @@ import {
 // --- 1. The "Hoisted" Mock ---
 // This block runs *before* all other code, including imports.
 // This is the most important part.
-const { vol, fs, mockRedisStore } = vi.hoisted(() => {
-  const { Volume } = require('memfs');
+const hoistedMocks = await vi.hoisted(async () => {
+  const { Volume } = await import('memfs');
   // Create a new, empty in-memory file system
   const vol = Volume.fromJSON({}, '/');
   const mockRedisStore = new Map<string, string>();
@@ -28,6 +28,8 @@ const { vol, fs, mockRedisStore } = vi.hoisted(() => {
     mockRedisStore,
   };
 });
+
+const { vol, fs, mockRedisStore } = hoistedMocks;
 
 // --- 2. Tell Vitest to Use the Mock ---
 // Now, anytime a file (like modelSelector.ts) imports 'node:fs',

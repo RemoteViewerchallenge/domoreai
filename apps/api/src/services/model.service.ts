@@ -38,4 +38,8 @@ export class ModelService {
       },
     });
   }
+
+  async listModels() {
+    return db.model.findMany();
+  }
 }

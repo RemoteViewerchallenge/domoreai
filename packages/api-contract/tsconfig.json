@@ -1,7 +1,11 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".", // Set baseUrl to the package root
+    "paths": {
+      "api/*": ["../../apps/api/src/*"] // Path relative to baseUrl
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

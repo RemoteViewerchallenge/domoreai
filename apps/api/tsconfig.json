@@ -3,6 +3,7 @@
   "display": "API",
   "compilerOptions": {
     "target": "es2022",
+    "module": "NodeNext", // Added for dynamic import support
     "outDir": "dist",
     "declaration": true, // Add this to generate .d.ts files
     "declarationMap": true, // Good for debugging types

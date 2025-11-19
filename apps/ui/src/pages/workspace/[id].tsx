@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom';
 
-import { GitControls } from '../../components/GitControls';
+import { GitControls } from '../../components/GitControls.js';
 import { useState } from 'react';
-import { Panel } from '../../components/ui/Panel';
+import { Panel } from '../../components/ui/Panel.js';
 
 /**
  * Renders the main workspace page for a given workspace ID.

@@ -1,7 +1,7 @@
-import { trpc } from '@/utils/trpc';
+import { trpc } from '../../utils/trpc.js';
 
 const ModelsPage = () => {
-  const { data: models, isLoading } = trpc.lootbox.getModels.useQuery();
+  const { data: models, isLoading } = trpc.model.list.useQuery();
 
   if (isLoading) {
     return <div>Loading...</div>;
