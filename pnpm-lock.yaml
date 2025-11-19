@@ -288,7 +288,7 @@ importers:
         specifier: ^8.47.0
         version: 8.47.0(eslint@8.57.1)(typescript@5.9.3)
       vite:
-        specifier: ^5.3.1
+        specifier: ^5.4.21
         version: 5.4.21(@types/node@20.19.25)
       vite-plugin-monaco-editor:
         specifier: ^1.1.0
@@ -302,6 +302,10 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/common:
     devDependencies:
@@ -309,7 +313,7 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.9.3
         version: 5.9.3
 
   packages/eslint-config:
