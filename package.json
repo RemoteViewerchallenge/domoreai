@@ -7,17 +7,24 @@
     "dev": "pnpm --parallel --stream run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/picomatch": "^4.0.2",
     "cross-env": "^7.0.3",
+    "husky": "^9.1.7",
     "prettier": "^2.8.8",
-    "turbo": "latest"
+    "turbo": "latest",
+    "validate-branch-name": "^1.3.2"
   },
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
     "vscode-ws-jsonrpc": "^3.5.0"
+  },
+  "validate-branch-name": {
+    "pattern": "^(feature|fix|hotfix|release)/[a-z0-9-]+$",
+    "errorMsg": "Branch name must follow format: feature/name, fix/name, etc."
   }
 }
