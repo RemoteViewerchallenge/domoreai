@@ -29,7 +29,7 @@ function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
           writer: new WebSocketMessageWriter(toSocket(webSocket))
         }
       });
-      languageClient.start();
+      void languageClient.start();
     };
   }
 

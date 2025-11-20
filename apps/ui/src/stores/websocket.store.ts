@@ -3,6 +3,16 @@ import type { TerminalMessage } from '@repo/common/agent';
 
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
 
+function isTerminalMessage(obj: unknown): obj is TerminalMessage {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.timestamp === 'string' &&
+    typeof obj.message === 'string' &&
+    ['info', 'warn', 'error', 'command', 'response'].includes(obj.type as string)
+  );
+}
+
 interface WebSocketState {
   status: WebSocketStatus;
   messages: TerminalMessage[];
@@ -10,7 +20,7 @@ interface WebSocketState {
   actions: {
     connect: (vfsToken: string) => void;
     disconnect: () => void;
-    sendMessage: (payload: any) => void;
+    sendMessage: (payload: unknown) => void;
     addMessage: (message: TerminalMessage) => void;
   };
 }
@@ -46,8 +56,12 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
       socket.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
-          get().actions.addMessage(message);
+          const data: unknown = JSON.parse(event.data as string);
+          if (isTerminalMessage(data)) {
+            get().actions.addMessage(data);
+          } else {
+            console.warn('Received non-TerminalMessage from WebSocket:', data);
+          }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }
@@ -66,7 +80,7 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
       get().socket?.close();
       set({ status: 'disconnected', socket: null });
     },
-    sendMessage: (payload) => {
+    sendMessage: (payload: unknown) => {
       const socket = get().socket;
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(payload));

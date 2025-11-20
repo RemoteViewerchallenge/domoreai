@@ -52,7 +52,7 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
                     setLoading(false);
                 }
             };
-            fetchProviderDetails();
+            void fetchProviderDetails();
         } else if (initialProvider) {
             setProvider(initialProvider);
             setModels(initialProvider.models || []);
@@ -163,40 +163,39 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
             <Link to="/providers">&larr; Back to Providers</Link>
             <h2 style={{ marginTop: '20px' }}>Rate Limit Manager for {provider.displayName}</h2>
             <table {...getTableProps()} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-                <thead>
-                    {headerGroups.map(headerGroup => (
-                        <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.getHeaderGroupProps().key}>
-                            {headerGroup.headers.map((column: any) => (
-                                <th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.getHeaderProps().key} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
-                                    {column.render('Header')}
-                                    <span>
-                                        {column.isSorted
-                                            ? column.isSortedDesc
-                                                ? ' 🔽'
-                                                : ' 🔼'
-                                            : ''}
-                                    </span>
-                                </th>
-                            ))}
-                        </tr>
-                    ))}
-                </thead>
-                <tbody {...getTableBodyProps()}>
-                    {rows.map(row => {
-                        prepareRow(row);
-                        return (
-                            <tr {...row.getRowProps()} key={row.getRowProps().key}>
-                                {row.cells.map(cell => (
-                                    <td {...cell.getCellProps()} key={cell.getCellProps().key} style={{ borderBottom: '1px solid #ddd', padding: '8px' }}>
-                                        {cell.render('Cell')}
-                                    </td>
-                                ))}
-                            </tr>
-                        );
-                    })}
-                </tbody>
+                                                                <thead>
+                                                                    {headerGroups.map(headerGroup => (
+                                                                        <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.getHeaderGroupProps().key}>
+                                                                            {headerGroup.headers.map((column: any) => (
+                                                                                <th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.getHeaderProps().key} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
+                                                                                    {column.render('Header')}
+                                                                                    <span>
+                                                                                        {column.isSorted
+                                                                                            ? column.isSortedDesc
+                                                                                                ? ' 🔽'
+                                                                                                : ' 🔼'
+                                                                                                : ''}
+                                                                                    </span>
+                                                                                </th>
+                                                                            ))}
+                                                                        </tr>
+                                                                    ))}
+                                                                </thead>                                <tbody {...getTableBodyProps()}>
+                                    {rows.map(row => {
+                                        prepareRow(row);
+                                        return (
+                                            <tr {...row.getRowProps()} key={row.getRowProps().key}>
+                                                {row.cells.map(cell => (
+                                                    <td {...cell.getCellProps()} key={cell.getCellProps().key} style={{ borderBottom: '1px solid #ddd', padding: '8px' }}>
+                                                        {cell.render('Cell')}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
             </table>
-            <button onClick={handleSaveAll} style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}>
+            <button onClick={() => void handleSaveAll()} style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}>
                 Save All Changes
             </button>
             </div>

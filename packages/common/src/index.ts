@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Represents an LLM provider.
  */
@@ -11,13 +13,7 @@ export interface LLMProvider {
   /** A list of models available from the provider. */
   models: string[];
   /** The configuration schema for the provider. */
-  configSchema: {
-    [key: string]: {
-      type: string;
-      required: boolean;
-      description: string;
-    };
-  };
+  configSchema: z.ZodObject<any>;
 }
 
 /**

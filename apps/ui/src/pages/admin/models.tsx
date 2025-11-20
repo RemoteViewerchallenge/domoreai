@@ -1,10 +1,14 @@
 import { trpc } from '../../utils/trpc.js';
 
 const ModelsPage = () => {
-  const { data: models, isLoading } = trpc.model.list.useQuery();
+  const { data: models, isLoading, isError, error } = trpc.model.list.useQuery();
 
   if (isLoading) {
     return <div>Loading...</div>;
+  }
+
+  if (isError) {
+    return <div>Error: {error instanceof Error ? error.message : 'Unknown error'}</div>;
   }
 
   return (

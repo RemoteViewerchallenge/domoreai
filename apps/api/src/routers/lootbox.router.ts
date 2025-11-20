@@ -1,4 +1,5 @@
-import { createTRPCRouter, publicProcedure, z } from '@repo/api-contract';
+import { z } from 'zod'; // Import Zod directly
+import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { LootboxService } from '../services/lootbox.service.js';
 
 const lootboxService = new LootboxService();

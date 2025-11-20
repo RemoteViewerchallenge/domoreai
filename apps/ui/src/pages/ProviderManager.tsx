@@ -36,8 +36,8 @@ const ProviderManager = () => {
       setBaseURL('');
       setApiKey('');
     },
-    onError: (err: { message: string }) => {
-      alert(`Error: ${err.message}`);
+    onError: (err) => {
+      alert(`Error: ${err instanceof Error ? err.message : 'An unknown error occurred'}`);
     },
   });
 
@@ -48,8 +48,8 @@ const ProviderManager = () => {
       alert(`Successfully upserted ${data.count} models!`);
       // You could invalidate a model list query here if you had one
     },
-    onError: (err: { message: string }) => {
-      alert(`Error fetching models: ${err.message}`);
+    onError: (err) => {
+      alert(`Error fetching models: ${err instanceof Error ? err.message : 'An unknown error occurred'}`);
     },
   });
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -142,7 +142,7 @@ const ProviderManager = () => {
               {isLoadingProviders && <p>Loading...</p>}
               {error && (
                 <div className="text-red-500">
-                  <p>Error fetching providers: {error.message}</p>
+                  <p>Error fetching providers: {error instanceof Error ? error.message : 'Unknown error'}</p>
                   <p className="text-sm text-neutral-400 mt-2">
                     This might be due to a stale server build. Please try restarting the development server.
                   </p>
