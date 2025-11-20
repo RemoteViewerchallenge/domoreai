@@ -1,112 +1,110 @@
 
-
-> api@1.0.0 lint /home/guy/mono/apps/api
+> api@1.0.0 lint /app/apps/api
 > eslint -c eslint.config.mjs .
 
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/db/index.ts[24m[0m
-[0m   [2m64:11[22m  [33mwarning[39m  Unexpected any. Specify a different type          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m176:76[22m  [33mwarning[39m  Unsafe member access .model_id on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m200:78[22m  [33mwarning[39m  Unsafe member access .name on an `any` value      [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m224:76[22m  [33mwarning[39m  Unsafe member access .model_id on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m303:19[22m  [33mwarning[39m  Unexpected any. Specify a different type          [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/index.ts[24m[0m
-[0m   [2m3:40[22m  [33mwarning[39m  'CreateExpressContextOptions' is defined but never used. Allowed unused vars must match /^_/u                                                                       [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m15:1[22m   [33mwarning[39m  Async function 'startServer' has no 'await' expression                                                                                                              [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m65:18[22m  [33mwarning[39m  Promise returned in function argument where a void return was expected                                                                                              [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m  [2m78:1[22m   [33mwarning[39m  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  [2m@typescript-eslint/no-floating-promises[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/llm-adapters.ts[24m[0m
-[0m  [2m16:29[22m  [33mwarning[39m  Unexpected any. Specify a different type                                  [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m69:3[22m   [33mwarning[39m  Async method 'getModels' has no 'await' expression                        [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m69:19[22m  [33mwarning[39m  'config' is defined but never used. Allowed unused args must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m81:5[22m   [33mwarning[39m  Async method 'getModels' has no 'await' expression                        [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m81:21[22m  [33mwarning[39m  'config' is defined but never used. Allowed unused args must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/mcp-adapters.ts[24m[0m
-[0m  [2m10:29[22m  [33mwarning[39m  Unexpected any. Specify a different type            [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m20:3[22m   [33mwarning[39m  Async method 'getModels' has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m39:3[22m   [33mwarning[39m  Async method 'getModels' has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/orchestrator/modelSelector.test.ts[24m[0m
-[0m  [2m64:23[22m  [33mwarning[39m  Async arrow function has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/orchestrator/modelSelector.ts[24m[0m
-[0m  [2m68:17[22m  [33mwarning[39m  Unsafe spread of an `any` type  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/rateLimiter.ts[24m[0m
-[0m  [2m10:48[22m  [33mwarning[39m  'windowSeconds' is defined but never used. Allowed unused args must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/external.router.ts[24m[0m
-[0m  [2m7:5[22m  [33mwarning[39m  Unsafe return of a value of type `any`  [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/index.ts[24m[0m
-[0m  [2m1:28[22m  [33mwarning[39m  'publicProcedure' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/llm.router.ts[24m[0m
-[0m    [2m4:83[22m   [33mwarning[39m  'updateModel' is defined but never used. Allowed unused vars must match /^_/u                                                   [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m12:88[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                                        [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m55:9[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m67:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m68:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m68:21[22m   [33mwarning[39m  Unsafe member access .baseURL on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m69:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m71:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m71:20[22m   [33mwarning[39m  Unsafe member access .apiKey on an `any` value                                                                                  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m78:38[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `{ apiKey?: string | undefined; baseURL?: string | undefined; }`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m79:24[22m   [33mwarning[39m  Unexpected any. Specify a different type                                                                                        [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m   [2m80:77[22m   [33mwarning[39m  Unsafe member access .response on an `any` value                                                                                [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m80:106[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m81:113[22m  [33mwarning[39m  Unsafe member access .message on an `any` value                                                                                 [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m   [2m84:47[22m   [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `string`                                                          [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m   [2m90:5[22m    [33mwarning[39m  Unsafe assignment of an `any` value                                                                                             [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m   [2m99:53[22m   [33mwarning[39m  Promise returned in function argument where a void return was expected                                                          [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m   [2m99:60[22m   [33mwarning[39m  'req' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m   [2m99:65[22m   [33mwarning[39m  'res' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m103:35[22m   [33mwarning[39m  Promise returned in function argument where a void return was expected                                                          [2m@typescript-eslint/no-misused-promises[22m[0m
-[0m  [2m103:42[22m   [33mwarning[39m  'req' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m  [2m103:47[22m   [33mwarning[39m  'res' is defined but never used. Allowed unused args must match /^_/u                                                           [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/lootbox.router.ts[24m[0m
-[0m  [2m10:7[22m  [33mwarning[39m  Unsafe return of a value of type `Promise<any>`  [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m16:7[22m  [33mwarning[39m  Unsafe return of a value of type `Promise<any>`  [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/routers/vfs.router.ts[24m[0m
-[0m  [2m6:10[22m  [33mwarning[39m  'vfsSessionService' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/git.service.ts[24m[0m
-[0m  [2m36:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m39:43[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m56:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m59:46[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/languageServer.service.ts[24m[0m
-[0m  [2m21:17[22m  [33mwarning[39m  Unsafe argument of type `any` assigned to a parameter of type `BufferLike`  [2m@typescript-eslint/no-unsafe-argument[22m[0m
-[0m  [2m21:17[22m  [33mwarning[39m  Unsafe call of a(n) `any` typed value                                       [2m@typescript-eslint/no-unsafe-call[22m[0m
-[0m  [2m21:22[22m  [33mwarning[39m  Unsafe member access .toString on an `any` value                            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/lootbox.service.ts[24m[0m
-[0m  [2m22:7[22m   [33mwarning[39m  Unsafe return of a value of type `any`           [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m23:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m24:66[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m32:45[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m35:81[22m  [33mwarning[39m  Unsafe assignment of an `any` value              [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m36:7[22m   [33mwarning[39m  Unsafe return of a value of type `any`           [2m@typescript-eslint/no-unsafe-return[22m[0m
-[0m  [2m37:21[22m  [33mwarning[39m  Unexpected any. Specify a different type         [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m38:62[22m  [33mwarning[39m  Unsafe member access .message on an `any` value  [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/services/vfsSession.service.ts[24m[0m
-[0m  [2m50:3[22m   [33mwarning[39m  Async method 'createSession' has no 'await' expression  [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m60:3[22m   [33mwarning[39m  Async method 'listFiles' has no 'await' expression      [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m71:9[22m   [33mwarning[39m  Unsafe assignment of an `any` value                     [2m@typescript-eslint/no-unsafe-assignment[22m[0m
-[0m  [2m71:29[22m  [33mwarning[39m  Unexpected any. Specify a different type                [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m  [2m71:34[22m  [33mwarning[39m  Unsafe member access .name on an `any` value            [2m@typescript-eslint/no-unsafe-member-access[22m[0m
-[0m  [2m81:3[22m   [33mwarning[39m  Async method 'readFile' has no 'await' expression       [2m@typescript-eslint/require-await[22m[0m
-[0m  [2m87:3[22m   [33mwarning[39m  Async method 'writeFile' has no 'await' expression      [2m@typescript-eslint/require-await[22m[0m
-[0m[0m
-[0m[4m/home/guy/mono/apps/api/src/types.ts[24m[0m
-[0m  [2m30:11[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
-[0m[0m
-[0m[33m[1m✖ 70 problems (0 errors, 70 warnings)[22m[39m[0m
-[0m[33m[1m[22m[39m[0m
+
+/app/apps/api/src/db/index.ts
+   64:11  warning  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  176:76  warning  Unsafe member access .model_id on an `any` value  @typescript-eslint/no-unsafe-member-access
+  200:78  warning  Unsafe member access .name on an `any` value      @typescript-eslint/no-unsafe-member-access
+  224:76  warning  Unsafe member access .model_id on an `any` value  @typescript-eslint/no-unsafe-member-access
+  303:19  warning  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+/app/apps/api/src/index.ts
+   3:40  warning  'CreateExpressContextOptions' is defined but never used. Allowed unused vars must match /^_/u                                                                       @typescript-eslint/no-unused-vars
+  15:1   warning  Async function 'startServer' has no 'await' expression                                                                                                              @typescript-eslint/require-await
+  65:18  warning  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  78:1   warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/app/apps/api/src/llm-adapters.ts
+  16:29  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  69:3   warning  Async method 'getModels' has no 'await' expression                        @typescript-eslint/require-await
+  69:19  warning  'config' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  81:5   warning  Async method 'getModels' has no 'await' expression                        @typescript-eslint/require-await
+  81:21  warning  'config' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/mcp-adapters.ts
+  10:29  warning  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  20:3   warning  Async method 'getModels' has no 'await' expression  @typescript-eslint/require-await
+  39:3   warning  Async method 'getModels' has no 'await' expression  @typescript-eslint/require-await
+
+/app/apps/api/src/orchestrator/modelSelector.test.ts
+  64:23  warning  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+
+/app/apps/api/src/orchestrator/modelSelector.ts
+  68:17  warning  Unsafe spread of an `any` type  @typescript-eslint/no-unsafe-argument
+
+/app/apps/api/src/rateLimiter.ts
+  10:48  warning  'windowSeconds' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/routers/external.router.ts
+  7:5  warning  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/app/apps/api/src/routers/index.ts
+  1:28  warning  'publicProcedure' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/routers/llm.router.ts
+    4:83   warning  'updateModel' is defined but never used. Allowed unused vars must match /^_/u                                                   @typescript-eslint/no-unused-vars
+   12:88   warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   55:9    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   67:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   68:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   68:21   warning  Unsafe member access .baseURL on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   69:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   71:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   71:20   warning  Unsafe member access .apiKey on an `any` value                                                                                  @typescript-eslint/no-unsafe-member-access
+   78:38   warning  Unsafe argument of type `any` assigned to a parameter of type `{ apiKey?: string | undefined; baseURL?: string | undefined; }`  @typescript-eslint/no-unsafe-argument
+   79:24   warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   80:77   warning  Unsafe member access .response on an `any` value                                                                                @typescript-eslint/no-unsafe-member-access
+   80:106  warning  Unsafe member access .message on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   81:113  warning  Unsafe member access .message on an `any` value                                                                                 @typescript-eslint/no-unsafe-member-access
+   84:47   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                                                          @typescript-eslint/no-unsafe-argument
+   90:5    warning  Unsafe assignment of an `any` value                                                                                             @typescript-eslint/no-unsafe-assignment
+   99:53   warning  Promise returned in function argument where a void return was expected                                                          @typescript-eslint/no-misused-promises
+   99:60   warning  'req' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+   99:65   warning  'res' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+  103:35   warning  Promise returned in function argument where a void return was expected                                                          @typescript-eslint/no-misused-promises
+  103:42   warning  'req' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+  103:47   warning  'res' is defined but never used. Allowed unused args must match /^_/u                                                           @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/routers/lootbox.router.ts
+  10:7  warning  Unsafe return of a value of type `Promise<any>`  @typescript-eslint/no-unsafe-return
+  16:7  warning  Unsafe return of a value of type `Promise<any>`  @typescript-eslint/no-unsafe-return
+
+/app/apps/api/src/routers/vfs.router.ts
+  6:10  warning  'vfsSessionService' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/app/apps/api/src/services/git.service.ts
+  36:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  39:43  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  56:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  59:46  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/languageServer.service.ts
+  21:17  warning  Unsafe argument of type `any` assigned to a parameter of type `BufferLike`  @typescript-eslint/no-unsafe-argument
+  21:17  warning  Unsafe call of a(n) `any` typed value                                       @typescript-eslint/no-unsafe-call
+  21:22  warning  Unsafe member access .toString on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/lootbox.service.ts
+  22:7   warning  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  23:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  24:66  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  32:45  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  35:81  warning  Unsafe assignment of an `any` value              @typescript-eslint/no-unsafe-assignment
+  36:7   warning  Unsafe return of a value of type `any`           @typescript-eslint/no-unsafe-return
+  37:21  warning  Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  38:62  warning  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/app/apps/api/src/services/vfsSession.service.ts
+  50:3   warning  Async method 'createSession' has no 'await' expression  @typescript-eslint/require-await
+  60:3   warning  Async method 'listFiles' has no 'await' expression      @typescript-eslint/require-await
+  71:9   warning  Unsafe assignment of an `any` value                     @typescript-eslint/no-unsafe-assignment
+  71:29  warning  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  71:34  warning  Unsafe member access .name on an `any` value            @typescript-eslint/no-unsafe-member-access
+  81:3   warning  Async method 'readFile' has no 'await' expression       @typescript-eslint/require-await
+  87:3   warning  Async method 'writeFile' has no 'await' expression      @typescript-eslint/require-await
+
+/app/apps/api/src/types.ts
+  30:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 70 problems (0 errors, 70 warnings)

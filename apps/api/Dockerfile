@@ -1,6 +1,6 @@
 # Base image
 FROM node:18-alpine AS base
-RUN npm install -g pnpm turbo
+RUN npm install -g pnpm@10.22.0 turbo
 
 # Builder stage
 FROM base as builder
@@ -14,7 +14,7 @@ RUN turbo build --filter=api
 
 # Final stage
 FROM node:18-alpine
-RUN npm install -g pnpm@8.6.10
+RUN npm install -g pnpm@10.22.0
 WORKDIR /app
 
 # Copy the entire monorepo from the builder stage
