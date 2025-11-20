@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { LlamaAdapter, MistralAdapter, OpenAIAdapter, VertexStudioAdapter } from '../llm-adapters.js';
-import { MCPAdapter } from '../mcp-adapters.js';
+import { GatewayAdapter } from '../mcp-adapters.js';
 import { createProvider, getAllProviders, getProviderById, saveModelsForProvider, updateModel } from '../db/index.js';
 import type { LLMProvider } from '@repo/common';
 import type { Provider } from '../types.js';
@@ -21,7 +21,7 @@ const adapters = {
   mistral: new MistralAdapter(),
   llama: new LlamaAdapter(),
   'vertex-studio': new VertexStudioAdapter(),
-  mcp: new MCPAdapter(),
+  mcp: new GatewayAdapter(),
 };
 
 const availableLLMProviderTypes: Omit<LLMProvider, 'id' | 'models' | 'displayName'>[] = Object.values(adapters).map(

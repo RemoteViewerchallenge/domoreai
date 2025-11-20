@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { z } from 'zod';
 import { modelInputSchema } from '@repo/api-contract';
+import { Prisma } from '@prisma/client'; // Import Prisma
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
@@ -23,7 +24,7 @@ export class ModelService {
       hasVision,
       hasReasoning,
       hasCoding,
-      providerData,
+      providerData: providerData === null ? Prisma.JsonNull : (providerData as Prisma.InputJsonValue),
     };
 
     return db.model.upsert({

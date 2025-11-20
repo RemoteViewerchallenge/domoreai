@@ -1,7 +1,7 @@
 import * as React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom'
-import { httpBatchLink } from '@trpc/client';
+import { httpBatchLink, type DataTransformer } from '@trpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import SuperJSON from 'superjson';
 
@@ -15,7 +15,7 @@ const trpcClient = trpc.createClient({
       url: import.meta.env.VITE_API_URL || 'http://localhost:4000/trpc', // URL of your tRPC server
     }),
   ],
-  transformer: SuperJSON as any,
+  transformer: SuperJSON as DataTransformer,
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

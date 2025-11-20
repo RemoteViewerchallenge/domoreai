@@ -9,7 +9,7 @@ import { TRPCError } from '@trpc/server';
 export class GitService {
   // constructor(private _getVfs: (workspaceId: string) => FsPromises) {} // Commented out as unused
 
-  private async getGit(_vfsToken: string): Promise<{ git: SimpleGit; systemPath: string }> {
+  private getGit(_vfsToken: string): { git: SimpleGit; systemPath: string } {
     // const payload = this.vfsSession.validateToken(vfsToken);
     // if (!payload) {
     //   throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid VFS token' });
@@ -30,7 +30,7 @@ export class GitService {
 
   async gitLog(vfsToken: string, count: number = 10) {
     try {
-      const { git } = await this.getGit(vfsToken);
+      const { git } = this.getGit(vfsToken);
       const log = await git.log({ maxCount: count });
       return log.all;
     } catch (error: any) {
@@ -43,7 +43,7 @@ export class GitService {
 
   async gitCommit(vfsToken: string, message: string) {
     try {
-      const { git } = await this.getGit(vfsToken);
+      const { git } = this.getGit(vfsToken);
       const status = await git.status();
       
       if (status.files.length === 0) {

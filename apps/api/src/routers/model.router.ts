@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure, publicProcedure, z } from '@repo/api-contract';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc.js';
 import { ModelService } from '../services/model.service.js';
 import { modelInputSchema } from '@repo/api-contract';
 

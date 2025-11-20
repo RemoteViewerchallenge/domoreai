@@ -1,4 +1,5 @@
-import { createTRPCRouter, protectedProcedure, z } from '@repo/api-contract';
+import { z } from 'zod'; // Import Zod directly
+import { createTRPCRouter, protectedProcedure } from '../trpc.js';
 import { GitService } from '../services/git.service.js';
 // import { getVfsForWorkspace } from '../services/vfsService.js';
 

@@ -33,3 +33,6 @@ Thumbs.db
 **/*.d.ts
 **/*.d.ts.map
 *.tsbuildinfo
+
+# Large files
+mono.zip

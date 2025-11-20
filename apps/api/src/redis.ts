@@ -1,14 +1,16 @@
 import { createClient } from 'redis';
 
-let redisClient: any | null = null;
+// Define the client type based on the library
+export type RedisClient = ReturnType<typeof createClient>;
 
-export const getRedisClient = async (): Promise<any> => {
-  if (!redisClient) {
-    redisClient = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
-    });
-    redisClient.on('error', (err: any) => console.error('Redis Client Error', err));
-    await redisClient.connect();
-  }
-  return redisClient;
-};
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+export const redis: RedisClient = createClient({
+  url: redisUrl,
+});
+
+redis.on('error', (err: unknown) => console.error('Redis Client Error', err));
+
+// We don't await here to avoid top-level await issues in some envs, 
+// but you should ensure connection before usage in index.ts
+redis.connect().catch(console.error);

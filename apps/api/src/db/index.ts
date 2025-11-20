@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import crypto from 'crypto';
 import type { Provider } from '../types.js';
+import { LLMModel } from '../llm-adapters.js'; // Import LLMModel
 
 const prisma = new PrismaClient();
 
@@ -27,8 +28,8 @@ pool.on('error', (err) => {
 
 // --- Encryption/Decryption Functions ---
 function encrypt(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH) as any;
-  const key = crypto.createSecretKey(Buffer.from(ENCRYPTION_KEY!, 'hex') as any);
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const key = crypto.createSecretKey(Buffer.from(ENCRYPTION_KEY!, 'hex'));
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -41,13 +42,39 @@ function decrypt(text: string): string {
     return '';
   }
   const textParts = text.split(':');
-  const iv = Buffer.from(textParts.shift()!, 'hex') as any;
+  const iv = Buffer.from(textParts.shift()!, 'hex');
   const encryptedText = textParts.join(':');
-  const key = crypto.createSecretKey(Buffer.from(ENCRYPTION_KEY!, 'hex') as any);
+  const key = crypto.createSecretKey(Buffer.from(ENCRYPTION_KEY!, 'hex'));
   const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;
+}
+
+interface ProviderRow {
+  id: string;
+  name: string;
+  base_url: string;
+  provider_type: string;
+  api_key: string;
+  is_healthy: boolean;
+  last_checked_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+  models: any[];
+}
+
+interface OpenAIModel extends LLMModel {
+  object: string;
+  created: number;
+  owned_by: string;
+}
+
+interface VertexAIModel extends LLMModel {
+  name: string;
+  version: string;
+  displayName: string;
+  description: string;
 }
 
 // --- CRUD Operations for Providers ---
@@ -63,16 +90,18 @@ export async function createProvider(
       `INSERT INTO providers (name, base_url, api_key, provider_type) VALUES ($1, $2, $3, $4) RETURNING *`,
       [provider.name, provider.baseUrl || null, encryptedApiKey, provider.providerType],
     );
+    const row = res.rows[0] as ProviderRow;
     const newProvider: Provider = {
-      ...res.rows[0],
-      apiKey: res.rows[0].api_key ? decrypt(res.rows[0].api_key) : '', // Decrypt for immediate return
-      baseUrl: res.rows[0].base_url,
-      isHealthy: res.rows[0].is_healthy,
-      lastCheckedAt: res.rows[0].last_checked_at,
-      createdAt: res.rows[0].created_at,
+      id: row.id,
+      name: row.name,
+      apiKey: row.api_key ? decrypt(row.api_key) : '', // Decrypt for immediate return
+      baseUrl: row.base_url,
+      isHealthy: row.is_healthy,
+      lastCheckedAt: row.last_checked_at,
+      createdAt: row.created_at,
       models: [], // Initialize with empty models array
-      providerType: res.rows[0].provider_type,
-      updatedAt: res.rows[0].updated_at,
+      providerType: row.provider_type,
+      updatedAt: row.updated_at,
     };
     return newProvider;
   } finally {
@@ -80,7 +109,7 @@ export async function createProvider(
   }
 }
 
-export async function updateModel(modelId: string, providerType: string, updates: Record<string, any>): Promise<void> {
+export async function updateModel(modelId: string, providerType: string, updates: Partial<OpenAIModel | VertexAIModel>): Promise<void> {
     const client = await pool.connect();
     try {
         const fields = Object.keys(updates);
@@ -116,16 +145,18 @@ export async function getProviderById(id: string): Promise<Provider | null> {
     if (res.rows.length === 0) {
       return null;
     }
+    const row = res.rows[0] as ProviderRow;
     const provider: Provider = {
-      ...res.rows[0],
-      apiKey: res.rows[0].api_key ? decrypt(res.rows[0].api_key) : '',
-      providerType: res.rows[0].provider_type,
-      baseUrl: res.rows[0].base_url,
-      isHealthy: res.rows[0].is_healthy,
-      lastCheckedAt: res.rows[0].last_checked_at,
-      createdAt: res.rows[0].created_at,
-      models: res.rows[0].models || [], // Directly use the JSONB column
-      updatedAt: res.rows[0].updated_at,
+      id: row.id,
+      name: row.name,
+      apiKey: row.api_key ? decrypt(row.api_key) : '',
+      providerType: row.provider_type,
+      baseUrl: row.base_url,
+      isHealthy: row.is_healthy,
+      lastCheckedAt: row.last_checked_at,
+      createdAt: row.created_at,
+      models: row.models || [], // Directly use the JSONB column
+      updatedAt: row.updated_at,
     };
     return provider;
   } finally {
@@ -133,19 +164,20 @@ export async function getProviderById(id: string): Promise<Provider | null> {
   }
 }
 
-export async function saveModelsForProvider(providerId: string, providerType: string, models: any[]): Promise<void> {
+export async function saveModelsForProvider(providerId: string, providerType: string, models: LLMModel[]): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     switch (providerType) {
       case 'openai': {
+        const typedModels = models as OpenAIModel[];
         const existingModelsRes = await client.query(`SELECT model_id FROM openai_models WHERE provider_id = $1`, [providerId]);
-        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id));
-        const newModelIds = new Set(models.map(m => m.id));
+        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id as string));
+        const newModelIds = new Set(typedModels.map(m => m.id));
 
         // Insert new models
-        for (const model of models) {
+        for (const model of typedModels) {
           if (!existingModelIds.has(model.id)) {
             await client.query(
               `INSERT INTO openai_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
@@ -163,12 +195,13 @@ export async function saveModelsForProvider(providerId: string, providerType: st
         break;
       }
       case 'vertex-studio': {
+        const typedModels = models as VertexAIModel[];
         const existingModelsRes = await client.query(`SELECT name FROM google_models WHERE provider_id = $1`, [providerId]);
-        const existingModelNames = new Set(existingModelsRes.rows.map(r => r.name));
-        const newModelNames = new Set(models.map(m => m.name));
+        const existingModelNames = new Set(existingModelsRes.rows.map(r => r.name as string));
+        const newModelNames = new Set(typedModels.map(m => m.name));
 
         // Insert new models
-        for (const model of models) {
+        for (const model of typedModels) {
             if (!existingModelNames.has(model.name)) {
                 await client.query(
                     `INSERT INTO google_models (provider_id, name, version, display_name, description) VALUES ($1, $2, $3, $4, $5)`,
@@ -186,12 +219,13 @@ export async function saveModelsForProvider(providerId: string, providerType: st
         break;
       }
       case 'mistral': {
+        const typedModels = models as OpenAIModel[];
         const existingModelsRes = await client.query(`SELECT model_id FROM mistral_models WHERE provider_id = $1`, [providerId]);
-        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id));
-        const newModelIds = new Set(models.map(m => m.id));
+        const existingModelIds = new Set(existingModelsRes.rows.map(r => r.model_id as string));
+        const newModelIds = new Set(typedModels.map(m => m.id));
 
         // Insert new models
-        for (const model of models) {
+        for (const model of typedModels) {
             if (!existingModelIds.has(model.id)) {
                 await client.query(
                     `INSERT INTO mistral_models (provider_id, model_id, object, created, owned_by) VALUES ($1, $2, $3, $4, $5)`,
@@ -243,10 +277,18 @@ export async function getAllProviders(): Promise<Provider[]> {
       GROUP BY p.id
     `;
     const res = await client.query(query);
-    return res.rows.map((row) => {
+    return res.rows.map((row: ProviderRow) => {
       return {
-        ...row,
+        id: row.id,
+        name: row.name,
         apiKey: row.api_key ? decrypt(row.api_key) : '',
+        providerType: row.provider_type,
+        baseUrl: row.base_url,
+        isHealthy: row.is_healthy,
+        lastCheckedAt: row.last_checked_at,
+        createdAt: row.created_at,
+        models: row.models || [],
+        updatedAt: row.updated_at,
       };
     });
   } finally {
@@ -294,14 +336,18 @@ export async function updateProvider(id: string, updates: Partial<Provider>): Pr
     if (res.rows.length === 0) {
       return null;
     }
+    const updatedRow = res.rows[0] as ProviderRow;
     const updatedProvider: Provider = {
-      ...res.rows[0],
-      apiKey: decrypt(res.rows[0].api_key),
-      baseUrl: res.rows[0].base_url,
-      isHealthy: res.rows[0].is_healthy,
-      lastCheckedAt: res.rows[0].last_checked_at,
-      createdAt: res.rows[0].created_at,
-      updatedAt: res.rows[0].updated_at,
+      id: updatedRow.id,
+      name: updatedRow.name,
+      apiKey: decrypt(updatedRow.api_key),
+      baseUrl: updatedRow.base_url,
+      isHealthy: updatedRow.is_healthy,
+      lastCheckedAt: updatedRow.last_checked_at,
+      createdAt: updatedRow.created_at,
+      updatedAt: updatedRow.updated_at,
+      models: updatedRow.models,
+      providerType: updatedRow.provider_type,
     };
     return updatedProvider;
   } finally {

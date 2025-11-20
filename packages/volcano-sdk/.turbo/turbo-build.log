@@ -1,3 +1,5 @@
 
-> @repo/volcano-sdk@1.0.0 build /app/packages/volcano-sdk
+
+> @repo/volcano-sdk@1.0.0 build /home/guy/mono/packages/volcano-sdk
 > tsc
+

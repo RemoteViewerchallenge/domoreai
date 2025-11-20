@@ -63,12 +63,12 @@ export function GitControls({ vfsToken }: GitControlsProps) {
         </div>
 
         {gitCommit.isSuccess && <p className="text-xs text-green-400">Commit successful!</p>}
-        {gitCommit.isError && <p className="text-xs text-red-400">Error: {gitCommit.error?.message}</p>}
+        {gitCommit.isError && <p className="text-xs text-red-400">Error: {gitCommit.error instanceof Error ? gitCommit.error.message : 'Commit failed'}</p>}
 
         {showLog && (
           <div className="mt-2 rounded-md border border-neutral-700 bg-neutral-950 p-2">
             {gitLog.isLoading && <p className="text-xs text-neutral-400">Loading log...</p>}
-            {gitLog.isError && <p className="text-xs text-red-400">Error: {gitLog.error?.message}</p>}
+            {gitLog.isError && <p className="text-xs text-red-400">Error: {gitLog.error instanceof Error ? gitLog.error.message : 'Log failed'}</p>}
             {gitLog.data && (
               <pre className="h-48 overflow-auto text-xs font-mono text-neutral-300">
                 {Array.isArray(gitLog.data) ? ( // Assuming gitLog.data is an array of GitLogEntry

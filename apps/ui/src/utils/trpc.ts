@@ -1,12 +1,6 @@
-import { createTRPCReact, type inferReactQueryProcedureOptions } from '@trpc/react-query';
+import { createTRPCReact } from '@trpc/react-query';
+// ✅ FIX: Import the AppRouter type directly from the API source
+// This bypasses the empty api-contract and gives you full type safety
+import type { AppRouter } from '../../../api/src/routers/index.js';
 
-import type { AppRouter } from 'api/dist/routers';
-
-/**
- * This is the tRPC client for your React app.
- */
-export const trpc: ReturnType<typeof createTRPCReact<AppRouter>> = createTRPCReact<AppRouter>();
-
-export type ReactQueryProcedureOptions = inferReactQueryProcedureOptions<AppRouter>;
-export type RouterInputs = any;
-export type RouterOutputs = any;
+export const trpc = createTRPCReact<AppRouter>();
