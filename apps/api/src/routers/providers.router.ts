@@ -1,6 +1,8 @@
 // --- providers.router.ts ---
 import { z } from 'zod'; // Import Zod directly
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { encrypt, decrypt } from '../utils/encryption.js';
+import { IngestionService } from '../services/ingestion.service.js';
 
 // 1. Import your adapters and the base interface
 import {
@@ -114,17 +116,55 @@ export const providerRouter = createTRPCRouter({
         });
       }).filter(p => p !== null);
       await Promise.all(upsertPromises);
+      await Promise.all(upsertPromises);
       return { count: rawModelList.length };
+    }),
+
+  /**
+   * Step 2: Raw Data Lake Ingestion (The "Smart Scrape")
+   * Fetches raw JSON from the provider and saves it to the RawDataLake table.
+   * This is the first step of the new pipeline.
+   */
+  debugFetch: publicProcedure
+    .input(z.object({ providerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const provider = await ctx.db.provider.findUnique({
+        where: { id: input.providerId },
+      });
+      if (!provider) {
+        throw new Error('Provider not found');
+      }
+
+      const apiKey = provider.encryptedApiKey
+        ? decrypt(provider.encryptedApiKey)
+        : undefined;
+
+      const AdapterClass = adapterMap[provider.providerType];
+      if (!AdapterClass) {
+        throw new Error(`No adapter found for provider type: ${provider.providerType}`);
+      }
+
+      const adapter = new AdapterClass();
+      const ingestionService = new IngestionService();
+
+      const record = await ingestionService.ingestProviderData(
+        provider.providerType,
+        adapter,
+        { apiKey, baseURL: provider.baseURL }
+      );
+
+      return { success: true, recordId: record.id };
+    }),
+
+  getRawData: publicProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.rawDataLake.findMany({
+        orderBy: { ingestedAt: 'desc' },
+      });
     }),
 });
 
 // --- Helper Functions (Implement these) ---
-/**
- * !!! SECURITY WARNING: Implement real encryption/decryption. !!!
- * This placeholder is NOT secure. Use Node.js 'crypto' module with a secret key.
- */
-const encrypt = (text?: string) => `ENCRYPTED:${text || ''}`;
-const decrypt = (text?: string) => text?.replace('ENCRYPTED:', '') || '';
 
 /**
  * !!! TODO: Build out this function with real API calls. !!!

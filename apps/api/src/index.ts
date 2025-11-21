@@ -17,6 +17,10 @@ async function startServer() {
   const server = http.createServer(app);
   const port = 4000;
 
+  if (!process.env.ENCRYPTION_KEY) {
+    console.warn('!!! SECURITY WARNING: ENCRYPTION_KEY is not set. API keys will not be secure. !!!');
+  }
+
   // Apply essential middlewares
   // Add request logging
   app.use(morgan('dev'));

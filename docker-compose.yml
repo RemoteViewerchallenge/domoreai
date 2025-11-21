@@ -14,43 +14,22 @@ services:
     environment:
       LOOTBOX_URL: 'http://lootbox:3000'
 
-  proxy:
-    build:
-      context: .
-      dockerfile: apps/proxy/Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      - registry
-    networks:
-      - app-network
-
-  registry:
-    build:
-      context: .
-      dockerfile: apps/registry/Dockerfile
-    ports:
-      - "8080:8080"
-    networks:
-      - app-network
-
   ui:
     build:
       context: .
       dockerfile: apps/ui/Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:4000/trpc
+        - VITE_WS_URL=ws://localhost:4000
     ports:
       - "3000:80" # Expose Nginx on port 3000 on the host
-    environment:
-      - VITE_API_URL=http://api:4000/trpc
     depends_on:
       - api
     networks:
       - app-network
 
   lootbox:
-    build:
-      context: .
-      dockerfile: apps/lootbox/Dockerfile
+    image: jx-codes/lootbox
     networks:
       - app-network
     ports:

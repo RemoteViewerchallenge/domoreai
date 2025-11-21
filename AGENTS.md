@@ -1,92 +1,72 @@
-# AGENTS.md: AI Agent Instructions
+# AGENTS.md: C.O.R.E. Agent Instructions
 
-This document provides instructions for AI agents working in this repository. Please adhere to these guidelines to ensure consistency, quality, and maintainability of the codebase.
+This document provides instructions for AI agents working in the C.O.R.E. (Cognitive Orchestration & Research Engine) repository. Adhere to these guidelines to ensure consistency, quality, and maintainability.
 
-## Project Philosophy
+## Project Philosophy: C.O.R.E.
 
-This project is a typesafe monorepo. All code you write or modify must adhere to this principle and the rules outlined below.
+This project is **C.O.R.E.**, a local, agentic Operating System designed to orchestrate "free tier" intelligence. It is NOT just an IDE.
 
-### System Philosophy: Exhaustive Fallbacks
+### 1. Resource Arbitrage (The "Free Labor" Engine)
+The system treats models as interchangeable, rate-limited compute units.
+-   **Prioritize Free**: Always attempt to use free tier models (e.g., via OpenRouter, Gemini Free) before falling back to paid ones.
+-   **Exhaustive Fallbacks**: Try *all* viable free providers before failing a task.
+    1.  Select best free model.
+    2.  On failure, try next best free model from same provider.
+    3.  On exhaustion, try next best free model from *different* provider.
+    4.  Only fail if ALL free resources are exhausted.
 
-The system must attempt to complete a task using all available free resources before giving up. This "try, fallback, exhaust" pattern is more resilient than a simple "try, retry, fail" pattern for a multi-provider system. When implementing logic that interacts with external providers, follow this pattern:
-
-1.  **Select Best Option:** Choose the most appropriate free model from a healthy provider.
-2.  **Attempt Execution:** Make the API call.
-3.  **On Failure:** If the call fails (e.g., network error, provider error), mark that specific model as temporarily degraded.
-4.  **Intra-Provider Fallback:** Attempt the same task with the next-best available model from the **same provider**, if one exists.
-5.  **Inter-Provider Fallback:** If all models from the initial provider are exhausted or have failed, attempt the task with the next-best available model from a **different provider**.
-6.  **Exhaustion:** Continue this fallback process (steps 4 and 5) until all viable free options across all providers have been attempted.
-7.  **Final State:** Only after exhausting all possibilities should the task be marked as 'Failed'.
-
-### Human-Specific Rules
-
-- Do not read, write, or overwrite the `.env` file.
-- Assume the human operator knows how to use an `.env` file or will learn.
+### 2. Agentic Orchestration (Brain / Hands / Eyes)
+Understand the distinct roles of the architecture:
+-   **The Brain (apps/api)**: Manages state, roles, and routing. It "thinks".
+-   **The Hands (Lootbox)**: Executes tools. It "acts".
+-   **The Eyes (apps/ui)**: visualizes state and code structure (via LSP). It "sees".
 
 ---
 
-### Modularity
+## Technical Constraints & "Keep" Rules
 
-- **One responsibility per file/class**: Each file or class should have a single, well-defined purpose.
-- **Max 300 lines per file**: Keep files concise and focused.
-- **No side effects on import**: Importing a module should not cause any side effects.
-- **Clear exports**: Export only what is necessary for other modules to consume.
+**CRITICAL**: These rules are born from painful debugging sessions. Do not ignore them.
 
-### Naming
+### Build & Package Management
+-   **pnpm Version**: Must use `pnpm@10.22.0`.
+-   **Lockfile Integrity**: `pnpm install` must be run from the root. Do not use `npm` or `yarn`.
+-   **Non-Pruned Builds**: Due to a `turbo prune --docker` bug, use non-pruned builds.
+-   **Internal Dependencies**: Packages in `packages/` must explicitly declare dependencies in their `package.json`.
 
-- **Use descriptive names**: Variable and function names should clearly indicate their purpose. Prefer `getUserById()` over `get()`.
-- **Use abbreviations only if standard**: For example, `API`, `HTTP`.
+### Docker & Networking
+-   **Service Networking**:
+    -   `api` talks to `postgres`/`redis` via **service names** (internal Docker network).
+    -   `ui` (browser) talks to `api` via **localhost:4000** (or mapped port).
+-   **Permissions**: The execution environment cannot access the Docker daemon (`docker ps` fails).
+-   **Lootbox**: Referenced as an external image (`jx-codes/lootbox`) or mapped service, not built from local source.
+
+### Code & Config
+-   **Git Branches**: Must match `^(feature|fix|hotfix|release)/[a-z0-9-]+$`.
+-   **ESLint Memory**: Use `NODE_OPTIONS=--max-old-space-size=4096` if linting fails.
+-   **TypeScript**: `module: NodeNext` requires relative imports to include `.js` extension.
+-   **Prisma**: The `Model` table uses a single `id` for upsert, not composite keys.
+-   **tRPC**: Client and Server versions must align (`^11.7.1`).
+
+---
+
+## Coding Standards
+
+### Modularity & Naming
+-   **One responsibility per file**.
+-   **Max 300 lines per file**.
+-   **Descriptive Names**: `getUserById` > `get`.
 
 ### Documentation
-
-- **JSDoc on all public functions**: All public functions must have JSDoc comments with examples.
-- **Inline comments only for non-obvious logic**: Use inline comments sparingly to explain complex or non-obvious code.
-- **README per module**: Each module should have a `README.md` file that explains its purpose and usage.
-
-## TypeScript
-
-### Strictness
-
-The `tsconfig.json` is configured with `"strict": true`. You must write code that is compatible with these settings.
-
-- **`noImplicitAny`**: Do not use `any`. Use `unknown` if the type is truly unknown.
-- **`strictNullChecks`**: Be explicit when handling `null` and `undefined`.
-
-### Types
-
-- **Define interfaces for all data structures**: This ensures that data is consistently structured throughout the application.
-- **Export types for reuse**: This promotes consistency and reduces code duplication.
-
-### Error Handling
-
-- **Use custom errors**: Create custom error classes that extend `Error` to provide more specific error information.
-- **Use typed catch blocks**: When catching errors, check the type of the error to ensure it is handled correctly.
-
-### Async Patterns
-
-- **Use timeouts**: When making asynchronous calls, use timeouts to prevent the application from hanging.
-- **Handle promises correctly**: Always handle promise rejections.
-
-### Logging
-
-- **Use structured logging**: Log messages should be structured as JSON objects with clear key-value pairs.
-- **Use appropriate log levels**: Use `DEBUG` for detailed trace information, `INFO` for normal operations, `WARN` for degraded but functional, and `ERROR` for failed operations.
-
-### Testing
-
-- **Follow the provided structure**: Use `describe`, `it`, and `expect` from `vitest`.
-- **Avoid magic numbers**: Use constants instead of hardcoded values in tests.
+-   **JSDoc** on all public functions.
+-   **No "Magic"**: Explain complex logic with comments.
 
 ### Security
+-   **No Secrets in DB**: API keys must be encrypted before storage.
+-   **No Secrets in Logs**: Never log raw API keys or credentials.
+-   **Rate Limiting**: Respect provider limits to avoid bans.
 
-- **Do not log secrets**: Never log sensitive information such as API keys.
-- **Validate input**: Always validate input from external sources.
-- **Apply rate limiting**: Use rate limiting to prevent abuse of external APIs.
-
-### Golden Rule
-
+### The Golden Rule
 If another agent (or human) can't understand your code in 5 minutes, simplify it.
 
 ### MCP Server Config
-
 The config file for all MCP servers should be in the config file for AI agents.

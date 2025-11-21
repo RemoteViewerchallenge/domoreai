@@ -1,5 +1,0 @@
-- [x] Remove unused AppRouter import in apps/api/src/index.ts
-- [x] Remove unused TRPCError import and unused destructuring in apps/api/src/trpc.ts
-- [x] Remove unused VOLCANO_PROVIDER_TYPES in apps/api/src/routers/providers.router.ts
-- [x] Add list and add procedures to providerRouter in apps/api/src/routers/providers.router.ts
-- [ ] Run build command to verify fixes
