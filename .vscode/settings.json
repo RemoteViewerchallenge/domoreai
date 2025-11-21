@@ -4,7 +4,7 @@
 
   // Use .gitignore to hide files from the explorer.
   // This is what's currently hiding your .env file.
-  "explorer.excludeGitIgnore": true,
+  "explorer.excludeGitIgnore": false,
 
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
@@ -12,6 +12,7 @@
   },
   "cSpell.words": [
     "agentic",
+    "Avenir",
     "cuid",
     "jspreadsheet",
     "LOOTBOX",

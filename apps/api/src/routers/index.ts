@@ -4,8 +4,9 @@ import { providerRouter } from './providers.router.js';
 import { roleRouter } from './role.router.js';
 import { externalRouter } from './external.router.js';
 import { vfsRouter } from './vfs.router.js';
-import { modelRouter } from './model.router.js'; // Existing 
-import { lootboxRouter } from './lootbox.router.js'; // New import
+import { modelRouter } from './model.router.js';
+import { lootboxRouter } from './lootbox.router.js';
+import { dataRefinementRouter } from './dataRefinement.router.js';
 
 export const appRouter = createTRPCRouter({
   git: gitRouter,
@@ -14,7 +15,8 @@ export const appRouter = createTRPCRouter({
   external: externalRouter,
   vfs: vfsRouter,
   model: modelRouter,
-  lootbox: lootboxRouter, // New router
+  lootbox: lootboxRouter,
+  dataRefinement: dataRefinementRouter,
 });
 
 export type AppRouter = typeof appRouter;

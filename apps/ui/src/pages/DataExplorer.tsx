@@ -3,11 +3,10 @@ import { trpc } from '../utils/trpc.js';
 import { ModelSpreadsheet } from '../components/ModelSpreadsheet.js';
 
 export const DataExplorer: React.FC = () => {
-  const { data: rawData, isLoading } = trpc.provider.getRawData.useQuery();
-  
-  // Removed unused mutation for now
-  // const utils = trpc.useContext();
-  // const debugFetchMutation = trpc.provider.debugFetch.useMutation({ ... });
+  const { data: rawData, isLoading, refetch } = trpc.providers.getRawData.useQuery();
+  const deleteMutation = trpc.providers.deleteRawData.useMutation({
+    onSuccess: () => refetch(),
+  });
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -15,8 +14,7 @@ export const DataExplorer: React.FC = () => {
   const spreadsheetData = rawData?.map((row: any) => ({
     id: row.id,
     provider: row.provider,
-    ingestedAt: row.ingestedAt, // Keep as string or date depending on what jspreadsheet expects
-    // We might want to show a summary or specific fields from rawData
+    ingestedAt: new Date(row.ingestedAt), // Ensure Date object
     dataSummary: JSON.stringify(row.rawData).substring(0, 100) + '...',
   })) || [];
 
@@ -25,27 +23,31 @@ export const DataExplorer: React.FC = () => {
     { type: 'text', title: 'Provider', width: 100 },
     { type: 'text', title: 'Ingested At', width: 200 },
     { type: 'text', title: 'Data Summary', width: 400 },
+    { type: 'text', title: 'Actions', width: 100 }, // Add Actions column
   ];
+
+  const handleDelete = (id: string) => {
+    if (confirm('Delete this record?')) {
+      deleteMutation.mutate({ id });
+    }
+  };
 
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Raw Data Lake Explorer</h1>
       
       <div className="mb-4">
-        {/* Placeholder for triggering ingestion */}
-        <button 
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-          onClick={() => {
-            // You'd need a provider ID here. For now, just a placeholder.
-            alert('Select a provider to ingest from (Implementation Pending)');
-          }}
-        >
-          Ingest Data (Debug)
-        </button>
+        <p className="text-gray-600">
+          This page shows raw data ingested from providers. Go to the <a href="/providers" className="text-blue-500 underline">Provider Manager</a> to ingest new data.
+        </p>
       </div>
 
       <div className="border rounded p-2">
-        <ModelSpreadsheet data={spreadsheetData} columns={columns} />
+        <ModelSpreadsheet 
+          data={spreadsheetData} 
+          columns={columns} 
+          onDelete={handleDelete} // Pass delete handler
+        />
       </div>
     </div>
   );

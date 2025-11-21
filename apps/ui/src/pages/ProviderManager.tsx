@@ -1,173 +1,231 @@
-import { useState, type FormEvent } from 'react';
+import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
-import { Panel } from '../components/ui/Panel.js';
-import { Link } from 'react-router-dom';
 
-// This is the full list of provider types your Volcano SDK supports
-const VOLCANO_PROVIDER_TYPES = [
-  { value: 'openai', label: 'OpenAI / Azure / Compatible (OpenRouter, TogetherAI, etc.)' },
-  { value: 'anthropic', label: 'Anthropic (Claude)' },
-  { value: 'vertex', label: 'Google Vertex AI (Gemini)' },
-  // Note: Mistral official API is OpenAI-compatible. This is for a direct integration if needed.
-  { value: 'mistral', label: 'Mistral (Direct API)' },
-  { value: 'llama', label: 'Llama (Ollama / Local)' },
-  { value: 'bedrock', label: 'AWS Bedrock' },
-];
-
-const ProviderManager = () => {
-  // Form state
-  const [name, setName] = useState('');
-  const [baseURL, setBaseURL] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  // Default to 'openai' as it's a common compatible type
-  const [providerType, setProviderType] = useState(VOLCANO_PROVIDER_TYPES[0].value);
-
-  const utils = trpc.useUtils();
-
-  // tRPC query to get all configured providers
-  const { data: providers, isLoading: isLoadingProviders, error } = trpc.providers.list.useQuery();
-
-  // tRPC mutation to add a new provider
-  const addProvider = trpc.providers.add.useMutation({
+const ProviderManager: React.FC = () => {
+  const { data: providers, isLoading, refetch } = trpc.providers.list.useQuery();
+  const addProviderMutation = trpc.providers.add.useMutation({
     onSuccess: () => {
-      // Clear form and refetch provider list
-      utils.providers.list.invalidate();
-      setName('');
-      setBaseURL('');
-      setApiKey('');
-    },
-    onError: (err) => {
-      alert(`Error: ${err instanceof Error ? err.message : 'An unknown error occurred'}`);
+      refetch();
+      setFormData({ name: '', providerType: 'openai', baseURL: '', apiKey: '' });
     },
   });
 
-  // tRPC mutation to fetch models for a provider
-  // This uses the "Step 1: Fetch and Store" logic from our new schema
-  const fetchModels = trpc.providers.fetchAndNormalizeModels.useMutation({
-    onSuccess: (data: { count: number }) => {
-      alert(`Successfully upserted ${data.count} models!`);
-      // You could invalidate a model list query here if you had one
-    },
-    onError: (err) => {
-      alert(`Error fetching models: ${err instanceof Error ? err.message : 'An unknown error occurred'}`);
+  const deleteProviderMutation = trpc.providers.delete.useMutation({
+    onSuccess: () => {
+      refetch();
     },
   });
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+
+  const debugFetchMutation = trpc.providers.debugFetch.useMutation({
+    onSuccess: () => {
+      alert('Raw data ingested successfully! Check the Data Explorer.');
+    },
+    onError: (error) => {
+      alert(`Ingestion failed: ${error.message}`);
+    },
+  });
+
+  const [formData, setFormData] = useState({
+    name: '',
+    providerType: 'openai',
+    baseURL: '',
+    apiKey: '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addProvider.mutate({
-      name,
-      providerType,
-      baseURL,
-      apiKey,
+    addProviderMutation.mutate(formData);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      
+      // Auto-fill Base URL based on Provider Type
+      if (name === 'providerType') {
+        if (value === 'ollama') newData.baseURL = 'http://localhost:11434';
+        else if (value === 'openai') newData.baseURL = 'https://api.openai.com/v1';
+        else if (value === 'openrouter') newData.baseURL = 'https://openrouter.ai/api/v1';
+        else if (value === 'vertex-studio') newData.baseURL = 'https://generativelanguage.googleapis.com/v1beta';
+        else if (value === 'anthropic') newData.baseURL = 'https://api.anthropic.com/v1';
+        else if (value === 'mistral') newData.baseURL = 'https://api.mistral.ai/v1';
+      }
+      
+      return newData;
     });
   };
 
+  if (isLoading) return <div>Loading providers...</div>;
+
   return (
-    <div className="flex h-screen flex-col gap-4 bg-neutral-900 p-4 text-neutral-100">
-      <h1 className="text-xl font-bold text-neon-cyan">Provider Manager</h1>
-      <p className="text-sm text-neutral-400">Add, configure, and update models from your LLM providers.</p>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Provider Manager (v2)</h1>
 
-      <div className="flex flex-grow gap-4 overflow-hidden">
-        {/* Left Panel: Add Provider Form */}
-        <div className="w-1/2 flex-shrink-0">
-          <Panel borderColor="border-green-400">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
-              <div className="p-2 font-bold border-b border-neutral-800">Add New Provider</div>
-              
-              <div>
-                <label className="text-sm font-semibold text-neutral-300">Provider Name</label>
-                <input type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., My Local Ollama"
-                  className="w-full bg-neutral-800 p-2 rounded mt-1"
-                />
-              </div>
+      {/* Add Provider Form */}
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Add New Provider</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+              Name
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="name"
+              name="name"
+              type="text"
+              placeholder="e.g. My Local Ollama"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-              <div>
-                <label className="text-sm font-semibold text-neutral-300">Provider Type</label>
-                <select
-                  value={providerType}
-                  onChange={(e) => setProviderType(e.target.value)}
-                  className="w-full bg-neutral-800 p-2 rounded mt-1"
-                >
-                  {VOLCANO_PROVIDER_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="providerType">
+              Type
+            </label>
+            <select
+              className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="providerType"
+              name="providerType"
+              value={formData.providerType}
+              onChange={handleChange}
+            >
+              <option value="openai">OpenAI Compatible (Standard)</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="mistral">Mistral</option>
+              <option value="ollama">Ollama (Local)</option>
+              <option value="vertex-studio">Vertex AI / Gemini</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="azure">Azure AI</option>
+              <option value="bedrock">AWS Bedrock</option>
+            </select>
+          </div>
 
-              <div>
-                <label className="text-sm font-semibold text-neutral-300">Base URL</label>
-                <input type="text"
-                  value={baseURL}
-                  onChange={(e) => setBaseURL(e.target.value)}
-                  placeholder="http://localhost:11434"
-                  className="w-full bg-neutral-800 p-2 rounded mt-1"
-                />
-              </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="baseURL">
+              Base URL
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="baseURL"
+              name="baseURL"
+              type="text"
+              list="baseUrlOptions"
+              placeholder="e.g. http://localhost:11434"
+              value={formData.baseURL}
+              onChange={handleChange}
+              required
+            />
+            <datalist id="baseUrlOptions">
+              <option value="http://localhost:11434">Ollama (Local)</option>
+              <option value="https://api.openai.com/v1">OpenAI</option>
+              <option value="https://openrouter.ai/api/v1">OpenRouter</option>
+              <option value="https://generativelanguage.googleapis.com/v1beta">Vertex AI / Gemini</option>
+              <option value="https://api.anthropic.com/v1">Anthropic</option>
+              <option value="https://{resource}.openai.azure.com/">Azure AI</option>
+              <option value="https://api.mistral.ai/v1">Mistral</option>
+              <option value="https://api.groq.com/openai/v1">Groq</option>
+              <option value="https://api.deepseek.com/v1">DeepSeek</option>
+              <option value="http://localhost:1234/v1">LM Studio</option>
+            </datalist>
+            <p className="text-gray-500 text-xs italic mt-1">
+              Select a standard URL or enter your own.
+            </p>
+          </div>
 
-              <div>
-                <label className="text-sm font-semibold text-neutral-300">API Key (leave blank if not required)</label>
-                <input type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-... or v0lcan0-r0cks..."
-                  className="w-full bg-neutral-800 p-2 rounded mt-1"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={!name || !baseURL || addProvider.isPending}
-                className="bg-green-500 hover:bg-green-400 text-black font-bold py-2 px-4 rounded disabled:opacity-50"
-              >
-                {addProvider.isPending ? 'Saving...' : 'Save Provider'}
-              </button>
-            </form>
-          </Panel>
-        </div>
-        {/* Right Panel: Configured Providers List */}
-        <div className="w-1/2 flex-shrink-0 flex flex-col">
-          <Panel borderColor="border-purple-500" className="flex-grow">
-            <div className="flex justify-between items-center p-2 font-bold border-b border-neutral-800">
-              <span>Configured Providers</span>
-              <Link to="/admin/models" className="text-sm font-normal text-cyan-400 hover:underline">
-                View All Models &rarr;
-              </Link>
-            </div>
-            <div className="flex flex-col gap-2 p-4 overflow-y-auto">
-              {isLoadingProviders && <p>Loading...</p>}
-              {error && (
-                <div className="text-red-500">
-                  <p>Error fetching providers: {error instanceof Error ? error.message : 'Unknown error'}</p>
-                  <p className="text-sm text-neutral-400 mt-2">
-                    This might be due to a stale server build. Please try restarting the development server.
-                  </p>
-                </div>
-              )}
-              {Array.isArray(providers) && providers.map((provider) => (
-                <div key={provider.id} className="flex justify-between items-center bg-neutral-800 p-3 rounded">
-                  <div>
-                    <div className="font-bold">{provider.name}</div>
-                    <div className="text-xs text-neutral-400">
-                      {provider.baseURL} ({provider.providerType})
-                    </div>
-                  </div>
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="apiKey">
+              API Key (Optional)
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="apiKey"
+              name="apiKey"
+              type="password"
+              placeholder="sk-..."
+              value={formData.apiKey}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="submit"
+              disabled={addProviderMutation.isLoading}
+            >
+              {addProviderMutation.isLoading ? 'Adding...' : 'Add Provider'}
+            </button>
+          </div>
+          {addProviderMutation.error && (
+            <p className="text-red-500 text-xs italic mt-2">{addProviderMutation.error.message}</p>
+          )}
+        </form>
+      </div>
+
+      {/* Provider List */}
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8">
+        <h2 className="text-xl font-semibold mb-4">Active Providers</h2>
+        <table className="min-w-full leading-normal">
+          <thead>
+            <tr>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Base URL
+              </th>
+              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {providers?.map((provider) => (
+              <tr key={provider.id}>
+                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                  <p className="text-gray-900 whitespace-no-wrap">{provider.name}</p>
+                </td>
+                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                  <span className="relative inline-block px-3 py-1 font-semibold text-green-900 leading-tight">
+                    <span aria-hidden className="absolute inset-0 bg-green-200 opacity-50 rounded-full"></span>
+                    <span className="relative">{provider.providerType}</span>
+                  </span>
+                </td>
+                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                  <p className="text-gray-900 whitespace-no-wrap">{provider.baseURL}</p>
+                </td>
+                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                   <button
-                    onClick={() => fetchModels.mutate({ providerId: provider.id })}
-                    disabled={fetchModels.isPending}
-                    className="bg-purple-500 hover:bg-purple-400 text-black text-sm font-bold py-1 px-3 rounded disabled:opacity-50"
+                    className="text-blue-600 hover:text-blue-900 mr-4"
+                    onClick={() => {
+                      debugFetchMutation.mutate({ providerId: provider.id });
+                    }}
+                    disabled={debugFetchMutation.isLoading}
                   >
-                    {fetchModels.isPending && fetchModels.variables?.providerId === provider.id ? 'Fetching...' : 'Fetch Models'}
+                    {debugFetchMutation.isLoading ? 'Ingesting...' : 'Ingest Raw Data'}
                   </button>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        </div>
+                  <button
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this provider?')) {
+                        deleteProviderMutation.mutate({ id: provider.id });
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

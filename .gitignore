@@ -36,3 +36,9 @@ Thumbs.db
 
 # Large files
 mono.zip
+
+# Config files exception
+!**/tailwind.config.js
+!**/postcss.config.js
+!**/eslint.config.js
+!**/vite.config.js
