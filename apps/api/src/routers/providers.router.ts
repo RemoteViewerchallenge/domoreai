@@ -9,18 +9,25 @@ import {
   OpenAIAdapter,
   MistralAdapter,
   LlamaAdapter,
+  OllamaAdapter,
   VertexStudioAdapter,
+  AnthropicAdapter,
+  AzureAIAdapter,
+  BedrockAdapter,
   type LLMAdapter,
 } from '../llm-adapters.js';
 
 // 2. Create a map to instantiate the correct adapter
 const adapterMap: Record<string, new () => LLMAdapter> = {
   'openai': OpenAIAdapter,
+  'openrouter': OpenAIAdapter, // OpenRouter uses the same API shape as OpenAI
   'mistral': MistralAdapter,
   'llama': LlamaAdapter,
-  'vertex-studio': VertexStudioAdapter, // Make sure your types match
-  // 'anthropic': AnthropicAdapter, // Add these as you build them
-  // 'bedrock': BedrockAdapter,
+  'ollama': OllamaAdapter,
+  'vertex-studio': VertexStudioAdapter,
+  'anthropic': AnthropicAdapter,
+  'azure': AzureAIAdapter,
+  'bedrock': BedrockAdapter,
 };
 
 // Your existing VOLCANO_PROVIDER_TYPES array
@@ -56,6 +63,13 @@ export const providerRouter = createTRPCRouter({
         },
       });
     }),
+  delete: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.provider.delete({
+        where: { id: input.id },
+      });
+    }),
   // ... your list and add procedures ...
 
   /**
@@ -73,9 +87,16 @@ export const providerRouter = createTRPCRouter({
       }
 
       // 3. Decrypt the API key
-      const apiKey = provider.encryptedApiKey
-        ? decrypt(provider.encryptedApiKey)
-        : undefined; // Implement real decryption!
+      let apiKey: string | undefined;
+      try {
+        apiKey = provider.encryptedApiKey
+          ? decrypt(provider.encryptedApiKey)
+          : undefined;
+      } catch (error) {
+        console.warn(`Failed to decrypt API key for provider ${provider.id}. It may be using an old key.`, error);
+        // Proceed without API key (or maybe we should fail? But user wants to delete/debug)
+        apiKey = undefined; 
+      }
 
       // --- This is where Jules's logic goes ---
       // 4. Get the models using your new helper function
@@ -160,6 +181,14 @@ export const providerRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       return ctx.db.rawDataLake.findMany({
         orderBy: { ingestedAt: 'desc' },
+      });
+    }),
+
+  deleteRawData: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.rawDataLake.delete({
+        where: { id: input.id },
       });
     }),
 });

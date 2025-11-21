@@ -14,9 +14,9 @@ model Provider {
   id           String @id @default(cuid())
   createdAt    DateTime @default(now())
   
-  name         String // e.g., "OpenRouter", "My Local Ollama"
+  name         String @unique // e.g., "OpenRouter", "My Local Ollama" - must be unique
   providerType String // e.g., "openai", "llama", "anthropic"
-  baseURL      String @unique
+  baseURL      String
   
   // !!! IMPORTANT: This should be encrypted before saving
   encryptedApiKey String?
@@ -143,4 +143,13 @@ model RawDataLake {
   provider   String   // e.g. "openrouter", "vertex"
   rawData    Json     // The exact JSON returned by the provider's list models endpoint
   ingestedAt DateTime @default(now())
+}
+
+model FlattenedTable {
+  id          String   @id @default(cuid())
+  name        String   @unique // Table name in Postgres
+  sourceId    String   // RawDataLake record ID
+  columns     Json     // Column definitions {name: string, type: string}[]
+  rowCount    Int      @default(0)
+  createdAt   DateTime @default(now())
 }

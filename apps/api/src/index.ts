@@ -17,8 +17,12 @@ async function startServer() {
   const server = http.createServer(app);
   const port = 4000;
 
-  if (!process.env.ENCRYPTION_KEY) {
-    console.warn('!!! SECURITY WARNING: ENCRYPTION_KEY is not set. API keys will not be secure. !!!');
+  const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
+    console.error(
+      'FATAL: ENCRYPTION_KEY is not set or is not a 64-character hex string. Please set a strong 32-byte key (as 64 hex chars) in your environment variables.'
+    );
+    // process.exit(1); // Don't exit, just warn for now to allow dev
   }
 
   // Apply essential middlewares

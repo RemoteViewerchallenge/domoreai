@@ -1,7 +1,8 @@
 import { Route, Routes } from 'react-router-dom';
 // import RateLimitManagerPage from './components/RateLimitManager';
 import MyWorkspacePage from './pages/workspace/[id].js';
-import ProviderManagerPage from './pages/ProviderManager.js';
+import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
+import { RawDataExplorer } from './pages/RawDataExplorer.js';
 import WorkspaceListPage from './pages/WorkspaceList.js';
 import ModelsPage from './pages/admin/models.js';
 import './App.css';
@@ -12,10 +13,11 @@ import './App.css';
  */
 function App() {
   return (
-    <div className="App">
+    <div className="App" data-theme="dark">
       <Routes>
         <Route path="/" element={<WorkspaceListPage />} />
-        <Route path="/providers" element={<ProviderManagerPage />} />
+        <Route path="/providers" element={<UnifiedProviderPage />} />
+        <Route path="/data-explorer" element={<RawDataExplorer />} />
         <Route path="/admin/models" element={<ModelsPage />} />
         {/* <Route path="/manage/:providerId" element={<RateLimitManagerPage provider={null} onClose={() => { }} />} /> */}
         <Route path="/workspace/:id" element={<MyWorkspacePage />} />
