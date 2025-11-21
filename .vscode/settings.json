@@ -9,5 +9,18 @@
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
     "**/.env": false
-  }
+  },
+  "cSpell.words": [
+    "agentic",
+    "cuid",
+    "jspreadsheet",
+    "LOOTBOX",
+    "modelcontextprotocol",
+    "Ollama",
+    "openrouter",
+    "sandboxed",
+    "shadcn",
+    "Turborepo",
+    "upserts"
+  ]
 }

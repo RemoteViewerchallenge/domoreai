@@ -133,3 +133,14 @@ model ModelUsage {
   modelConfig    ModelConfig @relation(fields: [modelConfigId], references: [id])
   role           Role        @relation(fields: [roleId], references: [id])
 }
+
+// -----------------------------------------------------------------
+// Raw Data Lake
+// Stores raw API responses before they are processed into Models
+// -----------------------------------------------------------------
+model RawDataLake {
+  id         String   @id @default(cuid())
+  provider   String   // e.g. "openrouter", "vertex"
+  rawData    Json     // The exact JSON returned by the provider's list models endpoint
+  ingestedAt DateTime @default(now())
+}

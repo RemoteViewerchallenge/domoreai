@@ -15,6 +15,7 @@ export interface LLMAdapter {
   providerName: string;
   configSchema: z.ZodObject<any>;
   getModels(config: { apiKey?: string; baseURL?: string }): Promise<LLMModel[]>;
+  getRawModels(config: { apiKey?: string; baseURL?: string }): Promise<unknown>;
 }
 
 export class OpenAIAdapter implements LLMAdapter {
@@ -29,11 +30,22 @@ export class OpenAIAdapter implements LLMAdapter {
       const response = await axios.get('https://api.openai.com/v1/models', {
         headers: { Authorization: `Bearer ${config.apiKey}` },
       });
-      // ✅ FIX: Safe return with typed data
       return (response.data as { data: LLMModel[] }).data || [];
     } catch (error) {
       console.error('OpenAI fetch failed:', error);
       return [];
+    }
+  }
+  async getRawModels(config: { apiKey?: string; baseURL?: string }): Promise<unknown> {
+    if (!config.apiKey) return {};
+    try {
+      const response = await axios.get('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('OpenAI raw fetch failed:', error);
+      return {};
     }
   }
 }
@@ -56,9 +68,19 @@ export class MistralAdapter implements LLMAdapter {
       return [];
     }
   }
+  async getRawModels(config: { apiKey?: string; baseURL?: string }): Promise<unknown> {
+    if (!config.apiKey) return {};
+    try {
+      const response = await axios.get('https://api.mistral.ai/v1/models', {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Mistral raw fetch failed:', error);
+      return {};
+    }
+  }
 }
-
-// ... (Repeat the pattern for LlamaAdapter and VertexStudioAdapter below)
 
 export class LlamaAdapter implements LLMAdapter {
   providerName: string = 'llama';
@@ -67,8 +89,10 @@ export class LlamaAdapter implements LLMAdapter {
     baseURL: z.string().url().optional(),
   });
   async getModels(config: { apiKey?: string; baseURL?: string }): Promise<LLMModel[]> {
-    // Llama usually runs locally or via different headers, verify your implementation
     return []; 
+  }
+  async getRawModels(config: { apiKey?: string; baseURL?: string }): Promise<unknown> {
+    return {};
   }
 }
 
@@ -79,7 +103,9 @@ export class VertexStudioAdapter implements LLMAdapter {
       baseURL: z.string().url().optional(),
     });
     async getModels(config: { apiKey?: string; baseURL?: string }): Promise<LLMModel[]> {
-        // Vertex implementation placeholder
         return [];
+    }
+    async getRawModels(config: { apiKey?: string; baseURL?: string }): Promise<unknown> {
+        return {};
     }
 }

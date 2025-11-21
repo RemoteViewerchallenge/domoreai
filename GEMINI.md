@@ -1,22 +1,21 @@
-## Project Overview
+## Project Overview: C.O.R.E.
 
-This is a pnpm monorepo for Domoreai, a flexible, extensible system for managing and interacting with various Large Language Model (LLM) providers. It provides a unified API and a simple web interface to configure providers and query their models.
+This is a pnpm monorepo for **C.O.R.E. (Cognitive Orchestration & Research Engine)**. 
 
-The monorepo contains two main applications:
-- `apps/api`: A Node.js/Express backend that handles all the business logic.
-- `apps/ui`: A React-based web interface.
+C.O.R.E. is a local, agentic Operating System designed to orchestrate "free tier" intelligence. It acts as a broker between your intent and a fragmented ecosystem of free LLM providers, using a "Lootbox" architecture to execute tools safely.
 
-The project uses `turbo` to manage the monorepo and run scripts.
+The monorepo contains the core components:
+- `apps/api` (**The Brain**): Node.js/Express backend that manages state, roles, and routing.
+- `apps/ui` (**The Eyes**): React-based "Cockpit" for visualizing agent state and code structure.
+- `packages/volcano-sdk`: The standard library for agent interactions.
 
 ## Key Features
 
-- **Git Integration:** The application now has git integration within the virtual file system, allowing users to commit and view the history of their files.
-- **Model Management:** There is a new service for managing models, and models are being "normalized" before being saved.
-- **Provider Management:** The provider management system has been improved to use a dynamic adapter map, and it now includes endpoints for fetching, normalizing, and saving models from providers.
-- **Role Management:** The application now has a concept of roles that can be assigned to AI agents, and these roles can be used to specify the capabilities of the agent.
-- **Virtual File System:** The application now has a full-featured virtual file system that can be used to manage files and directories for each user and workspace.
-- **Language Server:** The application now includes a language server for TypeScript, providing features like code completion, diagnostics, and go-to-definition.
-- **Lootbox (Tool) Service:** The application can now interact with a separate "Lootbox" service to manage and execute "tools".
+- **Resource Arbitrage:** Automatically routes tasks to the cheapest/free models (OpenRouter, Gemini, etc.) based on real-time rate limits.
+- **Raw Data Lake:** Ingests raw API responses into a "Data Lake" first, allowing manual refinement via a Spreadsheet UI before "promoting" models to active use.
+- **Lootbox Architecture:** Decouples "Thinking" (LLM) from "Acting" (Tools). The API signals intent, and the external Lootbox service executes the tool.
+- **Virtual File System (VFS):** A sandboxed environment for agents to read/write code without risking the host machine.
+- **Language Server Protocol (LSP):** Pipes a real TypeScript Language Server to the UI, allowing agents to "see" code errors and structure.
 
 ## Services
 

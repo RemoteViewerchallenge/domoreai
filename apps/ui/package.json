@@ -25,6 +25,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "flyonui": "^1.0.0-alpha.22",
+    "jspreadsheet-ce": "^5.0.4",
     "lucide-react": "^0.553.0",
     "monaco-editor": "^0.54.0",
     "monaco-languageclient": "^10.2.0",
