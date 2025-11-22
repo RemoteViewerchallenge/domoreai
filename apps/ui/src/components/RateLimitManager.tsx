@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { useTable, useSortBy, type Column, type CellProps, useFilters } from 'react-table';
+import { useTable, useSortBy, type Column, type CellProps, useFilters, type HeaderGroup } from 'react-table';
 import type { Model } from '../types.js';
 
 const API_BASE_URL = 'http://localhost:4000';
@@ -113,11 +113,21 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
                     const modelKey = key as keyof Model;
                     const value = row.original[modelKey];
                     const isNumeric = typeof value === 'number' || key.includes('token') || key.includes('request') || key.includes('cost');
+                    
+                    let displayValue: string | number | readonly string[] | undefined;
+                    if (typeof value === 'boolean') {
+                        displayValue = String(value);
+                    } else if (Array.isArray(value)) {
+                        displayValue = value.join(', ');
+                    } else {
+                        displayValue = value as string | number | undefined;
+                    }
+
                     return (
                         <input
                             type={isNumeric ? 'number' : 'text'}
                             style={{ width: '100%', minWidth: '80px', boxSizing: 'border-box' }}
-                            value={value ?? ''}
+                            value={displayValue ?? ''}
                             onChange={(e) => handleModelChange(row.original.id, key, isNumeric && e.target.value ? Number(e.target.value) : e.target.value)}
                             disabled={!row.original.is_enabled}
                         />
@@ -166,18 +176,25 @@ const RateLimitManager: React.FC<RateLimitManagerPageProps> = ({ provider: initi
                                                                 <thead>
                                                                     {headerGroups.map(headerGroup => (
                                                                         <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.getHeaderGroupProps().key}>
-                                                                            {headerGroup.headers.map((column: any) => (
-                                                                                <th {...column.getHeaderProps(column.getSortByToggleProps())} key={column.getHeaderProps().key} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
-                                                                                    {column.render('Header')}
+                                                                            {headerGroup.headers.map((column) => {
+                                                                                const sortableColumn = column as unknown as HeaderGroup<Model> & {
+                                                                                    getSortByToggleProps: () => object;
+                                                                                    isSorted: boolean;
+                                                                                    isSortedDesc?: boolean;
+                                                                                };
+                                                                                return (
+                                                                                <th {...sortableColumn.getHeaderProps(sortableColumn.getSortByToggleProps())} key={sortableColumn.getHeaderProps().key} style={{ borderBottom: '2px solid black', padding: '8px', textAlign: 'left' }}>
+                                                                                    {sortableColumn.render('Header')}
                                                                                     <span>
-                                                                                        {column.isSorted
-                                                                                            ? column.isSortedDesc
+                                                                                        {sortableColumn.isSorted
+                                                                                            ? sortableColumn.isSortedDesc
                                                                                                 ? ' 🔽'
                                                                                                 : ' 🔼'
                                                                                                 : ''}
                                                                                     </span>
                                                                                 </th>
-                                                                            ))}
+                                                                                );
+                                                                            })}
                                                                         </tr>
                                                                     ))}
                                                                 </thead>                                <tbody {...getTableBodyProps()}>

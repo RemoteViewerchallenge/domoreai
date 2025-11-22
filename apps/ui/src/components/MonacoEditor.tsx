@@ -6,9 +6,12 @@ interface MonacoEditorProps {
   value: string;
   onChange: OnChange;
   language: string;
+  className?: string;
+  options?: React.ComponentProps<typeof Editor>['options'];
+  theme?: string;
 }
 
-function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
+function MonacoEditor({ value, onChange, language, className, options, theme = "vs-dark" }: MonacoEditorProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function handleEditorDidMount(_editor: unknown) { // Correctly type monaco
     const url = 'ws://localhost:4000/language-server';
@@ -35,11 +38,13 @@ function MonacoEditor({ value, onChange, language }: MonacoEditorProps) {
 
   return (
     <Editor
-      height="300px"
+      className={className}
+      height="100%" // Let container control height
       language={language}
       value={value}
       onChange={onChange}
-      theme="vs-dark"
+      theme={theme}
+      options={options}
       onMount={handleEditorDidMount as OnMount} // Cast to OnMount
     />
   );

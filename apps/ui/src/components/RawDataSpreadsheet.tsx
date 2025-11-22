@@ -2,24 +2,26 @@ import React, { useRef, useEffect } from 'react';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
 
+type SpreadsheetData = (string | number | boolean | null | undefined)[][];
+
 interface RawDataSpreadsheetProps {
-  rawData: any; // The raw JSON data from the provider
-  onSave?: (data: any[][]) => void;
+  rawData: unknown; // The raw JSON data from the provider
+  onSave?: (data: SpreadsheetData) => void;
 }
 
 /**
  * Flattens a nested object into a single-level object with dot notation keys
  * Example: {pricing: {prompt: 0.5}} => {"pricing.prompt": 0.5}
  */
-function flattenObject(obj: any, prefix = ''): Record<string, any> {
-  const flattened: Record<string, any> = {};
+function flattenObject(obj: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+  const flattened: Record<string, unknown> = {};
   
   for (const key in obj) {
     const value = obj[key];
     const newKey = prefix ? `${prefix}.${key}` : key;
     
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      Object.assign(flattened, flattenObject(value, newKey));
+      Object.assign(flattened, flattenObject(value as Record<string, unknown>, newKey));
     } else if (Array.isArray(value)) {
       flattened[newKey] = JSON.stringify(value);
     } else {
@@ -34,27 +36,31 @@ function flattenObject(obj: any, prefix = ''): Record<string, any> {
  * Converts raw JSON data into spreadsheet format
  * Automatically detects all unique keys across all objects
  */
-function jsonToSpreadsheet(rawData: any): { headers: string[], data: any[][] } {
+function jsonToSpreadsheet(rawData: unknown): { headers: string[], data: SpreadsheetData } {
   // Handle different response formats
-  let dataArray: any[] = [];
+  let dataArray: unknown[] = [];
   
   if (Array.isArray(rawData)) {
     dataArray = rawData;
-  } else if (rawData?.data && Array.isArray(rawData.data)) {
-    dataArray = rawData.data;
-  } else if (rawData?.models && Array.isArray(rawData.models)) {
-    dataArray = rawData.models;
-  } else {
-    console.warn('Unknown data format:', rawData);
-    return { headers: ['raw'], data: [[JSON.stringify(rawData)]] };
+  } else if (rawData && typeof rawData === 'object') {
+    const dataObj = rawData as { data?: unknown; models?: unknown };
+    if (Array.isArray(dataObj.data)) {
+      dataArray = dataObj.data;
+    } else if (Array.isArray(dataObj.models)) {
+      dataArray = dataObj.models;
+    }
   }
 
   if (dataArray.length === 0) {
+    // If rawData is not an array or recognized object, treat as single row if object
+    if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+       return { headers: ['raw'], data: [[JSON.stringify(rawData)]] };
+    }
     return { headers: [], data: [] };
   }
 
   // Flatten all objects and collect all unique keys
-  const flattenedObjects = dataArray.map(obj => flattenObject(obj));
+  const flattenedObjects = dataArray.map(obj => flattenObject(obj as Record<string, unknown>));
   const allKeys = new Set<string>();
   flattenedObjects.forEach(obj => {
     Object.keys(obj).forEach(key => allKeys.add(key));
@@ -68,7 +74,7 @@ function jsonToSpreadsheet(rawData: any): { headers: string[], data: any[][] } {
       const value = obj[header];
       if (value === undefined || value === null) return '';
       if (typeof value === 'object') return JSON.stringify(value);
-      return String(value);
+      return value as string | number | boolean;
     });
   });
 
@@ -77,12 +83,14 @@ function jsonToSpreadsheet(rawData: any): { headers: string[], data: any[][] } {
 
 export const RawDataSpreadsheet: React.FC<RawDataSpreadsheetProps> = ({ rawData, onSave }) => {
   const jRef = useRef<HTMLDivElement>(null);
-  const spreadsheetRef = useRef<any>(null);
+  const spreadsheetRef = useRef<unknown>(null);
 
   useEffect(() => {
     console.log('[RawDataSpreadsheet] useEffect triggered', { hasRef: !!jRef.current, hasData: !!rawData });
     
-    if (!jRef.current || !rawData) {
+    const element = jRef.current;
+
+    if (!element || !rawData) {
       console.log('[RawDataSpreadsheet] Early return - missing ref or data');
       return;
     }
@@ -91,7 +99,8 @@ export const RawDataSpreadsheet: React.FC<RawDataSpreadsheetProps> = ({ rawData,
     if (spreadsheetRef.current) {
       try {
         console.log('[RawDataSpreadsheet] Destroying existing spreadsheet');
-        jspreadsheet.destroy(jRef.current as any, true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        jspreadsheet.destroy(element as any, true);
         spreadsheetRef.current = null;
       } catch (e) {
         console.warn('Failed to destroy spreadsheet:', e);
@@ -119,30 +128,36 @@ export const RawDataSpreadsheet: React.FC<RawDataSpreadsheetProps> = ({ rawData,
     // Use setTimeout to ensure DOM is ready
     const timeoutId = setTimeout(() => {
       try {
-        if (!jRef.current) {
+        if (!element) {
           console.error('[RawDataSpreadsheet] Container disappeared before initialization');
           return;
         }
 
         // Initialize jspreadsheet
-        const instance = jspreadsheet(jRef.current, {
-          data: data,
-          columns: columns,
-          minDimensions: [headers.length, Math.max(data.length, 10)],
-          allowInsertRow: true,
-          allowInsertColumn: true,
-          allowDeleteRow: true,
-          allowDeleteColumn: true,
-          tableOverflow: true,
-          tableWidth: '100%',
-          tableHeight: '600px',
-          onchange: () => {
-            if (onSave && spreadsheetRef.current) {
-              const currentData = spreadsheetRef.current.getData();
-              onSave(currentData);
-            }
-          },
-        });
+        const options = {
+          worksheets: [{
+            data: data,
+            columns: columns,
+            minDimensions: [headers.length, Math.max(data.length, 10)],
+            allowInsertRow: true,
+            allowInsertColumn: true,
+            allowDeleteRow: true,
+            allowDeleteColumn: true,
+            tableOverflow: true,
+            tableWidth: '100%',
+            tableHeight: '600px',
+            onchange: () => {
+              if (onSave && spreadsheetRef.current) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const currentData = (spreadsheetRef.current as any)[0].getData(); // Access first worksheet
+                onSave(currentData);
+              }
+            },
+          }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const instance = jspreadsheet(element, options as any);
         
         spreadsheetRef.current = instance;
         console.log('[RawDataSpreadsheet] Spreadsheet initialized successfully', instance);
@@ -153,11 +168,11 @@ export const RawDataSpreadsheet: React.FC<RawDataSpreadsheetProps> = ({ rawData,
 
     return () => {
       clearTimeout(timeoutId);
-      const elementToClean = jRef.current;
-      if (spreadsheetRef.current && elementToClean) {
+      if (spreadsheetRef.current && element) {
         try {
           console.log('[RawDataSpreadsheet] Cleanup: destroying spreadsheet');
-          jspreadsheet.destroy(elementToClean as any, true);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          jspreadsheet.destroy(element as any, true);
           spreadsheetRef.current = null;
         } catch (e) {
           console.warn('Cleanup error:', e);
