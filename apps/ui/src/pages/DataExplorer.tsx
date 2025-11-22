@@ -11,7 +11,14 @@ export const DataExplorer: React.FC = () => {
   if (isLoading) return <div>Loading...</div>;
 
   // Transform rawData into spreadsheet format
-  const spreadsheetData = rawData?.map((row: any) => ({
+  interface RawDataRow {
+    id: string;
+    provider: string;
+    ingestedAt: string | Date;
+    rawData: unknown;
+  }
+
+  const spreadsheetData = rawData?.map((row: RawDataRow) => ({
     id: row.id,
     provider: row.provider,
     ingestedAt: new Date(row.ingestedAt), // Ensure Date object

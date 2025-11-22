@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface SimpleTableViewProps {
-  rawData: any;
+  rawData: unknown;
 }
 
 /**
@@ -9,14 +9,17 @@ interface SimpleTableViewProps {
  */
 export const SimpleTableView: React.FC<SimpleTableViewProps> = ({ rawData }) => {
   // Handle different response formats
-  let dataArray: any[] = [];
+  let dataArray: Record<string, unknown>[] = [];
   
   if (Array.isArray(rawData)) {
-    dataArray = rawData;
-  } else if (rawData?.data && Array.isArray(rawData.data)) {
-    dataArray = rawData.data;
-  } else if (rawData?.models && Array.isArray(rawData.models)) {
-    dataArray = rawData.models;
+    dataArray = rawData as Record<string, unknown>[];
+  } else if (rawData && typeof rawData === 'object') {
+    const dataObj = rawData as { data?: unknown; models?: unknown };
+    if (Array.isArray(dataObj.data)) {
+      dataArray = dataObj.data as Record<string, unknown>[];
+    } else if (Array.isArray(dataObj.models)) {
+      dataArray = dataObj.models as Record<string, unknown>[];
+    }
   } else {
     return (
       <div className="p-4 text-sm text-gray-500">
