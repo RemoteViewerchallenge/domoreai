@@ -17,6 +17,37 @@ export class UsageCollector {
    * Logs usage asynchronously.
    * Fire-and-forget: does not block the API response.
    */
+  /**
+   * Pre-flight: Check and Increment Redis counter (Synchronous)
+   * Returns true if request is allowed, false if rate limit exceeded.
+   */
+  static async checkAndIncrementRateLimit(providerConfigId: string, limit: number, windowSeconds: number = 60): Promise<boolean> {
+    try {
+      const client = await getRedisClient();
+      const limitKey = `ratelimit:${providerConfigId}`;
+      
+      const current = await client.incr(limitKey);
+      
+      if (current === 1) {
+        await client.expire(limitKey, windowSeconds);
+      }
+      
+      if (current > limit) {
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Failed to check rate limit:', err);
+      // Default to allowing if Redis fails, to avoid blocking all traffic
+      return true;
+    }
+  }
+
+  /**
+   * Logs usage asynchronously.
+   * Post-flight: Log token usage and cost to Postgres.
+   */
   static async logRequest(data: UsageLogData): Promise<void> {
     try {
       // 1. Log to Persistent DB (Prisma ModelUsage table)
@@ -36,21 +67,9 @@ export class UsageCollector {
         }
       });
 
-      // 2. Update Real-time Redis Stats (for immediate limiting)
-      const client = await getRedisClient();
-      const limitKey = `ratelimit:${data.providerConfigId}`;
-      
-      // Increment usage counter
-      await client.incr(limitKey);
-      
-      // Set expiry if not already set (1 minute window)
-      const ttl = await client.ttl(limitKey);
-      if (ttl === -1) {
-        await client.expire(limitKey, 60);
-      }
-
-      // Track errors separately for placement logic
+      // 2. Track errors separately for placement logic
       if (data.status === 'FAILURE') {
+        const client = await getRedisClient();
         const errorKey = `errors:${data.providerConfigId}`;
         await client.incr(errorKey);
         await client.expire(errorKey, 300); // 5 minute window for error tracking

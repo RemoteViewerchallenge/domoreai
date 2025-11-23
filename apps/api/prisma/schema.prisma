@@ -40,7 +40,9 @@ model Model {
   modelId      String  // The ID from the provider (e.g., "gpt-4o-mini")
   name         String  // The human-readable name
   isFree       Boolean @default(false)
-  rateLimit    String? // (for your enrich agent to fill)
+  limitRequestRate Int?    // Requests allowed per window
+  limitWindow      Int?    // Window size in seconds (e.g., 60 for 1 minute)
+  costPer1k        Float?  // Cost per 1k tokens (for sorting)
 
   // --- Fields for the "Role Fiddler" ---
   // These will be populated by your "Enrichment Agent"

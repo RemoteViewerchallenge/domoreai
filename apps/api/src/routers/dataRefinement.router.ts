@@ -109,9 +109,52 @@ export const dataRefinementRouter = createTRPCRouter({
   promoteToApp: publicProcedure
     .input(z.object({ sourceTableName: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // This would promote data from a staging table to the main app schema
-      // For now, just return success
-      return { count: 0, message: "Promotion requires a real database schema" };
+      const { sourceTableName } = input;
+
+      // 1. Fetch the refined data from your temporary SQL table
+      // We use $queryRawUnsafe because the table name is dynamic
+      const rows = await ctx.db.$queryRawUnsafe<any[]>(
+        `SELECT * FROM "${sourceTableName}"`
+      );
+
+      if (!rows || rows.length === 0) {
+        return { count: 0, message: "No rows found in staging table." };
+      }
+
+      let promotedCount = 0;
+
+      // 2. Upsert each row into the real 'Model' table
+      for (const row of rows) {
+        // Map your SQL columns to the new Prisma Schema fields
+        // Note: Ensure your SQL query outputs these exact column names!
+        await ctx.db.model.upsert({
+          where: {
+            providerId_modelId: {
+              providerId: row.provider_id, // Map from SQL 'provider_id'
+              modelId: row.model_id        // Map from SQL 'model_id'
+            }
+          },
+          create: {
+            providerId: row.provider_id,
+            modelId: row.model_id,
+            name: row.name,
+            // THE NEW FIELDS YOUR AGENT ADDED:
+            costPer1k: parseFloat(row.cost_per_1k || '0'),
+            limitRequestRate: parseInt(row.limit_request_rate || '0'),
+            limitWindow: parseInt(row.limit_window || '60'),
+            providerData: row.raw_data || {},
+          },
+          update: {
+            // Update limits if they changed
+            costPer1k: parseFloat(row.cost_per_1k || '0'),
+            limitRequestRate: parseInt(row.limit_request_rate || '0'),
+            limitWindow: parseInt(row.limit_window || '60'),
+          }
+        });
+        promotedCount++;
+      }
+
+      return { count: promotedCount, message: `Successfully promoted ${promotedCount} models.` };
     }),
 
   executeQuery: publicProcedure
