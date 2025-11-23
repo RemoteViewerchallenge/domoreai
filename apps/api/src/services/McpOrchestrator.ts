@@ -44,21 +44,16 @@ export class McpOrchestrator {
   // but might use it for executeTool if we keep that endpoint.
   async executeTool(toolName: string, args: any, clientId?: string) {
        console.log(`Executing tool ${toolName}`);
-       return { success: true, result: "Tool execution mocked" };
+       throw new Error(`ToolNotFoundError: Tool ${toolName} not found.`);
   }
   
-  // Added to satisfy existing router if it calls it, though user wants router to fetch directly
   async getTools() {
       return [];
   }
 
   private async resolveToolsToServers(tools: string[]): Promise<Map<string, string[]>> {
     // In a real app, this would query the registry to find which server hosts which tool.
-    // For now, we'll assume a simple mapping or return a mock.
-    const map = new Map<string, string[]>();
-    // Mock logic: assume tool name implies server or just group all
-    // map.set('default-server', tools);
-    return map;
+    throw new Error("ToolNotFoundError: Could not resolve tools to servers.");
   }
 
   private async ensureServerRunning(serverName: string) {

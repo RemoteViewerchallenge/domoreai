@@ -8,6 +8,7 @@ import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
 import { db } from './db.js'; 
 import { llmRouter } from './routers/llm.router.js';
+import { ProviderManager } from './services/ProviderManager.js';
 
 /**
  * Initializes and starts the application server.
@@ -50,6 +51,9 @@ async function startServer() {
 
   // Initialize WebSocket service
   const wsService = new WebSocketService(server);
+
+  // Initialize Provider Manager
+  await ProviderManager.initialize();
 
   // Mount RESTful API routers
   app.use('/llm', llmRouter);

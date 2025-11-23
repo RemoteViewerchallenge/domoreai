@@ -10,9 +10,7 @@
     "dev": "tsx watch --env-file=../../.env.local src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint -c eslint.config.mjs .",
-    "lint:fix": "eslint -c eslint.config.mjs . --fix",
-    "postinstall": "prisma generate",
-    "migrate:dev": "dotenv -e ../../.env.local -- prisma migrate dev"
+    "lint:fix": "eslint -c eslint.config.mjs . --fix"
   },
   "dependencies": {
     "@google-cloud/aiplatform": "^3.21.0",

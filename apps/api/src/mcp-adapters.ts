@@ -1,4 +1,4 @@
-import { type LLMModel } from './llm-adapters.js';
+import { type LLMModel } from '@repo/volcano-sdk';
 import { z } from 'zod';
 
 /**
@@ -22,6 +22,7 @@ export class GatewayAdapter implements MCPAdapter {
     return [
       {
         id: 'gateway-model-1',
+        providerId: 'mcp-gateway',
         object: 'model',
         created: Date.now(),
         owned_by: 'gateway',

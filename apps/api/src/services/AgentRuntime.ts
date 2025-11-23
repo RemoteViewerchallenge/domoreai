@@ -31,19 +31,7 @@ export class AgentRuntime {
       name: 'system',
       call_template_type: 'direct-call', // Uses direct JS execution
       tools: [
-        { 
-            name: 'exec', 
-            handler: terminalTools.execute,
-            description: 'Execute a shell command',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    command: { type: 'string' },
-                    cwd: { type: 'string' }
-                },
-                required: ['command']
-            }
-        },
+
         { 
             name: 'read_file', 
             handler: fsTools.readFile,
@@ -99,22 +87,10 @@ export class AgentRuntime {
 
   async runAgentLoop(userGoal: string, llmCallback: (prompt: string) => Promise<string>) {
     // The Prompt for the LLM
-    const prompt = `
-      GOAL: ${userGoal}
-      
-      Write a TypeScript script to achieve this. 
-      You have access to:
-      - system.exec({ command })
-      - system.read_file({ path })
-      - system.write_file({ path, content })
-      - system.list_files({ path })
-      - system.browse({ url })
-      
-      Log all your findings using console.log().
-    `;
+
 
     // 1. Get Code from LLM (using the provided callback)
-    const aiResponse = await llmCallback(prompt); 
+    const aiResponse = await llmCallback(userGoal); 
     
     // Simple code extraction (regex for ```ts ... ``` or just the whole body if no blocks)
     const codeBlockMatch = aiResponse.match(/```(?:typescript|ts|js|javascript)?\n([\s\S]*?)```/);

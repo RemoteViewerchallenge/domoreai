@@ -1,5 +1,0 @@
-[
-{ "id": "task-1", "title": "Fix the Git merge conflicts", "status": "done" },
-{ "id": "task-2", "title": "Build the Role Creator UI", "status": "in_progress" },
-{ "id": "task-3", "title": "Integrate Lootbox", "status": "todo" }
-]

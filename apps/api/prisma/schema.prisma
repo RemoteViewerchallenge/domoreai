@@ -10,24 +10,18 @@ generator client {
 // -----------------------------------------------------------------
 // Stores the provider-specific credentials and configuration
 // -----------------------------------------------------------------
-model Provider {
-  id           String @id @default(cuid())
-  createdAt    DateTime @default(now())
-  
-  name         String @unique // e.g., "OpenRouter", "My Local Ollama" - must be unique
-  providerType String // e.g., "openai", "llama", "anthropic"
-  baseURL      String
-  
-  // !!! IMPORTANT: This should be encrypted before saving
-  encryptedApiKey String?
-
-  // --- Rate Limiting ---
-  requestsPerMinute Int?
+model ProviderConfig {
+  id          String   @id @default(uuid())
+  label       String   // e.g. "My Personal OpenAI", "Team OpenRouter"
+  type        String   // e.g. "openai", "anthropic", "generic-openai"
+  apiKey      String   // Encrypt this field in the application layer!
+  baseURL     String?  // Crucial for generic providers
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // --- Relations ---
-  // A Provider has many Models
   models       Model[]
-  // This is the other side of the `provider` relation in `ModelConfig`.
   modelConfigs ModelConfig[]
 }
 
@@ -39,7 +33,7 @@ model Model {
   
   // --- Relation to Provider ---
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // --- Normalized Data (What YOU care about) ---
   modelId      String  // The ID from the provider (e.g., "gpt-4o-mini")
@@ -115,7 +109,7 @@ model ModelConfig {
 
   // --- Relation to Provider (for convenience/denormalization) ---
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id])
+  provider   ProviderConfig @relation(fields: [providerId], references: [id])
 
   // --- Role-specific settings for this model ---
   // e.g., max tokens, temperature, etc.

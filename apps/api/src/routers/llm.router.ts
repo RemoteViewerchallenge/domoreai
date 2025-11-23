@@ -1,105 +1,112 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
-import { LlamaAdapter, MistralAdapter, OpenAIAdapter, VertexStudioAdapter } from '../llm-adapters.js';
-import { GatewayAdapter } from '../mcp-adapters.js';
-import { createProvider, getAllProviders, getProviderById, saveModelsForProvider, updateModel } from '../db/index.js';
-import type { LLMProvider } from '@repo/common';
-import type { Provider } from '../types.js';
-
-/**
- * A higher-order function to wrap async route handlers and catch errors,
- * passing them to Express's global error handler.
- */
-const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
+import { Router } from 'express';
+import { ProviderManager } from '../services/ProviderManager.js';
+import { db } from '../db.js';
+import { encrypt } from '../utils/encryption.js';
 
 export const llmRouter: Router = Router();
 
-const adapters = {
-  openai: new OpenAIAdapter(),
-  mistral: new MistralAdapter(),
-  llama: new LlamaAdapter(),
-  'vertex-studio': new VertexStudioAdapter(),
-  mcp: new GatewayAdapter(),
-};
-
-const availableLLMProviderTypes: Omit<LLMProvider, 'id' | 'models' | 'displayName'>[] = Object.values(adapters).map(
-  (adapter) => ({
-    name: adapter.providerName,
-    configSchema: adapter.configSchema,
-  }),
-);
-
-// Returns the types of providers available (templates)
-llmRouter.get('/provider-types', (_req, res) => {
-  res.json(availableLLMProviderTypes);
-});
-
-// Returns user-defined configurations
-llmRouter.get('/configurations', asyncHandler(async (_req, res) => {
-  const providers = await getAllProviders();
-  res.json(providers.map((p: Provider) => ({
-    id: p.id,
-    displayName: p.name,
-    providerType: p.providerType,
-    config: { apiKey: p.apiKey, baseURL: p.baseUrl },
-    models: p.models || [],
-    isHealthy: p.isHealthy,
-    lastCheckedAt: p.lastCheckedAt,
-  })));
-}));
-
-// Adds a new user-defined configuration
-llmRouter.post('/configurations', asyncHandler(async (req, res) => {
-  const { displayName, providerType, config } = req.body;
-
-  if (!displayName || !providerType || !config) {
-    return res.status(400).json({ error: 'Missing displayName, providerType, or config' });
-  }
-
-  const adapter = adapters[providerType as keyof typeof adapters];
-  if (!adapter) {
-    return res.status(400).json({ error: `Unknown provider type: ${providerType}` });
-  }
-
-  const newProvider = await createProvider({
-    name: displayName,
-    baseUrl: config.baseURL,
-    providerType: providerType,
-    models: [],
-    apiKey: config.apiKey,
-    isHealthy: true,
-    lastCheckedAt: new Date(),
-  });
-
-  let models = [];
+// Get all aggregated models
+llmRouter.get('/models', async (req, res) => {
   try {
-    models = await adapter.getModels(config);
-  } catch (modelError: any) {
-    console.error(`Failed to fetch models for ${providerType}:`, modelError.response?.data || modelError.message);
-    throw new Error(`Could not fetch models from provider. Please check your credentials. (Reason: ${modelError.message})`);
+    const models = await ProviderManager.getAllModels();
+    res.json({ data: models });
+  } catch (error) {
+    console.error('Failed to fetch models:', error);
+    res.status(500).json({ error: 'Failed to fetch models' });
   }
-
-  await saveModelsForProvider(newProvider.id, providerType, models);
-  const finalProvider = await getProviderById(newProvider.id);
-
-  res.status(201).json({
-    id: finalProvider!.id,
-    displayName: finalProvider!.name,
-    providerType: providerType,
-    config: { apiKey: finalProvider!.apiKey, baseURL: finalProvider!.baseUrl },
-    models: finalProvider!.models || [],
-    isHealthy: finalProvider!.isHealthy,
-    lastCheckedAt: finalProvider!.lastCheckedAt,
-  });
-}));
-
-// Triggers an update for a provider's models
-llmRouter.post('/configurations/:id/update-models', async (req, res) => {
-  // ... implementation ...
 });
 
-llmRouter.put('/models/:modelId', async (req, res) => {
-  // ... implementation ...
+// Chat completion
+llmRouter.post('/chat/completions', async (req, res) => {
+  const { providerId, model, messages, temperature, max_tokens } = req.body;
+  
+  if (!providerId) {
+    return res.status(400).json({ error: 'providerId is required' });
+  }
+
+  const provider = ProviderManager.getProvider(providerId);
+  if (!provider) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+
+  try {
+    const result = await provider.generateCompletion({
+      modelId: model,
+      messages,
+      temperature,
+      max_tokens
+    });
+    // Return OpenAI-compatible response format
+    res.json({
+      id: 'chatcmpl-' + Date.now(),
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: model,
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: result },
+        finish_reason: 'stop'
+      }]
+    });
+  } catch (error: any) {
+    console.error('Completion failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manage Providers (CRUD)
+llmRouter.get('/configurations', async (req, res) => {
+  try {
+    const configs = await db.providerConfig.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    // Don't return the full API key
+    const safeConfigs = configs.map((c: any) => ({
+      ...c,
+      apiKey: '********' 
+    }));
+    res.json(safeConfigs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch configurations' });
+  }
+});
+
+llmRouter.post('/configurations', async (req, res) => {
+  const { label, type, apiKey, baseURL } = req.body;
+  
+  if (!label || !type || !apiKey) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const encryptedKey = encrypt(apiKey);
+    const config = await db.providerConfig.create({
+      data: {
+        label,
+        type,
+        apiKey: encryptedKey,
+        baseURL,
+        isEnabled: true
+      }
+    });
+    
+    // Re-initialize ProviderManager to pick up new provider
+    await ProviderManager.initialize();
+    
+    res.json({ ...config, apiKey: '********' });
+  } catch (error: any) {
+    console.error('Failed to create provider config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+llmRouter.delete('/configurations/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.providerConfig.delete({ where: { id } });
+    await ProviderManager.initialize();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
