@@ -58,7 +58,7 @@ export const DataNode: React.FC = () => {
               onChange={(e) => setActiveTable(e.target.value)}
             >
               <option value="" disabled>Select Node...</option>
-              {tables?.map((t: string) => <option key={t} value={t}>{t}</option>)}
+              {tables?.map((t: { name?: string } | string) => <option key={typeof t === 'string' ? t : t.name || ''} value={typeof t === 'string' ? t : t.name || ''}>{typeof t === 'string' ? t : t.name || ''}</option>)}
             </select>
           </div>
 

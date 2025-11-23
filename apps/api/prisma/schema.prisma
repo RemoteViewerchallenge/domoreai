@@ -17,6 +17,7 @@ model ProviderConfig {
   apiKey      String   // Encrypt this field in the application layer!
   baseURL     String?  // Crucial for generic providers
   isEnabled   Boolean  @default(true)
+  requestsPerMinute Int? // Rate limit for this provider
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

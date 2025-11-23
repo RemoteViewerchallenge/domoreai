@@ -84,11 +84,11 @@ export class DynamicModelAdapter {
   }
 
   /**
-   * Fallback: Load from SimpleDB models array if no custom table exists
+   * Fallback: Load from Prisma models table if no custom table exists
    */
   static async loadModelsFromSimpleDB(): Promise<DynamicModel[]> {
     try {
-      const models = db.data.models || [];
+      const models = await db.model.findMany();
       return models.map((m: any) => ({
         id: m.modelId || m.id,
         providerConfigId: m.providerId || m.providerConfigId,
@@ -100,11 +100,11 @@ export class DynamicModelAdapter {
         error_penalty: m.error_penalty || false,
         rpm_limit: m.rpm_limit,
         rpd_limit: m.rpd_limit,
-        is_free_tier: m.is_free_tier || false,
+        is_free_tier: m.isFree || false,
         metadata: m,
       }));
     } catch (error) {
-      console.error('Failed to load models from SimpleDB:', error);
+      console.error('Failed to load models from Prisma:', error);
       return [];
     }
   }
