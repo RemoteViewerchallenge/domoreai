@@ -1,7 +1,6 @@
 import { db } from '../db.js';
 import { z } from 'zod';
 import { modelInputSchema } from '@repo/api-contract';
-import { Prisma } from '@prisma/client'; // Import Prisma
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
@@ -9,38 +8,35 @@ export class ModelService {
   async saveNormalizedModel(input: ModelInput) {
     const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = input;
 
-    const provider = await db.provider.findUnique({
-      where: { id: providerId },
-    });
-
-    if (!provider) {
-      throw new Error(`Provider with id ${providerId} not found.`);
-    }
-
-    const modelData = {
-      name,
-      isFree,
-      contextWindow,
-      hasVision,
-      hasReasoning,
-      hasCoding,
-      providerData: providerData === null ? Prisma.JsonNull : (providerData as Prisma.InputJsonValue),
-    };
-
+    // Simple implementation with our JSON DB
     return db.model.upsert({
       where: {
         providerId_modelId: { providerId, modelId },
       },
-      update: modelData,
+      update: {
+        name,
+        isFree,
+        contextWindow,
+        hasVision,
+        hasReasoning,
+        hasCoding,
+        providerData,
+      },
       create: {
         providerId,
         modelId,
-        ...modelData
+        name,
+        isFree,
+        contextWindow,
+        hasVision,
+        hasReasoning,
+        hasCoding,
+        providerData,
       },
     });
   }
 
   async listModels() {
-    return db.model.findMany();
+    return db.data.models;
   }
 }

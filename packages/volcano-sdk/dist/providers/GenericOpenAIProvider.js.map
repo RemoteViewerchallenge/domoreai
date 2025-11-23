@@ -1,0 +1,1 @@
+{"version":3,"file":"GenericOpenAIProvider.js","sourceRoot":"","sources":["../../src/providers/GenericOpenAIProvider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,qBAAqB,CAAC;AAErD,MAAM,OAAO,qBAAsB,SAAQ,cAAc;IACvD,YAAY,GAAG,gBAAgB,CAAC;IAEhC,YAAY,EAAU,EAAE,MAAkE;QACxF,uCAAuC;QACvC,KAAK,CAAC,EAAE,EAAE,MAAM,CAAC,CAAC;IACpB,CAAC;CACF"}
