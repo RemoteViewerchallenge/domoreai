@@ -1,0 +1,8 @@
+src/mcp-adapters.ts(1,31): error TS2307: Cannot find module '@repo/volcano-sdk' or its corresponding type declarations.
+src/routers/providers.router.ts(5,10): error TS2305: Module '"volcano-sdk"' has no exported member 'ProviderFactory'.
+src/routers/providers.router.ts(72,48): error TS7006: Parameter 'model' implicitly has an 'any' type.
+src/routers/providers.router.ts(99,17): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/services/AgentFactory.ts(1,10): error TS2305: Module '"volcano-sdk"' has no exported member 'ProviderFactory'.
+src/services/ProviderManager.ts(3,10): error TS2305: Module '"volcano-sdk"' has no exported member 'ProviderFactory'.
+src/services/ProviderManager.ts(3,27): error TS2305: Module '"volcano-sdk"' has no exported member 'BaseLLMProvider'.
+src/services/ProviderManager.ts(3,44): error TS2305: Module '"volcano-sdk"' has no exported member 'LLMModel'.

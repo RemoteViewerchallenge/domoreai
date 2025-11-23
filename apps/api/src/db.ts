@@ -118,6 +118,17 @@ class SimpleDB {
     }
   };
 
+  role = {
+    findUnique: async (opts: { where: { id: string } }) => {
+      // Mock implementation for now since we don't have roles in JSON DB yet
+      return {
+        id: opts.where.id,
+        name: 'Mock Role',
+        basePrompt: 'You are a helpful assistant.',
+      };
+    }
+  };
+
   async $disconnect() {
     // No-op for file-based storage
   }

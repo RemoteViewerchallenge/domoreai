@@ -1,59 +1,72 @@
-import { spawn, ChildProcess } from 'child_process';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { RegistryClient } from './mcp-registry-client.js';
 
+interface ActiveServer {
+  client: Client;
+  transport: StdioClientTransport;
+  lastUsed: number;
+}
+
 export class McpOrchestrator {
-  private activeServers = new Map<string, { process: ChildProcess, lastUsed: number }>();
+  private activeServers = new Map<string, ActiveServer>();
   private SHUTDOWN_TIMEOUT = 1000 * 60 * 5; // 5 minutes
 
   constructor() {
-    // Start the cleanup interval
+    // Start cleanup interval
     setInterval(() => this.cleanupIdleServers(), 60000);
   }
 
   /**
-   * Called when an Agent Role is initialized
+   * Prepares the environment by ensuring specific MCP servers are running.
+   * @param serverNames List of server names (e.g., 'git', 'postgres') to start.
    */
-  async prepareEnvironmentForRole(roleId: string, tools: string[]) {
-    // 1. Identify which servers own these tools
-    const serverMap = await this.resolveToolsToServers(tools);
+  async prepareEnvironment(serverNames: string[]) {
+    await Promise.all(serverNames.map(name => this.ensureServerRunning(name)));
+  }
 
-    // 2. Ensure those servers are running
-    for (const serverName of serverMap.keys()) {
-      await this.ensureServerRunning(serverName);
+  /**
+   * Returns a list of tools formatted for the AgentRuntime/CodeMode sandbox.
+   * Each tool includes a 'handler' that proxies the call to the actual MCP server.
+   */
+  async getToolsForSandbox() {
+    const sandboxTools: any[] = [];
+
+    for (const [serverName, server] of this.activeServers.entries()) {
+      try {
+        const { tools } = await server.client.listTools();
+
+        const formattedTools = tools.map((tool) => ({
+          name: `${serverName}_${tool.name}`, // Namespacing to prevent collisions
+          description: tool.description,
+          input_schema: tool.inputSchema,
+          // The Magic: Create a closure that calls the MCP tool
+          handler: async (args: any) => {
+            console.log(`[MCP] Calling ${serverName}:${tool.name}`, args);
+            server.lastUsed = Date.now(); // Update activity
+            
+            try {
+              const result = await server.client.callTool({
+                name: tool.name,
+                arguments: args,
+              });
+              
+              // Return the content directly to the agent
+              return result.content;
+            } catch (error: any) {
+              console.error(`[MCP] Tool Execution Failed:`, error);
+              throw new Error(`MCP Tool Error: ${error.message}`);
+            }
+          }
+        }));
+
+        sandboxTools.push(...formattedTools);
+      } catch (error) {
+        console.warn(`[Orchestrator] Failed to fetch tools from ${serverName}:`, error);
+      }
     }
-    
-    // 3. Configure Proxy to point to these active servers
-    // (This depends on how your meta-mcp-proxy accepts config updates)
-    await this.updateProxyConfig(this.activeServers);
-  }
 
-  // Management methods
-  async spawnServer(id: string, command: string, args: string[]) {
-      console.log(`Spawning server ${id}`);
-      // This is exposed for manual spawning if needed, but ensureServerRunning is preferred
-      return { success: true };
-  }
-
-  async connectServer(id: string, url: string) {
-      console.log(`Connecting server ${id} to ${url}`);
-      return { success: true };
-  }
-
-  // Placeholder for methods called by lootbox.router if it still uses orchestrator
-  // The new lootbox.router implementation in the prompt doesn't use orchestrator for getTools
-  // but might use it for executeTool if we keep that endpoint.
-  async executeTool(toolName: string, args: any, clientId?: string) {
-       console.log(`Executing tool ${toolName}`);
-       throw new Error(`ToolNotFoundError: Tool ${toolName} not found.`);
-  }
-  
-  async getTools() {
-      return [];
-  }
-
-  private async resolveToolsToServers(tools: string[]): Promise<Map<string, string[]>> {
-    // In a real app, this would query the registry to find which server hosts which tool.
-    throw new Error("ToolNotFoundError: Could not resolve tools to servers.");
+    return sandboxTools;
   }
 
   private async ensureServerRunning(serverName: string) {
@@ -62,30 +75,52 @@ export class McpOrchestrator {
       return;
     }
 
-    console.log(`[Orchestrator] Auto-starting MCP Server: ${serverName}...`);
-    
-    const serverConfig = await RegistryClient.getServerConfig(serverName);
-    
-    const child = spawn(serverConfig.command, serverConfig.args, {
-      env: { ...process.env, ...serverConfig.env }
-    });
+    console.log(`[Orchestrator] Starting MCP Server: ${serverName}...`);
 
-    this.activeServers.set(serverName, { process: child, lastUsed: Date.now() });
+    try {
+      // 1. Get Config
+      const config = await RegistryClient.getServerConfig(serverName);
+
+      // 2. Initialize Transport (Stdio)
+      const transport = new StdioClientTransport({
+        command: config.command,
+        args: config.args,
+        env: { ...process.env, ...(config.env || {}) } as Record<string, string>,
+      });
+
+      // 3. Initialize Client
+      const client = new Client(
+        { name: "domoreai-orchestrator", version: "1.0.0" },
+        { capabilities: {} }
+      );
+
+      // 4. Connect
+      await client.connect(transport);
+      
+      this.activeServers.set(serverName, { 
+        client, 
+        transport, 
+        lastUsed: Date.now() 
+      });
+      
+      console.log(`[Orchestrator] Connected to ${serverName}`);
+    } catch (error) {
+      console.error(`[Orchestrator] Failed to start server ${serverName}:`, error);
+      throw error;
+    }
   }
 
   private cleanupIdleServers() {
     const now = Date.now();
-    for (const [serverName, server] of this.activeServers.entries()) {
+    for (const [name, server] of this.activeServers.entries()) {
       if (now - server.lastUsed > this.SHUTDOWN_TIMEOUT) {
-        console.log(`[Orchestrator] Shutting down idle server: ${serverName}`);
-        server.process.kill();
-        this.activeServers.delete(serverName);
+        console.log(`[Orchestrator] Shutting down idle server: ${name}`);
+        // Close the client connection (which typically kills the transport/process)
+        server.client.close().catch(e => console.error("Error closing client:", e));
+        this.activeServers.delete(name);
       }
     }
   }
-
-  private async updateProxyConfig(activeServers: Map<string, { process: ChildProcess, lastUsed: number }>) {
-      // Logic to update the proxy with new server ports/transports
-      console.log(`Updating proxy config for ${activeServers.size} servers`);
-  }
 }
+
+export const mcpOrchestrator = new McpOrchestrator();

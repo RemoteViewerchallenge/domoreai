@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
-import { ProviderFactory } from '@repo/volcano-sdk';
+import { ProviderFactory } from '../utils/ProviderFactory.js';
 
 
 export const providerRouter = createTRPCRouter({

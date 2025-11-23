@@ -2,6 +2,7 @@ import { CodeModeUtcpClient } from '@utcp/code-mode';
 import { terminalTools } from '../tools/terminal.js';
 import { fsTools } from '../tools/filesystem.js';
 import { browserTools } from '../tools/browser.js';
+import { mcpOrchestrator } from './McpOrchestrator.js';
 
 export class AgentRuntime {
   private client!: CodeModeUtcpClient;
@@ -26,12 +27,27 @@ export class AgentRuntime {
   private async init() {
     this.client = await CodeModeUtcpClient.create();
     
-    // Register your "Native" Manuals (No HTTP overhead!)
+    // 1. Initialize Orchestrator & Load Servers
+    // Example: Ensure 'git' and 'filesystem' servers are running
+    // In a real app, these names might come from the user's project settings
+    await mcpOrchestrator.prepareEnvironment(['mcp-server-git', 'mcp-server-postgres']); 
+
+    // 2. Get Dynamic Tools
+    const mcpTools = await mcpOrchestrator.getToolsForSandbox();
+
+    // 3. Register "system" namespace with BOTH Native and MCP tools
     await this.client.registerManual({
       name: 'system',
       call_template_type: 'direct-call', // Uses direct JS execution
       tools: [
+        ...this.getNativeTools(), 
+        ...mcpTools               // <--- DYNAMICALLY INJECTED
+      ]
+    });
+  }
 
+  private getNativeTools() {
+     return [
         { 
             name: 'read_file', 
             handler: fsTools.readFile,
@@ -81,8 +97,7 @@ export class AgentRuntime {
                 required: ['url']
             }
         }
-      ]
-    });
+     ];
   }
 
   async runAgentLoop(userGoal: string, llmCallback: (prompt: string) => Promise<string>) {

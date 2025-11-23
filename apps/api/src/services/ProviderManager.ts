@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { decrypt } from '../utils/encryption.js';
-import { ProviderFactory, BaseLLMProvider, LLMModel } from '@repo/volcano-sdk';
+import { ProviderFactory, BaseLLMProvider, LLMModel } from '../utils/ProviderFactory.js';
 
 export class ProviderManager {
   private static providers: Map<string, BaseLLMProvider> = new Map();

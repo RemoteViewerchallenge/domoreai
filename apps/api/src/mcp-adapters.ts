@@ -1,4 +1,4 @@
-import { type LLMModel } from '@repo/volcano-sdk';
+import { type LLMModel } from './utils/ProviderFactory.js';
 import { z } from 'zod';
 
 /**

@@ -9,6 +9,15 @@ import { createTRPCContext as createContext } from './trpc.js';
 import { db } from './db.js'; 
 import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
+import { createVolcanoTelemetry } from 'volcano-sdk';
+
+// Initialize Telemetry
+if (process.env.VOLCANO_TELEMETRY_ENABLED === 'true') {
+  createVolcanoTelemetry({
+    serviceName: process.env.OTEL_SERVICE_NAME,
+    endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  });
+}
 
 /**
  * Initializes and starts the application server.
