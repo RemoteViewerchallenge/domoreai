@@ -1,98 +1,49 @@
 import React, { useState } from 'react';
-import WorkOrderCard from '../components/work-order/WorkOrderCard.js';
-import { Monitor, Plus, Trash2 } from 'lucide-react';
-
-interface CardData {
-  id: string;
-  prompt: string;
-  gen: string;
-}
+import WorkOrderColumn from '../components/work-order/WorkOrderColumn.js';
+import { Monitor, Columns, Settings } from 'lucide-react';
 
 const WorkSpace: React.FC = () => {
-  const [cards, setCards] = useState<CardData[]>([
-    { id: '1', prompt: '', gen: '' },
-    { id: '2', prompt: '', gen: '' },
-    { id: '3', prompt: '', gen: '' },
-  ]);
-
-  const [cols, setCols] = useState(3);
-
-  const handleAddCard = () => {
-    const newCard = { id: String(Date.now()), prompt: '', gen: '' };
-    setCards([...cards, newCard]);
-  };
-
-  const handleDeleteCard = (id: string) => {
-    setCards(cards.filter(card => card.id !== id));
-  };
+  const [columnCount, setColumnCount] = useState(3);
+  
+  // Create stable IDs for columns
+  const columns = Array.from({ length: columnCount }, (_, i) => `col-${i}`);
 
   return (
-    <div className="h-screen flex flex-col bg-black overflow-hidden font-mono text-xs">
-      {/* Global Header */}
-      <div className="flex-none h-8 bg-gray-950 flex items-center justify-between px-2">
-        <div className="flex items-center gap-2">
-          <Monitor className="text-blue-500" size={14} />
-          <span className="font-bold text-blue-400 uppercase tracking-wider">C.O.R.E. Workspace</span>
+    // fixed inset-0 locks this to the viewport. NO global scrolling allowed.
+    <div className="fixed inset-0 flex flex-col bg-black overflow-hidden font-mono text-xs text-gray-300">
+      
+      {/* Header */}
+      <div className="flex-none h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 select-none z-50">
+        <div className="flex items-center gap-3">
+          <Monitor className="text-cyan-500" size={16} />
+          <span className="font-bold text-cyan-400 tracking-widest">C.O.R.E. WORKSPACE</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleAddCard}
-            className="flex items-center gap-1 px-2 py-1 bg-blue-900/20 text-blue-500 hover:bg-blue-900/40 transition-colors"
-          >
-            <Plus size={12} />
-            <span className="text-[10px] font-bold uppercase">Add Card</span>
-          </button>
-          <div className="flex items-center gap-2 text-[10px] text-gray-500">
-            <span className="uppercase">Cols: {cols}</span>
+        <div className="flex items-center gap-6">
+          {/* The Slider Control */}
+          <div className="flex items-center gap-3 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+            <Columns size={12} className="text-zinc-500" />
+            <span className="text-[10px] font-bold uppercase text-zinc-400 w-12">Cols: {columnCount}</span>
             <input
               type="range"
               min="1"
               max="6"
-              value={cols}
-              onChange={(e) => setCols(Number(e.target.value))}
-              className="w-16 h-1 bg-gray-800 appearance-none cursor-pointer"
+              step="1"
+              value={columnCount}
+              onChange={(e) => setColumnCount(Number(e.target.value))}
+              className="w-24 h-1 bg-zinc-700 appearance-none cursor-pointer rounded-full accent-cyan-500"
             />
           </div>
+          <Settings size={14} className="text-zinc-600 hover:text-white cursor-pointer" />
         </div>
       </div>
 
-      {/* Grid Layout - Simple CSS Grid */}
-      <div 
-        className="flex-1 bg-black overflow-hidden grid"
-        style={{
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridAutoRows: `minmax(0, 1fr)`,
-          gap: '1px',
-          backgroundColor: '#00ffff',
-        }}
-      >
-        {cards.map((card) => (
-          <div key={card.id} className="relative w-full h-full bg-black">
-            <button
-              onClick={() => handleDeleteCard(card.id)}
-              className="absolute top-1 right-1 z-20 p-1 bg-red-900/50 text-red-400 hover:bg-red-900 transition-colors opacity-0 hover:opacity-100"
-            >
-              <Trash2 size={10} />
-            </button>
-            <WorkOrderCard
-              id={card.id}
-              promptValue={card.prompt}
-              genValue={card.gen}
-              onPromptChange={(val) => {
-                const newCards = [...cards];
-                const index = cards.findIndex(c => c.id === card.id);
-                newCards[index].prompt = val;
-                setCards(newCards);
-              }}
-              onGenChange={(val) => {
-                const newCards = [...cards];
-                const index = cards.findIndex(c => c.id === card.id);
-                newCards[index].gen = val;
-                setCards(newCards);
-              }}
-              isActive={true}
-            />
+      {/* Main Layout - Flex Row */}
+      {/* min-w-0 is CRITICAL here to stop flex children from forcing scroll */}
+      <div className="flex-1 flex flex-row min-w-0 min-h-0 bg-black">
+        {columns.map((colId, index) => (
+          <div key={colId} className="flex-1 min-w-0 h-full relative border-r border-zinc-800 last:border-r-0">
+             <WorkOrderColumn columnId={colId} index={index} />
           </div>
         ))}
       </div>

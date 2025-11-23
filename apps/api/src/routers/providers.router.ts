@@ -191,6 +191,21 @@ export const providerRouter = createTRPCRouter({
         where: { id: input.id },
       });
     }),
+
+  createRawData: publicProcedure
+    .input(z.object({
+      provider: z.string(),
+      rawData: z.any(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.rawDataLake.create({
+        data: {
+          provider: input.provider,
+          rawData: input.rawData,
+          ingestedAt: new Date(),
+        },
+      });
+    }),
 });
 
 // --- Helper Functions (Implement these) ---

@@ -109,12 +109,20 @@ export async function flattenRawData(rawDataId: string, tableName: string) {
   // 5. Insert the data
   for (const row of flattenedRows) {
     const columnNames = columns.map(col => `"${col.name}"`).join(', ');
-    const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+    
+    // Build placeholders with JSONB casting where needed
+    const placeholders = columns.map((col, i) => {
+      if (col.type === 'JSONB') {
+        return `$${i + 1}::jsonb`;
+      }
+      return `$${i + 1}`;
+    }).join(', ');
+    
     const values = columns.map(col => {
       const rawVal = row[col.originalName] ?? null;
-      // If column type is JSONB, ensure we insert a JSON string
-      if (col.type === 'JSONB' && rawVal !== null && typeof rawVal !== 'string') {
-        return JSON.stringify(rawVal);
+      // For JSONB columns, always stringify (the ::jsonb cast will handle it)
+      if (col.type === 'JSONB' && rawVal !== null) {
+        return typeof rawVal === 'string' ? rawVal : JSON.stringify(rawVal);
       }
       return rawVal;
     });
@@ -167,9 +175,10 @@ export async function getTableData(tableName: string, limit = 100) {
     throw new Error(`Table not found: ${tableName}`);
   }
 
-  // Fetch data
+  // Fetch data - using template string to avoid cached plan issues
+  // When a table schema changes (ALTER TABLE), Prisma's cached prepared statements fail
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM "${safeTableName}" LIMIT ${limit}`
+    `SELECT * FROM "${safeTableName}" LIMIT ${Number(limit)}`
   );
 
   return {

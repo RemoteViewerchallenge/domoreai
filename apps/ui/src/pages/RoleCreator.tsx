@@ -14,6 +14,15 @@ interface Role {
   needsReasoning: boolean;
   needsCoding: boolean;
   tools?: string[];
+  defaultTemperature?: number | null;
+  defaultMaxTokens?: number | null;
+  defaultTopP?: number | null;
+  defaultFrequencyPenalty?: number | null;
+  defaultPresencePenalty?: number | null;
+  defaultStop?: string[] | null;
+  defaultSeed?: number | null;
+  defaultResponseFormat?: 'text' | 'json_object' | null;
+  terminalRestrictions?: { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] } | null;
 }
 
 const RoleCreator: React.FC = () => {
@@ -39,6 +48,15 @@ const RoleCreator: React.FC = () => {
     needsReasoning: false,
     needsCoding: false,
     tools: [] as string[],
+    defaultTemperature: 0.7,
+    defaultMaxTokens: 2048,
+    defaultTopP: 1.0,
+    defaultFrequencyPenalty: 0.0,
+    defaultPresencePenalty: 0.0,
+    defaultStop: [] as string[],
+    defaultSeed: undefined as number | undefined,
+    defaultResponseFormat: 'text' as 'text' | 'json_object',
+    terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] } as { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] },
   });
 
   const handleSave = () => {
@@ -63,6 +81,15 @@ const RoleCreator: React.FC = () => {
       needsReasoning: false,
       needsCoding: false,
       tools: [],
+      defaultTemperature: 0.7,
+      defaultMaxTokens: 2048,
+      defaultTopP: 1.0,
+      defaultFrequencyPenalty: 0.0,
+      defaultPresencePenalty: 0.0,
+      defaultStop: [],
+      defaultSeed: undefined,
+      defaultResponseFormat: 'text',
+      terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] },
     });
   };
 
@@ -76,7 +103,16 @@ const RoleCreator: React.FC = () => {
       needsVision: role.needsVision,
       needsReasoning: role.needsReasoning,
       needsCoding: role.needsCoding,
-      tools: role.tools || [], // Assuming tools are stored on the role
+      tools: role.tools || [],
+      defaultTemperature: role.defaultTemperature || 0.7,
+      defaultMaxTokens: role.defaultMaxTokens || 2048,
+      defaultTopP: role.defaultTopP || 1.0,
+      defaultFrequencyPenalty: role.defaultFrequencyPenalty || 0.0,
+      defaultPresencePenalty: role.defaultPresencePenalty || 0.0,
+      defaultStop: role.defaultStop || [],
+      defaultSeed: role.defaultSeed || undefined,
+      defaultResponseFormat: (role.defaultResponseFormat as 'text' | 'json_object') || 'text',
+      terminalRestrictions: role.terminalRestrictions || { mode: 'blacklist', commands: ['rm', 'sudo'] },
     });
   };
 
@@ -234,6 +270,203 @@ const RoleCreator: React.FC = () => {
                 selectedTools={formData.tools || []}
                 onChange={(tools) => setFormData({ ...formData, tools })}
               />
+            </div>
+
+            {/* Terminal Security */}
+            <div className="border border-gray-800 p-3 bg-gray-950/50">
+              <h3 className="text-[10px] font-bold text-gray-500 uppercase mb-2">Terminal Security</h3>
+              <p className="text-[9px] text-gray-600 mb-3">Control which terminal commands this role can execute.</p>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-white block mb-2">Security Mode</label>
+                  <select
+                    value={formData.terminalRestrictions?.mode || 'blacklist'}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      terminalRestrictions: { 
+                        mode: e.target.value as 'whitelist' | 'blacklist' | 'unrestricted',
+                        commands: formData.terminalRestrictions?.commands || []
+                      }
+                    })}
+                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-white rounded"
+                  >
+                    <option value="unrestricted">Unrestricted (⚠️ Full Access)</option>
+                    <option value="blacklist">Blacklist (Block Dangerous)</option>
+                    <option value="whitelist">Whitelist (Only Allow Specific)</option>
+                  </select>
+                </div>
+
+                {formData.terminalRestrictions?.mode !== 'unrestricted' && (
+                  <div>
+                    <label className="text-[10px] font-bold text-white block mb-1">
+                      {formData.terminalRestrictions?.mode === 'blacklist' ? 'Blocked Commands' : 'Allowed Commands'}
+                    </label>
+                    <p className="text-[9px] text-gray-600 mb-2">Comma-separated list of commands</p>
+                    <input
+                      type="text"
+                      value={formData.terminalRestrictions?.commands?.join(', ') || ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        terminalRestrictions: {
+                          mode: formData.terminalRestrictions?.mode || 'blacklist',
+                          commands: e.target.value ? e.target.value.split(',').map(s => s.trim()) : []
+                        }
+                      })}
+                      placeholder={formData.terminalRestrictions?.mode === 'blacklist' ? 'rm, sudo, dd, mkfs' : 'ls, cat, grep, echo'}
+                      className="w-full px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-white rounded"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Hyperparameters */}
+            <div className="border border-gray-800 p-3 bg-gray-950/50">
+              <h3 className="text-[10px] font-bold text-gray-500 uppercase mb-4">Default Hyperparameters</h3>
+              <p className="text-[9px] text-gray-600 mb-4">Cards using this role will inherit these defaults but can override them.</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400 uppercase">Temperature (Creativity)</label>
+                    <span className="text-xs font-mono text-cyan-400">{formData.defaultTemperature}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={formData.defaultTemperature}
+                    onChange={(e) => setFormData({ ...formData, defaultTemperature: parseFloat(e.target.value) })}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+                    <span>Precise</span>
+                    <span>Balanced</span>
+                    <span>Creative</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400 uppercase">Max Tokens</label>
+                    <span className="text-xs font-mono text-cyan-400">{formData.defaultMaxTokens}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={256}
+                    max={8192}
+                    step={256}
+                    value={formData.defaultMaxTokens}
+                    onChange={(e) => setFormData({ ...formData, defaultMaxTokens: parseInt(e.target.value) })}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+                    <span>Short</span>
+                    <span>Medium</span>
+                    <span>Long</span>
+                  </div>
+                </div>
+
+                {/* Top P */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400">Top P</label>
+                    <span className="text-xs font-mono text-cyan-400">{formData.defaultTopP}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-600 mb-2">Nucleus sampling - alternative to temperature. Lower = more focused.</p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={formData.defaultTopP}
+                    onChange={(e) => setFormData({ ...formData, defaultTopP: parseFloat(e.target.value) })}
+                    className="w-full accent-blue-500"
+                  />
+                </div>
+
+                {/* Frequency Penalty */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400">Frequency Penalty</label>
+                    <span className="text-xs font-mono text-cyan-400">{formData.defaultFrequencyPenalty}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-600 mb-2">Reduces repetition based on token frequency. Higher = less repetition.</p>
+                  <input
+                    type="range"
+                    min={-2}
+                    max={2}
+                    step={0.1}
+                    value={formData.defaultFrequencyPenalty}
+                    onChange={(e) => setFormData({ ...formData, defaultFrequencyPenalty: parseFloat(e.target.value) })}
+                    className="w-full accent-green-500"
+                  />
+                </div>
+
+                {/* Presence Penalty */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400">Presence Penalty</label>
+                    <span className="text-xs font-mono text-cyan-400">{formData.defaultPresencePenalty}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-600 mb-2">Encourages topic diversity. Higher = more diverse topics.</p>
+                  <input
+                    type="range"
+                    min={-2}
+                    max={2}
+                    step={0.1}
+                    value={formData.defaultPresencePenalty}
+                    onChange={(e) => setFormData({ ...formData, defaultPresencePenalty: parseFloat(e.target.value) })}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+
+                {/* Seed */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400">Seed (Optional)</label>
+                    <input
+                      type="number"
+                      value={formData.defaultSeed ?? ''}
+                      onChange={(e) => setFormData({ ...formData, defaultSeed: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="Random"
+                      className="w-24 px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-cyan-400 rounded"
+                    />
+                  </div>
+                  <p className="text-[9px] text-gray-600">For deterministic outputs. Same seed = same output (if supported).</p>
+                </div>
+
+                {/* Response Format */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-purple-400">Response Format</label>
+                    <select
+                      value={formData.defaultResponseFormat}
+                      onChange={(e) => setFormData({ ...formData, defaultResponseFormat: e.target.value as 'text' | 'json_object' })}
+                      className="px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-gray-300 rounded"
+                    >
+                      <option value="text">Text (Default)</option>
+                      <option value="json_object">JSON Object</option>
+                    </select>
+                  </div>
+                  <p className="text-[9px] text-gray-600">Force structured JSON output if needed.</p>
+                </div>
+
+                {/* Stop Sequences */}
+                <div>
+                  <label className="text-[10px] font-bold text-purple-400 block mb-1">Stop Sequences</label>
+                  <p className="text-[9px] text-gray-600 mb-2">Comma-separated sequences to stop generation.</p>
+                  <input
+                    type="text"
+                    value={formData.defaultStop?.join(', ') ?? ''}
+                    onChange={(e) => setFormData({ ...formData, defaultStop: e.target.value ? e.target.value.split(',').map(s => s.trim()) : [] })}
+                    placeholder="\n\n, END, ---"
+                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-gray-300 rounded"
+                  />
+                </div>
+              </div>
             </div>
 
           </div>
