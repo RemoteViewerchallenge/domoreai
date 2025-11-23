@@ -13,6 +13,22 @@ const createRoleSchema = z.object({
   needsVision: z.boolean().default(false),
   needsReasoning: z.boolean().default(false),
   needsCoding: z.boolean().default(false),
+  // Array of strings (MCP server names or tool IDs)
+  tools: z.array(z.string()).optional().default([]),
+  // Default hyperparameters (all Volcano SDK parameters)
+  defaultTemperature: z.number().min(0).max(2).optional().default(0.7),
+  defaultMaxTokens: z.number().int().min(256).max(32000).optional().default(2048),
+  defaultTopP: z.number().min(0).max(1).optional().default(1.0),
+  defaultFrequencyPenalty: z.number().min(-2).max(2).optional().default(0.0),
+  defaultPresencePenalty: z.number().min(-2).max(2).optional().default(0.0),
+  defaultStop: z.array(z.string()).optional(),
+  defaultSeed: z.number().int().optional(),
+  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
+  // Terminal security
+  terminalRestrictions: z.object({
+    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
+    commands: z.array(z.string()),
+  }).optional(),
 });
 
 /**
@@ -28,6 +44,19 @@ const updateRoleSchema = z.object({
   needsVision: z.boolean().optional(),
   needsReasoning: z.boolean().optional(),
   needsCoding: z.boolean().optional(),
+  tools: z.array(z.string()).optional(),
+  defaultTemperature: z.number().min(0).max(2).optional(),
+  defaultMaxTokens: z.number().int().min(256).max(32000).optional(),
+  defaultTopP: z.number().min(0).max(1).optional(),
+  defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
+  defaultPresencePenalty: z.number().min(-2).max(2).optional(),
+  defaultStop: z.array(z.string()).optional(),
+  defaultSeed: z.number().int().optional(),
+  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
+  terminalRestrictions: z.object({
+    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
+    commands: z.array(z.string()),
+  }).optional(),
 });
 
 export const roleRouter = createTRPCRouter({

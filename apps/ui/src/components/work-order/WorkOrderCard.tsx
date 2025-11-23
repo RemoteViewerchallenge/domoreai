@@ -20,88 +20,83 @@ const WorkOrderCard: React.FC<WorkOrderCardProps> = ({
   const [focus, setFocus] = useState<'prompt' | 'gen' | null>(null);
 
   // Hydraulic Logic
-  // Default: Prompt 2, Gen 8
-  // Prompt Focus: Prompt 5, Gen 5
-  // Gen Focus: Prompt 1, Gen 9
-  
-  let splitRatio = 20; // Default
-  if (focus === 'prompt') splitRatio = 50;
-  if (focus === 'gen') splitRatio = 10;
+  // This controls the height of the FIRST row.
+  let splitRatio = 35; 
+  if (focus === 'prompt') splitRatio = 60;
+  if (focus === 'gen') splitRatio = 15;
+
+  const editorOptions = {
+    minimap: { enabled: false },
+    lineNumbers: 'on' as const,
+    folding: false,
+    padding: { top: 12, bottom: 12 },
+    fontSize: 11,
+    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+    wordWrap: 'on' as const,
+    automaticLayout: true,
+    scrollbar: { vertical: 'auto' as const, horizontal: 'hidden' as const, verticalScrollbarSize: 10 },
+    dragAndDrop: true,
+    links: true,
+  };
 
   return (
+    // CSS GRID LAYOUT
+    // Rows: [Split%] [2px] [Rest of space]
     <div 
-      className={`relative w-full h-full flex flex-col overflow-hidden transition-all duration-300 ${
-        isActive ? 'shadow-[0_0_10px_rgba(59,130,246,0.3)] z-10' : 'opacity-60 hover:opacity-100'
-      } bg-black`}
+      className={`w-full h-full grid bg-black overflow-hidden ${isActive ? 'z-10' : ''}`}
+      style={{ 
+        gridTemplateRows: `${splitRatio}% 2px 1fr`,
+        transition: 'grid-template-rows 0.3s ease-out' // Smooth animation
+      }}
     >
-      {/* Prompt Area (Top) */}
+      
+      {/* --- ROW 1: PROMPT --- */}
       <div 
-        className="w-full transition-all duration-500 ease-in-out flex flex-col bg-gray-950/20"
-        style={{ height: `${splitRatio}%` }}
+        className="relative min-h-0 w-full bg-zinc-900 border-b border-zinc-800"
         onClick={() => setFocus('prompt')}
       >
-        <div className="flex-1 relative">
-          {/* > Indicator */}
-          <div className="absolute left-1 top-1 text-cyan-500 text-xs z-10 pointer-events-none">
-            &gt;
-          </div>
-          <MonacoEditor
+        {/* Label */}
+        <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'prompt' ? 'bg-cyan-950 text-cyan-400 border-cyan-700' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
+          Input
+        </div>
+        {/* Editor */}
+        <div className="absolute inset-0">
+           <MonacoEditor
             value={promptValue}
-            onChange={(val) => onPromptChange(val || '')}
+            onChange={(val: string | undefined) => onPromptChange(val || '')}
             language="markdown"
             theme="vs-dark"
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: 'off',
-              folding: false,
-              padding: { top: 4, bottom: 4 },
-              fontSize: 11,
-              fontFamily: 'monospace',
-              wordWrap: 'on',
-              scrollBeyondLastLine: false,
-              renderLineHighlight: 'none',
-              hideCursorInOverviewRuler: true,
-              overviewRulerBorder: false,
-              scrollbar: { vertical: 'auto', horizontal: 'hidden' },
-            }}
+            options={editorOptions}
             className="h-full w-full"
           />
         </div>
       </div>
 
-      {/* Divider between Prompt and Generation */}
-      <div className="w-full h-px bg-cyan-500" />
+      {/* --- ROW 2: DIVIDER --- */}
+      <div className="w-full h-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)] z-50 relative" />
 
-      {/* Generation Area (Bottom) */}
+      {/* --- ROW 3: OUTPUT --- */}
       <div 
-        className="w-full transition-all duration-500 ease-in-out flex flex-col bg-gray-900/20"
-        style={{ height: `${100 - splitRatio}%` }}
+        className="relative min-h-0 w-full bg-black"
         onClick={() => setFocus('gen')}
       >
-        <div className="flex-1 relative">
+         {/* Label */}
+         <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'gen' ? 'bg-green-950 text-green-400 border-green-700' : 'bg-zinc-900 text-zinc-600 border-zinc-800'}`}>
+          Output
+        </div>
+        {/* Editor */}
+        <div className="absolute inset-0">
           <MonacoEditor
             value={genValue}
-            onChange={(val) => onGenChange(val || '')}
+            onChange={(val: string | undefined) => onGenChange(val || '')}
             language="javascript"
             theme="vs-dark"
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: 'off',
-              folding: false,
-              padding: { top: 4, bottom: 4 },
-              fontSize: 11,
-              fontFamily: 'monospace',
-              wordWrap: 'on',
-              scrollBeyondLastLine: false,
-              renderLineHighlight: 'none',
-              hideCursorInOverviewRuler: true,
-              overviewRulerBorder: false,
-              scrollbar: { vertical: 'auto', horizontal: 'hidden' },
-            }}
+            options={editorOptions}
             className="h-full w-full"
           />
         </div>
       </div>
+
     </div>
   );
 };

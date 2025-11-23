@@ -17,6 +17,7 @@
     "cuid",
     "flyonui",
     "Groq",
+    "HYPERPARAMETERS",
     "jspreadsheet",
     "LOOTBOX",
     "mistralai",
@@ -24,9 +25,12 @@
     "Ollama",
     "openrouter",
     "sandboxed",
+    "schemaname",
     "shadcn",
+    "tablename",
     "Turborepo",
     "upserts",
+    "Utcp",
     "VITE"
   ]
 }

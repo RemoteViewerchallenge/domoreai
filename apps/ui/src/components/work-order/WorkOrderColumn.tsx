@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import WorkOrderCard from './WorkOrderCard.js';
-import { ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import WorkOrderCard from './WorkOrderCard.js'; // Keeping .js for consistency with previous fixes
+import { ChevronLeft, ChevronRight, Plus, MoreHorizontal } from 'lucide-react';
 
 interface CardData {
   id: string;
@@ -8,53 +8,56 @@ interface CardData {
   gen: string;
 }
 
-const WorkOrderColumn: React.FC = () => {
+interface WorkOrderColumnProps {
+  columnId: string;
+  index: number;
+}
+
+const WorkOrderColumn: React.FC<WorkOrderColumnProps> = ({ columnId, index }) => {
   const [cards, setCards] = useState<CardData[]>([
-    { id: '1', prompt: '# Initial Prompt\nDescribe the architecture...', gen: '// Architecture Overview...' },
-    { id: '2', prompt: 'Refine the database schema', gen: 'model User {\n  id String @id\n}' },
+    { id: `${columnId}-1`, prompt: '// Input Prompt...', gen: '// Output Generation...' },
   ]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const activeCard = cards[activeIndex];
   const totalCards = cards.length;
 
-  const handleAddCard = () => {
-    const newCard = { id: String(Date.now()), prompt: '', gen: '' };
+  const handleAddPage = () => {
+    const newCard = { id: `${columnId}-${Date.now()}`, prompt: '', gen: '' };
     setCards([...cards, newCard]);
-    setActiveIndex(cards.length); // Go to new card
+    setActiveIndex(cards.length);
   };
 
-  const handlePrev = () => {
-    if (activeIndex > 0) setActiveIndex(activeIndex - 1);
-  };
-
-  const handleNext = () => {
-    if (activeIndex < totalCards - 1) setActiveIndex(activeIndex + 1);
-  };
-
-  const handleJump = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const val = parseInt(e.currentTarget.value);
-      if (!isNaN(val) && val >= 1 && val <= totalCards) {
-        setActiveIndex(val - 1);
-      }
-    }
-  };
+  const handlePrev = () => activeIndex > 0 && setActiveIndex(activeIndex - 1);
+  const handleNext = () => activeIndex < totalCards - 1 && setActiveIndex(activeIndex + 1);
 
   return (
-    <div className="flex flex-col h-full bg-black font-mono text-xs">
-      {/* Active Card Area (Top, Larger) */}
-      <div className="flex-[2] min-h-0 flex flex-col">
+    <div className="flex flex-col h-full w-full bg-zinc-950 border-r border-zinc-800 last:border-r-0">
+      
+      {/* Header - Fixed Height */}
+      <div className="flex-none h-8 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-3 select-none">
+        <div className="flex items-center gap-2">
+          <div className={`w-1.5 h-1.5 rounded-full ${index % 2 === 0 ? 'bg-cyan-500' : 'bg-purple-500'}`}></div>
+          <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Lane {index + 1}</span>
+        </div>
+        <MoreHorizontal size={14} className="text-zinc-600 hover:text-white cursor-pointer" />
+      </div>
+
+      {/* Viewport - THE CRITICAL FIX */}
+      {/* flex-1: Grow to fill ALL available space */}
+      {/* min-h-0: Allow shrinking if needed (stops overflow) */}
+      {/* relative: Acts as the anchor for the Card */}
+      <div className="flex-1 w-full relative min-h-0 bg-black">
         <WorkOrderCard
           id={activeCard.id}
           promptValue={activeCard.prompt}
           genValue={activeCard.gen}
-          onPromptChange={(val) => {
+          onPromptChange={(val: string) => {
             const newCards = [...cards];
             newCards[activeIndex].prompt = val;
             setCards(newCards);
           }}
-          onGenChange={(val) => {
+          onGenChange={(val: string) => {
             const newCards = [...cards];
             newCards[activeIndex].gen = val;
             setCards(newCards);
@@ -63,69 +66,22 @@ const WorkOrderColumn: React.FC = () => {
         />
       </div>
 
-      {/* Next Card Area (Bottom, Smaller) */}
-      {activeIndex < totalCards - 1 ? (
-        <div 
-          className="flex-1 min-h-0 flex flex-col opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-          onClick={handleNext}
-        >
-          <WorkOrderCard
-            id={cards[activeIndex + 1].id}
-            promptValue={cards[activeIndex + 1].prompt}
-            genValue={cards[activeIndex + 1].gen}
-            onPromptChange={(val) => {
-              const newCards = [...cards];
-              newCards[activeIndex + 1].prompt = val;
-              setCards(newCards);
-            }}
-            onGenChange={(val) => {
-              const newCards = [...cards];
-              newCards[activeIndex + 1].gen = val;
-              setCards(newCards);
-            }}
-            isActive={false}
-          />
-        </div>
-      ) : (
-        <div 
-          className="flex-1 min-h-0 flex items-center justify-center bg-gray-950/30 cursor-pointer hover:bg-gray-900/50 transition-colors"
-          onClick={handleAddCard}
-        >
-          <div className="flex flex-col items-center text-gray-700 hover:text-blue-500">
-            <Plus size={24} />
-            <span className="text-xs font-bold uppercase mt-2">New Card</span>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination / Jump Control */}
-      <div className="flex items-center justify-between px-2 py-1 bg-gray-950">
-        <button 
-          onClick={handlePrev} 
-          disabled={activeIndex === 0}
-          className="p-0.5 text-gray-600 hover:text-white disabled:opacity-30"
-        >
-          <ChevronUp size={10} />
+      {/* Footer - Fixed Height */}
+      <div className="flex-none h-8 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-2 select-none z-50">
+        <button onClick={handlePrev} disabled={activeIndex === 0} className="p-1 text-zinc-500 hover:text-white disabled:opacity-20">
+          <ChevronLeft size={14} />
         </button>
-        
-        <div className="flex items-center gap-1 text-[10px] text-gray-500">
-          <span>PG</span>
-          <input 
-            type="text" 
-            className="w-6 text-center bg-black border border-gray-800 text-white focus:border-blue-500 focus:outline-none"
-            placeholder={String(activeIndex + 1)}
-            onKeyDown={handleJump}
-          />
-          <span>/ {totalCards}</span>
+        <span className="text-[9px] font-bold text-zinc-500">
+          PAGE {activeIndex + 1} / {totalCards}
+        </span>
+        <div className="flex items-center gap-1">
+          <button onClick={handleAddPage} className="p-1 text-zinc-500 hover:text-green-400" title="Add Page">
+            <Plus size={14} />
+          </button>
+          <button onClick={handleNext} disabled={activeIndex === totalCards - 1} className="p-1 text-zinc-500 hover:text-white disabled:opacity-20">
+            <ChevronRight size={14} />
+          </button>
         </div>
-
-        <button 
-          onClick={handleNext} 
-          disabled={activeIndex === totalCards - 1}
-          className="p-0.5 text-gray-600 hover:text-white disabled:opacity-30"
-        >
-          <ChevronDown size={10} />
-        </button>
       </div>
     </div>
   );

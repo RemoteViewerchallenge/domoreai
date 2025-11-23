@@ -1,53 +1,42 @@
-import { Editor, type OnChange, type OnMount } from '@monaco-editor/react'; // Import OnMount
-import { MonacoLanguageClient } from 'monaco-languageclient';
-import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc';
+import React from 'react';
+import { Editor, type EditorProps } from '@monaco-editor/react';
 
-interface MonacoEditorProps {
-  value: string;
-  onChange: OnChange;
-  language: string;
+interface MonacoEditorProps extends EditorProps {
   className?: string;
-  options?: React.ComponentProps<typeof Editor>['options'];
-  theme?: string;
 }
 
-function MonacoEditor({ value, onChange, language, className, options, theme = "vs-dark" }: MonacoEditorProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleEditorDidMount(_editor: unknown) { // Correctly type monaco
-    const url = 'ws://localhost:4000/language-server';
-    const webSocket = new WebSocket(url);
-
-    webSocket.onopen = () => {
-      const languageClient = new MonacoLanguageClient({
-        name: 'TypeScript Language Client',
-        clientOptions: {
-          documentSelector: ['typescript'],
-          errorHandler: {
-            error: () => ({ action: 1 }),
-            closed: () => ({ action: 1 })
-          }
-        },
-        messageTransports: {
-          reader: new WebSocketMessageReader(toSocket(webSocket)),
-          writer: new WebSocketMessageWriter(toSocket(webSocket))
-        }
-      });
-      void languageClient.start();
-    };
-  }
-
+const MonacoEditor: React.FC<MonacoEditorProps> = ({ 
+  className, 
+  language = 'javascript', 
+  theme = 'vs-dark', 
+  value, 
+  onChange, 
+  options,
+  ...props 
+}) => {
   return (
-    <Editor
-      className={className}
-      height="100%" // Let container control height
-      language={language}
-      value={value}
-      onChange={onChange}
-      theme={theme}
-      options={options}
-      onMount={handleEditorDidMount as OnMount} // Cast to OnMount
-    />
+    <div className={className} style={{ overflow: 'hidden' }}> 
+      {/* ^ overflow: hidden is crucial here to stop the parent from expanding */}
+      <Editor
+        height="100%"
+        width="100%"
+        language={language}
+        theme={theme}
+        value={value}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onChange={(val) => onChange && onChange(val, {} as any)} 
+        options={{
+          ...options,
+          // 👇 THIS IS THE FIX FOR THE SLIDER
+          automaticLayout: true, 
+          fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+          fontLigatures: true,
+          minimap: { enabled: false },
+        }}
+        {...props}
+      />
+    </div>
   );
-}
+};
 
 export default MonacoEditor;

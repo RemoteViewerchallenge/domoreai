@@ -81,6 +81,19 @@ model Role {
   needsReasoning Boolean @default(false)
   needsCoding    Boolean @default(false)
 
+  // Default Hyperparameters (inherited by cards)
+  defaultTemperature       Float?   @default(0.7)
+  defaultMaxTokens         Int?     @default(2048)
+  defaultTopP              Float?   @default(1.0)
+  defaultFrequencyPenalty  Float?   @default(0.0)
+  defaultPresencePenalty   Float?   @default(0.0)
+  defaultStop              Json?    // Array of stop sequences
+  defaultSeed              Int?     // For deterministic outputs
+  defaultResponseFormat    Json?    // { type: "json_object" } or null
+
+  // Terminal Security
+  terminalRestrictions     Json?    // { mode: "whitelist" | "blacklist", commands: string[] }
+
   // TODO: Add Tool & Task relations later
   preferredModels ModelConfig[] @relation("PreferredModels")
 

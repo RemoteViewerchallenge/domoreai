@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 
 interface AddProviderFormProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  customMutation?: any; // Allow passing the "Ingest" mutation
 }
 
-export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess }) => {
+export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onCancel, customMutation }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -14,9 +16,10 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess }) =
     apiKey: '',
   });
 
-  const addProviderMutation = trpc.providers.add.useMutation({
+  // Use the passed mutation OR the default one
+  const mutation = customMutation || trpc.providers.add.useMutation({
     onSuccess: () => {
-      onSuccess();
+      onSuccess?.();
       setFormData({ name: '', providerType: 'openai', baseURL: '', apiKey: '' });
       setIsOpen(false);
     },
@@ -44,19 +47,22 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess }) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addProviderMutation.mutate(formData);
+    mutation.mutate(formData);
   };
 
   return (
     <div className="border-b border-gray-700 pb-4 mb-4">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="btn btn-xs btn-primary w-full mb-2"
-      >
-        {isOpen ? 'Cancel' : '+ Add Provider'}
-      </button>
+      {/* Only show toggle button if NOT in "embedded" mode (i.e. no custom mutation) */}
+      {!customMutation && (
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="btn btn-xs btn-primary w-full mb-2"
+        >
+          {isOpen ? 'Cancel' : '+ Add Provider'}
+        </button>
+      )}
 
-      {isOpen && (
+      {(isOpen || customMutation) && (
         <form onSubmit={handleSubmit} className="space-y-2 bg-base-200 p-2 rounded">
           <div>
             <label className="label py-0"><span className="label-text text-xs">Name</span></label>
@@ -127,13 +133,23 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess }) =
           <button
             className="btn btn-xs btn-success w-full mt-2"
             type="submit"
-            disabled={addProviderMutation.isLoading}
+            disabled={mutation.isLoading}
           >
-            {addProviderMutation.isLoading ? 'Saving...' : 'Save'}
+            {mutation.isLoading ? 'Saving...' : 'Save'}
           </button>
           
-          {addProviderMutation.error && (
-            <p className="text-error text-xs mt-1">{addProviderMutation.error.message}</p>
+          {onCancel && (
+             <button
+               type="button"
+               onClick={onCancel}
+               className="btn btn-xs btn-ghost w-full mt-1"
+             >
+               Cancel
+             </button>
+          )}
+          
+          {mutation.error && (
+            <p className="text-error text-xs mt-1">{mutation.error.message}</p>
           )}
         </form>
       )}
