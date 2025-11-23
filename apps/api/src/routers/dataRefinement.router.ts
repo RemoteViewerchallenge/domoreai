@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import * as dataRefinementService from '../services/dataRefinement.service.js';
@@ -247,14 +248,19 @@ export const dataRefinementRouter = createTRPCRouter({
       apiKey: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // 1. Create Provider
-      const provider = await ctx.db.provider.create({
-        data: {
+      // 1. Create Provider (upsert to avoid duplicate errors)
+      const provider = await ctx.db.provider.upsert({
+        where: { name: input.name },
+        update: {
+          baseURL: input.baseURL,
+          providerType: input.providerType,
+        },
+        create: {
           name: input.name,
           providerType: input.providerType,
           baseURL: input.baseURL,
-          // apiKey: input.apiKey, // REMOVED: Not in schema yet, or handled separately
-        }
+          // apiKey: input.apiKey, // Uncomment if schema includes apiKey
+        },
       });
 
       // 2. Ingest Data (Simulated/Basic for now)
@@ -289,13 +295,13 @@ export const dataRefinementRouter = createTRPCRouter({
         SELECT 
           id,
           provider,
-          rawData->>'id' as model_id,
-          rawData->>'name' as name,
-          (rawData->>'context_length')::int as context_length,
+          "rawData"->>'id' as model_id,
+          "rawData"->>'name' as name,
+          ("rawData"->>'context_length')::int as context_length,
           rawData 
         FROM "RawDataLake"
         WHERE provider = '${input.providerType}'
-      `;
+      `
       await ctx.db.$executeRawUnsafe(sql);
 
       // Register the table in FlattenedTable metadata so it shows up in lists
@@ -380,4 +386,6 @@ export const dataRefinementRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+
 });

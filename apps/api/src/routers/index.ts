@@ -5,8 +5,8 @@ import { roleRouter } from './role.router.js';
 import { externalRouter } from './external.router.js';
 import { vfsRouter } from './vfs.router.js';
 import { modelRouter } from './model.router.js';
-import { lootboxRouter } from './lootbox.router.js';
 import { dataRefinementRouter } from './dataRefinement.router.js';
+import { apiExplorerRouter } from './apiExplorer.router.js';
 
 export const appRouter = createTRPCRouter({
   git: gitRouter,
@@ -15,8 +15,8 @@ export const appRouter = createTRPCRouter({
   external: externalRouter,
   vfs: vfsRouter,
   model: modelRouter,
-  lootbox: lootboxRouter,
   dataRefinement: dataRefinementRouter,
+  apiExplorer: apiExplorerRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { trpc } from '../utils/trpc';
-import { UniversalDataGrid } from './UniversalDataGrid'; // Your AG Grid
-import { VisualQueryBuilder } from './VisualQueryBuilder'; // Your SQL Builder
-import { AddProviderForm } from './AddProviderForm'; // Your Form
-import { Database, Plus, Play, GitMerge, Save, ArrowRight, Table } from 'lucide-react';
+import { trpc } from '../utils/trpc.js';
+import { UniversalDataGrid } from './UniversalDataGrid.js'; // Your AG Grid
+import { VisualQueryBuilder } from './VisualQueryBuilder.js'; // Your SQL Builder
+import { AddProviderForm } from './AddProviderForm.js'; // Your Form
+import { Database, Plus, Play, GitMerge, ArrowRight, Table } from 'lucide-react';
 
 export const DataNode: React.FC = () => {
   // --- STATE ---
@@ -12,8 +12,8 @@ export const DataNode: React.FC = () => {
   const [showQuery, setShowQuery] = useState(false);
   
   // --- DATA ---
-  const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listFlattenedTables.useQuery();
-  const { data: tableData, refetch: refetchData } = trpc.dataRefinement.getTableData.useQuery(
+  const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listAllTables.useQuery();
+  const { data: tableData } = trpc.dataRefinement.getTableData.useQuery(
     { tableName: activeTable || '', limit: 1000 },
     { enabled: !!activeTable }
   );
@@ -21,7 +21,7 @@ export const DataNode: React.FC = () => {
   // --- MUTATIONS ---
   // 1. The "Zero-Touch" Provider Add
   const addProviderMutation = trpc.dataRefinement.addProviderAndIngest.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: { tableName: string }) => {
       refetchTables();
       setActiveTable(data.tableName); // Automatically jump to the new table
       setShowAddProvider(false);
@@ -30,7 +30,7 @@ export const DataNode: React.FC = () => {
 
   // 2. The "Transformation" (Query -> New Table)
   const saveQueryMutation = trpc.dataRefinement.saveQueryResults.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: (_data: unknown, variables: { newTableName: string }) => {
       refetchTables();
       setActiveTable(variables.newTableName); // Jump to the new snapshot
       setShowQuery(false);
@@ -39,7 +39,7 @@ export const DataNode: React.FC = () => {
 
   // 3. The "Merge" (Promote to App)
   const promoteMutation = trpc.dataRefinement.promoteToApp.useMutation({
-    onSuccess: (data) => alert(`Promoted ${data.count} models to the App!`)
+    onSuccess: (data: { count: number }) => alert(`Promoted ${data.count} models to the App!`)
   });
 
   return (
@@ -58,7 +58,7 @@ export const DataNode: React.FC = () => {
               onChange={(e) => setActiveTable(e.target.value)}
             >
               <option value="" disabled>Select Node...</option>
-              {tables?.map(t => <option key={t} value={t}>{t}</option>)}
+              {tables?.map((t: string) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -117,9 +117,9 @@ export const DataNode: React.FC = () => {
              <VisualQueryBuilder 
                tables={[activeTable]} 
                // This allows "Preview" in the builder itself
-               onExecute={(sql) => console.log("Previewing:", sql)} 
+               onExecute={(sql: string) => console.log("Previewing:", sql)} 
                // This creates the NEW node
-               onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
+               onSaveTable={(sql: string, name: string) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
              />
           </div>
         )}
@@ -127,10 +127,7 @@ export const DataNode: React.FC = () => {
         {/* C. Main Data Grid */}
         {activeTable ? (
           <UniversalDataGrid 
-            data={tableData?.rows || []} 
-            tableName={activeTable}
-            // Allow inline edits if needed
-            onCellEdit={(id, field, val) => console.log("Cell Edit:", id, field, val)}
+            data={(tableData?.rows as Record<string, unknown>[]) || []}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-zinc-700 gap-2">
