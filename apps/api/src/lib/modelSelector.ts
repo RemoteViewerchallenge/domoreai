@@ -1,3 +1,4 @@
+import { db } from '../db.js';
 
 export interface SelectionCriteria {
   model?: string; // Specific override
@@ -18,6 +19,7 @@ export interface Model {
     id: string;
     name: string;
     provider: string;
+    providerConfigId: string; // Added for rate limiting
     contextWindow: number;
     capabilities: {
         vision: boolean;
@@ -25,54 +27,47 @@ export interface Model {
         coding: boolean;
     };
     costPer1k: number;
+    limitRequestRate?: number | null;
+    limitWindow?: number | null;
 }
 
-// Mock database of models
-const MOCK_MODELS: Model[] = [
-    { 
-        id: 'gpt-4o', 
-        name: 'GPT-4o', 
-        provider: 'openai', 
-        contextWindow: 128000, 
-        capabilities: { vision: true, reasoning: true, coding: true },
-        costPer1k: 0.03 // Mock cost
-    },
-    { 
-        id: 'claude-3-5-sonnet', 
-        name: 'Claude 3.5 Sonnet', 
-        provider: 'anthropic', 
-        contextWindow: 200000, 
-        capabilities: { vision: true, reasoning: true, coding: true },
-        costPer1k: 0.015
-    },
-    { 
-        id: 'llama-3.1-70b', 
-        name: 'Llama 3.1 70B', 
-        provider: 'groq', 
-        contextWindow: 8192, 
-        capabilities: { vision: false, reasoning: true, coding: true },
-        costPer1k: 0 // Free tier simulation
-    },
-    { 
-        id: 'mistral-large', 
-        name: 'Mistral Large', 
-        provider: 'mistral', 
-        contextWindow: 32000, 
-        capabilities: { vision: false, reasoning: true, coding: true },
-        costPer1k: 0.008
-    }
-];
+export async function selectCandidateModels(criteria: SelectionCriteria): Promise<Model[]> {
+    // 1. Fetch all models from DB
+    const dbModels = await db.model.findMany({
+        include: { provider: true }
+    });
 
-export async function selectModel(criteria: SelectionCriteria): Promise<Model> {
-    // 1. Specific Override
+    // Map to internal Model interface
+    const allModels: Model[] = dbModels.map(m => ({
+        id: m.modelId, // Use the provider's model ID (e.g. "gpt-4o")
+        name: m.name,
+        provider: m.provider.type, 
+        providerConfigId: m.providerId,
+        contextWindow: m.contextWindow || 4096,
+        capabilities: {
+            vision: m.hasVision,
+            reasoning: m.hasReasoning,
+            coding: m.hasCoding
+        },
+        costPer1k: m.costPer1k || (m.isFree ? 0 : 100), // Default high cost if unknown
+        limitRequestRate: m.limitRequestRate,
+        limitWindow: m.limitWindow
+    }));
+
+    // 2. Specific Override
     if (criteria.model) {
-        const found = MOCK_MODELS.find(m => m.id === criteria.model);
-        if (found) return found;
+        const found = allModels.find(m => m.id === criteria.model);
+        if (found) {
+            // If specific model requested, return it as the only candidate (or top candidate)
+            // But we might want fallbacks even for specific overrides if they fail?
+            // For now, let's return it as primary.
+            return [found, ...allModels.filter(m => m.id !== criteria.model)]; 
+        }
         console.warn(`Requested model ${criteria.model} not found, falling back to dynamic selection.`);
     }
 
-    // 2. Filter by Constraints
-    let candidates = MOCK_MODELS.filter(m => {
+    // 3. Filter by Constraints
+    let candidates = allModels.filter(m => {
         // Context Window
         if (criteria.minContextWindow && m.contextWindow < criteria.minContextWindow) return false;
         
@@ -87,14 +82,14 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Model> {
         return true;
     });
 
-    // 3. Fallback if no candidates match
+    // 4. Fallback if no candidates match
     if (candidates.length === 0) {
-        console.warn("No models match criteria, returning default.");
-        return MOCK_MODELS[0]; // Default to best available
+        console.warn("No models match criteria, returning all models sorted by cost.");
+        candidates = [...allModels];
     }
 
-    // 4. Sort by Cost (Cheapest first)
+    // 5. Sort by Cost (Cheapest first)
     candidates.sort((a, b) => a.costPer1k - b.costPer1k);
 
-    return candidates[0];
+    return candidates;
 }

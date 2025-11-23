@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { ProviderManager } from '../services/ProviderManager.js';
 import { db } from '../db.js';
 import { encrypt } from '../utils/encryption.js';
+import { selectCandidateModels } from '../lib/modelSelector.js';
+import { UsageCollector } from '../services/UsageCollector.js';
 
 export const llmRouter: Router = Router();
 
@@ -34,35 +36,99 @@ llmRouter.post('/chat/completions', async (req, res) => {
 
     const input = schema.parse(req.body);
 
-    // 2. Get SDK Provider
-    const provider = ProviderManager.getProvider(input.providerId);
-    if (!provider) {
-      return res.status(404).json({ 
-        error: 'Provider_Not_Found', 
-        message: `The provider '${input.providerId}' is not active.` 
-      });
-    }
-
-    // 3. Execute via SDK
-    // This abstraction allows the provider to handle retries/rate-limits internally
-    const content = await provider.generateCompletion({
-      modelId: input.model,
-      messages: input.messages,
-      temperature: input.temperature,
-      max_tokens: input.max_tokens
+    // 2. Get Candidates
+    const candidates = await selectCandidateModels({
+        model: input.model,
+        // Optional: Add other criteria here if passed in request
     });
 
-    // 4. Standardized Response
-    res.json({
-      id: `chatcmpl-${crypto.randomUUID()}`,
-      object: 'chat.completion',
-      created: Math.floor(Date.now() / 1000),
-      model: input.model,
-      choices: [{
-        index: 0,
-        message: { role: 'assistant', content },
-        finish_reason: 'stop'
-      }],
+    if (candidates.length === 0) {
+        return res.status(404).json({ error: 'No_Models_Found', message: 'No models available matching criteria.' });
+    }
+
+    let lastError = null;
+
+    // 3. Cascading Fallback Loop
+    for (const model of candidates) {
+        // a. Check Rate Limit (Pre-flight)
+        const allowed = await UsageCollector.checkAndIncrementRateLimit(
+            model.providerConfigId, 
+            model.limitRequestRate || 1000, // Default to high limit if not set
+            model.limitWindow || 60
+        );
+
+        if (!allowed) {
+            console.warn(`Rate limit exceeded for ${model.name} (${model.provider}), trying next...`);
+            continue;
+        }
+
+        try {
+            const provider = ProviderManager.getProvider(model.providerConfigId);
+            if (!provider) {
+                console.warn(`Provider ${model.provider} not active, skipping.`);
+                continue;
+            }
+
+            const start = Date.now();
+            // b. Execute Request
+            const content = await provider.generateCompletion({
+                modelId: model.id,
+                messages: input.messages,
+                temperature: input.temperature,
+                max_tokens: input.max_tokens
+            });
+            const duration = Date.now() - start;
+
+            // Estimate tokens (rough approximation: 4 chars = 1 token)
+            const promptText = input.messages.map(m => m.content).join(' ');
+            const tokensIn = Math.ceil(promptText.length / 4);
+            const tokensOut = Math.ceil(content.length / 4);
+
+            // c. Log Success (Post-flight)
+            UsageCollector.logRequest({
+                modelId: model.id,
+                providerConfigId: model.providerConfigId,
+                tokensIn,
+                tokensOut,
+                status: 'SUCCESS',
+                durationMs: duration
+            });
+
+            // d. Return Response
+            return res.json({
+                id: `chatcmpl-${crypto.randomUUID()}`,
+                object: 'chat.completion',
+                created: Math.floor(Date.now() / 1000),
+                model: model.name, // Return the ACTUAL model used
+                choices: [{
+                    index: 0,
+                    message: { role: 'assistant', content },
+                    finish_reason: 'stop'
+                }],
+            });
+
+        } catch (error: any) {
+            console.error(`Failed with ${model.name}:`, error.message);
+            lastError = error;
+            
+            // Log Failure
+            UsageCollector.logRequest({
+                modelId: model.id,
+                providerConfigId: model.providerConfigId,
+                tokensIn: 0,
+                tokensOut: 0,
+                status: 'FAILURE',
+                durationMs: 0
+            });
+            
+            // Continue to next candidate
+        }
+    }
+
+    // 4. All Failed
+    res.status(500).json({ 
+      error: 'All_Providers_Failed', 
+      message: lastError?.message || 'No available providers could fulfill the request.' 
     });
 
   } catch (error: any) {
