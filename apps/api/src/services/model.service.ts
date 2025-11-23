@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { z } from 'zod';
 import { modelInputSchema } from '@repo/api-contract';
+import type { Prisma } from '@prisma/client';
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
@@ -20,7 +21,7 @@ export class ModelService {
         hasVision,
         hasReasoning,
         hasCoding,
-        providerData,
+        providerData: providerData as Prisma.InputJsonValue,
       },
       create: {
         providerId,
@@ -31,12 +32,16 @@ export class ModelService {
         hasVision,
         hasReasoning,
         hasCoding,
-        providerData,
+        providerData: providerData as Prisma.InputJsonValue,
       },
     });
   }
 
   async listModels() {
-    return db.data.models;
+    return db.model.findMany({
+      include: {
+        provider: true,
+      },
+    });
   }
 }

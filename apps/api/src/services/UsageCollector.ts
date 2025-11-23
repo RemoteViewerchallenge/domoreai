@@ -19,19 +19,20 @@ export class UsageCollector {
    */
   static async logRequest(data: UsageLogData): Promise<void> {
     try {
-      // 1. Log to Persistent DB (SimpleDB for now, can be upgraded to Prisma later)
-      await db.rawDataLake.create({
+      // 1. Log to Persistent DB (Prisma ModelUsage table)
+      await db.modelUsage.create({
         data: {
-          type: 'model_usage',
-          timestamp: new Date().toISOString(),
-          modelId: data.modelId,
-          providerConfigId: data.providerConfigId,
-          tokensIn: data.tokensIn,
-          tokensOut: data.tokensOut,
-          status: data.status,
-          durationMs: data.durationMs,
-          roleId: data.roleId || 'orchestrator',
           userId: data.userId || 'system',
+          modelConfigId: data.modelId, // This should be a ModelConfig ID
+          roleId: data.roleId || 'default-role',
+          promptTokens: data.tokensIn,
+          completionTokens: data.tokensOut,
+          cost: 0, // Calculate based on model rates if needed
+          metadata: {
+            status: data.status,
+            duration: data.durationMs,
+            providerConfigId: data.providerConfigId
+          }
         }
       });
 
