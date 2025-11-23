@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { ProviderManager } from '../services/ProviderManager.js';
 import { db } from '../db.js';
 import { encrypt } from '../utils/encryption.js';
@@ -18,39 +19,64 @@ llmRouter.get('/models', async (req, res) => {
 
 // Chat completion
 llmRouter.post('/chat/completions', async (req, res) => {
-  const { providerId, model, messages, temperature, max_tokens } = req.body;
-  
-  if (!providerId) {
-    return res.status(400).json({ error: 'providerId is required' });
-  }
-
-  const provider = ProviderManager.getProvider(providerId);
-  if (!provider) {
-    return res.status(404).json({ error: 'Provider not found' });
-  }
-
   try {
-    const result = await provider.generateCompletion({
-      modelId: model,
-      messages,
-      temperature,
-      max_tokens
+    // 1. Validate Input
+    const schema = z.object({
+      providerId: z.string(),
+      model: z.string(),
+      messages: z.array(z.object({
+        role: z.enum(['system', 'user', 'assistant']),
+        content: z.string()
+      })),
+      temperature: z.number().optional().default(0.7),
+      max_tokens: z.number().optional().default(1000)
     });
-    // Return OpenAI-compatible response format
+
+    const input = schema.parse(req.body);
+
+    // 2. Get SDK Provider
+    const provider = ProviderManager.getProvider(input.providerId);
+    if (!provider) {
+      return res.status(404).json({ 
+        error: 'Provider_Not_Found', 
+        message: `The provider '${input.providerId}' is not active.` 
+      });
+    }
+
+    // 3. Execute via SDK
+    // This abstraction allows the provider to handle retries/rate-limits internally
+    const content = await provider.generateCompletion({
+      modelId: input.model,
+      messages: input.messages,
+      temperature: input.temperature,
+      max_tokens: input.max_tokens
+    });
+
+    // 4. Standardized Response
     res.json({
-      id: 'chatcmpl-' + Date.now(),
+      id: `chatcmpl-${crypto.randomUUID()}`,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: model,
+      model: input.model,
       choices: [{
         index: 0,
-        message: { role: 'assistant', content: result },
+        message: { role: 'assistant', content },
         finish_reason: 'stop'
-      }]
+      }],
     });
+
   } catch (error: any) {
-    console.error('Completion failed:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Completion Request Failed:', error);
+    
+    // Handle Zod validation errors specifically
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation_Error', details: error.errors });
+    }
+
+    res.status(500).json({ 
+      error: 'Internal_Server_Error', 
+      message: error.message || 'An unexpected error occurred during generation.' 
+    });
   }
 });
 

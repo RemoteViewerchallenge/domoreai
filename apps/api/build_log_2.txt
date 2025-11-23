@@ -1,0 +1,3 @@
+src/routers/llm.router.ts(33,35): error TS2339: Property 'generateCompletion' does not exist on type 'BaseLLMProvider'.
+src/utils/ProviderFactory.ts(1,24): error TS2307: Cannot find module 'openai' or its corresponding type declarations.
+src/utils/ProviderFactory.ts(44,30): error TS7006: Parameter 'm' implicitly has an 'any' type.

@@ -110,19 +110,19 @@ describe('ModelSelector Logic (with Mocks)', () => {
   test("Hard Stop (Google RPD): It must prevent a 'Hard Stop' provider from exceeding its daily limit.", async () => {
     const modelId = 'gemini-1.5-pro-latest'; // 50 RPD
     for (let i = 0; i < 50; i++) {
-      await selectModel({ model: modelId });
+      await selectModel({ modelName: modelId });
       vi.advanceTimersByTime(60 * 1000); // Advance 1 minute to avoid hitting RPM limit
     }
-    await expect(selectModel({ model: modelId })).rejects.toThrow(HardStopError);
+    await expect(selectModel({ modelName: modelId })).rejects.toThrow(HardStopError);
   });
 
   test("'Soft Fail' & Rerouting (OpenRouter RPD): It must reroute to the next available asset when a 'Soft Fail' provider is exhausted.", async () => {
     const modelId = 'openrouter/mistralai/mistral-7b-instruct'; // 200 RPD
     for (let i = 0; i < 200; i++) {
-      await selectModel({ model: modelId });
+      await selectModel({ modelName: modelId });
       vi.advanceTimersByTime(60 * 1000);
     }
-    const nextModel = await selectModel({ model: modelId });
+    const nextModel = await selectModel({ modelName: modelId });
     expect(nextModel).toBeDefined();
     expect(nextModel!.id).not.toBe(modelId);
     // When mistral is exhausted, the next least-used (with 0 usage) is gemini-1.5-pro-latest
@@ -131,10 +131,10 @@ describe('ModelSelector Logic (with Mocks)', () => {
 
   test("Hard Stop (Google RPM): It must respect the 'Hard Stop' RPM limit.", async () => {
     const modelId = 'gemini-1.5-pro-latest'; // 2 RPM
-    await selectModel({ model: modelId }); // Call 1 -> OK
-    await selectModel({ model: modelId }); // Call 2 -> OK
+    await selectModel({ modelName: modelId }); // Call 1 -> OK
+    await selectModel({ modelName: modelId }); // Call 2 -> OK
     // Call 3 should fail
-    await expect(selectModel({ model: modelId })).rejects.toThrow(RateLimitError);
+    await expect(selectModel({ modelName: modelId })).rejects.toThrow(RateLimitError);
   });
 
   test("'Maximize Free Labour' (Least Used): It must select the least-used free asset to maximize utilization.", async () => {
@@ -153,14 +153,14 @@ describe('ModelSelector Logic (with Mocks)', () => {
   test("'Daily Reset': It must reset daily limits after 24 hours.", async () => {
     const modelId = 'gemini-1.5-pro-latest'; // 50 RPD
     for (let i = 0; i < 50; i++) {
-      await selectModel({ model: modelId });
+      await selectModel({ modelName: modelId });
       vi.advanceTimersByTime(60 * 1000); // Advance 1 minute to avoid hitting RPM limit
     }
-    await expect(selectModel({ model: modelId })).rejects.toThrow(HardStopError);
+    await expect(selectModel({ modelName: modelId })).rejects.toThrow(HardStopError);
 
     vi.advanceTimersByTime(24 * 60 * 60 * 1000); // Advance time by 24 hours
 
-    const modelAfterReset = await selectModel({ model: modelId });
+    const modelAfterReset = await selectModel({ modelName: modelId });
     expect(modelAfterReset).toBeDefined();
     expect(modelAfterReset!.id).toBe(modelId);
   });
