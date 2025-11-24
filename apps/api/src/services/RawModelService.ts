@@ -28,32 +28,43 @@ export class RawModelService {
 
     // 3. Fetch (Raw)
     const apiKey = decrypt(config.apiKey);
-    const response = await fetch(fetchUrl, {
-      headers: { 
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-    if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(`Provider API Error: ${response.status} ${txt}`);
+    try {
+      const response = await fetch(fetchUrl, {
+        headers: { 
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+          const txt = await response.text();
+          throw new Error(`Provider API Error: ${response.status} ${txt}`);
+      }
+      
+      // 4. Get JSON (Yes, it is JSON)
+      const rawJson = await response.json();
+
+      // 5. Save to DB (Exact dump)
+      const snapshot = await db.rawDataLake.create({
+        data: {
+          provider: config.type,
+          rawData: rawJson, 
+          ingestedAt: new Date()
+        }
+      });
+
+      console.log(`[RawModelService] Saved snapshot ${snapshot.id}`);
+      return snapshot;
+
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.error(`[RawModelService] Fetch failed for ${fetchUrl}:`, error);
+      throw new Error(`Failed to fetch models: ${error.message}`);
     }
-    
-    // 4. Get JSON (Yes, it is JSON)
-    const rawJson = await response.json();
-
-    // 5. Save to DB (Exact dump)
-    // This saves the whole response (e.g., { object: 'list', data: [...] }) as one record.
-    const snapshot = await db.rawDataLake.create({
-      data: {
-        provider: config.type,
-        rawData: rawJson, 
-        ingestedAt: new Date()
-      }
-    });
-
-    console.log(`[RawModelService] Saved snapshot ${snapshot.id}`);
-    return snapshot;
   }
 }

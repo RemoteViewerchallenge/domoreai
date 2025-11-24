@@ -54,7 +54,17 @@ export const DataNode: React.FC = () => {
     }
   });
 
-  // 4. Save Query Result
+  // 4. Execute Query (creates temp table with results)
+  const executeQueryMutation = trpc.dataRefinement.executeQuery.useMutation({
+    onSuccess: (data) => {
+      // Create a temporary view of the results
+      alert(`Query executed successfully! ${data.rowCount} rows returned.`);
+      // TODO: Could create a temp table or just show results in a modal
+    },
+    onError: (err) => alert(`Query failed: ${err.message}`)
+  });
+
+  // 5. Save Query Result
   const saveQueryMutation = trpc.dataRefinement.saveQueryResults.useMutation({
     onSuccess: (_data, vars) => {
       refetchTables();
@@ -69,10 +79,43 @@ export const DataNode: React.FC = () => {
     onError: (err) => alert(`Edit failed: ${err.message}`)
   });
 
+  // 6. Create Table
+  const createTableMutation = trpc.dataRefinement.createTable.useMutation({
+    onSuccess: (_data, vars) => {
+      refetchTables();
+      setActiveTable(vars.tableName);
+    }
+  });
+
+  // 7. Cache Models for C.O.R.E.
+  const cacheModelsMutation = trpc.dataRefinement.cacheModelsForCore.useMutation({
+    onSuccess: (data) => {
+      alert(`✅ Successfully cached ${data.count} models to C.O.R.E.!\n\nYour application will now use these models from the '${data.tableName}' table.`);
+      refetchTables();
+      setActiveTable(data.tableName);
+    },
+    onError: (err) => alert(`Failed to cache models: ${err.message}`)
+  });
+
   // Filter tables for sidebar
   const filteredTables = tables?.filter((t: TableItem) => 
     t.name.toLowerCase().includes(filterText.toLowerCase())
   ) || [];
+
+  const handleCreateTable = () => {
+    const name = prompt("Enter new table name:");
+    if (name) createTableMutation.mutate({ tableName: name });
+  };
+
+  const handleCacheModels = () => {
+    if (!activeTable) {
+      alert("Please select a table first");
+      return;
+    }
+    if (confirm(`Cache all models from "${activeTable}" for C.O.R.E.?\n\nThis will replace the current core_models table.`)) {
+      cacheModelsMutation.mutate({ sourceTable: activeTable });
+    }
+  };
 
   return (
     <div className="flex h-full w-full bg-black border border-zinc-800 rounded-lg overflow-hidden font-mono text-xs shadow-2xl">
@@ -82,13 +125,22 @@ export const DataNode: React.FC = () => {
         {/* Header / Add Provider */}
         <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
            <span className="font-bold text-zinc-400">EXPLORER</span>
-           <button 
-             onClick={() => setShowAddProvider(true)}
-             className="p-1 hover:bg-zinc-800 rounded text-green-400" 
-             title="Add Data Source"
-           >
-             <Plus size={14} />
-           </button>
+           <div className="flex gap-1">
+             <button 
+               onClick={handleCreateTable}
+               className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-200" 
+               title="New Empty Table"
+             >
+               <Table size={14} />
+             </button>
+             <button 
+               onClick={() => setShowAddProvider(true)}
+               className="p-1 hover:bg-zinc-800 rounded text-green-400" 
+               title="Add Data Source"
+             >
+               <Plus size={14} />
+             </button>
+           </div>
         </div>
 
         {/* Search */}
@@ -131,7 +183,8 @@ export const DataNode: React.FC = () => {
         {showAddProvider && (
           <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
              <div className="w-96 bg-zinc-900 border border-zinc-700 rounded shadow-2xl p-4">
-                <AddProviderForm customMutation={addProviderMutation} onCancel={() => setShowAddProvider(false)} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <AddProviderForm customMutation={addProviderMutation as any} onCancel={() => setShowAddProvider(false)} />
              </div>
           </div>
         )}
@@ -162,11 +215,14 @@ export const DataNode: React.FC = () => {
                {/* SPECIAL ACTION: IMPORT JSON (Only for Raw Data) */}
                {activeTable === 'RawDataLake' && (
                  <button 
-                   onClick={() => flattenMutation.mutate({ tableName: activeTable })}
+                   onClick={() => {
+                     const name = prompt("Enter name for new table:", "refined_models");
+                     if (name) flattenMutation.mutate({ tableName: name });
+                   }}
                    className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow-lg shadow-purple-900/20 mr-2"
                  >
                    <FileJson size={14} />
-                   IMPORT TO TABLE
+                   IMPORT LATEST RAW DATA
                  </button>
                )}
 
@@ -175,6 +231,14 @@ export const DataNode: React.FC = () => {
                  className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${showQuery ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent hover:bg-zinc-900 text-zinc-400'}`}
                >
                  <Play size={14} /> SQL EDITOR
+               </button>
+
+               <button 
+                 onClick={handleCacheModels}
+                 className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded font-bold shadow-lg"
+                 title="Cache these models for use in C.O.R.E."
+               >
+                 <Database size={14} /> CACHE FOR C.O.R.E.
                </button>
 
                <div className="h-4 w-px bg-zinc-800 mx-1" />
@@ -214,12 +278,11 @@ export const DataNode: React.FC = () => {
 
         {/* 3. SQL EDITOR (Bottom Panel - Resizable-ish) */}
         {showQuery && (
-          <div className="flex-none h-[300px] border-t border-zinc-800 bg-zinc-900 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10">
+          <div className="flex-none h-[450px] border-t border-zinc-800 bg-zinc-900 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10">
              <VisualQueryBuilder 
-               tables={tables?.map((t: TableItem) => t.name) || []}
                activeTable={activeTable || ''}
                onDeleteTable={() => {}} // Handled in toolbar now
-               onExecute={(sql) => console.log("Preview:", sql)}
+               onExecute={(sql) => executeQueryMutation.mutate({ query: sql })}
                onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
              />
           </div>

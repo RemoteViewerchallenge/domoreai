@@ -4,7 +4,11 @@ import { trpc } from '../utils/trpc.js';
 interface AddProviderFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
-  customMutation?: any;
+  customMutation?: {
+    mutate: (data: unknown) => void;
+    isLoading: boolean;
+    error: { message: string } | null;
+  };
 }
 
 export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onCancel, customMutation }) => {
@@ -16,12 +20,13 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     type: 'openai',
     baseURL: '',
     apiKey: '',
+    tableName: '',
   });
 
   const mutation = customMutation || trpc.providers.add.useMutation({
     onSuccess: () => {
       onSuccess?.();
-      setFormData({ label: '', type: 'openai', baseURL: '', apiKey: '' });
+      setFormData({ label: '', type: 'openai', baseURL: '', apiKey: '', tableName: '' });
       setIsOpen(false);
     },
   });
@@ -48,8 +53,17 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Now formData keys (label, type) match exactly what the router expects
-    mutation.mutate(formData);
+    if (customMutation) {
+      customMutation.mutate(formData);
+    } else {
+      // Default mutation expects name/providerType
+      mutation.mutate({
+        name: formData.label,
+        providerType: formData.type,
+        baseURL: formData.baseURL,
+        apiKey: formData.apiKey
+      });
+    }
   };
 
   return (
@@ -127,6 +141,18 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
               type="password"
               placeholder="sk-..."
               value={formData.apiKey}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label className="label py-0"><span className="label-text text-xs">Target Table Name (Optional)</span></label>
+            <input
+              className="input input-xs input-bordered w-full"
+              name="tableName"
+              type="text"
+              placeholder="e.g. my_models"
+              value={formData.tableName}
               onChange={handleChange}
             />
           </div>
