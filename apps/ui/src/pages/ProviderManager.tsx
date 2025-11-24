@@ -3,14 +3,17 @@ import { trpc } from '../utils/trpc.js';
 import { AddProviderForm } from '../components/AddProviderForm.js';
 import { ProviderList } from '../components/ProviderList.js';
 import { DataNode } from '../components/DataNode.js';
+// 1. Import the Database Manager
+import { DatabaseManagerNode } from '../components/nodes/DatabaseManagerNode.js'; 
 import { ApiExplorerNode } from '../components/nodes/ApiExplorerNode.js';
-import { Layers, Database, Globe, ArrowRight } from 'lucide-react';
+import { Layers, Database, Globe, Table } from 'lucide-react';
 
 const ProviderManager: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const utils = trpc.useContext();
+  // 2. Add View Mode State
+  const [viewMode, setViewMode] = useState<'refine' | 'manage'>('refine');
   
-  // Prefetch providers
+  const utils = trpc.useContext();
   trpc.providers.list.useQuery();
   
   const debugFetchMutation = trpc.providers.debugFetch.useMutation({
@@ -21,7 +24,7 @@ const ProviderManager: React.FC = () => {
   return (
     <div className="h-screen w-full flex flex-col bg-black text-zinc-300 overflow-hidden">
       
-      {/* --- HEADER --- */}
+      {/* HEADER */}
       <div className="flex-none h-16 border-b border-zinc-800 px-6 flex items-center justify-between bg-zinc-950">
         <div className="flex items-center gap-3">
           <Layers className="text-cyan-500" size={24} />
@@ -30,41 +33,32 @@ const ProviderManager: React.FC = () => {
         <div className="flex gap-3">
            <button 
             onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold text-xs uppercase tracking-widest flex items-center gap-2"
+            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold text-xs uppercase tracking-widest"
           >
             {showAddForm ? 'Close Form' : 'Add API Key'}
           </button>
         </div>
       </div>
 
-      {/* --- MAIN CONTENT (Split View) --- */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* LEFT: Configuration & API Keys (30% Width) */}
+        {/* LEFT PANEL (Config) */}
         <div className="w-[350px] flex-none border-r border-zinc-800 flex flex-col bg-zinc-950/50 overflow-y-auto">
-          
-          {/* Add Form (Inline) */}
           {showAddForm && (
-            <div className="p-4 border-b border-zinc-800 bg-zinc-900 animate-in slide-in-from-top-2">
+            <div className="p-4 border-b border-zinc-800 bg-zinc-900">
                <AddProviderForm onSuccess={() => {
                   utils.providers.list.invalidate();
                   setShowAddForm(false);
                }} />
             </div>
           )}
-
-          {/* List */}
           <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-               <span className="text-xs font-bold text-zinc-500">ACTIVE PROVIDERS</span>
-            </div>
+            <span className="text-xs font-bold text-zinc-500 mb-4 block">ACTIVE PROVIDERS</span>
             <ProviderList 
               onIngest={(id) => debugFetchMutation.mutate({ providerId: id })}
               onSelect={(id) => console.log("Selected", id)}
             />
           </div>
-
-          {/* API Explorer (Mini) */}
           <div className="flex-1 border-t border-zinc-800 p-4 flex flex-col">
              <div className="flex items-center gap-2 mb-4 text-zinc-400">
                 <Globe size={16} />
@@ -76,21 +70,35 @@ const ProviderManager: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT: The Data Node (70% Width - The "Workbench") */}
+        {/* RIGHT PANEL (Workbench) */}
         <div className="flex-1 flex flex-col bg-black relative">
-           {/* Overlay Header for Context */}
+           
+           {/* 3. MODE SWITCHER OVERLAY */}
            <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none p-4 flex justify-center">
-              <div className="bg-zinc-900/80 backdrop-blur border border-zinc-700 px-4 py-1 rounded-full flex items-center gap-3 shadow-xl">
-                 <Database size={14} className="text-purple-400" />
-                 <span className="text-xs font-mono text-zinc-300">
-                    1. FETCH RAW <ArrowRight size={10} className="inline mx-1"/> 2. TRANSFORM SQL <ArrowRight size={10} className="inline mx-1"/> 3. PROMOTE TO APP
-                 </span>
+              <div className="bg-zinc-900/90 backdrop-blur border border-zinc-700 p-1 rounded-full flex shadow-xl pointer-events-auto">
+                 <button
+                   onClick={() => setViewMode('refine')}
+                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'refine' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                 >
+                    <Database size={14} /> Refinement Node
+                 </button>
+                 <button
+                   onClick={() => setViewMode('manage')}
+                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'manage' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                 >
+                    <Table size={14} /> DB Manager
+                 </button>
               </div>
            </div>
 
-           {/* The Data Node Component - Full Height */}
-           <div className="flex-1 p-4 pt-12">
-              <DataNode />
+           {/* 4. RENDER SELECTED NODE */}
+           <div className="flex-1 p-4 pt-16">
+              {viewMode === 'refine' ? (
+                <DataNode />
+              ) : (
+                // This is the component that allows you to edit/delete any table
+                <DatabaseManagerNode />
+              )}
            </div>
         </div>
 
