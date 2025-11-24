@@ -1,44 +1,45 @@
 import React, { useMemo } from 'react';
-import { AgGridReact } from 'ag-grid-react'; 
-import type { ColDef } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { AgGridReact } from 'ag-grid-react';
+import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community'; 
 
-interface UniversalDataGridProps {
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+interface GridProps {
   data: Record<string, unknown>[];
+  onEdit?: (rowId: string, colId: string, newVal: string | number | boolean | null) => void; 
 }
 
-export const UniversalDataGrid: React.FC<UniversalDataGridProps> = ({ data }) => {
-  const columnDefs = useMemo<ColDef[]>(() => {
+export const UniversalDataGrid: React.FC<GridProps> = ({ data, onEdit }) => {
+  
+  const colDefs = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return Object.keys(data[0]).map(key => ({
-      field: key,
-      headerName: key.toUpperCase(),
-      sortable: true,
+    return Object.keys(data[0]).map(field => ({ 
+      field, 
       filter: true,
-      resizable: true,
-      flex: 1,
+      editable: field !== 'id' && field !== 'createdAt', // Protect IDs
+      cellDataType: false // Allow loose typing for easier edits
     }));
   }, [data]);
 
   return (
-    <div className="h-full w-full ag-theme-alpine-dark"> 
-      <style>{`
-        .ag-theme-alpine-dark {
-            --ag-background-color: #09090b; /* zinc-950 */
-            --ag-header-background-color: #18181b; /* zinc-900 */
-            --ag-border-color: #27272a;
-            --ag-row-hover-color: #27272a;
-            --ag-foreground-color: #e4e4e7;
-        }
-      `}</style>
-      <AgGridReact
-        rowData={data}
-        columnDefs={columnDefs}
-        animateRows={true}
-        pagination={true}
-        paginationPageSize={50}
-      />
+    <div style={{ height: '100%', width: '100%' }}>
+       <AgGridReact
+          theme={themeQuartz.withParams({
+              backgroundColor: "#09090b", // zinc-950
+              headerBackgroundColor: "#18181b", // zinc-900
+              borderColor: "#27272a",
+              rowHoverColor: "#27272a",
+              foregroundColor: "#e4e4e7",
+          })}
+          rowData={data}
+          columnDefs={colDefs}
+          // 1. Handle Edits
+          onCellValueChanged={(params) => {
+             if (onEdit && params.data.id) {
+                onEdit(String(params.data.id), params.colDef.field!, params.newValue);
+             }
+          }}
+       />
     </div>
   );
 };

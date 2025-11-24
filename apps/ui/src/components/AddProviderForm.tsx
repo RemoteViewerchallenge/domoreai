@@ -4,23 +4,24 @@ import { trpc } from '../utils/trpc.js';
 interface AddProviderFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
-  customMutation?: any; // Allow passing the "Ingest" mutation
+  customMutation?: any;
 }
 
 export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onCancel, customMutation }) => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // FIX: Renamed 'name' -> 'label' and 'providerType' -> 'type' to match API schema
   const [formData, setFormData] = useState({
-    name: '',
-    providerType: 'openai',
+    label: '', 
+    type: 'openai',
     baseURL: '',
     apiKey: '',
   });
 
-  // Use the passed mutation OR the default one
   const mutation = customMutation || trpc.providers.add.useMutation({
     onSuccess: () => {
       onSuccess?.();
-      setFormData({ name: '', providerType: 'openai', baseURL: '', apiKey: '' });
+      setFormData({ label: '', type: 'openai', baseURL: '', apiKey: '' });
       setIsOpen(false);
     },
   });
@@ -30,8 +31,8 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
       
-      // Auto-fill Base URL based on Provider Type
-      if (name === 'providerType') {
+      // FIX: Check for 'type' instead of 'providerType'
+      if (name === 'type') {
         if (value === 'ollama') newData.baseURL = 'http://localhost:11434';
         else if (value === 'openai') newData.baseURL = 'https://api.openai.com/v1';
         else if (value === 'openrouter') newData.baseURL = 'https://openrouter.ai/api/v1';
@@ -47,12 +48,12 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Now formData keys (label, type) match exactly what the router expects
     mutation.mutate(formData);
   };
 
   return (
     <div className="border-b border-gray-700 pb-4 mb-4">
-      {/* Only show toggle button if NOT in "embedded" mode (i.e. no custom mutation) */}
       {!customMutation && (
         <button 
           onClick={() => setIsOpen(!isOpen)}
@@ -68,10 +69,10 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
             <label className="label py-0"><span className="label-text text-xs">Name</span></label>
             <input
               className="input input-xs input-bordered w-full"
-              name="name"
+              name="label" /* FIX: name="label" */
               type="text"
               placeholder="My Provider"
-              value={formData.name}
+              value={formData.label} /* FIX: value={formData.label} */
               onChange={handleChange}
               required
             />
@@ -81,8 +82,8 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
             <label className="label py-0"><span className="label-text text-xs">Type</span></label>
             <select
               className="select select-xs select-bordered w-full"
-              name="providerType"
-              value={formData.providerType}
+              name="type" /* FIX: name="type" */
+              value={formData.type} /* FIX: value={formData.type} */
               onChange={handleChange}
             >
               <option value="openai">OpenAI Compatible</option>

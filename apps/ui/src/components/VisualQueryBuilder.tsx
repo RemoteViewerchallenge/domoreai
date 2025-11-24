@@ -1,222 +1,162 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Plus, X, Database, Code, Save, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Save, Database, Trash2, RefreshCw, LayoutTemplate } from 'lucide-react';
 
-export interface QueryBuilderProps {
+interface VisualQueryBuilderProps {
   tables: string[];
+  activeTable: string;
   onExecute: (sql: string) => void;
-  onSaveTable?: (sql: string, tableName: string) => void;
-  isLoading?: boolean;
+  onSaveTable: (sql: string, name: string) => void;
+  onDeleteTable?: (name: string) => void; // New prop
 }
 
-interface Filter {
-  id: string;
-  column: string;
-  operator: string;
-  value: string;
-}
-
-export const VisualQueryBuilder: React.FC<QueryBuilderProps> = ({ 
-  tables, 
-  onExecute, 
-  onSaveTable, 
-  isLoading 
+export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
+  tables,
+  activeTable,
+  onExecute,
+  onSaveTable,
+  onDeleteTable
 }) => {
-  // State
-  const [selectedTable, setSelectedTable] = useState(tables[0] || 'RawDataLake');
-  const [limit] = useState(100);
-  const [filters, setFilters] = useState<Filter[]>([]);
-  const [rawMode, setRawMode] = useState(false);
-  const [generatedSQL, setGeneratedSQL] = useState('');
+  // Default to the "Unpack" query if it's the RawDataLake
+  const defaultSql = activeTable === 'RawDataLake' 
+    ? `SELECT 
+  elem->>'id' AS model_id, 
+  elem->>'owned_by' AS owner, 
+  'groq' AS provider_id 
+FROM "RawDataLake", 
+     jsonb_array_elements("rawData") AS elem 
+LIMIT 50`
+    : `SELECT * FROM "${activeTable}" LIMIT 100`;
 
-  // 1. AUTO-DETECT MODE
-  const isRawLake = selectedTable === 'RawDataLake';
+  const [sql, setSql] = useState(defaultSql);
+  const [newTableName, setNewTableName] = useState(`refined_${activeTable.toLowerCase()}`);
+  const [showSave, setShowSave] = useState(false);
 
-  // 2. RESET ON TABLE CHANGE
-  useEffect(() => {
-    setFilters([]); 
-    setGeneratedSQL(`SELECT * FROM "${selectedTable}" LIMIT ${limit}`);
-  }, [selectedTable, limit]);
-
-  // 3. SQL GENERATOR ENGINE
-  useEffect(() => {
-    if (rawMode) return;
-
-    let sql = `SELECT * FROM "${selectedTable}"`;
-
-    if (filters.length > 0) {
-      const whereClauses = filters.map(f => {
-        // --- MODE SWITCHING LOGIC ---
-        if (isRawLake) {
-            // JSON MODE: Automatically wrap input "pricing.prompt" -> rawData->'pricing'->>'prompt'
-            const parts = f.column.split('.');
-            let colRef = '';
-            
-            if (parts.length === 1) {
-                colRef = `rawData->>'${parts[0]}'`;
-            } else {
-                const path = parts.slice(0, -1).map(p => `'${p}'`).join('->');
-                const last = parts[parts.length - 1];
-                colRef = `rawData->${path}->>'${last}'`;
-            }
-            
-            // Handle Numeric comparisons for JSON strings
-            if (['>', '<', '>=', '<='].includes(f.operator)) {
-                colRef = `(${colRef})::numeric`;
-            }
-
-            const val = !isNaN(Number(f.value)) && f.value !== '' ? f.value : `'${f.value}'`;
-            return `${colRef} ${f.operator} ${val}`;
-        } 
-        else {
-            // STANDARD MODE: Just use the column name
-            const val = !isNaN(Number(f.value)) && f.value !== '' ? f.value : `'${f.value}'`;
-            return `"${f.column}" ${f.operator} ${val}`;
-        }
-      });
-      
-      sql += ` WHERE ${whereClauses.join(' AND ')}`;
+  const handleExecute = () => {
+    // 1. Sanitize: Remove accidental "SQL" prefixes or common paste errors
+    let cleanSql = sql.trim();
+    if (cleanSql.toUpperCase().startsWith('SQL')) {
+      cleanSql = cleanSql.substring(3).trim();
     }
-
-    sql += ` LIMIT ${limit}`;
-    setGeneratedSQL(sql);
-  }, [selectedTable, filters, limit, rawMode, isRawLake]);
-
-  // --- ACTIONS ---
-  const addFilter = () => {
-    setFilters([...filters, { 
-      id: Math.random().toString(36).substr(2, 9), 
-      column: '', 
-      operator: 'ILIKE', 
-      value: '' 
-    }]);
+    onExecute(cleanSql);
   };
 
-  const updateFilter = (id: string, field: keyof Filter, val: any) => {
-    setFilters(filters.map(f => f.id === id ? { ...f, [field]: val } : f));
-  };
-
-  const removeFilter = (id: string) => {
-    setFilters(filters.filter(x => x.id !== id));
+  const handleSave = () => {
+    let cleanSql = sql.trim();
+    if (cleanSql.toUpperCase().startsWith('SQL')) {
+      cleanSql = cleanSql.substring(3).trim();
+    }
+    onSaveTable(cleanSql, newTableName);
+    setShowSave(false);
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-zinc-900 border-b border-zinc-800 text-xs font-mono">
+    <div className="flex flex-col h-[400px] bg-zinc-900 border-b border-zinc-800 shadow-2xl">
       
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-black rounded border border-zinc-800 px-2 py-1">
-            <Database size={12} className="text-purple-500 mr-2" />
-            <span className="text-zinc-500 font-bold mr-2">FROM</span>
-            <select 
-              className="bg-transparent text-zinc-300 outline-none appearance-none cursor-pointer"
-              value={selectedTable}
-              onChange={e => setSelectedTable(e.target.value)}
-            >
-              {tables.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+      {/* 1. Toolbar */}
+      <div className="flex-none h-12 px-4 flex items-center justify-between bg-zinc-950 border-b border-zinc-800">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-zinc-400">
+             <Database size={16} className="text-purple-400" />
+             <span className="font-mono text-sm text-zinc-200">{activeTable}</span>
           </div>
-
-          {/* MODE INDICATOR */}
-          <div className={`flex items-center gap-2 px-2 py-1 rounded text-[10px] font-bold ${isRawLake ? 'bg-yellow-900/20 text-yellow-500' : 'bg-blue-900/20 text-blue-400'}`}>
-             <Info size={12} />
-             {isRawLake ? 'JSON MODE (Use dot notation)' : 'SQL MODE (Use column names)'}
-          </div>
-        </div>
-
-        <button 
-          onClick={() => setRawMode(!rawMode)}
-          className={`flex items-center gap-2 px-3 py-1 rounded border transition-colors ${
-            rawMode ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          <Code size={12} /> {rawMode ? 'Raw SQL' : 'Visual Builder'}
-        </button>
-      </div>
-
-      {/* FILTER BUILDER */}
-      {!rawMode && (
-        <div className="space-y-2 pl-1">
-          {filters.map((f) => (
-            <div key={f.id} className="flex items-center gap-2 animate-in slide-in-from-left-2">
-              <div className="w-4 border-l-2 border-zinc-800 h-full absolute left-2" />
-              <span className="text-cyan-600 font-bold w-10 text-right">WHERE</span>
-              
-              {/* Column Name Input */}
-              <input 
-                className="bg-zinc-950 border border-zinc-800 text-yellow-500 rounded px-2 py-1 w-48 focus:border-yellow-700 outline-none"
-                placeholder={isRawLake ? 'pricing.prompt' : 'column_name'}
-                value={f.column}
-                onChange={e => updateFilter(f.id, 'column', e.target.value)}
-              />
-
-              {/* Operator */}
-              <select 
-                className="bg-zinc-950 border border-zinc-800 text-purple-400 rounded px-2 py-1 text-center"
-                value={f.operator}
-                onChange={e => updateFilter(f.id, 'operator', e.target.value)}
-              >
-                <option value="ILIKE">contains</option>
-                <option value="=">=</option>
-                <option value="!=">!=</option>
-                <option value=">">&gt;</option>
-                <option value="<">&lt;</option>
-              </select>
-
-              {/* Value */}
-              <input 
-                className="bg-zinc-950 border border-zinc-800 text-green-400 rounded px-2 py-1 flex-1 focus:border-green-700 outline-none"
-                placeholder="value..."
-                value={f.value}
-                onChange={e => updateFilter(f.id, 'value', e.target.value)}
-              />
-
-              <button onClick={() => removeFilter(f.id)} className="text-zinc-600 hover:text-red-500">
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-
-          <button onClick={addFilter} className="flex items-center gap-1 text-zinc-500 hover:text-cyan-400 mt-1 ml-12">
-            <Plus size={12} /> Add Filter
+          <span className="text-zinc-700">|</span>
+          <button 
+             onClick={() => setSql(`SELECT * FROM "${activeTable}" LIMIT 10`)}
+             className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+          >
+            <RefreshCw size={10} /> Reset Query
           </button>
         </div>
-      )}
 
-      {/* EXECUTE & SAVE */}
-      <div className="flex items-stretch gap-0 border border-zinc-800 rounded overflow-hidden mt-2">
-         <div className="flex-1 bg-black p-3 relative">
-            <textarea 
-              className="w-full h-full bg-transparent text-blue-300 resize-none outline-none font-mono text-sm"
-              rows={2}
-              value={generatedSQL}
-              onChange={e => { setRawMode(true); setGeneratedSQL(e.target.value); }}
-            />
-         </div>
+        <div className="flex items-center gap-2">
+           {onDeleteTable && activeTable !== 'RawDataLake' && (
+             <button 
+               onClick={() => {
+                 if(confirm(`Delete table "${activeTable}" permanently?`)) onDeleteTable(activeTable);
+               }}
+               className="flex items-center gap-2 px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900 rounded transition-all text-xs mr-4"
+             >
+               <Trash2 size={14} /> DELETE TABLE
+             </button>
+           )}
 
-         <div className="flex flex-col border-l border-zinc-800 bg-zinc-900">
-            <button 
-              onClick={() => onExecute(generatedSQL)}
-              disabled={isLoading}
-              className="flex-1 px-4 flex items-center gap-2 text-white hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              <Play size={14} className={isLoading ? "animate-spin" : ""} />
-              <span>RUN</span>
-            </button>
-            
-            {onSaveTable && (
-              <button 
-                onClick={() => {
-                  const name = prompt("Create Table Name? (e.g. 'openai_cheap_models')");
-                  if (name) onSaveTable(generatedSQL, name);
-                }}
-                className="h-8 px-4 flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-800 border-t border-zinc-800"
-                title="Save these results as a reusable table"
-              >
-                <Save size={12} />
-              </button>
-            )}
-         </div>
+           <button 
+             onClick={handleExecute}
+             className="flex items-center gap-2 px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 rounded transition-all text-xs font-bold"
+           >
+             <Play size={14} className="text-green-400" /> RUN PREVIEW
+           </button>
+
+           <div className="h-6 w-px bg-zinc-800 mx-1"></div>
+
+           <div className="flex items-center gap-0 bg-cyan-900/20 border border-cyan-800/50 rounded overflow-hidden">
+              {!showSave ? (
+                <button 
+                  onClick={() => setShowSave(true)}
+                  className="px-4 py-1.5 text-cyan-400 hover:bg-cyan-900/30 text-xs font-bold flex items-center gap-2"
+                >
+                  <Save size={14} /> SAVE AS TABLE...
+                </button>
+              ) : (
+                <div className="flex items-center animate-in slide-in-from-right-2">
+                  <input 
+                    type="text" 
+                    value={newTableName}
+                    onChange={(e) => setNewTableName(e.target.value)}
+                    className="bg-black text-cyan-200 text-xs px-2 py-1.5 outline-none w-40 placeholder-cyan-800/50"
+                    placeholder="table_name"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={handleSave}
+                    className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold"
+                  >
+                    CREATE
+                  </button>
+                  <button 
+                    onClick={() => setShowSave(false)}
+                    className="px-2 py-1.5 hover:bg-zinc-800 text-zinc-500"
+                  >
+                    X
+                  </button>
+                </div>
+              )}
+           </div>
+        </div>
+      </div>
+
+      {/* 2. Main Workspace (Editor + Sidebar) */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* Sidebar: Schema/Columns Helper */}
+        <div className="w-48 bg-black/50 border-r border-zinc-800 p-3 overflow-y-auto">
+           <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Available Tables</h4>
+           <div className="flex flex-col gap-1">
+              {tables.map(t => (
+                <button 
+                  key={t} 
+                  onClick={() => setSql(prev => `${prev}\n-- Joined\nLEFT JOIN "${t}" ON ...`)}
+                  className={`text-left text-xs truncate px-2 py-1 rounded ${t === activeTable ? 'bg-zinc-800 text-zinc-200' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  {t}
+                </button>
+              ))}
+           </div>
+        </div>
+
+        {/* Editor Area */}
+        <div className="flex-1 relative bg-[#0d1117]">
+          <textarea
+            value={sql}
+            onChange={(e) => setSql(e.target.value)}
+            className="w-full h-full bg-transparent text-zinc-300 font-mono text-sm p-4 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700 leading-relaxed"
+            spellCheck={false}
+          />
+          <div className="absolute bottom-2 right-4 text-zinc-600 text-[10px]">
+             CMD+ENTER to Run
+          </div>
+        </div>
+
       </div>
     </div>
   );

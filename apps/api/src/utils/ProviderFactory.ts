@@ -1,67 +1,55 @@
-// @ts-ignore
-import { OpenAI } from 'openai';
+import { BaseLLMProvider } from './BaseLLMProvider.js';
+import { OpenAIProvider } from './OpenAIProvider.js';
+import { AnthropicProvider } from './AnthropicProvider.js';
 
-export interface LLMModel {
-  id: string;
-  [key: string]: any;
-}
+export * from './BaseLLMProvider.js';
 
-export interface CompletionRequest {
-  modelId: string;
-  messages: any[];
-  temperature?: number;
-  max_tokens?: number;
-}
-
-export interface BaseLLMProvider {
-  id: string;
-  getModels(): Promise<LLMModel[]>;
-  generateCompletion(request: CompletionRequest): Promise<string>;
-}
 
 export class ProviderFactory {
-  static createProvider(type: string, config: { id: string; apiKey: string; baseURL?: string }): BaseLLMProvider {
-    switch (type.toLowerCase()) {
+  
+  static createProvider(type: string, config: any): BaseLLMProvider {
+    console.log(`[ProviderFactory] Initializing: ${type} (${config.baseURL || 'default url'})`);
+
+    switch (type) {
+      // --- GROUP 1: NATIVE PROVIDERS ---
+      case 'anthropic':
+        return new AnthropicProvider(config);
+        
+      case 'google': // or 'vertex-studio' if that's what UI sends
+      case 'vertex-studio':
+        // Assuming you have a GoogleProvider, otherwise treat as OpenAI compatible if using proxy
+        // return new GoogleProvider(config); 
+        throw new Error("Google/Vertex provider not yet implemented in Factory");
+
+      // --- GROUP 2: OPENAI COMPATIBLE (The "Universal" Group) ---
+      // The UI sends these specific names, but they all speak "OpenAI"
       case 'openai':
-        return new OpenAIProvider(config);
-      case 'azure':
-      case 'azure-openai':
-         return new OpenAIProvider(config);
+      case 'openrouter':
+      case 'mistral':
+      case 'groq':
+      case 'ollama':
+      case 'deepseek':
+      case 'generic-openai': // For custom endpoints
+        return new OpenAIProvider({
+          ...config,
+          // 1. Trust the Base URL from the Database (which came from UI)
+          // 2. Fallback to defaults ONLY if DB is empty
+          baseURL: config.baseURL || this.getDefaultBaseURL(type)
+        });
+
       default:
-        throw new Error(`Provider type '${type}' is not supported in the new SDK migration yet.`);
-    }
-  }
-}
-
-class OpenAIProvider implements BaseLLMProvider {
-  id: string;
-  private client: OpenAI;
-
-  constructor(config: { id: string; apiKey: string; baseURL?: string }) {
-    this.id = config.id;
-    this.client = new OpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseURL,
-    });
-  }
-
-  async getModels(): Promise<LLMModel[]> {
-    try {
-        const list = await this.client.models.list();
-        return list.data.map((m: any) => ({ id: m.id, ...m }));
-    } catch (e) {
-        console.error("Failed to fetch OpenAI models", e);
-        return [];
+        throw new Error(`Provider type '${type}' is not supported yet.`);
     }
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model: request.modelId,
-      messages: request.messages as any,
-      temperature: request.temperature,
-      max_tokens: request.max_tokens,
-    });
-    return response.choices[0]?.message?.content || '';
+  // Helper to keep the switch clean
+  private static getDefaultBaseURL(type: string): string | undefined {
+    switch (type) {
+      case 'openrouter': return 'https://openrouter.ai/api/v1';
+      case 'mistral':    return 'https://api.mistral.ai/v1';
+      case 'ollama':     return 'http://localhost:11434/v1';
+      case 'groq':       return 'https://api.groq.com/openai/v1';
+      default:           return undefined; // Let SDK default to api.openai.com
+    }
   }
 }
