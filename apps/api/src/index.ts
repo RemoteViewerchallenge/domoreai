@@ -1,3 +1,4 @@
+import './instrumentation.js'; // Must be top line
 import { WebSocketService } from './services/websocket.service.js';
 import { appRouter } from './routers/index.js';
 import { createExpressMiddleware, type CreateExpressContextOptions } from '@trpc/server/adapters/express';

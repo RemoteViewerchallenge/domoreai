@@ -6,6 +6,7 @@ interface VisualQueryBuilderProps {
   activeTable: string;
   onExecute: (sql: string) => void;
   onSaveTable: (sql: string, name: string) => void;
+  onSaveQuery?: (sql: string, name: string) => void;
   onDeleteTable?: (name: string) => void;
 }
 
@@ -13,13 +14,16 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   activeTable,
   onExecute,
   onSaveTable,
+  onSaveQuery,
   onDeleteTable
 }) => {
   // --- STATE ---
   const [mode, setMode] = useState<'query' | 'schema'>('query');
   const [sql, setSql] = useState('');
   const [newTableName, setNewTableName] = useState('');
-  const [showSave, setShowSave] = useState(false);
+  const [newQueryName, setNewQueryName] = useState('');
+  const [showSaveTable, setShowSaveTable] = useState(false);
+  const [showSaveQuery, setShowSaveQuery] = useState(false);
 
   // Visual Query State
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -83,14 +87,24 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
     onExecute(cleanSql);
   };
 
-  const handleSave = () => {
+  const handleSaveTable = () => {
     if (!newTableName) {
       alert("Please enter a table name");
       return;
     }
     onSaveTable(sql, newTableName);
-    setShowSave(false);
+    setShowSaveTable(false);
     setNewTableName('');
+  };
+
+  const handleSaveQuery = () => {
+    if (!newQueryName) {
+      alert("Please enter a query name");
+      return;
+    }
+    if (onSaveQuery) onSaveQuery(sql, newQueryName);
+    setShowSaveQuery(false);
+    setNewQueryName('');
   };
 
   return (
@@ -214,8 +228,9 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                
                <div className="h-12 border-t border-zinc-800 bg-zinc-900 flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
-                     {!showSave ? (
-                       <button onClick={() => setShowSave(true)} className="text-cyan-400 hover:text-cyan-300 flex items-center gap-2 font-bold">
+                     {/* Save Table */}
+                     {!showSaveTable ? (
+                       <button onClick={() => { setShowSaveTable(true); setShowSaveQuery(false); }} className="bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-200 px-3 py-1 rounded flex items-center gap-2 font-bold border border-cyan-800/50">
                          <Save size={14} /> Save as Table
                        </button>
                      ) : (
@@ -225,9 +240,28 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                            placeholder="new_table_name"
                            className="bg-black border border-zinc-700 rounded px-2 py-1 text-zinc-200 outline-none w-40"
                          />
-                         <button onClick={handleSave} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold">Save</button>
-                         <button onClick={() => setShowSave(false)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
+                         <button onClick={handleSaveTable} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold">Save</button>
+                         <button onClick={() => setShowSaveTable(false)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
                        </div>
+                     )}
+
+                     {/* Save Query */}
+                     {onSaveQuery && (
+                        !showSaveQuery ? (
+                          <button onClick={() => { console.log('Save Query Clicked'); setShowSaveQuery(true); setShowSaveTable(false); }} className="bg-purple-900/30 hover:bg-purple-900/50 text-purple-200 px-3 py-1 rounded flex items-center gap-2 font-bold ml-4 border border-purple-800/50">
+                            <Save size={14} /> Save Query
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 animate-in slide-in-from-left-2 ml-4">
+                            <input 
+                              value={newQueryName} onChange={e => setNewQueryName(e.target.value)}
+                              placeholder="query_name"
+                              className="bg-black border border-zinc-700 rounded px-2 py-1 text-zinc-200 outline-none w-40"
+                            />
+                            <button onClick={handleSaveQuery} className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded font-bold">Save</button>
+                            <button onClick={() => setShowSaveQuery(false)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
+                          </div>
+                        )
                      )}
                   </div>
 

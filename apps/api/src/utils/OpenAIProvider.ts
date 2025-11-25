@@ -1,6 +1,7 @@
 // @ts-ignore
 import { OpenAI } from 'openai';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
+import { UsageCollector } from '../services/UsageCollector.js';
 
 export class OpenAIProvider implements BaseLLMProvider {
   id: string;
@@ -30,7 +31,18 @@ export class OpenAIProvider implements BaseLLMProvider {
       messages: request.messages as any,
       temperature: request.temperature,
       max_tokens: request.max_tokens,
+    }).asResponse();
+
+    // Extract headers
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
     });
-    return response.choices[0]?.message?.content || '';
+
+    // Update dynamic limits
+    await UsageCollector.updateDynamicLimits(this.id, headers);
+    
+    const json = await response.json();
+    return json.choices[0]?.message?.content || '';
   }
 }

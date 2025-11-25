@@ -23,23 +23,35 @@ export interface CardAgentState {
   stop?: string[];                  // Stop sequences to end generation
   seed?: number;                    // For deterministic outputs
   responseFormat?: 'text' | 'json_object'; // Force JSON output
+  
+  // NEW: Parameter Safety Feedback
+  adjustedParameters?: Record<string, any>;
+}
+
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  capabilities?: {
+    vision?: boolean;
+    reasoning?: boolean;
+    coding?: boolean;
+  };
+  supportsTools?: boolean;
+  isUncensored?: boolean;
+  costPer1k?: number;
 }
 
 interface AgentSettingsProps {
   config: CardAgentState;
   availableRoles: { id: string; name: string }[]; 
+  availableModels: ModelOption[];
   onUpdate: (newConfig: CardAgentState) => void;
 }
 
-export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, onUpdate }) => {
+export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate }) => {
   const [isRevealed, setIsRevealed] = useState(false);
-
-  // Mock list of models (In real app, fetch from trpc.provider.listModels)
-  const availableModels = [
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-    { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
-    { id: 'llama-3.1-70b', name: 'Llama 3.1 70B', provider: 'groq' },
-  ];
+  const [showAdjustmentDetails, setShowAdjustmentDetails] = useState(false);
 
   return (
     <div className="h-full w-full bg-zinc-950 text-zinc-300 flex flex-col font-mono text-xs p-4 space-y-6">
@@ -80,19 +92,45 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
         </div>
 
         {config.isLocked ? (
-          // MANUAL OVERRIDE MODE
-          <select 
-            value={config.modelId || ''} 
-            onChange={(e) => onUpdate({ ...config, modelId: e.target.value })}
-            className="w-full bg-black border border-amber-900/30 text-amber-500 rounded p-2 outline-none"
-          >
-            <option value="" disabled>Force specific model...</option>
-            {availableModels.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.name} ({m.provider})
-              </option>
-            ))}
-          </select>
+          // MANUAL OVERRIDE MODE (Double-Blind / Objective Selection)
+          <div className="space-y-2">
+              <select 
+                value={config.modelId || ''} 
+                onChange={(e) => onUpdate({ ...config, modelId: e.target.value })}
+                className="w-full bg-black border border-amber-900/30 text-amber-500 rounded p-2 outline-none"
+              >
+                <option value="" disabled>Select a model...</option>
+                {availableModels.map(m => {
+                    // Construct the "Blind" label
+                    const caps = [];
+                    if (m.capabilities?.vision) caps.push('Vision');
+                    if (m.capabilities?.reasoning) caps.push('Reasoning');
+                    if (m.supportsTools) caps.push('Tools');
+                    if (m.isUncensored) caps.push('Uncensored');
+                    
+                    const label = `${m.name} ${caps.length > 0 ? `[${caps.join(', ')}]` : ''}`;
+                    return (
+                        <option key={m.id} value={m.id}>
+                            {label}
+                        </option>
+                    );
+                })}
+              </select>
+              <div className="flex flex-wrap gap-1">
+                  {/* Visual Key for selected model */}
+                  {(() => {
+                      const selected = availableModels.find(m => m.id === config.modelId);
+                      if (!selected) return null;
+                      return (
+                          <>
+                            {selected.isUncensored && <span className="px-1.5 py-0.5 bg-red-900/30 text-red-400 border border-red-900 rounded text-[9px] font-bold flex items-center gap-1">☠️ Uncensored</span>}
+                            {selected.capabilities?.reasoning && <span className="px-1.5 py-0.5 bg-purple-900/30 text-purple-400 border border-purple-900 rounded text-[9px] font-bold flex items-center gap-1">🧠 Reasoning</span>}
+                            {selected.capabilities?.vision && <span className="px-1.5 py-0.5 bg-blue-900/30 text-blue-400 border border-blue-900 rounded text-[9px] font-bold flex items-center gap-1">👁️ Vision</span>}
+                          </>
+                      );
+                  })()}
+              </div>
+          </div>
         ) : (
           // DYNAMIC / BLIND MODE
           <div className="flex items-center justify-between bg-black border border-zinc-800 rounded px-3 py-2">
@@ -118,8 +156,33 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
       </div>
 
       {/* 3. HYPERPARAMETERS (Testing Variables) */}
-      <div className="space-y-3 pt-2 border-t border-zinc-900">
-        <h3 className="text-[9px] uppercase text-zinc-600 font-bold">Model Parameters</h3>
+      <div className="space-y-3 pt-2 border-t border-zinc-900 relative">
+        <div className="flex justify-between items-center">
+            <h3 className="text-[9px] uppercase text-zinc-600 font-bold">Model Parameters</h3>
+            {/* Parameter Adjustment Warning */}
+            {config.adjustedParameters && Object.keys(config.adjustedParameters).length > 0 && (
+                <button 
+                    onClick={() => setShowAdjustmentDetails(!showAdjustmentDetails)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-900/20 border border-yellow-700 text-yellow-500 rounded text-[9px] hover:bg-yellow-900/40 transition-colors"
+                >
+                    ⚠️ Adjusted
+                </button>
+            )}
+        </div>
+
+        {/* Adjustment Details Modal/Popover */}
+        {showAdjustmentDetails && config.adjustedParameters && (
+            <div className="absolute top-6 right-0 w-64 bg-zinc-900 border border-yellow-700/50 rounded p-2 shadow-xl z-10">
+                <h4 className="text-[10px] font-bold text-yellow-500 mb-1">Auto-Adjusted Parameters</h4>
+                <div className="space-y-1">
+                    {Object.entries(config.adjustedParameters).map(([key, val]: [string, any]) => (
+                        <div key={key} className="text-[9px] border-b border-zinc-800 pb-1 last:border-0">
+                            <span className="text-zinc-400 font-bold">{key}:</span> <span className="text-zinc-500">{val.reason}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
         
         {/* Temperature */}
         <div>

@@ -1,6 +1,9 @@
 import { DynamicModelAdapter, type DynamicModel } from '../services/DynamicModelAdapter.js';
 import { UsageCollector } from '../services/UsageCollector.js';
 import { getRedisClient } from '../redis.js';
+import { db } from '../db.js';
+import { AssessmentService } from '../services/AssessmentService.js';
+import { CreditGuard } from '../services/CreditGuard.js';
 
 // --- Error Classes ---
 export class HardStopError extends Error {
@@ -47,7 +50,11 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
 
   // 1. LOAD: Fetch your custom rows from the Data Lake table
   // These rows now contain your 'priority', 'group_id', etc.
-  const tableName = criteria.tableName || 'unified_models';
+  
+  // Fetch config
+  const config = await db.orchestratorConfig.findUnique({ where: { id: 'global' } });
+  const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
+  
   let candidates: DynamicModel[];
   
   try {
@@ -156,6 +163,16 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
     const jitter = Math.random() * 5;
     score += jitter;
     reasons.push(`Jitter: +${jitter.toFixed(2)}`);
+
+    // Logic F: Quality Score (Auditor)
+    const quality = await AssessmentService.getAverageQuality(m.id);
+    if (quality < 0.5) {
+      score -= 20;
+      reasons.push(`Low Quality: ${quality.toFixed(2)}`);
+    } else if (quality > 0.9) {
+      score += 10;
+      reasons.push(`High Quality: ${quality.toFixed(2)}`);
+    }
 
     return { model: m, score, reasons };
   }));

@@ -2,6 +2,7 @@ import { db } from "../db.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
 import { type BaseLLMProvider } from "../utils/ProviderFactory.js";
+import { ModelConfigurator } from "./ModelConfigurator.js";
 
 // Represents the state of a single Card's brain
 export interface CardAgentState {
@@ -47,53 +48,84 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
   }
 
-  let targetModelId = cardConfig.modelId;
-  let targetProviderId = '';
+  let modelConfig: any;
+  let model: any;
 
   // 2. Model Resolution Strategy
-  if (!cardConfig.isLocked || !targetModelId) {
+  if (!cardConfig.isLocked || !cardConfig.modelId) {
     // STRATEGY A: Dynamic Orchestration (Volcano-style)
-    // We ask the orchestrator to pick the best model based on generic criteria
-    // You can expand 'criteria' to include role requirements (e.g. "needs_coding")
-    const bestModel = await getBestModel(cardConfig.roleId); // Pass specific criteria if needed
+    const bestModel = await getBestModel(cardConfig.roleId);
     
     if (!bestModel) {
       throw new Error("Orchestrator failed to select a model for this agent.");
     }
     
-    // Map the Prisma model structure to what we need
-    // getBestModel returns a ModelConfig which has a 'model' relation which has a 'provider' relation
-    // We need to be careful about types here since getBestModel returns a Prisma object
-    // but we are in a file that might not have full Prisma types if we are using SimpleDB mocks elsewhere.
-    // However, modelManager.service.ts uses PrismaClient, so we should be good to assume the structure.
-    
-    // @ts-ignore - We know the structure from getBestModel
-    targetModelId = bestModel.model.modelId;
-    // @ts-ignore
-    targetProviderId = bestModel.model.providerId; 
+    modelConfig = bestModel;
+    model = bestModel.model;
   } else {
     // STRATEGY B: Manual/Locked
-    // We need to find which provider owns this specific modelId
     const allModels = await ProviderManager.getAllModels();
-    const modelDef = allModels.find(m => m.id === targetModelId);
+    const modelDef = allModels.find(m => m.id === cardConfig.modelId);
     
     if (!modelDef) {
-      throw new Error(`Configuration Error: Model '${targetModelId}' is not available in any active provider.`);
+      throw new Error(`Configuration Error: Model '${cardConfig.modelId}' is not available in any active provider.`);
     }
-    targetProviderId = modelDef.providerId;
+
+    // Fetch the Prisma Model
+    model = await db.model.findUnique({
+       where: { providerId_modelId: { providerId: modelDef.providerId, modelId: modelDef.id } }
+    });
+    
+    if (!model) {
+        // Fallback if DB sync is behind ProviderManager
+        throw new Error(`Model '${cardConfig.modelId}' not found in database.`);
+    }
+
+    // Find or Create ModelConfig
+    // We look for an existing config for this role/model pair
+    // We can't use findFirst with 'roles' directly easily without include, but we can query ModelConfig
+    // Actually ModelConfig has a many-to-many with Role?
+    // Schema says: roles Role[] @relation("PreferredModels")
+    // So a ModelConfig can belong to multiple roles?
+    // And a Role has preferredModels ModelConfig[]
+    
+    // If we want to find the config for THIS role and THIS model:
+    // We need to find a ModelConfig that is connected to this Role AND points to this Model.
+    modelConfig = await db.modelConfig.findFirst({
+        where: {
+            modelId: model.id,
+            roles: { some: { id: cardConfig.roleId } }
+        }
+    });
+
+    if (!modelConfig) {
+        // Create a new config for this role
+        modelConfig = await db.modelConfig.create({
+            data: {
+                modelId: model.id,
+                providerId: model.providerId,
+                roles: { connect: { id: cardConfig.roleId } },
+                temperature: cardConfig.temperature,
+                maxTokens: cardConfig.maxTokens
+            }
+        });
+    }
   }
 
-  // 3. Initialize Provider from SDK Manager
-  const provider = ProviderManager.getProvider(targetProviderId);
+  // 3. Configure & Validate Parameters
+  // We import ModelConfigurator dynamically or at top level. I'll assume top level import.
+  const [safeParams, _adjustments] = await ModelConfigurator.configure(model, role, modelConfig);
+
+  // 4. Initialize Provider
+  const provider = ProviderManager.getProvider(model.providerId);
   if (!provider) {
-    throw new Error(`Runtime Error: Provider '${targetProviderId}' is not initialized.`);
+    throw new Error(`Runtime Error: Provider '${model.providerId}' is not initialized.`);
   }
 
-  // 4. Return the Configured Agent
+  // 5. Return the Configured Agent
   return new VolcanoAgent(provider, role.basePrompt, {
-    modelId: targetModelId!,
-    temperature: cardConfig.temperature,
-    maxTokens: cardConfig.maxTokens
+    modelId: model.modelId,
+    temperature: safeParams.temperature ?? 0.7,
+    maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
   });
 }
-
