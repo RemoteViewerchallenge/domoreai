@@ -6,7 +6,6 @@ import { Database, ArrowRight } from 'lucide-react';
 const UnifiedProviderPage: React.FC = () => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-base-300 text-base-content">
-
       {/* Navigation Header */}
       <div className="flex-none h-12 px-4 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between">
         <div className="flex items-center gap-2">
