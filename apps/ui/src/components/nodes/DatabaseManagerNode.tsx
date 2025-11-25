@@ -16,6 +16,13 @@ export const DatabaseManagerNode: React.FC = () => {
     { enabled: !!activeTable }
   );
   
+  const savedQueriesQuery = trpc.dataRefinement.listSavedQueries.useQuery();
+  const { data: savedQueries, isLoading: isLoadingSavedQueries, error } = savedQueriesQuery;
+  
+  console.log('DatabaseManagerNode: FULL QUERY OBJ', savedQueriesQuery);
+  console.log('DatabaseManagerNode: savedQueries', savedQueries);
+  console.log('DatabaseManagerNode: tables', tables);
+  
   const dropTableMutation = trpc.dataRefinement.deleteTable.useMutation({
     onSuccess: () => {
         setActiveTable('');
@@ -32,7 +39,16 @@ export const DatabaseManagerNode: React.FC = () => {
   // });
 
   const saveQueryMutation = trpc.dataRefinement.saveMigrationQuery.useMutation({
-    onSuccess: () => alert("Query Saved!")
+    onSuccess: () => {
+      alert("Query Saved!");
+      utils.dataRefinement.listSavedQueries.invalidate();
+    }
+  });
+
+  const deleteQueryMutation = trpc.dataRefinement.deleteSavedQuery.useMutation({
+    onSuccess: () => {
+      utils.dataRefinement.listSavedQueries.invalidate();
+    }
   });
 
   const saveTableMutation = trpc.dataRefinement.saveQueryResults.useMutation({
@@ -99,6 +115,11 @@ export const DatabaseManagerNode: React.FC = () => {
              onExecute={(sql) => executeMutation.mutate({ query: sql })}
              onSaveTable={(sql, name) => saveTableMutation.mutate({ query: sql, newTableName: name })}
              onSaveQuery={(sql, name) => saveQueryMutation.mutate({ name, query: sql })}
+             savedQueries={savedQueries as any[]} // Type cast to avoid strict date mismatch if any
+             onDeleteQuery={(name) => deleteQueryMutation.mutate({ name })}
+             isLoading={isLoadingSavedQueries}
+             error={error}
+             onRefreshSaved={() => utils.dataRefinement.listSavedQueries.invalidate()}
            />
         </div>
       )}

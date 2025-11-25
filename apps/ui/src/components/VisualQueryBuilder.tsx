@@ -8,6 +8,11 @@ interface VisualQueryBuilderProps {
   onSaveTable: (sql: string, name: string) => void;
   onSaveQuery?: (sql: string, name: string) => void;
   onDeleteTable?: (name: string) => void;
+  savedQueries?: { name: string; query: string; updatedAt: Date | string }[];
+  onDeleteQuery?: (name: string) => void;
+  isLoading?: boolean;
+  error?: any;
+  onRefreshSaved?: () => void;
 }
 
 export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
@@ -15,10 +20,19 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   onExecute,
   onSaveTable,
   onSaveQuery,
-  onDeleteTable
+  onDeleteTable,
+  savedQueries = [],
+  onDeleteQuery,
+  isLoading = false,
+  error,
+  onRefreshSaved
 }) => {
+  console.log('VisualQueryBuilder: savedQueries', savedQueries);
+  console.log('VisualQueryBuilder: isLoading', isLoading);
+  console.log('VisualQueryBuilder: error', error);
+
   // --- STATE ---
-  const [mode, setMode] = useState<'query' | 'schema'>('query');
+  const [mode, setMode] = useState<'query' | 'schema' | 'saved'>('query');
   const [sql, setSql] = useState('');
   const [newTableName, setNewTableName] = useState('');
   const [newQueryName, setNewQueryName] = useState('');
@@ -55,6 +69,25 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   const dropColumnMutation = trpc.dataRefinement.dropColumn.useMutation({
     onSuccess: () => utils.dataRefinement.getTableData.invalidate()
   });
+
+  // AI Assist state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const generateQueryMutation = trpc.agent.generateQuery.useMutation();
+
+  const handleGenerateQuery = async () => {
+    if (!aiPrompt) return;
+    try {
+      const result = await generateQueryMutation.mutateAsync({
+        userPrompt: aiPrompt,
+        targetTable: activeTable,
+      });
+      setSql(result.queryText);
+      setAiPrompt('');
+    } catch (err) {
+      console.error('AI Query Generation Failed:', err);
+      alert('AI failed to generate SQL. Check server logs.');
+    }
+  };
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -132,6 +165,12 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'schema' ? 'bg-zinc-800 text-orange-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
              >
                <Settings size={12} /> Schema
+             </button>
+             <button 
+               onClick={() => setMode('saved')}
+               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'saved' ? 'bg-zinc-800 text-purple-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+             >
+               <Save size={12} /> Saved
              </button>
            </div>
         </div>
@@ -219,6 +258,25 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
 
             {/* SQL Editor & Actions */}
             <div className="flex-1 flex flex-col bg-[#0d1117]">
+               <div className="p-3 border-b border-zinc-800 bg-zinc-950/40">
+                 <div className="flex gap-2 items-center">
+                   <textarea
+                     value={aiPrompt}
+                     onChange={(e) => setAiPrompt(e.target.value)}
+                     placeholder="Ask AI to write an SQL query (e.g., Top 5 rows by ... )"
+                     className="flex-1 bg-black/40 border border-zinc-800 rounded px-2 py-1 text-zinc-200 outline-none text-xs"
+                     rows={2}
+                   />
+                   <button
+                     onClick={handleGenerateQuery}
+                     disabled={generateQueryMutation.isLoading || !aiPrompt}
+                     className="px-3 py-1.5 rounded bg-blue-600 disabled:opacity-50 hover:bg-blue-500 text-white font-bold"
+                   >
+                     {generateQueryMutation.isLoading ? 'Thinking...' : '🧠 Ask AI'}
+                   </button>
+                 </div>
+               </div>
+
                <textarea
                  value={sql}
                  onChange={(e) => setSql(e.target.value)}
@@ -338,6 +396,74 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                        <Plus size={16} /> Add
                      </button>
                    </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* --- MODE: SAVED QUERIES --- */}
+        {mode === 'saved' && (
+          <div className="flex-1 p-6 overflow-y-auto bg-zinc-950">
+             <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-zinc-200 flex items-center gap-2">
+                    <Save size={18} className="text-purple-400" />
+                    Saved Queries
+                  </h3>
+                  {onRefreshSaved && (
+                    <button onClick={onRefreshSaved} className="text-zinc-400 hover:text-white text-xs underline">
+                      Refresh
+                    </button>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="bg-red-900/20 border border-red-800 text-red-300 p-4 rounded mb-4">
+                    Error loading queries: {error.message || JSON.stringify(error)}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {isLoading && (
+                    <div className="col-span-2 text-center py-12 text-zinc-500 animate-pulse">
+                      Loading saved queries...
+                    </div>
+                  )}
+
+                  {!isLoading && savedQueries.map((sq) => (
+                    <div key={sq.name} className="bg-zinc-900 border border-zinc-800 rounded p-4 hover:border-purple-500/50 transition-colors group">
+                       <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-zinc-200">{sq.name}</h4>
+                          <span className="text-[10px] text-zinc-500">{new Date(sq.updatedAt).toLocaleDateString()}</span>
+                       </div>
+                       <div className="bg-black p-2 rounded border border-zinc-800 mb-3 h-20 overflow-hidden relative">
+                          <pre className="text-[10px] text-zinc-400 font-mono whitespace-pre-wrap break-all">{sq.query}</pre>
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/80 pointer-events-none" />
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => { setSql(sq.query); setMode('query'); setNewQueryName(sq.name); }}
+                            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-1.5 rounded text-xs font-bold flex items-center justify-center gap-2"
+                          >
+                            <Play size={12} /> Load & Edit
+                          </button>
+                          {onDeleteQuery && (
+                            <button 
+                              onClick={() => { if(confirm(`Delete query "${sq.name}"?`)) onDeleteQuery(sq.name); }}
+                              className="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                       </div>
+                    </div>
+                  ))}
+                  
+                  {!isLoading && !error && savedQueries.length === 0 && (
+                    <div className="col-span-2 text-center py-12 text-zinc-600 italic">
+                      No saved queries found. Save a query from the "Query" tab to see it here.
+                    </div>
+                  )}
                 </div>
              </div>
           </div>

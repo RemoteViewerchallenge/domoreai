@@ -31,12 +31,27 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     },
   });
 
+  const normalizeOllamaUrl = (url: string) => {
+    // Strip any trailing /v1 and trailing slash for Ollama native endpoints
+    try {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/v1')) {
+        u.pathname = u.pathname.replace(/\/v1$/, '/');
+      }
+      // Ensure a single trailing slash is OK, backend normalizes
+      return u.origin + (u.pathname === '/' ? '' : u.pathname);
+    } catch {
+      // Fallback if not a valid URL
+      return url.replace(/\/?v1\/?$/, '').replace(/\/$/, '');
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => {
-      const newData = { ...prev, [name]: value };
-      
-      // FIX: Check for 'type' instead of 'providerType'
+      let newData = { ...prev, [name]: value };
+
+      // Provider type selection defaults
       if (name === 'type') {
         if (value === 'ollama') newData.baseURL = 'http://localhost:11434';
         else if (value === 'openai') newData.baseURL = 'https://api.openai.com/v1';
@@ -46,22 +61,44 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
         else if (value === 'mistral') newData.baseURL = 'https://api.mistral.ai/v1';
         else if (value === 'azure') newData.baseURL = 'https://{resource}.openai.azure.com/';
       }
-      
+
+      // Auto-detect Ollama by port 11434 and correct type + URL
+      if (name === 'baseURL') {
+        const looksLikeOllama = /:11434(\/|$)/.test(value);
+        if (looksLikeOllama) {
+          newData.type = 'ollama';
+          newData.apiKey = ''; // Ollama generally doesn't need a key by default
+          newData.baseURL = normalizeOllamaUrl(value);
+        }
+      }
+
+      // If type is ollama, normalize URL to native (remove /v1)
+      if (newData.type === 'ollama' && newData.baseURL) {
+        newData.baseURL = normalizeOllamaUrl(newData.baseURL);
+      }
+
       return newData;
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Final normalization before submit
+    const payload = { ...formData };
+    if (payload.type === 'ollama') {
+      payload.baseURL = normalizeOllamaUrl(payload.baseURL);
+      // If user pasted an OpenAI-style /v1 path, it has been stripped
+    }
+
     if (customMutation) {
-      customMutation.mutate(formData);
+      customMutation.mutate(payload);
     } else {
       // Default mutation expects name/providerType
       mutation.mutate({
-        name: formData.label,
-        providerType: formData.type,
-        baseURL: formData.baseURL,
-        apiKey: formData.apiKey
+        name: payload.label,
+        providerType: payload.type,
+        baseURL: payload.baseURL,
+        apiKey: payload.apiKey
       });
     }
   };
@@ -125,6 +162,7 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
             />
             <datalist id="baseUrlOptions">
               <option value="http://localhost:11434">Ollama (Local)</option>
+              <option value="http://192.168.1.10:11434">Ollama (LAN IP example)</option>
               <option value="https://api.openai.com/v1">OpenAI</option>
               <option value="https://openrouter.ai/api/v1">OpenRouter</option>
               <option value="https://generativelanguage.googleapis.com/v1beta">Vertex AI</option>

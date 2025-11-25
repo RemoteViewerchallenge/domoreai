@@ -102,6 +102,21 @@ export const DataNode: React.FC = () => {
     onSuccess: () => alert("Query Saved!")
   });
 
+  // 9. Delete Saved Query
+  const deleteSavedQueryMutation = trpc.dataRefinement.deleteSavedQuery.useMutation({
+    onSuccess: () => {
+      refetchSavedQueries();
+    }
+  });
+
+  // Fetch Saved Queries
+  const { 
+    data: savedQueries, 
+    isLoading: isLoadingSavedQueries, 
+    error: savedQueriesError, 
+    refetch: refetchSavedQueries 
+  } = trpc.dataRefinement.listSavedQueries.useQuery();
+
   // Filter tables for sidebar
   const filteredTables = tables?.filter((t: TableItem) => 
     t.name.toLowerCase().includes(filterText.toLowerCase())
@@ -289,7 +304,16 @@ export const DataNode: React.FC = () => {
                onDeleteTable={() => {}} // Handled in toolbar now
                onExecute={(sql) => executeQueryMutation.mutate({ query: sql })}
                onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
-               onSaveQuery={(sql, name) => saveMigrationQueryMutation.mutate({ name, query: sql })}
+               onSaveQuery={(sql, name) => {
+                 saveMigrationQueryMutation.mutate({ name, query: sql }, {
+                   onSuccess: () => refetchSavedQueries()
+                 });
+               }}
+               savedQueries={savedQueries as any[]}
+               onDeleteQuery={(name) => deleteSavedQueryMutation.mutate({ name })}
+               onRefreshSaved={() => refetchSavedQueries()}
+               isLoading={isLoadingSavedQueries}
+               error={savedQueriesError}
              />
           </div>
         )}
