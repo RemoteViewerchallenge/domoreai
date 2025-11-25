@@ -11,6 +11,11 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5174,
+    strictPort: true,
+    hmr: {
+      overlay: true
+    },
     proxy: {
       '/llm': 'http://localhost:4000',
     }
