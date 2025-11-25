@@ -31,6 +31,19 @@ export const dataRefinementRouter = createTRPCRouter({
       }
     }),
 
+  previewTable: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const rows = await ctx.db.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "${input.tableName}" LIMIT 100`
+        );
+        return rows;
+      } catch (error) {
+        return [];
+      }
+    }),
+
   // --- 3. THE "DO IT ALL" MUTATION ---
   addProviderAndIngest: publicProcedure
     .input(z.object({

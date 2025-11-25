@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { db } from '../db.js';
 
 const createRoleSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -49,29 +50,87 @@ const updateRoleSchema = z.object({
 });
 
 export const roleRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
-    // TODO: Implement role storage in JSON DB
-    return [];
+  list: publicProcedure.query(async () => {
+    // Fetch all roles from the database
+    const roles = await db.role.findMany({
+      orderBy: {
+        name: 'asc',
+      },
+    });
+    
+    // Return roles, or a default role if none exist (prevents UI crash)
+    return roles.length > 0 
+      ? roles 
+      : [
+          {
+            id: 'default',
+            name: 'General Assistant',
+            basePrompt: 'You are a helpful AI assistant.',
+            minContext: null,
+            maxContext: null,
+            needsVision: false,
+            needsReasoning: false,
+            needsCoding: false,
+            defaultTemperature: 0.7,
+            defaultMaxTokens: 2048,
+            defaultTopP: 1.0,
+            defaultFrequencyPenalty: 0.0,
+            defaultPresencePenalty: 0.0,
+            defaultStop: null,
+            defaultSeed: null,
+            defaultResponseFormat: null,
+            terminalRestrictions: null,
+          },
+        ];
   }),
 
   create: publicProcedure
     .input(createRoleSchema)
-    .mutation(async ({ ctx, input }) => {
-      // TODO: Implement role creation
-      throw new Error("Role creation not yet implemented");
+    .mutation(async ({ input }) => {
+      // Create a new role in the database
+      const role = await db.role.create({
+        data: {
+          name: input.name,
+          basePrompt: input.basePrompt,
+          minContext: input.minContext,
+          maxContext: input.maxContext,
+          needsVision: input.needsVision,
+          needsReasoning: input.needsReasoning,
+          needsCoding: input.needsCoding,
+          defaultTemperature: input.defaultTemperature,
+          defaultMaxTokens: input.defaultMaxTokens,
+          defaultTopP: input.defaultTopP,
+          defaultFrequencyPenalty: input.defaultFrequencyPenalty,
+          defaultPresencePenalty: input.defaultPresencePenalty,
+          defaultStop: input.defaultStop,
+          defaultSeed: input.defaultSeed,
+          defaultResponseFormat: input.defaultResponseFormat,
+          terminalRestrictions: input.terminalRestrictions,
+        },
+      });
+      return role;
     }),
 
   update: publicProcedure
     .input(updateRoleSchema)
-    .mutation(async ({ ctx, input }) => {
-      // TODO: Implement role update
-      throw new Error("Role update not yet implemented");
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      
+      // Update the role in the database
+      const role = await db.role.update({
+        where: { id },
+        data,
+      });
+      return role;
     }),
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      // TODO: Implement role deletion
-      throw new Error("Role deletion not yet implemented");
+    .mutation(async ({ input }) => {
+      // Delete the role from the database
+      await db.role.delete({
+        where: { id: input.id },
+      });
+      return { success: true };
     }),
 });

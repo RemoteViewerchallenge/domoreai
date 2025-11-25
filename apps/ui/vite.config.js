@@ -1,11 +1,7 @@
 import path from "path";
-import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+// https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
     resolve: {
@@ -17,5 +13,21 @@ export default defineConfig({
         proxy: {
             '/llm': 'http://localhost:4000',
         }
-    }
+    },
+    build: {
+        rollupOptions: {
+            external: [
+                // Externalize Monaco-VSCode related dependencies
+                /monaco-languageclient/,
+                /vscode-ws-jsonrpc/,
+                /@codingame\/monaco-vscode-api/,
+                /@codingame\/monaco-vscode-.*-service-override/,
+                // Specific path that was failing
+                '@codingame/monaco-vscode-api/vscode/vs/base/browser/cssValue'
+            ],
+            output: {
+                manualChunks: undefined,
+            }
+        }
+    },
 });

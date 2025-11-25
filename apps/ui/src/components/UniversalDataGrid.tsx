@@ -1,183 +1,146 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Edit2 } from 'lucide-react';
 
 interface GridProps {
   data: Record<string, unknown>[];
-  onEdit?: (rowId: string, colId: string, newVal: string | number | boolean | null) => void;
+  // Allow parent to control column mapping
+  columnMapping?: Record<string, string>; 
+  onColumnMapChange?: (original: string, mapped: string) => void;
 }
 
-const EditableCell: React.FC<{
-  value: unknown;
-  rowId: string;
-  colId: string;
-  isEditable: boolean;
-  onSave: (val: string) => void;
-}> = ({ value, isEditable, onSave }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(String(value ?? ''));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setTempValue(String(value ?? ''));
-  }, [value]);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  const handleSave = () => {
-    setIsEditing(false);
-    if (tempValue !== String(value ?? '')) {
-      onSave(tempValue);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSave();
-    if (e.key === 'Escape') {
-      setTempValue(String(value ?? ''));
-      setIsEditing(false);
-    }
-  };
-
-  if (isEditing) {
-    return (
-      <input
-        ref={inputRef}
-        className="w-full bg-zinc-800 text-zinc-100 px-1 py-0.5 outline-none border border-blue-500 rounded"
-        value={tempValue}
-        onChange={(e) => setTempValue(e.target.value)}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`truncate px-1 py-0.5 cursor-pointer hover:bg-zinc-800/50 rounded ${!isEditable ? 'opacity-50 cursor-not-allowed' : ''}`}
-      onDoubleClick={() => isEditable && setIsEditing(true)}
-      title={String(value)}
-    >
-      {String(value ?? '')}
-    </div>
-  );
-};
-
-export const UniversalDataGrid: React.FC<GridProps> = ({ data, onEdit }) => {
+export const UniversalDataGrid: React.FC<GridProps> = ({ 
+  data, 
+  columnMapping = {}, 
+  onColumnMapChange 
+}) => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [resizing, setResizing] = useState<{ column: string; startX: number; startWidth: number } | null>(null);
+  
+  // Header Editing State
+  const [editingHeader, setEditingHeader] = useState<string | null>(null);
+  const [tempHeaderVal, setTempHeaderVal] = useState('');
 
-  const columns = data && data.length > 0 ? Object.keys(data[0]) : [];
-  const columnsKey = columns.join(',');
+  const columns = useMemo(() => (data && data.length > 0 ? Object.keys(data[0]) : []), [data]);
 
-  // Initialize column widths
+  // Initialize Widths
   useEffect(() => {
     if (columns.length === 0) return;
-    const initialWidths: Record<string, number> = {};
-    columns.forEach(col => {
-      if (!columnWidths[col]) {
-        initialWidths[col] = 150; // Default width
-      }
+    setColumnWidths(prev => {
+        const next = { ...prev };
+        let changed = false;
+        columns.forEach(col => {
+           if (!next[col]) { next[col] = 150; changed = true; }
+        });
+        return changed ? next : prev;
     });
-    if (Object.keys(initialWidths).length > 0) {
-      setColumnWidths(prev => ({ ...prev, ...initialWidths }));
-    }
-  }, [columnsKey]);
+  }, [columns]);
 
+  // Resize Handlers
   const handleMouseDown = (e: React.MouseEvent, column: string) => {
     e.preventDefault();
-    setResizing({
-      column,
-      startX: e.clientX,
-      startWidth: columnWidths[column] || 150
-    });
+    e.stopPropagation();
+    setResizing({ column, startX: e.clientX, startWidth: columnWidths[column] || 150 });
   };
 
   useEffect(() => {
     if (!resizing) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const diff = e.clientX - resizing.startX;
-      const newWidth = Math.max(50, resizing.startWidth + diff);
-      setColumnWidths(prev => ({
-        ...prev,
-        [resizing.column]: newWidth
-      }));
+      setColumnWidths(prev => ({ ...prev, [resizing.column]: Math.max(50, resizing.startWidth + diff) }));
     };
-
-    const handleMouseUp = () => {
-      setResizing(null);
-    };
-
+    const handleMouseUp = () => setResizing(null);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [resizing]);
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
-        No data available
-      </div>
-    );
-  }
+  if (!data || data.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-full text-zinc-500 bg-zinc-900/20 border border-zinc-800/50 rounded-lg m-2">
+        <span className="text-xs font-mono">NO DATA FOUND</span>
+    </div>
+  );
 
   return (
-    <div className="h-full w-full overflow-auto bg-[#09090b]">
-      <table className="w-full text-left border-collapse text-xs font-mono">
-        <thead className="sticky top-0 bg-zinc-900 z-10 shadow-sm">
+    <div className="h-full w-full overflow-auto bg-[#09090b] select-none scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+      <table className="w-full text-left border-collapse text-xs font-mono table-fixed">
+        <thead className="sticky top-0 bg-zinc-950 z-20 shadow-md ring-1 ring-zinc-800">
           <tr>
-            {columns.map((col) => (
-              <th
-                key={col}
-                className="relative p-2 border-b border-zinc-800 text-zinc-400 font-medium uppercase tracking-wider whitespace-nowrap"
-                style={{ width: columnWidths[col] || 150 }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="truncate">{col}</span>
-                  <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors"
-                    onMouseDown={(e) => handleMouseDown(e, col)}
-                  />
-                </div>
-              </th>
-            ))}
+            {columns.map((col) => {
+              const mappedName = columnMapping[col] || col;
+              const isMapped = columnMapping[col] && columnMapping[col] !== col;
+              const isEditing = editingHeader === col;
+
+              return (
+                <th key={col} className="relative p-0 border-b border-zinc-800 group" style={{ width: columnWidths[col] || 150 }}>
+                  <div className={`flex items-center justify-between px-2 py-2 h-full ${isMapped ? 'bg-indigo-900/20 text-indigo-300' : 'text-zinc-400'}`}>
+                    
+                    {/* Header Content */}
+                    {isEditing ? (
+                        <div className="flex items-center gap-1 w-full">
+                            <input 
+                                autoFocus
+                                className="w-full bg-black border border-indigo-500 rounded px-1 py-0.5 outline-none text-white"
+                                value={tempHeaderVal}
+                                onChange={e => setTempHeaderVal(e.target.value)}
+                                onKeyDown={e => {
+                                    if(e.key === 'Enter') {
+                                        if(onColumnMapChange) onColumnMapChange(col, tempHeaderVal);
+                                        setEditingHeader(null);
+                                    }
+                                }}
+                                onBlur={() => setEditingHeader(null)}
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 overflow-hidden w-full" onDoubleClick={() => { setEditingHeader(col); setTempHeaderVal(mappedName); }}>
+                            <span className="truncate font-bold" title={`${col} -> ${mappedName}`}>
+                                {mappedName}
+                            </span>
+                            {/* Edit Mapping Button */}
+                            {onColumnMapChange && (
+                                <button 
+                                    onClick={() => { setEditingHeader(col); setTempHeaderVal(mappedName); }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-opacity"
+                                >
+                                    <Edit2 size={10} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Resize Handle */}
+                    <div 
+                        className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize hover:bg-cyan-500/10 z-30 flex justify-center group-hover:bg-zinc-800/50" 
+                        onMouseDown={(e) => handleMouseDown(e, col)}
+                    >
+                        <div className="w-[1px] h-full bg-zinc-800 group-hover:bg-cyan-500 transition-colors" />
+                    </div>
+                  </div>
+                  
+                  {/* Mapping Indicator */}
+                  {isMapped && !isEditing && (
+                      <div className="absolute top-0 right-1 text-[8px] text-zinc-500 font-normal opacity-50">
+                          {col}
+                      </div>
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800/50">
-          {data.map((row, rowIndex) => {
-            const rowId = String(row.id || rowIndex);
-            return (
-              <tr key={rowId} className="hover:bg-zinc-900/50 transition-colors group">
-                {columns.map((col) => {
-                  const isEditable = col !== 'id' && col !== 'createdAt' && col !== 'updatedAt';
-                  return (
-                    <td 
-                      key={`${rowId}-${col}`} 
-                      className="p-1 border-r border-zinc-800/30 last:border-r-0"
-                      style={{ width: columnWidths[col] || 150 }}
-                    >
-                      <EditableCell
-                        value={row[col]}
-                        rowId={rowId}
-                        colId={col}
-                        isEditable={isEditable}
-                        onSave={(newVal) => {
-                          if (onEdit) onEdit(rowId, col, newVal);
-                        }}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+          {data.map((row, rowIndex) => (
+            <tr key={rowIndex} className="hover:bg-zinc-900/50 transition-colors group">
+              {columns.map((col) => (
+                <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-zinc-800/30 last:border-r-0 overflow-hidden text-zinc-300 whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
+                  <span className="opacity-90 group-hover:opacity-100">{String(row[col] ?? '')}</span>
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

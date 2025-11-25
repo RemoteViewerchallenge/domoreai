@@ -163,3 +163,18 @@ model FlattenedTable {
   rowCount    Int      @default(0)
   createdAt   DateTime @default(now())
 }
+
+// -----------------------------------------------------------------
+// Stores how a Raw Table maps to the Unified Model Schema
+// Used by the "Merge to C.O.R.E." feature
+// -----------------------------------------------------------------
+model TableMapping {
+  id        String   @id @default(cuid())
+  tableName String   @unique // e.g., "openrouterfree"
+  
+  // Stores the mapping: { "raw_column_name": "Model_field_name" }
+  // e.g., { "context_length": "contextWindow", "pricing": "costPer1k" }
+  mapping   Json     
+  
+  updatedAt DateTime @updatedAt
+}
