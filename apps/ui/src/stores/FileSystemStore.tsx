@@ -1,11 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import type { VFile } from './FileSystemTypes.js';
 
-export interface VFile {
-  path: string;
-  content?: string;
-  type: 'file' | 'dir';
-  children?: VFile[];
-}
+// Re-export for convenience (using regular export to ensure Vite sees it)
+export { type VFile } from './FileSystemTypes.js';
 
 interface FileSystemContextType {
   files: VFile[];

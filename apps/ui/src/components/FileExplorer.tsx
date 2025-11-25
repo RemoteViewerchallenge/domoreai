@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Folder, FileText, ChevronRight, ChevronDown } from 'lucide-react';
-import { VFile } from '../stores/FileSystemStore.js';
+import type { VFile } from '../stores/FileSystemTypes.js';
 
 interface FileExplorerProps {
   files: VFile[];

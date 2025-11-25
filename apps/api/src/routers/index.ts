@@ -7,6 +7,7 @@ import { vfsRouter } from './vfs.router.js';
 import { modelRouter } from './model.router.js';
 import { dataRefinementRouter } from './dataRefinement.router.js';
 import { apiExplorerRouter } from './apiExplorer.router.js';
+import { agentRouter } from './agent.router.js';
 
 export const appRouter = createTRPCRouter({
   git: gitRouter,
@@ -17,6 +18,7 @@ export const appRouter = createTRPCRouter({
   model: modelRouter,
   dataRefinement: dataRefinementRouter,
   apiExplorer: apiExplorerRouter,
+  agent: agentRouter,
 });
 
 export type AppRouter = typeof appRouter;

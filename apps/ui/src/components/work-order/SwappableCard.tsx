@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { FileText, Code, FolderTree, MoreHorizontal, Globe, Terminal, FileCode } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { FileText, Code, FolderTree, MoreHorizontal, Globe, Terminal, FileCode, Settings, Play } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import { FileExplorer } from '../FileExplorer.js'; 
-import { useFileSystem } from '../../stores/FileSystemStore.js'; // Import the brain
+import { useFileSystem } from '../../stores/FileSystemStore.js';
 import ResearchBrowser from '../ResearchBrowser.js';
 import TerminalLogViewer from '../TerminalLogViewer.js';
-import type { CardAgentState } from '../settings/AgentSettings.js';
+import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
+import { trpc } from '../../utils/trpc.js';
+import { useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
 
@@ -15,8 +18,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // Component Type State (for the main view switcher)
   const [type, setType] = useState<ComponentType>('editor');
 
-  // View State (Editor vs File Tree)
-  const [viewMode, setViewMode] = useState<'editor' | 'files'>('editor');
+  // View State (Editor vs File Tree vs Settings)
+  const [viewMode, setViewMode] = useState<'editor' | 'files' | 'settings'>('editor');
   
   // File State
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -24,44 +27,100 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   const [isAiWorking, setIsAiWorking] = useState(false);
 
   // Agent Configuration (inherits from role, can be overridden per card)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [agentConfig, setAgentConfig] = useState<CardAgentState>({
     roleId: roleId || '',
     modelId: null,
     isLocked: false,
-    temperature: 0.7, // Will be overridden by role defaults
-    maxTokens: 2048,   // Will be overridden by role defaults
+    temperature: 0.7,
+    maxTokens: 2048,
+    topP: 1.0,
+    frequencyPenalty: 0.0,
+    presencePenalty: 0.0,
   });
 
-  // TODO: Fetch role defaults and update agentConfig when roleId changes
-  // useEffect(() => {
-  //   if (roleId) {
-  //     trpc.role.getById.useQuery({ id: roleId }).then(role => {
-  //       setAgentConfig(prev => ({
-  //         ...prev,
-  //         roleId,
-  //         temperature: role.defaultTemperature ?? prev.temperature,
-  //         maxTokens: role.defaultMaxTokens ?? prev.maxTokens,
-  //       }));
-  //     });
-  //   }
-  // }, [roleId]);
+  // Fetch available roles for the settings panel
+  const { data: roles } = trpc.role.list.useQuery();
+  
+  // Agent session mutation
+  const startSessionMutation = trpc.agent.startSession.useMutation({
+    onSuccess: (data) => {
+      console.log('[Card] Agent session started:', data);
+      setIsAiWorking(true);
+      // TODO: Listen for WebSocket events for this cardId
+    },
+    onError: (error) => {
+      console.error('[Card] Failed to start agent session:', error);
+      alert(`Failed to start agent: ${error.message}`);
+    },
+  });
 
-  // --- AUTO-CREATION LOGIC ---
-  useEffect(() => {
-    // 1. Naming Convention: Each card gets a dedicated workspace file
-    const autoFileName = `workspace/agents/card-${id}.md`;
+  // Tiptap editor for capturing prompts
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-gray-300 text-sm p-4',
+      },
+    },
+  });
+
+  // Run agent function - wrapped in useCallback to stabilize reference
+  const handleRunAgent = useCallback(() => {
+    if (!editor) return;
     
-    // 2. "Create" it in the VFS (Mock) if not exists
-    // In a real app, this would be an async check
+    const prompt = editor.getText();
+    if (!prompt.trim()) {
+      alert('Please enter a prompt first');
+      return;
+    }
+
+    if (!agentConfig.roleId) {
+      alert('Please select a role in settings first');
+      return;
+    }
+
+    // Start the agent session
+    startSessionMutation.mutate({
+      roleId: agentConfig.roleId,
+      modelConfig: {
+        modelId: agentConfig.modelId || undefined,
+        temperature: agentConfig.temperature,
+        maxTokens: agentConfig.maxTokens,
+      },
+      userGoal: prompt,
+      cardId: id,
+    });
+  }, [editor, agentConfig, startSessionMutation, id]);
+
+  // Handle Enter key to run agent
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        handleRunAgent();
+      }
+    };
+
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      editorElement.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [editor, handleRunAgent]);
+
+  // Auto-creation logic
+  useEffect(() => {
+    const autoFileName = `workspace/agents/card-${id}.md`;
     createFile(autoFileName, `# Card ${id} Workspace\n\nAuto-generated session.`);
     
-    // 3. Set it as active if none selected
     if (!activeFile) {
-        setActiveFile(autoFileName);
-        setContent(readFile(autoFileName));
+      setActiveFile(autoFileName);
+      setContent(readFile(autoFileName));
     }
-    
   }, [id, createFile, readFile, activeFile]);
 
   // The "Little Button" Menu options
@@ -80,113 +139,148 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         
         {/* Left: Active File Name or Component Label */}
         <div className="flex items-center gap-2 text-xs text-zinc-400">
-           {(type === 'editor' || type === 'code') ? (
-             <>
-               {activeFile?.endsWith('.md') ? <FileText size={14} className="text-cyan-500" /> : <FileCode size={14} className="text-yellow-500" />}
-               <span className="font-bold text-zinc-200">{activeFile || 'Initializing...'}</span>
-             </>
-           ) : (
-             <>
-               {menuItems.find(m => m.id === type)?.icon({ size: 14 })}
-               <span className="uppercase tracking-wider font-bold">
-                 {menuItems.find(m => m.id === type)?.label}
-               </span>
-             </>
-           )}
+          {viewMode === 'settings' ? (
+            <>
+              <Settings size={14} className="text-cyan-500" />
+              <span className="uppercase tracking-wider font-bold">Settings</span>
+            </>
+          ) : (type === 'editor' || type === 'code') ? (
+            <>
+              {activeFile?.endsWith('.md') ? <FileText size={14} className="text-cyan-500" /> : <FileCode size={14} className="text-yellow-500" />}
+              <span className="font-bold text-zinc-200">{activeFile || 'Initializing...'}</span>
+            </>
+          ) : (
+            <>
+              {menuItems.find(m => m.id === type)?.icon({ size: 14 })}
+              <span className="uppercase tracking-wider font-bold">
+                {menuItems.find(m => m.id === type)?.label}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2">
-            {/* View Switcher (Only for Editor/Code modes) */}
-            {(type === 'editor' || type === 'code') && (
-                <div className="flex items-center gap-1 bg-zinc-950 rounded p-0.5 border border-zinc-800">
-                    <button 
-                    onClick={() => setViewMode('editor')}
-                    className={`p-1 rounded ${viewMode === 'editor' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                    title="Editor View"
-                    >
-                        <Code size={14} />
-                    </button>
-                    <button 
-                    onClick={() => setViewMode('files')}
-                    className={`p-1 rounded ${viewMode === 'files' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                    title="Local File Explorer"
-                    >
-                        <FolderTree size={14} />
-                    </button>
-                </div>
-            )}
+          {/* Run Button (only show in editor mode) */}
+          {viewMode === 'editor' && type === 'editor' && (
+            <button
+              onClick={handleRunAgent}
+              disabled={isAiWorking || !agentConfig.roleId}
+              className="flex items-center gap-1 px-2 py-1 bg-green-900/30 border border-green-700 text-green-400 hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed rounded text-[10px] font-bold uppercase"
+              title="Run Agent (Cmd/Ctrl + Enter)"
+            >
+              <Play size={12} />
+              Run
+            </button>
+          )}
 
-            {/* Component Swapper */}
-            <div className="group relative">
-                <button className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white">
-                    <MoreHorizontal size={16} />
-                </button>
-                
-                <div className="absolute right-0 top-full mt-1 w-40 bg-zinc-900 border border-zinc-700 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none group-hover:pointer-events-auto">
-                    {menuItems.map((item) => (
-                    <div 
-                        key={item.id}
-                        onClick={() => {
-                            setType(item.id as ComponentType);
-                            setViewMode('editor'); // Reset view mode when switching component
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                    >
-                        <item.icon size={14} />
-                        {item.label}
-                    </div>
-                    ))}
-                </div>
+          {/* Settings Button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'settings' ? 'editor' : 'settings')}
+            className={`p-1 rounded ${viewMode === 'settings' ? 'bg-cyan-900/30 text-cyan-400' : 'text-zinc-500 hover:text-cyan-400'}`}
+            title="Toggle Settings"
+          >
+            <Settings size={14} />
+          </button>
+
+          {/* View Switcher (Only for Editor/Code modes) */}
+          {(type === 'editor' || type === 'code') && viewMode !== 'settings' && (
+            <div className="flex items-center gap-1 bg-zinc-950 rounded p-0.5 border border-zinc-800">
+              <button 
+                onClick={() => setViewMode('editor')}
+                className={`p-1 rounded ${viewMode === 'editor' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                title="Editor View"
+              >
+                <Code size={14} />
+              </button>
+              <button 
+                onClick={() => setViewMode('files')}
+                className={`p-1 rounded ${viewMode === 'files' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                title="Local File Explorer"
+              >
+                <FolderTree size={14} />
+              </button>
             </div>
+          )}
+
+          {/* Component Swapper */}
+          <div className="group relative">
+            <button className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white">
+              <MoreHorizontal size={16} />
+            </button>
+            
+            <div className="absolute right-0 top-full mt-1 w-40 bg-zinc-900 border border-zinc-700 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none group-hover:pointer-events-auto">
+              {menuItems.map((item) => (
+                <div 
+                  key={item.id}
+                  onClick={() => {
+                    setType(item.id as ComponentType);
+                    setViewMode('editor');
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 cursor-pointer"
+                >
+                  <item.icon size={14} />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* BODY */}
       <div className="flex-1 min-h-0 relative bg-black">
         
-        {/* MODE: EDITOR / CODE */}
-        {(type === 'editor' || type === 'code') && (
-            <>
-                {viewMode === 'editor' && activeFile && (
-                <SmartEditor 
-                    fileName={activeFile} 
-                    content={content} 
-                    onChange={setContent} 
-                    isAiTyping={isAiWorking}
-                />
-                )}
-
-                {/* MODE: LOCAL FILE EXPLORER */}
-                {viewMode === 'files' && (
-                <div className="h-full w-full p-2">
-                    <div className="text-[10px] uppercase text-zinc-500 mb-2 font-bold">Select file for Card {id}</div>
-                    <FileExplorer 
-                        files={files} 
-                        onSelect={(path) => {
-                            setActiveFile(path);
-                            setContent(readFile(path));
-                            setViewMode('editor'); 
-                        }} 
-                    />
-                </div>
-                )}
-            </>
+        {/* SETTINGS VIEW */}
+        {viewMode === 'settings' && (
+          <AgentSettings
+            config={agentConfig}
+            availableRoles={roles?.map(r => ({ id: r.id, name: r.name })) || []}
+            onUpdate={setAgentConfig}
+          />
         )}
 
-        {type === 'browser' && <ResearchBrowser />}
-        {type === 'terminal' && <TerminalLogViewer messages={[]} />}
+        {/* EDITOR / CODE VIEW */}
+        {viewMode === 'editor' && (type === 'editor' || type === 'code') && activeFile && (
+          <SmartEditor 
+            fileName={activeFile} 
+            content={content} 
+            onChange={setContent} 
+            isAiTyping={isAiWorking}
+          />
+        )}
+
+        {/* FILE EXPLORER VIEW */}
+        {viewMode === 'files' && (
+          <div className="h-full w-full p-2">
+            <div className="text-[10px] uppercase text-zinc-500 mb-2 font-bold">Select file for Card {id}</div>
+            <FileExplorer 
+              files={files} 
+              onSelect={(path) => {
+                setActiveFile(path);
+                setContent(readFile(path));
+                setViewMode('editor'); 
+              }} 
+            />
+          </div>
+        )}
+
+        {/* OTHER VIEWS */}
+        {viewMode === 'editor' && type === 'browser' && <ResearchBrowser />}
+        {viewMode === 'editor' && type === 'terminal' && <TerminalLogViewer messages={[]} />}
 
       </div>
       
-      {/* Debug Controls */}
+      {/* Status Footer */}
       <div className="flex gap-2 p-1 bg-zinc-950 border-t border-zinc-800 justify-between px-2 text-[10px]">
-         <div className="text-zinc-600">
-           Role: <span className="text-zinc-400">{agentConfig.roleId || 'None'}</span> | 
-           Temp: <span className="text-cyan-400">{agentConfig.temperature}</span> | 
-           Tokens: <span className="text-cyan-400">{agentConfig.maxTokens}</span>
-         </div>
-         <button onClick={() => setIsAiWorking(!isAiWorking)} className="text-zinc-500 hover:text-white">Toggle AI</button>
+        <div className="text-zinc-600">
+          Role: <span className="text-zinc-400">{roles?.find(r => r.id === agentConfig.roleId)?.name || 'None'}</span> | 
+          Temp: <span className="text-cyan-400">{agentConfig.temperature}</span> | 
+          Tokens: <span className="text-cyan-400">{agentConfig.maxTokens}</span>
+        </div>
+        {isAiWorking && (
+          <div className="text-green-400 animate-pulse">● AI Working...</div>
+        )}
       </div>
     </div>
   );
