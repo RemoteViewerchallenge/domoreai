@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { trpc } from '../../utils/trpc.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { VisualQueryBuilder } from '../VisualQueryBuilder.js'; // Ensure this file exists from previous steps
-import { Database, Trash2, RefreshCw, Play, Table } from 'lucide-react';
+import { Database, Trash2, Play, Table } from 'lucide-react';
 
 export const DatabaseManagerNode: React.FC = () => {
   const [activeTable, setActiveTable] = useState<string>('');
@@ -16,7 +16,7 @@ export const DatabaseManagerNode: React.FC = () => {
     { enabled: !!activeTable }
   );
   
-  const dropTableMutation = trpc.dataRefinement.dropTable.useMutation({
+  const dropTableMutation = trpc.dataRefinement.deleteTable.useMutation({
     onSuccess: () => {
         setActiveTable('');
         utils.dataRefinement.listAllTables.invalidate();
@@ -24,11 +24,22 @@ export const DatabaseManagerNode: React.FC = () => {
   });
 
   const executeMutation = trpc.dataRefinement.executeQuery.useMutation({
-    onSuccess: (data) => setCustomData(data as Record<string, unknown>[])
+    onSuccess: (data) => setCustomData(data.rows as Record<string, unknown>[])
   });
   
-  const syncSchemaMutation = trpc.dataRefinement.syncPrismaSchema.useMutation({
-    onSuccess: () => alert("Prisma Schema Updated!")
+  // const syncSchemaMutation = trpc.dataRefinement.syncPrismaSchema.useMutation({
+  //   onSuccess: () => alert("Prisma Schema Updated!")
+  // });
+
+  const saveQueryMutation = trpc.dataRefinement.saveMigrationQuery.useMutation({
+    onSuccess: () => alert("Query Saved!")
+  });
+
+  const saveTableMutation = trpc.dataRefinement.saveQueryResults.useMutation({
+    onSuccess: (data) => {
+        alert(`Table "${data.newTableName}" created!`);
+        utils.dataRefinement.listAllTables.invalidate();
+    }
   });
 
   return (
@@ -45,7 +56,7 @@ export const DatabaseManagerNode: React.FC = () => {
               className="bg-black border border-zinc-700 rounded px-3 py-1 text-zinc-300 outline-none ml-4"
             >
               <option value="" disabled>Select Table...</option>
-              {tables?.map(t => <option key={t} value={t}>{t}</option>)}
+              {tables?.map((t: { name: string }) => <option key={t.name} value={t.name}>{t.name}</option>)}
             </select>
          </div>
          
@@ -68,7 +79,7 @@ export const DatabaseManagerNode: React.FC = () => {
                 </button>
             )}
             
-            <button 
+            {/* <button 
                onClick={() => syncSchemaMutation.mutate()}
                disabled={syncSchemaMutation.isLoading}
                className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 rounded ml-2 border border-blue-800"
@@ -76,7 +87,7 @@ export const DatabaseManagerNode: React.FC = () => {
             >
                <RefreshCw size={14} className={syncSchemaMutation.isLoading ? "animate-spin" : ""} /> 
                Sync Schema
-            </button>
+            </button> */}
          </div>
       </div>
 
@@ -84,8 +95,10 @@ export const DatabaseManagerNode: React.FC = () => {
       {showQuery && (
         <div className="flex-none border-b border-zinc-800 animate-in slide-in-from-top-2">
            <VisualQueryBuilder 
-             tables={tables || []}
+             activeTable={activeTable}
              onExecute={(sql) => executeMutation.mutate({ query: sql })}
+             onSaveTable={(sql, name) => saveTableMutation.mutate({ query: sql, newTableName: name })}
+             onSaveQuery={(sql, name) => saveQueryMutation.mutate({ name, query: sql })}
            />
         </div>
       )}

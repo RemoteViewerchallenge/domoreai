@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 import DualRangeSlider from './DualRangeSlider.js';
-import { Save, Trash2, Brain, Eye, Code } from 'lucide-react';
+import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull } from 'lucide-react';
 
 interface Role {
   id: string;
@@ -12,6 +12,9 @@ interface Role {
   needsVision: boolean;
   needsReasoning: boolean;
   needsCoding: boolean;
+  needsTools: boolean;
+  needsJson: boolean;
+  needsUncensored: boolean;
   tools?: string[];
   defaultTemperature?: number | null;
   defaultMaxTokens?: number | null;
@@ -50,6 +53,9 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     needsVision: false,
     needsReasoning: false,
     needsCoding: false,
+    needsTools: false,
+    needsJson: false,
+    needsUncensored: false,
     tools: [] as string[],
     defaultTemperature: 0.7,
     defaultMaxTokens: 2048,
@@ -83,6 +89,9 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       needsVision: role.needsVision,
       needsReasoning: role.needsReasoning,
       needsCoding: role.needsCoding,
+      needsTools: role.needsTools || false,
+      needsJson: role.needsJson || false,
+      needsUncensored: role.needsUncensored || false,
       tools: role.tools || [],
       defaultTemperature: role.defaultTemperature || 0.7,
       defaultMaxTokens: role.defaultMaxTokens || 2048,
@@ -224,6 +233,52 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                   />
                   <Code size={14} className={formData.needsCoding ? 'text-green-400' : 'text-gray-600'} />
                   <span className="font-bold uppercase text-[10px]">Coding</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <label className={`flex items-center gap-2 p-2 border cursor-pointer transition-all ${
+                  formData.needsTools 
+                    ? 'border-orange-500 bg-orange-900/10 text-orange-300' 
+                    : 'border-gray-800 hover:border-gray-600 text-gray-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.needsTools}
+                    onChange={(e) => setFormData({ ...formData, needsTools: e.target.checked })}
+                    className="hidden"
+                  />
+                  <Wrench size={14} className={formData.needsTools ? 'text-orange-400' : 'text-gray-600'} />
+                  <span className="font-bold uppercase text-[10px]">Tools</span>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2 border cursor-pointer transition-all ${
+                  formData.needsJson 
+                    ? 'border-yellow-500 bg-yellow-900/10 text-yellow-300' 
+                    : 'border-gray-800 hover:border-gray-600 text-gray-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.needsJson}
+                    onChange={(e) => setFormData({ ...formData, needsJson: e.target.checked })}
+                    className="hidden"
+                  />
+                  <FileJson size={14} className={formData.needsJson ? 'text-yellow-400' : 'text-gray-600'} />
+                  <span className="font-bold uppercase text-[10px]">JSON</span>
+                </label>
+
+                <label className={`flex items-center gap-2 p-2 border cursor-pointer transition-all ${
+                  formData.needsUncensored 
+                    ? 'border-red-500 bg-red-900/10 text-red-300' 
+                    : 'border-gray-800 hover:border-gray-600 text-gray-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.needsUncensored}
+                    onChange={(e) => setFormData({ ...formData, needsUncensored: e.target.checked })}
+                    className="hidden"
+                  />
+                  <Skull size={14} className={formData.needsUncensored ? 'text-red-400' : 'text-gray-600'} />
+                  <span className="font-bold uppercase text-[10px]">Uncensored</span>
                 </label>
               </div>
             </div>

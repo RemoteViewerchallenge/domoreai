@@ -97,6 +97,11 @@ export const DataNode: React.FC = () => {
     onError: (err) => alert(`Failed to cache models: ${err.message}`)
   });
 
+  // 8. Save Migration Query
+  const saveMigrationQueryMutation = trpc.dataRefinement.saveMigrationQuery.useMutation({
+    onSuccess: () => alert("Query Saved!")
+  });
+
   // Filter tables for sidebar
   const filteredTables = tables?.filter((t: TableItem) => 
     t.name.toLowerCase().includes(filterText.toLowerCase())
@@ -284,6 +289,7 @@ export const DataNode: React.FC = () => {
                onDeleteTable={() => {}} // Handled in toolbar now
                onExecute={(sql) => executeQueryMutation.mutate({ query: sql })}
                onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
+               onSaveQuery={(sql, name) => saveMigrationQueryMutation.mutate({ name, query: sql })}
              />
           </div>
         )}

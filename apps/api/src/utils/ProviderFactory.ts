@@ -1,6 +1,7 @@
 import { BaseLLMProvider } from './BaseLLMProvider.js';
 import { OpenAIProvider } from './OpenAIProvider.js';
 import { AnthropicProvider } from './AnthropicProvider.js';
+import { GoogleGenAIProvider } from './GoogleGenAIProvider.js';
 
 export * from './BaseLLMProvider.js';
 
@@ -15,11 +16,10 @@ export class ProviderFactory {
       case 'anthropic':
         return new AnthropicProvider(config);
         
-      case 'google': // or 'vertex-studio' if that's what UI sends
-      case 'vertex-studio':
-        // Assuming you have a GoogleProvider, otherwise treat as OpenAI compatible if using proxy
-        // return new GoogleProvider(config); 
-        throw new Error("Google/Vertex provider not yet implemented in Factory");
+      case 'google': // Gemini Developer API (AI Studio)
+      case 'vertex': // Google Vertex AI (Enterprise)
+      case 'vertex-studio': // Legacy handling
+        return new GoogleGenAIProvider(config);
 
       // --- GROUP 2: OPENAI COMPATIBLE (The "Universal" Group) ---
       // The UI sends these specific names, but they all speak "OpenAI"

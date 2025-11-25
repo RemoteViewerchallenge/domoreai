@@ -1,0 +1,4 @@
+src/utils/GoogleGenAIProvider.ts(1,23): error TS2305: Module '"@google/genai"' has no exported member 'GenerateContentRequest'.
+src/utils/GoogleGenAIProvider.ts(63,12): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+src/utils/GoogleGenAIProvider.ts(63,21): error TS6234: This expression is not callable because it is a 'get' accessor. Did you mean to use it without '()'?
+  Type 'String' has no call signatures.

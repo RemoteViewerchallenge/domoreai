@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { encrypt } from '../utils/encryption.js'; 
 
 export const dataRefinementRouter = createTRPCRouter({
@@ -323,4 +323,36 @@ export const dataRefinementRouter = createTRPCRouter({
       }),
 
     promoteToApp: publicProcedure.input(z.any()).mutation(async () => ({ count: 0 })),
+
+  // --- 6. SAVED QUERIES ---
+  saveMigrationQuery: protectedProcedure
+    .input(z.object({
+      name: z.string(),
+      query: z.string(),
+      targetTable: z.string().optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.savedQuery.upsert({
+        where: { name: input.name },
+        update: { query: input.query, targetTable: input.targetTable },
+        create: { name: input.name, query: input.query, targetTable: input.targetTable }
+      });
+    }),
+
+  listSavedQueries: publicProcedure
+    .query(async ({ ctx }) => {
+      return ctx.db.savedQuery.findMany({ orderBy: { updatedAt: 'desc' } });
+    }),
+
+  executeSavedQuery: protectedProcedure
+    .input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const saved = await ctx.db.savedQuery.findUnique({ where: { name: input.name } });
+      if (!saved) throw new Error(`Query "${input.name}" not found.`);
+      
+      // Execute the saved SQL
+      const rows = await ctx.db.$executeRawUnsafe(saved.query);
+      
+      return { success: true, rowsAffected: rows, queryName: saved.name };
+    }),
 });

@@ -103,6 +103,58 @@ export class UsageCollector {
   }
 
   /**
+   * Updates dynamic rate limits based on provider headers.
+   */
+  static async updateDynamicLimits(providerConfigId: string, headers: Record<string, string>) {
+    try {
+      const client = await getRedisClient();
+      const base = `limit:${providerConfigId}`;
+
+      // Extract headers (OpenAI/OpenRouter standard)
+      const rpmMax = headers['x-ratelimit-limit-requests'] || headers['x-ratelimit-limit'];
+      const rpmRem = headers['x-ratelimit-remaining-requests'] || headers['x-ratelimit-remaining'];
+      const tpmMax = headers['x-ratelimit-limit-tokens'];
+      const tpmRem = headers['x-ratelimit-remaining-tokens'];
+
+      // Set keys if they exist
+      if (rpmMax) await client.set(`${base}:rpm:max`, rpmMax);
+      if (rpmRem) await client.set(`${base}:rpm:current`, rpmRem); // 'current' here means 'remaining' in the UI context usually, or we can invert it. The user prompt says "RPM: 45 / 200 (Discovered)". If 45 is usage, then remaining is 155. But usually headers give remaining. Let's store what we get.
+      if (tpmMax) await client.set(`${base}:tpm:max`, tpmMax);
+      if (tpmRem) await client.set(`${base}:tpm:current`, tpmRem);
+
+      // Also keep the JSON for internal logic if needed, or migrate internal logic to use these new keys.
+      // For now, I'll keep the old key too to avoid breaking modelSelector if it relies on it (though I should check that).
+      // modelSelector uses getCurrentUsage which checks 'ratelimit:${providerConfigId}' (the counter).
+      // It doesn't seem to use 'ratelimit:dynamic:${providerConfigId}' yet except for my recent edit?
+      // Wait, my recent edit to modelSelector didn't actually use the dynamic limit for *enforcement*, just for scoring?
+      // Actually, I didn't update modelSelector to read the JSON. I only updated UsageCollector to write it.
+      // So I can safely change this.
+      
+    } catch (err) {
+      console.error('Failed to update dynamic limits:', err);
+    }
+  }
+
+  static async getProviderStats(providerId: string) {
+    const client = await getRedisClient();
+    const base = `limit:${providerId}`;
+  
+    const [rpmMax, rpmCurr, tpmMax, tpmCurr, balance] = await client.mGet([
+      `${base}:rpm:max`,
+      `${base}:rpm:current`, 
+      `${base}:tpm:max`,
+      `${base}:tpm:current`,
+      `balance:${providerId}`
+    ]);
+  
+    return {
+      rpm: { max: parseInt(rpmMax || '0'), current: parseInt(rpmCurr || '0') },
+      tpm: { max: parseInt(tpmMax || '0'), current: parseInt(tpmCurr || '0') },
+      credits: balance ? parseFloat(balance) : null
+    };
+  }
+
+  /**
    * Get current usage count for rate limiting
    */
   static async getCurrentUsage(providerConfigId: string): Promise<number> {

@@ -41,6 +41,21 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // Fetch available roles for the settings panel
   const { data: roles } = trpc.role.list.useQuery();
   
+  // Fetch available models for the settings panel
+  const { data: models } = trpc.model.list.useQuery();
+
+  // Compute adjusted parameters for the current selection
+  const currentRole = roles?.find(r => r.id === agentConfig.roleId);
+  
+  // We need to find the ModelConfig that matches the selected model (by provider model ID)
+  // The role.preferredModels includes model relation.
+  // We assume agentConfig.modelId is the provider's model ID (e.g. "gpt-4o")
+  // We cast currentRole to any here because the union type of 'default role' vs 'prisma role' 
+  // makes TS struggle with the 'preferredModels' existence, even though we added it to default.
+  // The prisma generate might take a moment to propagate types.
+  const currentModelConfig = (currentRole as any)?.preferredModels?.find((pm: { model?: { modelId: string } }) => pm.model?.modelId === agentConfig.modelId);
+  const adjustedParameters = currentModelConfig?.adjustedParameters as Record<string, unknown> | undefined;
+
   // Agent session mutation
   const startSessionMutation = trpc.agent.startSession.useMutation({
     onSuccess: (data) => {
@@ -234,8 +249,21 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         {/* SETTINGS VIEW */}
         {viewMode === 'settings' && (
           <AgentSettings
-            config={agentConfig}
+            config={{ ...agentConfig, adjustedParameters }}
             availableRoles={roles?.map(r => ({ id: r.id, name: r.name })) || []}
+            availableModels={models?.map((m: { modelId: string; name: string; provider: { type: string }; hasVision: boolean; hasReasoning: boolean; hasCoding: boolean; supportsTools: boolean; isUncensored: boolean; costPer1k: number }) => ({
+                id: m.modelId, // Use provider's model ID
+                name: m.name,
+                provider: m.provider.type,
+                capabilities: {
+                    vision: m.hasVision,
+                    reasoning: m.hasReasoning,
+                    coding: m.hasCoding
+                },
+                supportsTools: m.supportsTools,
+                isUncensored: m.isUncensored,
+                costPer1k: m.costPer1k
+            })) || []}
             onUpdate={setAgentConfig}
           />
         )}

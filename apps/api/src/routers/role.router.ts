@@ -10,6 +10,9 @@ const createRoleSchema = z.object({
   needsVision: z.boolean().default(false),
   needsReasoning: z.boolean().default(false),
   needsCoding: z.boolean().default(false),
+  needsTools: z.boolean().default(false),
+  needsJson: z.boolean().default(false),
+  needsUncensored: z.boolean().default(false),
   tools: z.array(z.string()).optional().default([]),
   defaultTemperature: z.number().min(0).max(2).optional().default(0.7),
   defaultMaxTokens: z.number().int().min(256).max(32000).optional().default(2048),
@@ -34,6 +37,9 @@ const updateRoleSchema = z.object({
   needsVision: z.boolean().optional(),
   needsReasoning: z.boolean().optional(),
   needsCoding: z.boolean().optional(),
+  needsTools: z.boolean().optional(),
+  needsJson: z.boolean().optional(),
+  needsUncensored: z.boolean().optional(),
   tools: z.array(z.string()).optional(),
   defaultTemperature: z.number().min(0).max(2).optional(),
   defaultMaxTokens: z.number().int().min(256).max(32000).optional(),
@@ -56,6 +62,11 @@ export const roleRouter = createTRPCRouter({
       orderBy: {
         name: 'asc',
       },
+      include: {
+        preferredModels: {
+            include: { model: true } // Include model details for the UI
+        }
+      }
     });
     
     // Return roles, or a default role if none exist (prevents UI crash)
@@ -71,7 +82,11 @@ export const roleRouter = createTRPCRouter({
             needsVision: false,
             needsReasoning: false,
             needsCoding: false,
+            needsTools: false,
+            needsJson: false,
+            needsUncensored: false,
             defaultTemperature: 0.7,
+            preferredModels: [],
             defaultMaxTokens: 2048,
             defaultTopP: 1.0,
             defaultFrequencyPenalty: 0.0,
@@ -97,6 +112,9 @@ export const roleRouter = createTRPCRouter({
           needsVision: input.needsVision,
           needsReasoning: input.needsReasoning,
           needsCoding: input.needsCoding,
+          needsTools: input.needsTools,
+          needsJson: input.needsJson,
+          needsUncensored: input.needsUncensored,
           defaultTemperature: input.defaultTemperature,
           defaultMaxTokens: input.defaultMaxTokens,
           defaultTopP: input.defaultTopP,
@@ -106,7 +124,7 @@ export const roleRouter = createTRPCRouter({
           defaultSeed: input.defaultSeed,
           defaultResponseFormat: input.defaultResponseFormat,
           terminalRestrictions: input.terminalRestrictions,
-        },
+        } as any,
       });
       return role;
     }),

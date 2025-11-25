@@ -50,6 +50,12 @@ model Model {
   hasVision      Boolean @default(false)
   hasReasoning   Boolean @default(false)
   hasCoding      Boolean @default(false)
+  
+  // NEW: Capabilities & Censorship
+  supportedParameters Json? 
+  supportsTools       Boolean @default(false) 
+  supportsJson        Boolean @default(false)
+  isUncensored        Boolean @default(false) // NEW: Derived from is_moderated = false
 
   // --- The Solution ---
   // Stores the *entire, raw JSON* from the provider's API.
@@ -77,6 +83,11 @@ model Role {
   needsVision    Boolean @default(false)
   needsReasoning Boolean @default(false)
   needsCoding    Boolean @default(false)
+  
+  // NEW: Role requirements
+  needsTools     Boolean @default(false)
+  needsJson      Boolean @default(false)
+  needsUncensored Boolean @default(false) // NEW: Requirement for uncensored model
 
   // Default Hyperparameters (inherited by cards)
   defaultTemperature       Float?   @default(0.7)
@@ -119,6 +130,9 @@ model ModelConfig {
   // These would override global model settings for this specific role
   maxTokens  Int?
   temperature Float?
+
+  // NEW: Store parameters that were auto-adjusted/ignored 
+  adjustedParameters Json?
 
   // --- Relations ---
   roles      Role[]       @relation("PreferredModels")
@@ -177,4 +191,23 @@ model TableMapping {
   mapping   Json     
   
   updatedAt DateTime @updatedAt
+}
+
+model OrchestratorConfig {
+  id             String   @id @default("global")
+  activeTableName String  @default("unified_models") // The user-selected table
+  
+  // Future-proofing for strategies
+  strategies     Json?    @default("[]") 
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Stores reusable SQL queries for data refinement and migration
+model SavedQuery {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "OpenRouter Free Models Migration"
+  query       String   @db.Text
+  targetTable String?  // The table this query targets (e.g., "my_free_models")
+  updatedAt   DateTime @updatedAt
 }
