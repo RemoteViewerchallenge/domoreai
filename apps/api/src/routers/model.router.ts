@@ -122,7 +122,11 @@ export const modelRouter = createTRPCRouter({
           contextLength: Number(row.context_length || 0), 
           provider: 'openrouter'
         }));
-      } catch (error) {
+      } catch (error: any) {
+        // Suppress "relation does not exist" error (Code 42P01) as this table is optional/dynamic
+        if (error?.meta?.code === '42P01' || error?.code === '42P01') {
+          return [];
+        }
         console.error("Failed to fetch openrouterfree table:", error);
         return [];
       }
