@@ -1,129 +1,293 @@
 import React, { useState } from 'react';
-import { Database, ArrowRight, Trash2, Save, RefreshCw, AlertCircle } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
+import { VisualQueryBuilder } from './VisualQueryBuilder.js';
+import { AddProviderForm } from './AddProviderForm.js';
+import { 
+  Database, Table, Trash2, Play, FileJson, 
+  Search, RefreshCw, Plus 
+} from 'lucide-react';
+
+interface TableItem {
+  name: string;
+  type: string;
+}
 
 export const DataNode: React.FC = () => {
-  const [selectedTable, setSelectedTable] = useState('openrouterfree');
-  const [providerId, setProviderId] = useState('');
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const utils = trpc.useContext();
+  // --- STATE ---
+  const [activeTable, setActiveTable] = useState<string | null>(null);
+  const [showQuery, setShowQuery] = useState(false);
+  const [filterText, setFilterText] = useState('');
+  const [showAddProvider, setShowAddProvider] = useState(false);
 
-  // Queries
-  const { data: rawData, isLoading } = trpc.dataRefinement.previewTable.useQuery({ tableName: selectedTable });
-  const { data: providers } = trpc.providers.list.useQuery();
+  // --- API ---
+  const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listAllTables.useQuery();
+  const { data: tableData, refetch: refetchData } = trpc.dataRefinement.getTableData.useQuery(
+    { tableName: activeTable || '', limit: 1000 },
+    { enabled: !!activeTable }
+  );
 
-  // Mutations
-  const mergeMutation = trpc.model.mergeToCore.useMutation({
-    onSuccess: (res) => {
-      alert(`Success! Merged ${res.imported} models into the C.O.R.E database.`);
-      utils.model.list.invalidate();
+  // --- MUTATIONS ---
+  
+  // 1. Add Provider (DO IT ALL)
+  const addProviderMutation = trpc.dataRefinement.addProviderAndIngest.useMutation({
+    onSuccess: (data) => {
+      refetchTables();
+      setActiveTable(data.tableName); 
+      setShowAddProvider(false);
+    }
+  });
+
+  // 2. Manual Flatten (If needed)
+  const flattenMutation = trpc.dataRefinement.flattenRawData.useMutation({
+    onSuccess: (data) => {
+      refetchTables();
+      setActiveTable(data.tableName); // Jump to the new clean table
+    }
+  });
+
+  // 3. Delete Table
+  const deleteTableMutation = trpc.dataRefinement.deleteTable.useMutation({
+    onSuccess: () => {
+      setActiveTable(null);
+      refetchTables();
+    }
+  });
+
+  // 4. Execute Query (creates temp table with results)
+  const executeQueryMutation = trpc.dataRefinement.executeQuery.useMutation({
+    onSuccess: (data) => {
+      // Create a temporary view of the results
+      alert(`Query executed successfully! ${data.rowCount} rows returned.`);
+      // TODO: Could create a temp table or just show results in a modal
     },
+    onError: (err) => alert(`Query failed: ${err.message}`)
   });
 
-  const clearMutation = trpc.model.clearCoreModels.useMutation({
-    onSuccess: () => utils.model.list.invalidate(),
+  // 5. Save Query Result
+  const saveQueryMutation = trpc.dataRefinement.saveQueryResults.useMutation({
+    onSuccess: (_data, vars) => {
+      refetchTables();
+      setActiveTable(vars.newTableName);
+      setShowQuery(false);
+    }
   });
 
-  const saveMappingMutation = trpc.model.saveTableMapping.useMutation({
-    onSuccess: () => alert('Mapping saved. Future imports will use this schema.'),
+  // 5. Edit Cell
+  const updateCellMutation = trpc.dataRefinement.updateCell.useMutation({
+    onSuccess: () => { /* Silent success */ },
+    onError: (err) => alert(`Edit failed: ${err.message}`)
   });
 
+  // 6. Create Table
+  const createTableMutation = trpc.dataRefinement.createTable.useMutation({
+    onSuccess: (_data, vars) => {
+      refetchTables();
+      setActiveTable(vars.tableName);
+    }
+  });
 
+  // 7. Cache Models for C.O.R.E.
+  const cacheModelsMutation = trpc.dataRefinement.cacheModelsForCore.useMutation({
+    onSuccess: (data) => {
+      alert(`✅ Successfully cached ${data.count} models to C.O.R.E.!\n\nYour application will now use these models from the '${data.tableName}' table.`);
+      refetchTables();
+      setActiveTable(data.tableName);
+    },
+    onError: (err) => alert(`Failed to cache models: ${err.message}`)
+  });
+
+  // Filter tables for sidebar
+  const filteredTables = tables?.filter((t: TableItem) => 
+    t.name.toLowerCase().includes(filterText.toLowerCase())
+  ) || [];
+
+  const handleCreateTable = () => {
+    const name = prompt("Enter new table name:");
+    if (name) createTableMutation.mutate({ tableName: name });
+  };
+
+  const handleCacheModels = () => {
+    if (!activeTable) {
+      alert("Please select a table first");
+      return;
+    }
+    if (confirm(`Cache all models from "${activeTable}" for C.O.R.E.?\n\nThis will replace the current core_models table.`)) {
+      cacheModelsMutation.mutate({ sourceTable: activeTable });
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-xl">
-      {/* Control Bar */}
-      <div className="flex-none p-4 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between gap-4">
-        {/* Source Select */}
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-indigo-500/10 rounded flex items-center justify-center border border-indigo-500/20 text-indigo-400">
-            <Database size={16} />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase">Source Data</label>
-            <select
-              value={selectedTable}
-              onChange={e => setSelectedTable(e.target.value)}
-              className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
-            >
-              <option value="openrouterfree">openrouterfree (Raw)</option>
-              <option value="raw_datalake">raw_datalake (Dump)</option>
-            </select>
+    <div className="flex h-full w-full bg-black border border-zinc-800 rounded-lg overflow-hidden font-mono text-xs shadow-2xl">
+      
+      {/* --- SIDEBAR: TABLE LIST --- */}
+      <div className="w-64 flex-none border-r border-zinc-800 bg-zinc-950 flex flex-col">
+        {/* Header / Add Provider */}
+        <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+           <span className="font-bold text-zinc-400">EXPLORER</span>
+           <div className="flex gap-1">
+             <button 
+               onClick={handleCreateTable}
+               className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-200" 
+               title="New Empty Table"
+             >
+               <Table size={14} />
+             </button>
+             <button 
+               onClick={() => setShowAddProvider(true)}
+               className="p-1 hover:bg-zinc-800 rounded text-green-400" 
+               title="Add Data Source"
+             >
+               <Plus size={14} />
+             </button>
+           </div>
+        </div>
+
+        {/* Search */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center gap-2 bg-zinc-900 px-2 py-1.5 rounded border border-zinc-800">
+            <Search size={12} className="text-zinc-500" />
+            <input 
+              className="bg-transparent outline-none text-zinc-300 w-full placeholder-zinc-600"
+              placeholder="Search tables..."
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+            />
           </div>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-3">
-          {/* Provider Select */}
-          <div className="flex flex-col items-end">
-            <label className="text-[9px] font-bold text-zinc-500 uppercase">Attach to Provider</label>
-            <select
-              value={providerId}
-              onChange={e => setProviderId(e.target.value)}
-              className="bg-zinc-950 border border-zinc-700 rounded text-xs text-zinc-300 px-2 py-1 outline-none focus:border-cyan-500"
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider px-2 mb-2 mt-2">Database Tables</div>
+          {filteredTables.map((t: TableItem) => (
+            <button
+              key={t.name}
+              onClick={() => setActiveTable(t.name)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all ${
+                activeTable === t.name 
+                  ? 'bg-cyan-900/30 text-cyan-200 border border-cyan-900/50' 
+                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+              }`}
             >
-              <option value="">-- Choose Provider --</option>
-              {providers?.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="h-8 w-px bg-zinc-800 mx-2" />
-
-          {/* Action Buttons */}
-          <button
-            onClick={() => saveMappingMutation.mutate({ tableName: selectedTable, mapping: columnMapping })}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-xs font-bold text-zinc-300 transition-all"
-            title="Save current Column Mapping"
-          >
-            <Save size={14} /> Map
-          </button>
-
-          <button
-            onClick={() => clearMutation.mutate()}
-            className="p-2 hover:bg-red-900/30 text-zinc-500 hover:text-red-400 rounded transition-colors"
-            title="Clear All C.O.R.E Models"
-          >
-            <Trash2 size={16} />
-          </button>
-
-          <button
-            onClick={() => {
-              if (!providerId) return alert('Please select a Target Provider first.');
-              mergeMutation.mutate({ sourceTableName: selectedTable, providerId });
-            }}
-            disabled={mergeMutation.isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded font-bold text-xs uppercase tracking-widest shadow-lg shadow-cyan-900/20 transition-all"
-          >
-            {mergeMutation.isLoading ? <RefreshCw className="animate-spin" size={14} /> : <ArrowRight size={14} />} Merge to C.O.R.E.
-          </button>
+              {t.name === 'RawDataLake' ? <Database size={14} className="text-purple-400"/> : <Table size={14} />}
+              <span className="truncate">{t.name}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Instruction Bar */}
-      <div className="flex-none bg-indigo-900/10 border-b border-indigo-500/20 px-4 py-2 flex items-center gap-3 text-[10px] text-indigo-300">
-        <AlertCircle size={12} />
-        <span><b>INSTRUCTIONS:</b> Double-click any Column Header below to rename it to a valid C.O.R.E. field (e.g. <code>contextWindow</code>, <code>costPer1k</code>, <code>name</code>). Then click <b>Map</b> to save schema.</span>
-      </div>
-
-      {/* Data Grid */}
-      <div className="flex-1 min-h-0 relative">
-        {isLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-600 gap-2">
-            <div className="w-4 h-4 border-2 border-zinc-600 border-t-transparent rounded-full animate-spin" />
-            Loading Data...
+      {/* --- MAIN WORKSPACE --- */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#09090b] relative">
+        
+        {/* A. ADD MODAL */}
+        {showAddProvider && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
+             <div className="w-96 bg-zinc-900 border border-zinc-700 rounded shadow-2xl p-4">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <AddProviderForm customMutation={addProviderMutation as any} onCancel={() => setShowAddProvider(false)} />
+             </div>
           </div>
-        ) : (
-          <UniversalDataGrid
-            data={rawData || []}
-            columnMapping={columnMapping}
-            onColumnMapChange={(orig, mapped) => setColumnMapping(prev => ({ ...prev, [orig]: mapped }))}
-          />
         )}
+
+        {/* 1. TOOLBAR */}
+        <div className="flex-none h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950/50 backdrop-blur">
+          <div className="flex items-center gap-3">
+             <h2 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+               {activeTable ? (
+                 <>
+                   <Table size={16} className="text-cyan-500" />
+                   {activeTable}
+                 </>
+               ) : (
+                 <span className="text-zinc-500">No Table Selected</span>
+               )}
+             </h2>
+             {activeTable && (
+               <button onClick={() => refetchData()} className="p-1 hover:bg-zinc-800 rounded text-zinc-500">
+                 <RefreshCw size={12} />
+               </button>
+             )}
+          </div>
+
+          {/* Actions */}
+          {activeTable && (
+            <div className="flex items-center gap-2">
+               {/* SPECIAL ACTION: IMPORT JSON (Only for Raw Data) */}
+               {activeTable === 'RawDataLake' && (
+                 <button 
+                   onClick={() => {
+                     const name = prompt("Enter name for new table:", "refined_models");
+                     if (name) flattenMutation.mutate({ tableName: name });
+                   }}
+                   className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow-lg shadow-purple-900/20 mr-2"
+                 >
+                   <FileJson size={14} />
+                   IMPORT LATEST RAW DATA
+                 </button>
+               )}
+
+               <button 
+                 onClick={() => setShowQuery(!showQuery)}
+                 className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${showQuery ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent hover:bg-zinc-900 text-zinc-400'}`}
+               >
+                 <Play size={14} /> SQL EDITOR
+               </button>
+
+               <button 
+                 onClick={handleCacheModels}
+                 className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded font-bold shadow-lg"
+                 title="Cache these models for use in C.O.R.E."
+               >
+                 <Database size={14} /> CACHE FOR C.O.R.E.
+               </button>
+
+               <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+               <button 
+                 onClick={() => { if(confirm('Delete this table?')) deleteTableMutation.mutate({ tableName: activeTable }) }}
+                 className="p-2 hover:bg-red-900/20 text-zinc-500 hover:text-red-400 rounded transition-colors"
+                 title="Delete Table"
+               >
+                 <Trash2 size={14} />
+               </button>
+            </div>
+          )}
+        </div>
+
+        {/* 2. DATA GRID (Fills available space) */}
+        <div className="flex-1 overflow-hidden relative">
+          {activeTable ? (
+            <UniversalDataGrid 
+              data={(tableData?.rows as Record<string, unknown>[]) || []} 
+              onEdit={(rowId, col, val) => {
+                updateCellMutation.mutate({
+                  tableName: activeTable,
+                  rowId: rowId,
+                  column: col,
+                  value: val
+                });
+              }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-zinc-700 select-none">
+              <Database size={64} className="opacity-10 mb-4" />
+              <p>Select a table from the sidebar to browse data</p>
+            </div>
+          )}
+        </div>
+
+        {/* 3. SQL EDITOR (Bottom Panel - Resizable-ish) */}
+        {showQuery && (
+          <div className="flex-none h-[450px] border-t border-zinc-800 bg-zinc-900 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10">
+             <VisualQueryBuilder 
+               activeTable={activeTable || ''}
+               onDeleteTable={() => {}} // Handled in toolbar now
+               onExecute={(sql) => executeQueryMutation.mutate({ query: sql })}
+               onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
+             />
+          </div>
+        )}
+
       </div>
     </div>
   );
