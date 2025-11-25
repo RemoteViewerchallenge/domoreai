@@ -341,7 +341,14 @@ export const dataRefinementRouter = createTRPCRouter({
 
   listSavedQueries: publicProcedure
     .query(async ({ ctx }) => {
-      return ctx.db.savedQuery.findMany({ orderBy: { updatedAt: 'desc' } });
+      console.log('Fetching saved queries...');
+      const queries = await ctx.db.savedQuery.findMany({ orderBy: { updatedAt: 'desc' } });
+      console.log(`Found ${queries.length} saved queries.`);
+      // Return as strings to avoid SuperJSON serialization issues
+      return queries.map(q => ({
+        ...q,
+        updatedAt: q.updatedAt.toISOString()
+      }));
     }),
 
   executeSavedQuery: protectedProcedure
@@ -354,5 +361,12 @@ export const dataRefinementRouter = createTRPCRouter({
       const rows = await ctx.db.$executeRawUnsafe(saved.query);
       
       return { success: true, rowsAffected: rows, queryName: saved.name };
+    }),
+
+  deleteSavedQuery: protectedProcedure
+    .input(z.object({ name: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.savedQuery.delete({ where: { name: input.name } });
+      return { success: true };
     }),
 });

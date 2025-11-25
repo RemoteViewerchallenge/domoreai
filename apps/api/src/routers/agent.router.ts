@@ -3,6 +3,9 @@ import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { AgentRuntime } from '../services/AgentRuntime.js';
 import { createVolcanoAgent } from '../services/AgentFactory.js';
 import type { CardAgentState } from '../services/AgentFactory.js';
+import { ProviderManager } from '../services/ProviderManager.js';
+import { selectCandidateModels } from '../lib/modelSelector.js';
+import { db } from '../db.js';
 
 /**
  * Agent Router
@@ -20,6 +23,37 @@ const startSessionSchema = z.object({
   userGoal: z.string().min(1, 'User goal/prompt is required'),
   cardId: z.string(), // For targeting WebSocket events
 });
+
+const BASE_PROMPT_SQL_HELPER = `
+You are an expert PostgreSQL Query Generator. Your task is to translate the user's natural language request into a single, clean SQL query that can be executed against the available database tables.
+
+The user is querying the following table schemas:
+[TABLE_SCHEMAS_CONTEXT]
+
+User Request: [USER_PROMPT]
+
+Constraints:
+1. Only output the raw SQL query text. Do NOT include any markdown, commentary, or explanation (e.g., do not use \`\`\`sql ... \`\`\`).
+2. Only use SELECT statements. Do not use INSERT, DELETE, DROP, or ALTER.
+`;
+
+async function ensureSqlHelperRole(): Promise<string> {
+  const name = 'sql-query-helper';
+  let role = await db.role.findFirst({ where: { name } });
+  if (!role) {
+    role = await db.role.create({
+      data: {
+        name,
+        basePrompt: BASE_PROMPT_SQL_HELPER,
+        needsReasoning: true,
+        needsCoding: true,
+        defaultTemperature: 0.3,
+        defaultMaxTokens: 1024,
+      } as any,
+    });
+  }
+  return role.id;
+}
 
 export const agentRouter = createTRPCRouter({
   /**
@@ -112,5 +146,63 @@ export const agentRouter = createTRPCRouter({
         status: 'stopped' as const,
         message: 'Session termination not yet implemented',
       };
+    }),
+
+  // Generate SQL query via dedicated role and model selection
+  generateQuery: publicProcedure
+    .input(z.object({
+      userPrompt: z.string().min(10),
+      targetTable: z.string().optional(),
+      roleName: z.string().optional().default('sql-query-helper'),
+    }))
+    .mutation(async ({ input }) => {
+      const { userPrompt, targetTable, roleName } = input;
+
+      // 1. Ensure role exists
+      await ensureSqlHelperRole();
+      const role = await db.role.findFirstOrThrow({ where: { name: roleName } });
+
+      // 2. Build schema context (lightweight)
+      let schemaContext = '';
+      if (targetTable) {
+        const rows = await db.$queryRawUnsafe<any[]>(
+          `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${targetTable}'`
+        );
+        schemaContext = rows.length
+          ? `The primary table is "${targetTable}" with columns: ` + rows.map(r => `${r.column_name} (${r.data_type})`).join(', ')
+          : '';
+      }
+
+      // 3. Final prompt
+      const finalPrompt = (role.basePrompt || BASE_PROMPT_SQL_HELPER)
+        .replace('[TABLE_SCHEMAS_CONTEXT]', schemaContext)
+        .replace('[USER_PROMPT]', userPrompt);
+
+      // 4. Select a suitable model (free-first, coding/reasoning if possible)
+      const candidates = await selectCandidateModels({
+        capabilities: { reasoning: !!role.needsReasoning, coding: !!role.needsCoding },
+        maxCostPer1k: 0, // Prefer free
+      });
+      if (candidates.length === 0) throw new Error('No suitable models available.');
+
+      let lastError: any = null;
+      for (const model of candidates) {
+        try {
+          const provider = ProviderManager.getProvider(model.providerConfigId);
+          if (!provider) continue;
+          const text = await provider.generateCompletion({
+            modelId: model.id,
+            messages: [{ role: 'user', content: finalPrompt }],
+            temperature: role.defaultTemperature ?? 0.3,
+            max_tokens: role.defaultMaxTokens ?? 1024,
+          });
+          const queryText = (text || '').trim();
+          return { queryText };
+        } catch (e) {
+          lastError = e;
+          continue;
+        }
+      }
+      throw new Error(lastError?.message || 'All providers failed.');
     }),
 });

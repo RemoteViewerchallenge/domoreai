@@ -2,6 +2,7 @@ import { BaseLLMProvider } from './BaseLLMProvider.js';
 import { OpenAIProvider } from './OpenAIProvider.js';
 import { AnthropicProvider } from './AnthropicProvider.js';
 import { GoogleGenAIProvider } from './GoogleGenAIProvider.js';
+import { OllamaProvider } from './OllamaProvider.js';
 
 export * from './BaseLLMProvider.js';
 
@@ -27,7 +28,6 @@ export class ProviderFactory {
       case 'openrouter':
       case 'mistral':
       case 'groq':
-      case 'ollama':
       case 'deepseek':
       case 'generic-openai': // For custom endpoints
         return new OpenAIProvider({
@@ -36,6 +36,10 @@ export class ProviderFactory {
           // 2. Fallback to defaults ONLY if DB is empty
           baseURL: config.baseURL || this.getDefaultBaseURL(type)
         });
+
+      case 'ollama':
+        if (!config.baseURL) throw new Error('Ollama requires a baseURL accessible from the API runtime.');
+        return new OllamaProvider(config);
 
       default:
         throw new Error(`Provider type '${type}' is not supported yet.`);
@@ -47,7 +51,6 @@ export class ProviderFactory {
     switch (type) {
       case 'openrouter': return 'https://openrouter.ai/api/v1';
       case 'mistral':    return 'https://api.mistral.ai/v1';
-      case 'ollama':     return 'http://localhost:11434/v1';
       case 'groq':       return 'https://api.groq.com/openai/v1';
       default:           return undefined; // Let SDK default to api.openai.com
     }

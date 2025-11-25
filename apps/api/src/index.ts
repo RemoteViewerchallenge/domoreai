@@ -97,4 +97,5 @@ async function startServer() {
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
+console.log('Server starting... (Force Restart 2)');
 startServer();

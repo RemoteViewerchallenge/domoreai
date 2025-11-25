@@ -11,7 +11,7 @@ export class RawModelService {
     
     if (!config) throw new Error(`Provider Config ${providerConfigId} not found`);
 
-    // 2. Prepare URL
+    // 2. Prepare URL with provider-aware defaults and normalization
     let url = config.baseURL;
     if (!url) {
         if (config.type === 'openai') url = 'https://api.openai.com/v1';
@@ -19,10 +19,20 @@ export class RawModelService {
         else if (config.type === 'mistral') url = 'https://api.mistral.ai/v1';
         else if (config.type === 'groq') url = 'https://api.groq.com/openai/v1';
         else if (config.type === 'anthropic') url = 'https://api.anthropic.com/v1';
+        else if (config.type === 'ollama') url = 'http://localhost:11434';
     }
-    // Remove trailing slash and add /models endpoint
+
+    // Normalize Ollama URL (strip trailing /v1 if present)
+    const looksLikeOllama = config.type === 'ollama' || /:11434(\/|$)/.test(url || '');
+    if (looksLikeOllama && url) {
+      url = url.replace(/\/?v1\/?$/, '');
+    }
+
+    // Remove trailing slash and add endpoint
     url = url?.replace(/\/$/, '') || '';
-    const fetchUrl = url.endsWith('/models') ? url : `${url}/models`;
+    const fetchUrl = looksLikeOllama
+      ? (url.endsWith('/api/tags') ? url : `${url}/api/tags`)
+      : (url.endsWith('/models') ? url : `${url}/models`);
 
     console.log(`[RawModelService] Fetching from: ${fetchUrl}`);
 
@@ -32,11 +42,11 @@ export class RawModelService {
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (!looksLikeOllama && apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
       const response = await fetch(fetchUrl, {
-        headers: { 
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
+        headers,
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -48,12 +58,15 @@ export class RawModelService {
       
       // 4. Get JSON (Yes, it is JSON)
       const rawJson = await response.json();
+      // Normalize Ollama tags payload so downstream flattening can find an array
+      // Ollama returns { models: [...] }
+      const normalized = looksLikeOllama && rawJson && rawJson.models ? rawJson.models : rawJson;
 
       // 5. Save to DB (Exact dump)
       const snapshot = await db.rawDataLake.create({
         data: {
           provider: config.type,
-          rawData: rawJson, 
+          rawData: normalized, 
           ingestedAt: new Date()
         }
       });
