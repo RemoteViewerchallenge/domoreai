@@ -7,8 +7,7 @@ import ResearchBrowser from '../ResearchBrowser.js';
 import TerminalLogViewer from '../TerminalLogViewer.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
-import { useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+// Removed unused useEditor import
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
 
@@ -69,22 +68,16 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     },
   });
 
-  // Tiptap editor for capturing prompts
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: '',
-    editorProps: {
-      attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-gray-300 text-sm p-4',
-      },
-    },
-  });
+  // Removed detached Tiptap editor hook
 
   // Run agent function - wrapped in useCallback to stabilize reference
+  // Run agent function - wrapped in useCallback to stabilize reference
   const handleRunAgent = useCallback(() => {
-    if (!editor) return;
+    // Strip HTML to get plain text prompt
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = content;
+    const prompt = tmp.textContent || tmp.innerText || "";
     
-    const prompt = editor.getText();
     if (!prompt.trim()) {
       alert('Please enter a prompt first');
       return;
@@ -106,26 +99,10 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       userGoal: prompt,
       cardId: id,
     });
-  }, [editor, agentConfig, startSessionMutation, id]);
+  }, [content, agentConfig, startSessionMutation, id]);
 
   // Handle Enter key to run agent
-  useEffect(() => {
-    if (!editor) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        handleRunAgent();
-      }
-    };
-
-    const editorElement = editor.view.dom;
-    editorElement.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      editorElement.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [editor, handleRunAgent]);
+  // Handle Enter key is now managed by SmartEditor via onRun prop
 
   // Auto-creation logic
   useEffect(() => {
@@ -275,6 +252,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
             content={content} 
             onChange={setContent} 
             isAiTyping={isAiWorking}
+            onRun={handleRunAgent}
           />
         )}
 

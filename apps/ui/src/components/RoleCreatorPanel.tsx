@@ -34,6 +34,8 @@ interface RoleCreatorPanelProps {
 const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) => {
   const utils = trpc.useContext();
   const { data: roles } = trpc.role.list.useQuery();
+  const { data: models } = trpc.model.listRefinedModels.useQuery(); // Fetch models for count
+  
   const createRoleMutation = trpc.role.create.useMutation({
     onSuccess: () => utils.role.list.invalidate(),
   });
@@ -141,6 +143,38 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 <span className="text-lg font-bold text-white uppercase tracking-widest">
                   {selectedRoleId ? 'Edit Role' : 'New Role'}
                 </span>
+                {selectedRoleId && (
+                  <button 
+                    onClick={() => {
+                      setSelectedRoleId(null);
+                      setFormData({
+                        name: '',
+                        basePrompt: '',
+                        minContext: 0,
+                        maxContext: 128000,
+                        needsVision: false,
+                        needsReasoning: false,
+                        needsCoding: false,
+                        needsTools: false,
+                        needsJson: false,
+                        needsUncensored: false,
+                        tools: [],
+                        defaultTemperature: 0.7,
+                        defaultMaxTokens: 2048,
+                        defaultTopP: 1.0,
+                        defaultFrequencyPenalty: 0.0,
+                        defaultPresencePenalty: 0.0,
+                        defaultStop: [],
+                        defaultSeed: undefined,
+                        defaultResponseFormat: 'text',
+                        terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] },
+                      });
+                    }}
+                    className="ml-4 px-2 py-1 bg-blue-900/30 border border-blue-500 text-blue-300 hover:bg-blue-900/50 hover:text-white transition-all uppercase tracking-wider text-[10px] font-bold"
+                  >
+                    + New
+                  </button>
+                )}
               </div>
               <div className="flex gap-2">
                 {selectedRoleId && (
@@ -285,7 +319,22 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
 
             {/* Context Window */}
             <div className="border border-gray-800 p-3 bg-gray-950/50">
-              <h3 className="text-[10px] font-bold text-gray-500 uppercase mb-4">Context Window</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-[10px] font-bold text-gray-500 uppercase">Context Window</h3>
+                {models && (
+                  <div className="flex items-center gap-2 text-[10px] bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
+                     <span className={`w-1.5 h-1.5 rounded-full ${
+                       (models.filter(m => m.contextLength >= (formData.minContext || 0) && m.contextLength <= (formData.maxContext || 128000)).length) > 0 
+                       ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' 
+                       : 'bg-red-500'
+                     }`}></span>
+                     <span className="text-cyan-400 font-bold">
+                       {models.filter(m => m.contextLength >= (formData.minContext || 0) && m.contextLength <= (formData.maxContext || 128000)).length}
+                     </span>
+                     <span className="text-zinc-500 uppercase font-bold">Models Available</span>
+                  </div>
+                )}
+              </div>
               <DualRangeSlider
                 min={0}
                 max={200000}

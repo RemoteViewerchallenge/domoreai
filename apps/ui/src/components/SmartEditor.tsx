@@ -10,9 +10,10 @@ interface SmartEditorProps {
   content: string;
   onChange: (val: string) => void;
   isAiTyping?: boolean; // New prop to show AI activity
+  onRun?: () => void;   // Callback for running the agent (Cmd+Enter)
 }
 
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false }) => {
+const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun }) => {
   // 1. DETECT FILE TYPE
   // If it ends in .ts, .js, .css, .json -> It's CODE (Monaco)
   // If it ends in .md, .txt, or no extension -> It's TEXT (Tiptap)
@@ -43,6 +44,22 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
       editor.commands.setContent(content); 
     }
   }, [content, editor, isCode]);
+
+  // Handle Cmd+Enter to Run
+  useEffect(() => {
+    if (!editor || !onRun || isCode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        onRun();
+      }
+    };
+
+    const dom = editor.view.dom;
+    dom.addEventListener('keydown', handleKeyDown);
+    return () => dom.removeEventListener('keydown', handleKeyDown);
+  }, [editor, onRun, isCode]);
 
   // --- RENDER: CODE MODE (Monaco) ---
   if (isCode) {

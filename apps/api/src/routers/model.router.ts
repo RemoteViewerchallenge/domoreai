@@ -112,22 +112,28 @@ export const modelRouter = createTRPCRouter({
     }),
 
   // [LEGACY/DIRECT ACCESS] Real implementation fetching directly from 'openrouterfree'
-  listOpenRouterModels: publicProcedure
+  // [LEGACY/DIRECT ACCESS] Real implementation fetching directly from 'my_free_models'
+  listRefinedModels: publicProcedure
     .query(async ({ ctx }) => {
       try {
-        const rows = await ctx.db.$queryRaw`SELECT * FROM "openrouterfree"` as any[];
+        // Query the user's "my_free_models" table (or whatever they named it)
+        // We assume the user wants 'my_free_models' as the source of truth now.
+        const rows = await ctx.db.$queryRaw`SELECT * FROM "my_free_models"` as any[];
+        
         return rows.map((row: any) => ({
           id: row.id || row.model_id || row.name,
           name: row.name || row.model_name || 'Unknown Model',
-          contextLength: Number(row.context_length || 0), 
-          provider: 'openrouter'
+          // Handle various casing/naming conventions for context length
+          contextLength: Number(row.context_length || row.context_window || row.contextWindow || 0), 
+          provider: row.provider || 'unknown'
         }));
       } catch (error: any) {
-        // Suppress "relation does not exist" error (Code 42P01) as this table is optional/dynamic
+        // Suppress "relation does not exist" error (Code 42P01)
         if (error?.meta?.code === '42P01' || error?.code === '42P01') {
+          console.warn("Table 'my_free_models' does not exist yet.");
           return [];
         }
-        console.error("Failed to fetch openrouterfree table:", error);
+        console.error("Failed to fetch my_free_models table:", error);
         return [];
       }
     }),
