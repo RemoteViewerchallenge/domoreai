@@ -38,21 +38,29 @@ export async function selectCandidateModels(criteria: SelectionCriteria): Promis
     });
 
     // Map to internal Model interface
-    const allModels: Model[] = dbModels.map(m => ({
-        id: m.modelId, // Use the provider's model ID (e.g. "gpt-4o")
-        name: m.name,
-        provider: m.provider.type, 
-        providerConfigId: m.providerId,
-        contextWindow: m.contextWindow || 4096,
-        capabilities: {
+    const allModels: Model[] = dbModels.map(m => {
+        const providerType = m.provider.type;
+        const computedCost =
+          m.costPer1k !== null && m.costPer1k !== undefined
+            ? m.costPer1k
+            : (m.isFree ? 0 : (providerType === 'ollama' ? 0 : 100));
+
+        return {
+          id: m.modelId,
+          name: m.name,
+          provider: providerType,
+          providerConfigId: m.providerId,
+          contextWindow: m.contextWindow || 4096,
+          capabilities: {
             vision: m.hasVision,
             reasoning: m.hasReasoning,
-            coding: m.hasCoding
-        },
-        costPer1k: m.costPer1k || (m.isFree ? 0 : 100), // Default high cost if unknown
-        limitRequestRate: m.limitRequestRate,
-        limitWindow: m.limitWindow
-    }));
+            coding: m.hasCoding,
+          },
+          costPer1k: computedCost,
+          limitRequestRate: m.limitRequestRate,
+          limitWindow: m.limitWindow,
+        };
+    });
 
     // 2. Specific Override
     if (criteria.model) {
@@ -66,30 +74,39 @@ export async function selectCandidateModels(criteria: SelectionCriteria): Promis
         console.warn(`Requested model ${criteria.model} not found, falling back to dynamic selection.`);
     }
 
-    // 3. Filter by Constraints
-    let candidates = allModels.filter(m => {
-        // Context Window
-        if (criteria.minContextWindow && m.contextWindow < criteria.minContextWindow) return false;
-        
-        // Capabilities
-        if (criteria.capabilities?.vision && !m.capabilities.vision) return false;
-        if (criteria.capabilities?.reasoning && !m.capabilities.reasoning) return false;
-        if (criteria.capabilities?.coding && !m.capabilities.coding) return false;
-
-        // Cost
-        if (criteria.maxCostPer1k !== undefined && m.costPer1k > criteria.maxCostPer1k) return false;
-
-        return true;
-    });
-
-    // 4. Fallback if no candidates match
-    if (candidates.length === 0) {
-        console.warn("No models match criteria, returning all models sorted by cost.");
-        candidates = [...allModels];
+    // 3. Filter by Constraints (with progressive relaxation)
+    const passesStrict = (m: Model): boolean => {
+    if (criteria.minContextWindow && (m.contextWindow || 0) < criteria.minContextWindow) return false;
+    if (criteria.capabilities?.vision && !m.capabilities.vision) return false;
+    if (criteria.capabilities?.reasoning && !m.capabilities.reasoning) return false;
+    if (criteria.capabilities?.coding && !m.capabilities.coding) return false;
+    if (criteria.maxCostPer1k !== undefined && m.costPer1k > criteria.maxCostPer1k) return false;
+    return true;
+    };
+    
+    const passesIgnoreCapabilities = (m: Model): boolean => {
+    if (criteria.minContextWindow && (m.contextWindow || 0) < criteria.minContextWindow) return false;
+    // Always enforce cost constraints
+    if (criteria.maxCostPer1k !== undefined && m.costPer1k > criteria.maxCostPer1k) return false;
+    // Ignore capabilities entirely here
+    return true;
+    };
+    
+    let candidates = allModels.filter(passesStrict);
+    
+    // 4a. If no candidates, relax capability requirements BUT NEVER COST
+    if (candidates.length === 0 && (criteria.capabilities?.vision || criteria.capabilities?.reasoning || criteria.capabilities?.coding)) {
+    candidates = allModels.filter(passesIgnoreCapabilities);
     }
-
+    
+    // 4b. Final fallback: still enforce cost, ignore all other constraints
+    if (candidates.length === 0) {
+    console.warn('No models match strict or relaxed-capability criteria; falling back to cost-only filter.');
+    candidates = allModels.filter(m => (criteria.maxCostPer1k === undefined) || (m.costPer1k <= criteria.maxCostPer1k));
+    }
+    
     // 5. Sort by Cost (Cheapest first)
-    candidates.sort((a, b) => a.costPer1k - b.costPer1k);
-
+    candidates.sort((a, b) => (a.costPer1k ?? Number.POSITIVE_INFINITY) - (b.costPer1k ?? Number.POSITIVE_INFINITY));
+    
     return candidates;
-}
+    }

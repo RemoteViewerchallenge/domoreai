@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 
+const PROVIDER_TYPES = [
+  { label: 'OpenAI / OpenRouter / Generic', value: 'openai' },
+  { label: 'Anthropic (Claude)', value: 'anthropic' },
+  { label: 'Google AI Studio / Vertex AI', value: 'google' },
+  { label: 'Vertex AI (Legacy/Enterprise)', value: 'vertex' },
+  { label: 'Ollama (Local)', value: 'ollama' },
+  { label: 'Mistral', value: 'mistral' },
+  { label: 'Azure OpenAI', value: 'azure' },
+  { label: 'AWS Bedrock', value: 'bedrock' },
+];
+
 interface AddProviderFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -49,14 +60,13 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => {
-      let newData = { ...prev, [name]: value };
+      const newData = { ...prev, [name]: value };
 
       // Provider type selection defaults
       if (name === 'type') {
         if (value === 'ollama') newData.baseURL = 'http://localhost:11434';
         else if (value === 'openai') newData.baseURL = 'https://api.openai.com/v1';
-        else if (value === 'openrouter') newData.baseURL = 'https://openrouter.ai/api/v1';
-        else if (value === 'vertex-studio') newData.baseURL = 'https://generativelanguage.googleapis.com/v1beta';
+        else if (value === 'google') newData.baseURL = 'https://generativelanguage.googleapis.com/v1beta';
         else if (value === 'anthropic') newData.baseURL = 'https://api.anthropic.com/v1';
         else if (value === 'mistral') newData.baseURL = 'https://api.mistral.ai/v1';
         else if (value === 'azure') newData.baseURL = 'https://{resource}.openai.azure.com/';
@@ -137,14 +147,11 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
               value={formData.type} /* FIX: value={formData.type} */
               onChange={handleChange}
             >
-              <option value="openai">OpenAI Compatible</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="mistral">Mistral</option>
-              <option value="ollama">Ollama</option>
-              <option value="vertex-studio">Vertex AI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="azure">Azure AI</option>
-              <option value="bedrock">AWS Bedrock</option>
+              {PROVIDER_TYPES.map((pt) => (
+                <option key={pt.value} value={pt.value}>
+                  {pt.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -165,7 +172,7 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
               <option value="http://192.168.1.10:11434">Ollama (LAN IP example)</option>
               <option value="https://api.openai.com/v1">OpenAI</option>
               <option value="https://openrouter.ai/api/v1">OpenRouter</option>
-              <option value="https://generativelanguage.googleapis.com/v1beta">Vertex AI</option>
+              <option value="https://generativelanguage.googleapis.com/v1beta">Google AI Studio</option>
               <option value="https://api.anthropic.com/v1">Anthropic</option>
               <option value="https://api.mistral.ai/v1">Mistral</option>
             </datalist>

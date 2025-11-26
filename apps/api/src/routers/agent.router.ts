@@ -178,31 +178,28 @@ export const agentRouter = createTRPCRouter({
         .replace('[TABLE_SCHEMAS_CONTEXT]', schemaContext)
         .replace('[USER_PROMPT]', userPrompt);
 
-      // 4. Select a suitable model (free-first, coding/reasoning if possible)
-      const candidates = await selectCandidateModels({
-        capabilities: { reasoning: !!role.needsReasoning, coding: !!role.needsCoding },
-        maxCostPer1k: 0, // Prefer free
+      // 4. Pick any enabled model (prefer Ollama), no parameter constraints
+      //    This is a temporary bypass to get query generation unblocked.
+      const preferred = await db.model.findFirst({
+        where: { provider: { isEnabled: true, type: 'ollama' } },
+        include: { provider: true },
       });
-      if (candidates.length === 0) throw new Error('No suitable models available.');
+      const fallback = preferred || await db.model.findFirst({
+        where: { provider: { isEnabled: true } },
+        include: { provider: true },
+      });
+      if (!fallback) throw new Error('No suitable models available.');
 
-      let lastError: any = null;
-      for (const model of candidates) {
-        try {
-          const provider = ProviderManager.getProvider(model.providerConfigId);
-          if (!provider) continue;
-          const text = await provider.generateCompletion({
-            modelId: model.id,
-            messages: [{ role: 'user', content: finalPrompt }],
-            temperature: role.defaultTemperature ?? 0.3,
-            max_tokens: role.defaultMaxTokens ?? 1024,
-          });
-          const queryText = (text || '').trim();
-          return { queryText };
-        } catch (e) {
-          lastError = e;
-          continue;
-        }
-      }
-      throw new Error(lastError?.message || 'All providers failed.');
+      const provider = ProviderManager.getProvider(fallback.providerId);
+      if (!provider) throw new Error('Selected provider is not initialized.');
+
+      const text = await provider.generateCompletion({
+        modelId: fallback.modelId,
+        messages: [{ role: 'user', content: finalPrompt }],
+        temperature: role.defaultTemperature ?? 0.3,
+        max_tokens: role.defaultMaxTokens ?? 1024,
+      });
+      const queryText = (text || '').trim();
+      return { queryText };
     }),
 });
