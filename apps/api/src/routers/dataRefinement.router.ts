@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { encrypt } from '../utils/encryption.js'; 
+import { ProviderManager } from '../services/ProviderManager.js'; 
 
 export const dataRefinementRouter = createTRPCRouter({
   
@@ -57,7 +58,7 @@ export const dataRefinementRouter = createTRPCRouter({
       const { RawModelService } = await import('../services/RawModelService.js');
       
       // A. Save Config
-      const encryptedKey = encrypt(input.apiKey);
+      const encryptedKey = input.apiKey ? encrypt(input.apiKey) : '';
       const newProvider = await ctx.db.providerConfig.create({
         data: {
           label: input.label,
@@ -67,6 +68,8 @@ export const dataRefinementRouter = createTRPCRouter({
           isEnabled: true,
         }
       });
+      // Reinitialize providers so new provider is available immediately
+      await ProviderManager.initialize();
       
       // B. Fetch Raw JSON (The "Blob")
       const snapshot = await RawModelService.fetchAndSnapshot(newProvider.id);
@@ -320,6 +323,59 @@ export const dataRefinementRouter = createTRPCRouter({
         } catch (error: any) {
           throw new Error(`Failed to cache models: ${error.message}`);
         }
+      }),
+
+    // Refresh normalized Model registry from a curated table (no schema changes to source)
+    refreshModelsFromTable: publicProcedure
+      .input(z.object({
+        sourceTable: z.string().default('my_free_models'),
+        providerId: z.string().optional(),
+        // Default flags if missing on source rows
+        defaultContextWindow: z.number().int().optional().default(8192),
+        defaultHasReasoning: z.boolean().optional().default(true),
+        defaultHasCoding: z.boolean().optional().default(true),
+        defaultIsFree: z.boolean().optional().default(true),
+        defaultCostPer1k: z.number().optional().default(0),
+        providerTypeHint: z.string().optional().default('ollama'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 1) Resolve providerId
+        let providerId = input.providerId || null;
+        if (!providerId) {
+          const p = await ctx.db.providerConfig.findFirst({
+            where: { type: input.providerTypeHint, isEnabled: true },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true }
+          });
+          if (!p) throw new Error(`No enabled provider found for type '${input.providerTypeHint}'.`);
+          providerId = p.id;
+        }
+
+        // 2) Replace strategy: delete existing for provider, then insert fresh from source
+        await ctx.db.$executeRawUnsafe(`DELETE FROM "Model" WHERE "providerId" = '${providerId}'`);
+
+        const sql = `
+          INSERT INTO "Model" (
+            id, "providerId", "modelId", "name", "providerData"
+          )
+          SELECT 
+            gen_random_uuid()::text as id,
+            '${providerId}' as "providerId",
+            m.model_id as "modelId",
+            COALESCE(m.name, m.model_id) as "name",
+            to_jsonb(m) as "providerData"
+          FROM "${input.sourceTable}" m
+          WHERE m.model_id IS NOT NULL
+            AND m.provider_id = '${providerId}'
+        `;
+
+        const insertedCount = await ctx.db.$executeRawUnsafe(sql);
+
+        // 3) Return counts for visibility
+        const [{ count }] = await ctx.db.$queryRawUnsafe<[{ count: bigint }]>(
+          `SELECT COUNT(*) as count FROM "Model" WHERE "providerId" = '${providerId}'`
+        );
+        return { success: true, providerId, insertedCount: Number(insertedCount), totalForProvider: Number(count) };
       }),
 
     promoteToApp: publicProcedure.input(z.any()).mutation(async () => ({ count: 0 })),

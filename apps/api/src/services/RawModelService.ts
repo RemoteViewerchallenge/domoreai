@@ -20,6 +20,7 @@ export class RawModelService {
         else if (config.type === 'groq') url = 'https://api.groq.com/openai/v1';
         else if (config.type === 'anthropic') url = 'https://api.anthropic.com/v1';
         else if (config.type === 'ollama') url = 'http://localhost:11434';
+        else if (config.type === 'google') url = 'https://generativelanguage.googleapis.com/v1beta';
     }
 
     // Normalize Ollama URL (strip trailing /v1 if present)
@@ -30,9 +31,17 @@ export class RawModelService {
 
     // Remove trailing slash and add endpoint
     url = url?.replace(/\/$/, '') || '';
-    const fetchUrl = looksLikeOllama
-      ? (url.endsWith('/api/tags') ? url : `${url}/api/tags`)
-      : (url.endsWith('/models') ? url : `${url}/models`);
+    
+    let fetchUrl = '';
+    if (looksLikeOllama) {
+        fetchUrl = url.endsWith('/api/tags') ? url : `${url}/api/tags`;
+    } else if (config.type === 'google') {
+        // Google AI Studio: https://generativelanguage.googleapis.com/v1beta/models
+        fetchUrl = url.endsWith('/models') ? url : `${url}/models`;
+    } else {
+        // OpenAI Compatible
+        fetchUrl = url.endsWith('/models') ? url : `${url}/models`;
+    }
 
     console.log(`[RawModelService] Fetching from: ${fetchUrl}`);
 
@@ -43,7 +52,14 @@ export class RawModelService {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (!looksLikeOllama && apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      
+      if (apiKey) {
+          if (config.type === 'google') {
+              headers['x-goog-api-key'] = apiKey;
+          } else if (!looksLikeOllama) {
+              headers.Authorization = `Bearer ${apiKey}`;
+          }
+      }
 
       const response = await fetch(fetchUrl, {
         headers,

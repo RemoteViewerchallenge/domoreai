@@ -102,6 +102,14 @@ export const DataNode: React.FC = () => {
     onSuccess: () => alert("Query Saved!")
   });
 
+  // 9. Refresh Models from current table into normalized registry
+  const refreshModelsMutation = trpc.dataRefinement.refreshModelsFromTable.useMutation({
+    onSuccess: (res) => {
+      alert(`Refreshed models for provider ${res.providerId}. Total models for provider: ${res.totalForProvider}`);
+    },
+    onError: (err) => alert(`Refresh failed: ${err.message}`),
+  });
+
   // 9. Delete Saved Query
   const deleteSavedQueryMutation = trpc.dataRefinement.deleteSavedQuery.useMutation({
     onSuccess: () => {
@@ -251,6 +259,17 @@ export const DataNode: React.FC = () => {
                  className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${showQuery ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent hover:bg-zinc-900 text-zinc-400'}`}
                >
                  <Play size={14} /> SQL EDITOR
+               </button>
+
+               <button 
+                 onClick={() => {
+                   if (!activeTable) return;
+                   refreshModelsMutation.mutate({ sourceTable: activeTable });
+                 }}
+                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold shadow-lg"
+                 title="Upsert models from this table into the app registry"
+               >
+                 <Database size={14} /> REFRESH MODELS
                </button>
 
                <button 
