@@ -58,7 +58,7 @@ const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
   };
 
   return (
-    <div className="w-full py-2 font-mono">
+    <div className="w-full py-2 font-mono relative">
       {label && (
         <div className="flex justify-between mb-1">
           <span className="text-[10px] font-bold text-gray-500 uppercase">{label}</span>
@@ -68,14 +68,17 @@ const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
         </div>
       )}
       
-      <div className="relative w-full h-1 bg-gray-800">
-        {/* The active range bar */}
+      <div className="relative w-full h-4 flex items-center">
+        {/* Track Background */}
+        <div className="absolute w-full h-1 bg-gray-800 rounded-full"></div>
+
+        {/* Active Range Track */}
         <div
           ref={rangeRef}
-          className="absolute h-full bg-blue-500 z-10"
+          className="absolute h-1 bg-blue-500 rounded-full z-10"
         />
 
-        {/* Hidden Range Inputs */}
+        {/* Inputs */}
         <input
           type="range"
           min={min}
@@ -83,8 +86,7 @@ const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
           step={step}
           value={minValue}
           onChange={handleMinChange}
-          className="absolute w-full h-full opacity-0 z-20 cursor-pointer pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3"
-          style={{ WebkitAppearance: 'none' }}
+          className="absolute w-full h-full appearance-none bg-transparent pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_0_2px_black] [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer"
         />
         <input
           type="range"
@@ -93,19 +95,8 @@ const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
           step={step}
           value={maxValue}
           onChange={handleMaxChange}
-          className="absolute w-full h-full opacity-0 z-20 cursor-pointer pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3"
-          style={{ WebkitAppearance: 'none' }}
+          className="absolute w-full h-full appearance-none bg-transparent pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_0_2px_black] [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer"
         />
-
-        {/* Visual Thumbs */}
-        <div 
-            className="absolute w-3 h-3 bg-black border border-blue-400 shadow -mt-1 z-30 pointer-events-none"
-            style={{ left: `calc(${getPercent(minValue)}% - 6px)` }}
-        ></div>
-        <div 
-            className="absolute w-3 h-3 bg-black border border-blue-400 shadow -mt-1 z-30 pointer-events-none"
-            style={{ left: `calc(${getPercent(maxValue)}% - 6px)` }}
-        ></div>
       </div>
     </div>
   );

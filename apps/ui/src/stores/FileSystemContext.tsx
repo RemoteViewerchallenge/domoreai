@@ -1,11 +1,13 @@
 import { createContext, useContext } from 'react';
 import type { VFile, FileSystemProviderType } from './FileSystemTypes.js';
+import type { SshConfig } from '../components/SshConnectionModal.js';
 
 interface FileSystemContextType {
   files: VFile[];
   currentProvider: FileSystemProviderType;
   sshConnectionId: string | null;
   currentPath: string;
+  isLoading: boolean;
   
   // Actions
   setProvider: (provider: FileSystemProviderType) => void;
@@ -13,9 +15,11 @@ interface FileSystemContextType {
   navigate: (path: string) => void;
   
   // CRUD
-  readFile: (path: string) => string;
-  writeFile: (path: string, content: string) => void;
-  createFile: (path: string, initialContent?: string) => void;
+  readFile: (path: string) => Promise<string>;
+  writeFile: (path: string, content: string) => Promise<void>;
+  createFile: (path: string, initialContent?: string) => Promise<void>;
+  mkdir: (path: string) => Promise<void>;
+  connectSsh: (config: SshConfig) => Promise<string>;
   refresh: () => void;
 }
 

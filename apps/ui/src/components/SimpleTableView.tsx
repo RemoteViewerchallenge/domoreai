@@ -88,7 +88,7 @@ export const SimpleTableView: React.FC<SimpleTableViewProps> = ({ rawData }) => 
   headers = headers.filter(h => !hiddenColumns.has(h));
 
   return (
-    <div className="overflow-auto h-full w-full select-none">
+    <div className="overflow-auto h-full w-full">
       <table className="table table-xs table-pin-rows table-pin-cols">
         <thead>
           <tr>

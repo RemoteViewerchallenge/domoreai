@@ -75,6 +75,9 @@ importers:
       '@utcp/code-mode':
         specifier: ^1.0.5
         version: 1.0.5
+      '@utcp/sdk':
+        specifier: ^1.0.17
+        version: 1.0.17
       axios:
         specifier: ^1.7.2
         version: 1.13.2

@@ -380,6 +380,92 @@ export const dataRefinementRouter = createTRPCRouter({
 
     promoteToApp: publicProcedure.input(z.any()).mutation(async () => ({ count: 0 })),
 
+    // --- REFRESH DATA (Recovery Feature) ---
+    refreshProviderData: protectedProcedure
+    .input(z.object({
+      providerId: z.string(),
+      targetTableName: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { RawModelService } = await import('../services/RawModelService.js');
+
+      // 1. Fetch Provider Config
+      const provider = await ctx.db.providerConfig.findUnique({
+        where: { id: input.providerId }
+      });
+
+      if (!provider) {
+        throw new Error(`Provider with ID ${input.providerId} not found.`);
+      }
+
+      // 2. Fetch Raw JSON (The "Blob")
+      // We re-use the fetchAndSnapshot logic which handles the API call
+      const snapshot = await RawModelService.fetchAndSnapshot(provider.id);
+
+      // 3. FLATTEN INTO TARGET TABLE
+      const newTableName = input.targetTableName;
+
+      try {
+        // Drop old table to start fresh
+        await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+
+        // Dynamic Extraction Logic (Reused)
+        const keysResult = await ctx.db.$queryRawUnsafe<{key: string}[]>(`
+          SELECT DISTINCT jsonb_object_keys(elem) as key
+          FROM "RawDataLake",
+               jsonb_array_elements(
+                  CASE 
+                    WHEN jsonb_typeof("rawData") = 'array' THEN "rawData"
+                    WHEN "rawData" ? 'data' THEN "rawData"->'data'
+                    WHEN "rawData" ? 'models' THEN "rawData"->'models'
+                    WHEN "rawData" ? 'items' THEN "rawData"->'items'
+                    ELSE '[]'::jsonb 
+                  END
+               ) as elem
+          WHERE "RawDataLake".id = '${snapshot.id}'
+        `);
+
+        const keys = keysResult.map(k => k.key).filter(k => k !== 'id');
+        
+        let columnsSql = `gen_random_uuid()::text as id, `;
+        const hasId = keysResult.some(k => k.key === 'id');
+        if (hasId) {
+            columnsSql += `elem->>'id' as "model_id", `;
+        }
+        
+        if (keys.length > 0) {
+           columnsSql += keys.map(k => `elem->>'${k}' as "${k}"`).join(', ');
+        } else {
+           if (!hasId) columnsSql += `'unknown' as _status`; 
+        }
+
+        const dynamicQuery = `
+          CREATE TABLE "${newTableName}" AS
+          SELECT 
+            ${columnsSql}
+          FROM "RawDataLake",
+               jsonb_array_elements(
+                  CASE 
+                    WHEN jsonb_typeof("rawData") = 'array' THEN "rawData"
+                    WHEN "rawData" ? 'data' THEN "rawData"->'data'
+                    WHEN "rawData" ? 'models' THEN "rawData"->'models'
+                    WHEN "rawData" ? 'items' THEN "rawData"->'items'
+                    ELSE '[]'::jsonb 
+                  END
+               ) as elem
+          WHERE "RawDataLake".id = '${snapshot.id}'
+        `;
+
+        await ctx.db.$executeRawUnsafe(dynamicQuery);
+
+        return { success: true, tableName: newTableName, rowCount: 0 }; // TODO: Return actual count if needed
+
+      } catch (error: any) {
+        console.error("Refresh flatten failed:", error);
+        throw new Error(`Failed to refresh data for table ${newTableName}: ${error.message}`);
+      }
+    }),
+
   // --- 6. SAVED QUERIES ---
   saveMigrationQuery: protectedProcedure
     .input(z.object({

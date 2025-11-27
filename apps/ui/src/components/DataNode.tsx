@@ -5,7 +5,7 @@ import { VisualQueryBuilder } from './VisualQueryBuilder.js';
 import { AddProviderForm } from './AddProviderForm.js';
 import { 
   Database, Table, Trash2, Play, FileJson, 
-  Search, RefreshCw, Plus 
+  Search, RefreshCw, Plus, Crown 
 } from 'lucide-react';
 
 interface TableItem {
@@ -73,11 +73,7 @@ export const DataNode: React.FC = () => {
     }
   });
 
-  // 5. Edit Cell
-  const updateCellMutation = trpc.dataRefinement.updateCell.useMutation({
-    onSuccess: () => { /* Silent success */ },
-    onError: (err) => alert(`Edit failed: ${err.message}`)
-  });
+
 
   // 6. Create Table
   const createTableMutation = trpc.dataRefinement.createTable.useMutation({
@@ -87,27 +83,16 @@ export const DataNode: React.FC = () => {
     }
   });
 
-  // 7. Cache Models for C.O.R.E.
-  const cacheModelsMutation = trpc.dataRefinement.cacheModelsForCore.useMutation({
-    onSuccess: (data) => {
-      alert(`✅ Successfully cached ${data.count} models to C.O.R.E.!\n\nYour application will now use these models from the '${data.tableName}' table.`);
-      refetchTables();
-      setActiveTable(data.tableName);
-    },
-    onError: (err) => alert(`Failed to cache models: ${err.message}`)
+  // 10. Set Active Registry
+  const setActiveRegistryMutation = trpc.orchestrator.setActiveRegistry.useMutation({
+    onSuccess: (_data, vars) => {
+      alert(`✅ Active Registry set to: ${vars.tableName}`);
+    }
   });
 
   // 8. Save Migration Query
   const saveMigrationQueryMutation = trpc.dataRefinement.saveMigrationQuery.useMutation({
     onSuccess: () => alert("Query Saved!")
-  });
-
-  // 9. Refresh Models from current table into normalized registry
-  const refreshModelsMutation = trpc.dataRefinement.refreshModelsFromTable.useMutation({
-    onSuccess: (res) => {
-      alert(`Refreshed models for provider ${res.providerId}. Total models for provider: ${res.totalForProvider}`);
-    },
-    onError: (err) => alert(`Refresh failed: ${err.message}`),
   });
 
   // 9. Delete Saved Query
@@ -133,16 +118,6 @@ export const DataNode: React.FC = () => {
   const handleCreateTable = () => {
     const name = prompt("Enter new table name:");
     if (name) createTableMutation.mutate({ tableName: name });
-  };
-
-  const handleCacheModels = () => {
-    if (!activeTable) {
-      alert("Please select a table first");
-      return;
-    }
-    if (confirm(`Cache all models from "${activeTable}" for C.O.R.E.?\n\nThis will replace the current core_models table.`)) {
-      cacheModelsMutation.mutate({ sourceTable: activeTable });
-    }
   };
 
   return (
@@ -264,20 +239,14 @@ export const DataNode: React.FC = () => {
                <button 
                  onClick={() => {
                    if (!activeTable) return;
-                   refreshModelsMutation.mutate({ sourceTable: activeTable });
+                   if (confirm(`Set "${activeTable}" as the Active Model Registry?\n\nThe Role Creator will now adapt to the schema of this table.`)) {
+                     setActiveRegistryMutation.mutate({ tableName: activeTable });
+                   }
                  }}
-                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold shadow-lg"
-                 title="Upsert models from this table into the app registry"
+                 className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded font-bold shadow-lg"
+                 title="Make this table the source of truth for the application"
                >
-                 <Database size={14} /> REFRESH MODELS
-               </button>
-
-               <button 
-                 onClick={handleCacheModels}
-                 className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded font-bold shadow-lg"
-                 title="Cache these models for use in C.O.R.E."
-               >
-                 <Database size={14} /> CACHE FOR C.O.R.E.
+                 <Crown size={14} /> SET AS ACTIVE REGISTRY
                </button>
 
                <div className="h-4 w-px bg-zinc-800 mx-1" />
@@ -298,17 +267,9 @@ export const DataNode: React.FC = () => {
           {activeTable ? (
             <UniversalDataGrid 
               data={(tableData?.rows as Record<string, unknown>[]) || []} 
-              onEdit={(rowId, col, val) => {
-                updateCellMutation.mutate({
-                  tableName: activeTable,
-                  rowId: rowId,
-                  column: col,
-                  value: val
-                });
-              }}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-700 select-none">
+            <div className="flex flex-col items-center justify-center h-full text-zinc-700">
               <Database size={64} className="opacity-10 mb-4" />
               <p>Select a table from the sidebar to browse data</p>
             </div>
@@ -328,7 +289,7 @@ export const DataNode: React.FC = () => {
                    onSuccess: () => refetchSavedQueries()
                  });
                }}
-               savedQueries={savedQueries as any[]}
+               savedQueries={savedQueries || []}
                onDeleteQuery={(name) => deleteSavedQueryMutation.mutate({ name })}
                onRefreshSaved={() => refetchSavedQueries()}
                isLoading={isLoadingSavedQueries}

@@ -65,6 +65,12 @@ Understand the distinct roles of the architecture:
 -   **No Secrets in Logs**: Never log raw API keys or credentials.
 -   **Rate Limiting**: Respect provider limits to avoid bans.
 
+### Database Safety (CRITICAL)
+-   **NEVER** run `prisma db push --accept-data-loss`. This deletes user data.
+-   **ALWAYS** use `prisma migrate dev` for schema changes.
+-   **ALWAYS** check for dynamic tables (e.g., `tgthr`, `orouter`) before resetting the database.
+-   **SAFE MODE**: If you are unsure, ASK the user before running any command that might drop tables.
+
 ### The Golden Rule
 If another agent (or human) can't understand your code in 5 minutes, simplify it.
 

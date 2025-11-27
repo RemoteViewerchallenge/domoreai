@@ -28,6 +28,7 @@
     "@repo/common": "workspace:*",
     "@trpc/server": "^10.45.2",
     "@utcp/code-mode": "^1.0.5",
+    "@utcp/sdk": "^1.0.17",
     "axios": "^1.7.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
