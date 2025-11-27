@@ -1,0 +1,11 @@
+apps/api/node_modules/.bin/vite
+apps/api/node_modules/.bin/acorn
+apps/api/node_modules/.bin/eslint
+apps/api/node_modules/.bin/dotenv
+apps/api/node_modules/.bin/vitest
+apps/api/node_modules/.bin/tsserver
+apps/api/node_modules/.bin/openai
+apps/api/node_modules/.bin/tsc
+apps/api/node_modules/.bin/tsx
+apps/api/node_modules/.bin/uuid
+apps/api/node_modules/.bin/prisma

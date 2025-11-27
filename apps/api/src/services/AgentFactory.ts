@@ -15,26 +15,70 @@ export interface CardAgentState {
 
 // A simple wrapper ensuring the Agent has a standard .generate() interface
 export class VolcanoAgent {
+  private failedProviders: string[] = [];
+
   constructor(
     private provider: BaseLLMProvider,
     private systemPrompt: string,
-    private config: { modelId: string; temperature: number; maxTokens: number }
+    private config: { modelId: string; temperature: number; maxTokens: number },
+    private roleId: string
   ) {}
 
   /**
    * Generates a response using the configured provider and model.
    * This utilizes the SDK's standardized BaseLLMProvider interface.
+   * NOW WITH EXHAUSTIVE FALLBACK!
    */
   async generate(userGoal: string): Promise<string> {
-    return this.provider.generateCompletion({
-      modelId: this.config.modelId,
-      messages: [
-        { role: 'system', content: this.systemPrompt },
-        { role: 'user', content: userGoal }
-      ],
-      temperature: this.config.temperature,
-      max_tokens: this.config.maxTokens,
-    });
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        console.log(`[VolcanoAgent] Generating with model: "${this.config.modelId}" on provider ${this.provider.id}`);
+        return await this.provider.generateCompletion({
+          modelId: this.config.modelId,
+          messages: [
+            { role: 'system', content: this.systemPrompt },
+            { role: 'user', content: userGoal }
+          ],
+          temperature: this.config.temperature,
+          max_tokens: this.config.maxTokens,
+        });
+      } catch (error) {
+        console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, error);
+        
+        // Track failed provider
+        // We assume the provider object has an ID, or we use the one from the model config if possible.
+        // BaseLLMProvider usually has 'id' or 'type'. Let's try to get it safely.
+        const providerId = (this.provider as any).id || (this.provider as any).type;
+        if (providerId) this.failedProviders.push(providerId);
+
+        // ATTEMPT RECOVERY
+        try {
+          console.log(`[VolcanoAgent] Attempting failover... Excluded: [${this.failedProviders.join(', ')}]`);
+          
+          // 1. Get Next Best Model
+          const nextModel = await getBestModel(this.roleId, this.failedProviders);
+          
+          // 2. Reconfigure Agent
+          this.config.modelId = nextModel.modelId;
+          this.config.temperature = nextModel.temperature || this.config.temperature;
+          this.config.maxTokens = nextModel.maxTokens || this.config.maxTokens;
+          
+          // 3. Get New Provider
+          const newProvider = ProviderManager.getProvider(nextModel.providerId);
+          if (!newProvider) throw new Error(`Provider ${nextModel.providerId} not initialized.`);
+          
+          this.provider = newProvider;
+          console.log(`[VolcanoAgent] Failover successful. Switched to: ${nextModel.providerId} / ${nextModel.modelId}`);
+          
+          // Loop continues and tries again with new provider...
+        } catch (retryError) {
+          console.error("[VolcanoAgent] Exhaustive fallback failed:", retryError);
+          // If we can't find a replacement, we must re-throw the ORIGINAL error (or a composite one)
+          throw new Error(`Agent Execution Failed (Exhausted all options): ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
   }
 }
 
@@ -123,9 +167,14 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
   }
 
   // 5. Return the Configured Agent
-  return new VolcanoAgent(provider, role.basePrompt, {
-    modelId: model.modelId,
-    temperature: safeParams.temperature ?? 0.7,
-    maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
-  });
+  return new VolcanoAgent(
+    provider, 
+    role.basePrompt, 
+    {
+      modelId: model.modelId,
+      temperature: safeParams.temperature ?? 0.7,
+      maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
+    },
+    role.id // Pass Role ID for fallback logic
+  );
 }

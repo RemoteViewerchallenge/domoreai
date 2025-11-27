@@ -1,6 +1,6 @@
 import React from 'react';
 import { trpc } from '../utils/trpc.js';
-import { Trash2, Database } from 'lucide-react';
+import { Trash2, Database, RefreshCw } from 'lucide-react';
 
 interface ProviderListProps {
   onIngest: (providerId: string) => void;
@@ -60,6 +60,14 @@ export const ProviderList: React.FC<ProviderListProps> = ({ onIngest, onSelect }
   const deleteProviderMutation = trpc.providers.delete.useMutation({
     onSuccess: () => refetch(),
   });
+  const refreshDataMutation = trpc.dataRefinement.refreshProviderData.useMutation({
+    onSuccess: (data) => {
+      alert(`Successfully refreshed table: ${data.tableName}`);
+    },
+    onError: (err) => {
+      alert(`Failed to refresh: ${err.message}`);
+    }
+  });
 
   if (isLoading) return <div className="text-xs text-gray-500">Loading...</div>;
 
@@ -104,6 +112,20 @@ export const ProviderList: React.FC<ProviderListProps> = ({ onIngest, onSelect }
             >
               <Trash2 size={12} />
             </button>
+            <button 
+              className="btn btn-ghost btn-xs btn-square text-green-400"
+              title="Refresh Data (Recovery)"
+              onClick={(e) => {
+                e.stopPropagation();
+                const tableName = prompt('Enter target table name (e.g., "tgthr", "orouter"):');
+                if (tableName) {
+                  refreshDataMutation.mutate({ providerId: provider.id, targetTableName: tableName });
+                }
+              }}
+            >
+              <RefreshCw size={12} />
+            </button>
+
           </div>
         </div>
       ))}

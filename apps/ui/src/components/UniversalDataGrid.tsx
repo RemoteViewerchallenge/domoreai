@@ -64,7 +64,7 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   );
 
   return (
-    <div className="h-full w-full overflow-auto bg-[#09090b] select-none scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+    <div className="h-full w-full overflow-auto bg-[#09090b] scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
       <table className="w-full text-left border-collapse text-xs font-mono table-fixed">
         <thead className="sticky top-0 bg-zinc-950 z-20 shadow-md ring-1 ring-zinc-800">
           <tr>

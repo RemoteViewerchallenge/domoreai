@@ -8,6 +8,7 @@ import DataLake from './pages/DataLake.js';
 import RoleCreator from './pages/RoleCreator.js';
 import WorkSpace from './pages/WorkSpace.js';
 import Planner from './pages/Planner.js';
+import ProviderRecovery from './pages/ProviderRecovery.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -19,7 +20,11 @@ import { FileSystemProvider } from './stores/FileSystemStore.js';
 function App() {
   return (
     <FileSystemProvider>
-      <div className="App h-screen w-screen overflow-hidden" data-theme="dark">
+      <div className="h-screen w-screen bg-black text-zinc-200 flex flex-col overflow-hidden">
+      {/* DEBUG BANNER */}
+      <div className="bg-purple-600 text-white text-xs font-bold px-2 py-1 text-center">
+        v1.0.5 - DEBUG MODE: UI UPDATED AT {new Date().toLocaleTimeString()}
+      </div>
         <Routes>
           <Route path="/" element={<WorkspaceListPage />} />
           <Route path="/providers" element={<UnifiedProviderPage />} />
@@ -31,7 +36,9 @@ function App() {
           <Route path="/role-creator" element={<RoleCreator />} />
           <Route path="/planner" element={<Planner />} />
           <Route path="/workspace" element={<WorkSpace />} />
+
           <Route path="/workspace-v2" element={<WorkSpace />} />
+          <Route path="/provider-recovery" element={<ProviderRecovery />} />
         </Routes>
       </div>
     </FileSystemProvider>

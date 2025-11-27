@@ -87,7 +87,8 @@ model Role {
   // NEW: Role requirements
   needsTools     Boolean @default(false)
   needsJson      Boolean @default(false)
-  needsUncensored Boolean @default(false) // NEW: Requirement for uncensored model
+  needsUncensored Boolean @default(false)
+  needsImageGeneration Boolean @default(false) // NEW: Requirement for image generation // NEW: Requirement for uncensored model
 
   // Default Hyperparameters (inherited by cards)
   defaultTemperature       Float?   @default(0.7)
@@ -101,6 +102,12 @@ model Role {
 
   // Terminal Security
   terminalRestrictions     Json?    // { mode: "whitelist" | "blacklist", commands: string[] }
+  
+  // Dynamic Registry Criteria (Stores requirements for custom columns)
+  criteria                 Json?    // e.g. { "is_fast": true, "iq_score": { "min": 120 } }
+
+  // Tools Configuration
+  tools                    String[] @default([]) // Array of tool names (e.g. ["git", "postgres"])
 
   // TODO: Add Tool & Task relations later
   preferredModels ModelConfig[] @relation("PreferredModels")

@@ -26,6 +26,13 @@ export class OpenAIProvider implements BaseLLMProvider {
   }
 
   async generateCompletion(request: CompletionRequest): Promise<string> {
+    // Validate model ID is provided
+    if (!request.modelId || request.modelId.trim() === '') {
+      throw new Error(`OpenAIProvider: modelId is required but got: "${request.modelId}"`);
+    }
+
+    console.log(`[OpenAIProvider] Calling API with model: "${request.modelId}"`);
+    
     const response = await this.client.chat.completions.create({
       model: request.modelId,
       messages: request.messages as any,
@@ -43,6 +50,12 @@ export class OpenAIProvider implements BaseLLMProvider {
     await UsageCollector.updateDynamicLimits(this.id, headers);
     
     const json = await response.json();
-    return json.choices[0]?.message?.content || '';
+    const content = json.choices[0]?.message?.content || '';
+    
+    if (!content) {
+      console.warn('[OpenAIProvider] Empty response from model:', json);
+    }
+    
+    return content;
   }
 }

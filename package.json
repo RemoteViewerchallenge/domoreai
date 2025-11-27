@@ -7,7 +7,9 @@
     "dev": "pnpm --parallel --stream run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:push": "prisma db push --schema=apps/api/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=apps/api/prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

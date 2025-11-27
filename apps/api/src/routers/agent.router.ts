@@ -78,8 +78,13 @@ export const agentRouter = createTRPCRouter({
         // 2. Create the Volcano agent
         const agent = await createVolcanoAgent(agentConfig);
 
-        // 3. Create the agent runtime
-        const runtime = await AgentRuntime.create();
+        // 2.5 Fetch Role to get Tools
+        // We need to fetch the role again (or optimize createVolcanoAgent to return it, but separate fetch is cleaner for now)
+        const role = await db.role.findUnique({ where: { id: roleId } });
+        const tools = role?.tools || [];
+
+        // 3. Create the agent runtime with selected tools
+        const runtime = await AgentRuntime.create(undefined, tools);
 
         // 4. Define the LLM callback that uses our Volcano agent
         const llmCallback = async (prompt: string): Promise<string> => {

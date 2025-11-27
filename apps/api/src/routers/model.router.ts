@@ -137,4 +137,54 @@ export const modelRouter = createTRPCRouter({
         return [];
       }
     }),
+  // [NEW] Unified Model List (Aggregates from all dynamic tables)
+  getUnifiedModelList: publicProcedure
+    .query(async ({ ctx }) => {
+      try {
+        // 1. Get all dynamic tables that are registered
+        const tables = await ctx.db.flattenedTable.findMany({
+          select: { name: true }
+        });
+
+        if (tables.length === 0) {
+          return [];
+        }
+
+        // 2. Construct dynamic UNION query
+        // We assume a standard structure or alias columns to match
+        const queries = tables.map(t => {
+          // We try to select common fields. 
+          // Note: This assumes the tables have these columns or we need to be more robust.
+          // For now, we'll try to cast/alias common variations.
+          // In a real scenario, we might check information_schema for columns first.
+          // But for this "hacky" unified list, we'll assume a happy path or use NULLs.
+          
+          // Let's assume the user has standardized them somewhat or we just take what we can.
+          // We'll try to select 'id', 'name' (or 'model_name'), 'context_length' (or 'context_window')
+          // Since we can't easily check columns per table in a single query builder pass without overhead,
+          // we will construct a query that tries to be safe or we accept that it might fail if schemas diverge wildly.
+          
+          // BETTER APPROACH: Just select * and map in JS, but that's heavy.
+          // Let's try to select specific columns and assume they exist because the user created them via our tool.
+          return `SELECT '${t.name}' as source, "id"::text, "name"::text, "context_length"::numeric as context_length FROM "${t.name}"`;
+        });
+
+        const fullQuery = queries.join(' UNION ALL ');
+
+        // 3. Execute
+        const rows = await ctx.db.$queryRawUnsafe(fullQuery) as any[];
+
+        return rows.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          contextLength: Number(row.context_length || 0),
+          source: row.source
+        }));
+
+      } catch (error) {
+        console.error("Failed to fetch unified model list:", error);
+        // Fallback to empty list or handle gracefully
+        return [];
+      }
+    }),
 });
