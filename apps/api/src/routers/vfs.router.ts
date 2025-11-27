@@ -1,72 +1,152 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-// ✅ Import strictly from local trpc.js to preserve Context types
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-// ✅ Import the service (and Type if needed)
 import { vfsSessionService } from '../services/vfsSession.service.js';
 
 export const vfsRouter = createTRPCRouter({
-  // 1. Create Session
-  createSession: publicProcedure
-    .input(z.object({ userId: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      // ctx.vfsSession is now typed correctly!
-      const session = await ctx.vfsSession.createSession(input.userId);
-      return session;
+  
+  // 1. Navigation (Local & Remote)
+  list: publicProcedure
+    .input(z.object({ 
+      cardId: z.string().optional(), 
+      path: z.string().optional().default('.'), 
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .query(async ({ input, ctx }) => {
+       try {
+         const provider = await ctx.vfsSession.getProvider({
+            cardId: input.cardId,
+            provider: input.provider,
+            connectionId: input.connectionId
+         });
+         return await provider.list(input.path);
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'VFS Error',
+         });
+       }
     }),
 
-  // 2. List Files
-  listFiles: publicProcedure
-    .input(z.object({ path: z.string().optional() }))
-    .query(async ({ ctx, input }) => {
-      // Ensure we have a session (simplified check)
-      // In a real app, use protectedProcedure to guarantee auth
-      if (!ctx.auth?.userId) {
-        throw new TRPCError({ code: 'UNAUTHORIZED' });
-      }
-
+  // 2. Mutation: Create Directory
+  mkdir: publicProcedure
+    .input(z.object({ 
+      path: z.string(), 
+      cardId: z.string().optional(),
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
       try {
-        const files = await ctx.vfsSession.listFiles(ctx.auth.userId, input.path || '/');
-        return files;
+         const provider = await ctx.vfsSession.getProvider({
+            cardId: input.cardId,
+            provider: input.provider,
+            connectionId: input.connectionId
+         });
+         await provider.mkdir(input.path);
+         return { success: true };
       } catch (error) {
          throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: error instanceof Error ? error.message : 'File system error',
-        });
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'VFS Error',
+         });
       }
     }),
 
-  // 3. Read File
-  readFile: publicProcedure
-    .input(z.object({ path: z.string() }))
-    .query(async ({ ctx, input }) => {
-      if (!ctx.auth?.userId) throw new TRPCError({ code: 'UNAUTHORIZED' });
-
-      try {
-        const content = await ctx.vfsSession.readFile(ctx.auth.userId, input.path);
-        return { content };
-      } catch (error) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: error instanceof Error ? error.message : 'File not found',
-        });
-      }
+  // 3. Mutation: SSH Connection
+  connectSsh: publicProcedure
+    .input(z.object({ 
+      host: z.string(), 
+      username: z.string(), 
+      privateKey: z.string().optional(),
+      password: z.string().optional(),
+      port: z.number().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+       try {
+         const connectionId = await ctx.vfsSession.createSshConnection(input);
+         return { connectionId };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'SSH Connection Failed',
+         });
+       }
     }),
 
-  // 4. Write File
-  writeFile: publicProcedure
-    .input(z.object({ path: z.string(), content: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (!ctx.auth?.userId) throw new TRPCError({ code: 'UNAUTHORIZED' });
+  // 4. File Transfer (Local <-> Remote)
+  transferFile: publicProcedure
+    .input(z.object({
+      sourcePath: z.string(),
+      destPath: z.string(),
+      direction: z.enum(['upload', 'download']),
+      connectionId: z.string()
+    }))
+    .mutation(async ({ input, ctx }) => {
+       try {
+         // Determine local and remote paths based on direction
+         const localPath = input.direction === 'upload' ? input.sourcePath : input.destPath;
+         const remotePath = input.direction === 'upload' ? input.destPath : input.sourcePath;
+         
+         await ctx.vfsSession.transferFile(input.connectionId, input.direction, localPath, remotePath);
+         return { success: true };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Transfer Failed',
+         });
+       }
+    }),
 
-      try {
-        await ctx.vfsSession.writeFile(ctx.auth.userId, input.path, input.content);
-        return { success: true };
-      } catch (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: error instanceof Error ? error.message : 'Write failed',
-        });
-      }
+    // Basic Read
+    read: publicProcedure
+    .input(z.object({ 
+      path: z.string(), 
+      cardId: z.string().optional(),
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .query(async ({ input, ctx }) => {
+       try {
+         const provider = await ctx.vfsSession.getProvider({
+            cardId: input.cardId,
+            provider: input.provider,
+            connectionId: input.connectionId
+         });
+         const content = await provider.read(input.path);
+         return { content };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Read Failed',
+         });
+       }
+    }),
+
+    // Basic Write
+    write: publicProcedure
+    .input(z.object({ 
+      path: z.string(), 
+      content: z.string(),
+      cardId: z.string().optional(),
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+       try {
+         const provider = await ctx.vfsSession.getProvider({
+            cardId: input.cardId,
+            provider: input.provider,
+            connectionId: input.connectionId
+         });
+         await provider.write(input.path, input.content);
+         return { success: true };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Write Failed',
+         });
+       }
     }),
 });

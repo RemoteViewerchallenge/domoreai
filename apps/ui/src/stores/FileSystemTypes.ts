@@ -4,3 +4,5 @@ export interface VFile {
   type: 'file' | 'dir';
   children?: VFile[];
 }
+
+export type FileSystemProviderType = 'local' | 'ssh';

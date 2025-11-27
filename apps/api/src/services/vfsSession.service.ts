@@ -1,95 +1,117 @@
-import { Volume, createFsFromVolume, type IFs } from 'memfs';
+import { IVfsProvider } from './vfs/IVfsProvider.js';
+import { LocalProvider } from './vfs/LocalProvider.js';
+import { SshProvider } from './vfs/SshProvider.js';
+import Client from 'ssh2-sftp-client';
+import { db as prisma } from '../db.js';
 import crypto from 'crypto';
+import path from 'path';
 
-export class VfsSessionService {
-  private globalVolume: Volume;
-  public readonly fs: IFs; // Expose the memfs instance directly
-  private tokens = new Map<string, { userId: string; rootPath: string }>();
-  private sessions: Map<string, string> = new Map(); // Added for createSession
-
-  constructor() {
-    // Initialize a single, global memfs volume with some default data
-    this.globalVolume = Volume.fromJSON({
-      '/project-a/src/index.js': 'console.log("Hello from Project A!");',
-      '/project-a/README.md': '# Project A',
-      '/project-b/README.md': '# Project B',
-    });
-
-    this.fs = createFsFromVolume(this.globalVolume);
-  }
+export class VfsManager {
+  private sshConnections: Map<string, Client> = new Map();
 
   /**
-   * Generates a token for a user and root path.
+   * Factory method to get the appropriate VFS provider.
    */
-  generateToken(userId: string, vfsRootPath: string): string {
-    const token = Math.random().toString(36).substring(2);
-    this.tokens.set(token, { userId, rootPath: vfsRootPath });
-    return token;
-  }
-
-  /**
-   * Gets the scoped VFS for a token.
-   */
-  getScopedVfs(token: string): IFs | null {
-    if (!this.tokens.has(token)) {
-      return null;
-    }
-    return this.fs;
-  }
-
-  /**
-   * In this new model, we don't return a scoped VFS.
-   * We return the global VFS, and the router will be responsible
-   * for prepending the correct root path to all operations.
-   */
-  getFs(): IFs {
-    return this.fs;
-  }
-
-  // ✅ Add async to satisfy Promise requirement (or remove await in router)
-  async createSession(userId: string) {
-    const sessionId = crypto.randomUUID();
-    this.sessions.set(userId, sessionId);
-    // Initialize mock fs for user if needed
-    if (!this.fs.existsSync(`/${userId}`)) {
-      this.fs.mkdirSync(`/${userId}`);
-    }
-    return { sessionId };
-  }
-
-  async listFiles(userId: string, path: string) {
-    const targetPath = `/${userId}${path}`;
-    if (!this.fs.existsSync(targetPath)) return [];
+  async getProvider(options: { 
+    cardId?: string; 
+    provider: 'local' | 'ssh'; 
+    connectionId?: string;
+    rootPath?: string; // Override for raw local access
+  }): Promise<IVfsProvider> {
     
-    return this.fs.readdirSync(targetPath).map((item) => {
-      let itemName: string;
-      if (typeof item === 'string') {
-        itemName = item;
-      } else if (item instanceof Buffer) {
-        itemName = item.toString();
-      } else {
-        itemName = (item as any).name;
+    if (options.provider === 'local') {
+      let fsRoot = options.rootPath || process.cwd();
+
+      if (options.cardId) {
+        const card = await prisma.workOrderCard.findUnique({
+          where: { id: options.cardId },
+          include: { workspace: true }
+        });
+        
+        if (card) {
+          // The provider root is the workspace root. 
+          // The agent will work relative to this, or we can fence strictly to card.relativePath
+          // For now, let's fence to the workspace root to allow some movement if needed, 
+          // or strictly to the card's path.
+          // The plan says: "Determine the rootPath from the WorkOrderCard."
+          fsRoot = path.resolve(card.workspace.rootPath, card.relativePath);
+        }
       }
-      return {
-        name: itemName,
-        type: this.fs.statSync(`${targetPath}/${itemName}`).isDirectory() ? 'directory' : 'file',
-        path: `${path}/${itemName}`.replace('//', '/'),
-      };
-    });
+
+      return new LocalProvider(fsRoot);
+    } 
+    
+    if (options.provider === 'ssh') {
+      if (!options.connectionId) {
+        throw new Error("Connection ID is required for SSH provider");
+      }
+      const client = this.sshConnections.get(options.connectionId);
+      if (!client) {
+        throw new Error("SSH Session not found or expired");
+      }
+      // For SSH, we can also apply fencing if a card is involved, 
+      // but usually SSH is for the whole remote system unless restricted by the SSH user.
+      // We'll default to '.' (home) or root.
+      return new SshProvider(client, '.');
+    }
+
+    throw new Error(`Unsupported provider: ${options.provider}`);
   }
 
-  async readFile(userId: string, path: string) {
-    const targetPath = `/${userId}${path}`;
-    if (!this.fs.existsSync(targetPath)) throw new Error('File not found');
-    return this.fs.readFileSync(targetPath, 'utf8');
+  async createSshConnection(config: { 
+    host: string; 
+    port?: number; 
+    username: string; 
+    privateKey?: string; 
+    password?: string;
+  }): Promise<string> {
+    const client = new Client();
+    try {
+      await client.connect({
+        host: config.host,
+        port: config.port || 22,
+        username: config.username,
+        privateKey: config.privateKey,
+        password: config.password
+      });
+      
+      const connectionId = crypto.randomUUID();
+      this.sshConnections.set(connectionId, client);
+      
+      // Handle disconnection cleanup
+      client.on('close', () => {
+        this.sshConnections.delete(connectionId);
+      });
+      
+      return connectionId;
+    } catch (error) {
+      console.error("SSH Connection failed:", error);
+      throw error;
+    }
   }
 
-  async writeFile(userId: string, path: string, content: string) {
-    const targetPath = `/${userId}${path}`;
-    this.fs.writeFileSync(targetPath, content);
-    return true;
+  async closeSshConnection(connectionId: string): Promise<void> {
+    const client = this.sshConnections.get(connectionId);
+    if (client) {
+      await client.end();
+      this.sshConnections.delete(connectionId);
+    }
+  }
+
+  async transferFile(connectionId: string, direction: 'upload' | 'download', localPath: string, remotePath: string): Promise<void> {
+    const client = this.sshConnections.get(connectionId);
+    if (!client) {
+      throw new Error("SSH Session not found");
+    }
+    
+    if (direction === 'upload') {
+      await client.fastPut(localPath, remotePath);
+    } else {
+      await client.fastGet(remotePath, localPath);
+    }
   }
 }
 
-// Export a singleton instance of the service
-export const vfsSessionService = new VfsSessionService();
+export const vfsManager = new VfsManager();
+// Export alias for backward compatibility if needed, though we should update callers
+export const vfsSessionService = vfsManager; 

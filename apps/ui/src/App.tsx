@@ -7,6 +7,7 @@ import ModelsPage from './pages/admin/models.js';
 import DataLake from './pages/DataLake.js';
 import RoleCreator from './pages/RoleCreator.js';
 import WorkSpace from './pages/WorkSpace.js';
+import Planner from './pages/Planner.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/workspace/:id" element={<MyWorkspacePage />} />
           <Route path="/data-lake" element={<DataLake />} />
           <Route path="/role-creator" element={<RoleCreator />} />
+          <Route path="/planner" element={<Planner />} />
           <Route path="/workspace" element={<WorkSpace />} />
           <Route path="/workspace-v2" element={<WorkSpace />} />
         </Routes>
