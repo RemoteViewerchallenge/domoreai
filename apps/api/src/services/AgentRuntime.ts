@@ -1,25 +1,20 @@
 import { CodeModeUtcpClient } from '@utcp/code-mode';
 import { terminalTools } from '../tools/terminal.js';
-import { fsTools } from '../tools/filesystem.js';
+import { createFsTools } from '../tools/filesystem.js';
 import { browserTools } from '../tools/browser.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
 
+
 export class AgentRuntime {
   private client!: CodeModeUtcpClient;
+  private fsTools: ReturnType<typeof createFsTools>;
 
-  constructor() {
-    // Initialize the Code Mode Sandbox
-    // Note: CodeModeUtcpClient.create() might be async depending on the library version, 
-    // but usually the client itself is synchronous to instantiate, and connection is async.
-    // Based on the snippet, it seems to be a static async method or we need to await it.
-    // However, constructors cannot be async. We'll use a static factory or an init method.
-    // For now, I'll assume we can instantiate it or use a factory method.
-    // Let's follow the snippet provided: "this.client = await CodeModeUtcpClient.create();"
-    // This implies we need an async init.
+  constructor(rootPath: string = process.cwd()) {
+    this.fsTools = createFsTools(rootPath);
   }
 
-  static async create(): Promise<AgentRuntime> {
-    const runtime = new AgentRuntime();
+  static async create(rootPath?: string): Promise<AgentRuntime> {
+    const runtime = new AgentRuntime(rootPath);
     await runtime.init();
     return runtime;
   }
@@ -50,7 +45,7 @@ export class AgentRuntime {
      return [
         { 
             name: 'read_file', 
-            handler: fsTools.readFile,
+            handler: this.fsTools.readFile,
             description: 'Read a file',
             input_schema: {
                 type: 'object',
@@ -62,7 +57,7 @@ export class AgentRuntime {
         },
         { 
             name: 'write_file', 
-            handler: fsTools.writeFile,
+            handler: this.fsTools.writeFile,
             description: 'Write to a file',
             input_schema: {
                 type: 'object',
@@ -75,7 +70,7 @@ export class AgentRuntime {
         },
         { 
             name: 'list_files', 
-            handler: fsTools.listFiles,
+            handler: this.fsTools.listFiles,
             description: 'List files in a directory',
             input_schema: {
                 type: 'object',

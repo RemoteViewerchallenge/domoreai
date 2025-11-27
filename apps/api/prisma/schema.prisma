@@ -211,3 +211,44 @@ model SavedQuery {
   targetTable String?  // The table this query targets (e.g., "my_free_models")
   updatedAt   DateTime @updatedAt
 }
+
+// Represents a broad scope of work (e.g., a specific repository or project)
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  rootPath  String   // Local path on the host machine
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  cards     WorkOrderCard[]
+}
+
+// Formerly "Session" or generic "Context" - The persisted state of a user's task
+model WorkOrderCard {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  
+  // Fencing Configuration
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  relativePath String   @default(".") // Path relative to Workspace root
+  
+  // Execution Context
+  isRemote    Boolean  @default(false)
+  sshConfigId String?  // Optional relation to saved SSH configs (if we persist them)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Securely store SSH configs (excluding sensitive secrets if possible, or encrypted)
+model SshConfig {
+  id        String   @id @default(cuid())
+  alias     String   // e.g., "Production Server"
+  host      String
+  port      Int      @default(22)
+  username  String
+  // Note: Passwords/Keys should generally be session-based or encrypted via `utils/encryption.ts`
+  createdAt DateTime @default(now())
+}

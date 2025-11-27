@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FileText, Code, FolderTree, MoreHorizontal, Globe, Terminal, FileCode, Settings, Play } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import { FileExplorer } from '../FileExplorer.js'; 
-import { useFileSystem } from '../../stores/FileSystemStore.js';
+import { useFileSystem } from '../../stores/FileSystemContext.js';
 import ResearchBrowser from '../ResearchBrowser.js';
 import TerminalLogViewer from '../TerminalLogViewer.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
@@ -10,6 +10,17 @@ import { trpc } from '../../utils/trpc.js';
 // Removed unused useEditor import
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
+
+interface RoleWithPreferredModels {
+  id: string;
+  name: string;
+  preferredModels?: {
+    model?: {
+      modelId: string;
+    };
+    adjustedParameters?: Record<string, unknown>;
+  }[];
+}
 
 export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
   const { files, createFile, readFile } = useFileSystem();
@@ -49,10 +60,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // We need to find the ModelConfig that matches the selected model (by provider model ID)
   // The role.preferredModels includes model relation.
   // We assume agentConfig.modelId is the provider's model ID (e.g. "gpt-4o")
-  // We cast currentRole to any here because the union type of 'default role' vs 'prisma role' 
-  // makes TS struggle with the 'preferredModels' existence, even though we added it to default.
   // The prisma generate might take a moment to propagate types.
-  const currentModelConfig = (currentRole as any)?.preferredModels?.find((pm: { model?: { modelId: string } }) => pm.model?.modelId === agentConfig.modelId);
+  const currentModelConfig = (currentRole as unknown as RoleWithPreferredModels)?.preferredModels?.find((pm) => pm.model?.modelId === agentConfig.modelId);
   const adjustedParameters = currentModelConfig?.adjustedParameters as Record<string, unknown> | undefined;
 
   // Agent session mutation
@@ -228,7 +237,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           <AgentSettings
             config={{ ...agentConfig, adjustedParameters }}
             availableRoles={roles?.map(r => ({ id: r.id, name: r.name })) || []}
-            availableModels={models?.map((m: { modelId: string; name: string; provider: { type: string }; hasVision: boolean; hasReasoning: boolean; hasCoding: boolean; supportsTools: boolean; isUncensored: boolean; costPer1k: number }) => ({
+            availableModels={models?.map((m: { modelId: string; name: string; provider: { type: string }; hasVision: boolean; hasReasoning: boolean; hasCoding: boolean; supportsTools: boolean; isUncensored: boolean; costPer1k: number | null }) => ({
                 id: m.modelId, // Use provider's model ID
                 name: m.name,
                 provider: m.provider.type,
@@ -239,7 +248,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                 },
                 supportsTools: m.supportsTools,
                 isUncensored: m.isUncensored,
-                costPer1k: m.costPer1k
+                costPer1k: m.costPer1k || undefined
             })) || []}
             onUpdate={setAgentConfig}
           />
