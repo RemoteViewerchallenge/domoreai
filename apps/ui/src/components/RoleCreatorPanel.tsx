@@ -100,11 +100,23 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   }, [registryData, registrySchema]);
 
   // 2. Filter Models based on Criteria AND Capabilities
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['chat']);
+
   const filteredModels = useMemo(() => {
     if (!registryData?.rows) return [];
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return registryData.rows.filter((row: any) => {
+      // Check Type (Default to 'chat' if unknown, unless explicit type column exists)
+      // We assume 'type' column exists or we infer it.
+      const rowType = row.type || row.model_type || 'chat'; 
+      // If rowType is an array (some dbs), check intersection, else check inclusion
+      const typeMatch = Array.isArray(rowType) 
+        ? rowType.some((t: string) => selectedTypes.includes(t))
+        : selectedTypes.includes(rowType);
+
+      if (!typeMatch) return false;
+
       // Check standard context window
       const contextCol = Object.keys(row).find(k => k.includes('context') || k.includes('window'));
       if (contextCol) {
@@ -113,7 +125,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       }
 
       // Check Capabilities (Explicit Mapping)
-      if (formData.needsVision && row['is_vision'] === false) return false;
+      if (formData.needsVision && (row['is_vision'] === false || row['vision'] === false || row['is_multimodal'] === false)) return false;
       if (formData.needsReasoning && row['is_reason'] === false) return false;
       if (formData.needsCoding && row['is_code'] === false) return false;
       if (formData.needsTools && row['supports_tools'] === false) return false;
@@ -143,7 +155,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       }
       return true;
     });
-  }, [registryData, formData]);
+  }, [registryData, formData, selectedTypes]);
 
   // 3. Provider Breakdown
   const providerBreakdown = useMemo(() => {
@@ -220,7 +232,8 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       'context_length', 'context_window', // Main slider
       'is_vision', 'is_code', 'is_reason', 'supports_tools', 'supports_json', 'is_uncensored', // Capabilities
       'max_rpm', 'max_tpm', 'max_rpd', 'max_output_tokens', 'data_source', // Ignored
-      'param_status', 'is_code_unk', 'is_reason_unk', 'underlying_provider', 'supported_params', 'has_image_generation', 'param_size_status', 'is_coding_unknown', 'is_reasoning_unknown', 'is_gen', 'is_free', 'supports_rag' // Ignored/Unknown
+      'param_status', 'is_code_unk', 'is_reason_unk', 'underlying_provider', 'supported_params', 'has_image_generation', 'param_size_status', 'is_coding_unknown', 'is_reasoning_unknown', 'is_gen', 'is_free', 'supports_rag', // Ignored/Unknown
+      'rate_limited', 'rate_limits_known', 'rate_limit_rpm', 'rate_limit_tpm', 'is_open_source', 'cost_tier', 'model_name', 'provider', 'type', 'vision', 'is_multimodal' // New Schema Ignored for Sliders
     ];
     
     // We specifically want sliders for these if they exist
@@ -449,8 +462,28 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
 
           {/* Provider Table */}
           <div className="mt-auto pt-4 border-t border-gray-800">
-            <div className="flex justify-between items-end mb-2">
-               <h3 className="text-[10px] font-bold text-gray-500 uppercase">Model Availability</h3>
+             <div className="flex justify-between items-end mb-2">
+               <div className="flex gap-1">
+                  {['chat', 'embedding', 'coding', 'tts'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        if (selectedTypes.includes(type)) {
+                           if (selectedTypes.length > 1) setSelectedTypes(selectedTypes.filter(t => t !== type));
+                        } else {
+                           setSelectedTypes([...selectedTypes, type]);
+                        }
+                      }}
+                      className={`px-2 py-0.5 text-[10px] uppercase font-bold border rounded transition-all ${
+                        selectedTypes.includes(type) 
+                          ? 'bg-purple-900/50 border-purple-500 text-white' 
+                          : 'bg-transparent border-gray-800 text-gray-500 hover:border-gray-600'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+               </div>
                <span className="text-xl font-bold text-white">{filteredModels.length} <span className="text-xs text-gray-500 font-normal">TOTAL</span></span>
             </div>
             

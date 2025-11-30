@@ -13,7 +13,7 @@ async function main() {
           "rawData" JSONB NOT NULL,
           "ingestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       
-          CONSTRAINT "RawDataLake_pkey" PRIMARY KEY ("id")
+          CONSTRAINT "RawDataLake_pk" PRIMARY KEY ("id")
       );
     `);
     console.log("✅ RawDataLake table created (if it didn't exist).");

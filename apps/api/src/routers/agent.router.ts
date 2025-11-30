@@ -91,29 +91,26 @@ export const agentRouter = createTRPCRouter({
           return await agent.generate(prompt);
         };
 
-        // 5. Start the agent loop (this will execute asynchronously)
-        // In a real implementation, you'd want to:
-        // - Store the session in a database
-        // - Stream results via WebSocket to the specific cardId
-        // - Handle errors and timeouts
+        // 5. Start the agent loop (Synchronous for now to ensure UI update)
         const sessionId = `session-${cardId}-${Date.now()}`;
 
-        // Execute the agent loop in the background
-        runtime.runAgentLoop(userGoal, llmCallback)
-          .then(({ result, logs }) => {
-            console.log(`[Agent Session ${sessionId}] Completed:`, { result, logs });
-            // TODO: Emit completion event via WebSocket to cardId
-          })
-          .catch((error) => {
-            console.error(`[Agent Session ${sessionId}] Error:`, error);
-            // TODO: Emit error event via WebSocket to cardId
-          });
+        // Execute the agent loop and wait for result
+        const { result, logs } = await runtime.runAgentLoop(userGoal, llmCallback);
+        
+        console.log(`[Agent Session ${sessionId}] Completed:`, { result, logs });
 
-        // 6. Return session info immediately
+        // Get the actual model used
+        const usedConfig = agent.getConfig();
+
+        // 6. Return session info and result immediately
         return {
           sessionId,
-          status: 'started' as const,
+          status: 'completed' as const,
           cardId,
+          result,
+          logs,
+          modelId: usedConfig.modelId,
+          providerId: usedConfig.providerId
         };
       } catch (error) {
         console.error('[Agent Router] Failed to start session:', error);

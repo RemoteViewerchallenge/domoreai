@@ -25,7 +25,22 @@ export class UsageCollector {
     try {
       const client = await getRedisClient();
       const limitKey = `ratelimit:${providerConfigId}`;
+      const base = `limit:${providerConfigId}`;
+
+      // 1. Check Dynamic Limits (Smart Rate Limiting from Headers)
+      const [rpmRem, tpmRem] = await client.mGet([`${base}:rpm:current`, `${base}:tpm:current`]);
       
+      // If we have dynamic data, and it says 0 remaining, BLOCK.
+      if (rpmRem !== null && parseInt(rpmRem) <= 0) {
+        console.warn(`Provider ${providerConfigId} rate limited by dynamic header (RPM exhausted).`);
+        return false;
+      }
+      if (tpmRem !== null && parseInt(tpmRem) <= 0) {
+         console.warn(`Provider ${providerConfigId} rate limited by dynamic header (TPM exhausted).`);
+         return false;
+      }
+      
+      // 2. Fallback / Internal Counter
       const current = await client.incr(limitKey);
       
       if (current === 1) {

@@ -44,13 +44,43 @@ export class VolcanoAgent {
           max_tokens: this.config.maxTokens,
         });
       } catch (error) {
+        // SPECIFIC FIX FOR GOOGLE MODELS (via OpenRouter/Others)
+        // Some models reject 'system' role messages with "Developer instruction is not enabled"
+        const errorMessage = (error as any).message || (error as any).error?.message || String(error);
+        const isDevInstructionError = errorMessage.includes("Developer instruction is not enabled");
+        
+        if (isDevInstructionError) {
+             console.warn(`[VolcanoAgent] Model rejected system prompt. Retrying with merged prompt...`);
+             try {
+                 return await this.provider.generateCompletion({
+                    modelId: this.config.modelId,
+                    messages: [
+                        // Merge system prompt into user message
+                        { role: 'user', content: `${this.systemPrompt}\n\n${userGoal}` }
+                    ],
+                    temperature: this.config.temperature,
+                    max_tokens: this.config.maxTokens,
+                 });
+             } catch (retryError) {
+                 console.error(`[VolcanoAgent] Merged prompt retry failed:`, retryError);
+                 // Fall through to standard failover logic
+             }
+        }
+
         console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, error);
         
         // Track failed provider
-        // We assume the provider object has an ID, or we use the one from the model config if possible.
-        // BaseLLMProvider usually has 'id' or 'type'. Let's try to get it safely.
         const providerId = (this.provider as any).id || (this.provider as any).type;
         if (providerId) this.failedProviders.push(providerId);
+
+        // Add backoff for rate limits and server errors
+        const status = (error as any).status;
+        if (status === 429 || status === 500) {
+          const retryAfter = (error as any).headers?.get?.('retry-after') || '2';
+          const waitSeconds = Math.min(parseInt(retryAfter, 10) || 2, 5);
+          console.log(`[VolcanoAgent] Encountered ${status} error. Waiting ${waitSeconds}s before failover.`);
+          await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+        }
 
         // ATTEMPT RECOVERY
         try {
@@ -74,11 +104,19 @@ export class VolcanoAgent {
           // Loop continues and tries again with new provider...
         } catch (retryError) {
           console.error("[VolcanoAgent] Exhaustive fallback failed:", retryError);
-          // If we can't find a replacement, we must re-throw the ORIGINAL error (or a composite one)
           throw new Error(`Agent Execution Failed (Exhausted all options): ${error instanceof Error ? error.message : String(error)}`);
         }
       }
     }
+  }
+
+  public getConfig() {
+      return {
+          modelId: this.config.modelId,
+          providerId: (this.provider as any).id || (this.provider as any).type,
+          temperature: this.config.temperature,
+          maxTokens: this.config.maxTokens
+      };
   }
 }
 
@@ -121,8 +159,27 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     });
     
     if (!model) {
-        // Fallback if DB sync is behind ProviderManager
-        throw new Error(`Model '${cardConfig.modelId}' not found in database.`);
+        // JIT Creation: Model exists in provider but not in DB. Create it now.
+        console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
+        
+        try {
+            model = await db.model.create({
+                data: {
+                    modelId: modelDef.id,
+                    provider: { connect: { id: modelDef.providerId } }, // Connect relation
+                    name: modelDef.name || modelDef.id,
+                    contextWindow: modelDef.contextWindow || 4096, // Default fallback
+                    costPer1k: modelDef.costPer1k || 0,
+                    isFree: modelDef.isFree || false,
+                    providerData: {} // Required by schema
+                    // type: 'chat' // Removed as it causes type error
+                }
+            });
+            console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
+        } catch (createError) {
+             console.error(`[AgentFactory] JIT Creation failed:`, createError);
+             throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
+        }
     }
 
     // Find or Create ModelConfig
@@ -171,7 +228,8 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     provider, 
     role.basePrompt, 
     {
-      modelId: model.modelId,
+      // CRITICAL FIX: Use modelConfig.modelId which is guaranteed to exist
+      modelId: modelConfig.modelId, // WAS: model.modelId (undefined for dynamic selection)
       temperature: safeParams.temperature ?? 0.7,
       maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
     },

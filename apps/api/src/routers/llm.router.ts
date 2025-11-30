@@ -71,12 +71,24 @@ llmRouter.post('/chat/completions', async (req, res) => {
 
             const start = Date.now();
             // b. Execute Request
-            const content = await provider.generateCompletion({
+            const result = await provider.generateCompletion({
                 modelId: model.id,
                 messages: input.messages,
                 temperature: input.temperature,
                 max_tokens: input.max_tokens
             });
+            
+            // Handle new return signature (object with headers) or legacy string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const content = typeof result === 'string' ? result : (result as any).content;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const headers = typeof result === 'object' ? (result as any).headers : {};
+
+            // Update Dynamic Limits (Smart Rate Limiting)
+            if (headers && Object.keys(headers).length > 0) {
+                await UsageCollector.updateDynamicLimits(model.providerConfigId, headers);
+            }
+
             const duration = Date.now() - start;
 
             // Estimate tokens (rough approximation: 4 chars = 1 token)

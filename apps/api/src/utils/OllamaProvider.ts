@@ -26,6 +26,7 @@ export class OllamaProvider implements BaseLLMProvider {
       return models.map((m: any) => ({
         id: m.name,
         name: (m.name || '').replace(':latest', ''),
+        providerId: this.id,
         family: m.details?.family,
         parameter_size: m.details?.parameter_size,
         isFree: true,

@@ -229,10 +229,31 @@ export class AgentRuntime {
     
     // Simple code extraction (regex for ```ts ... ``` or just the whole body if no blocks)
     const codeBlockMatch = responseStr.match(/```(?:typescript|ts|js|javascript)?\n([\s\S]*?)```/);
-    const code = codeBlockMatch ? codeBlockMatch[1] : responseStr;
+    
+    let codeToExecute: string | null = null;
+
+    if (codeBlockMatch) {
+        codeToExecute = codeBlockMatch[1];
+    } else {
+        // SAFETY CHECK: If no code block, only execute if it looks like code.
+        // If it contains markdown bold/italic or doesn't look like code, skip execution.
+        const isMarkdown = /\*\*|__/.test(responseStr); // Simple check for bold
+        // Check for common code keywords at the start of lines
+        const hasCodeKeywords = /^(?:import|const|let|var|function|class|await|system\.)/m.test(responseStr.trim());
+        
+        if (!isMarkdown && hasCodeKeywords) {
+            codeToExecute = responseStr;
+        }
+    }
+
+    if (!codeToExecute) {
+        // Treat as conversational response - DO NOT EXECUTE
+        console.log('[AgentRuntime] No code block found and text looks conversational. Skipping execution.');
+        return { result: responseStr, logs: [] };
+    }
 
     // 2. Execute in Sandbox
-    const { result, logs } = await this.client.callToolChain(code);
+    const { result, logs } = await this.client.callToolChain(codeToExecute);
     
     // 3. Return logs to your UI Terminal
     return { result, logs };
