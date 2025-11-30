@@ -37,9 +37,9 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
     // NOTE: Gemini API models are hardcoded or fetched differently than OpenAI.
     // For simplicity, we hardcode the most common models.
     return [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp', contextWindow: 1000000, isFree: true },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', contextWindow: 1000000, isFree: true },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: false },
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp', contextWindow: 1000000, isFree: true, providerId: this.id },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: false, providerId: this.id },
       // ... others
     ];
   }

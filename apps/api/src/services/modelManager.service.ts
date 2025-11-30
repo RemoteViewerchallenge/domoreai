@@ -112,7 +112,9 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
           query += ` AND "${key}" >= ${min} AND "${key}" <= ${max}`;
         }
       } else if (typeof value === 'string') {
-         query += ` AND "${key}" = '${value.replace(/'/g, "''")}'`; 
+        // Skip empty strings to prevent UUID casting errors and meaningless filters
+        if (value.trim() === '') return;
+        query += ` AND "${key}" = '${value.replace(/'/g, "''")}'`; 
       }
     });
   }
@@ -128,12 +130,12 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
       }
   };
 
-  addCapCheck(columns, role.needsVision, 'is_vision', 'needsVision');
+  addCapCheck(columns, role.needsVision, 'is_vision', 'needsVision', 'vision', 'is_multimodal');
   addCapCheck(columns, role.needsReasoning, 'is_reason', 'needsReasoning');
   addCapCheck(columns, role.needsCoding, 'is_code', 'needsCoding');
   
   // Image Generation Logic
-  const imageCols = ['has_image_generation', 'is_image_generation', 'is_gen'].filter(c => columns.includes(c));
+  const imageCols = ['is_gen', 'is_image_generation'].filter(c => columns.includes(c));
   
   if (imageCols.length > 0) {
       if (role.needsImageGeneration) {
@@ -141,7 +143,7 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
         const checks = imageCols.map(c => `${c} = true`).join(' OR ');
         query += ` AND (${checks})`;
       } else {
-        // MUST NOT have it
+        // MUST NOT have it - CRITICAL: Use is_gen which has actual data
         const checks = imageCols.map(c => `${c} IS NOT TRUE`).join(' AND ');
         query += ` AND (${checks})`;
       }
@@ -157,8 +159,52 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   // E. CRITICAL: Exclude rows with NULL/empty model_id (composite key requirement)
   query += ` AND model_id IS NOT NULL AND model_id != ''`;
   if (columns.includes('provider_id')) {
-    query += ` AND provider_id IS NOT NULL AND provider_id != ''`;
+    // UUID columns cannot be empty strings, only NULL or valid UUIDs
+    query += ` AND provider_id IS NOT NULL`;
   }
+
+  // F. FILTER BY TYPE (Smart Logic with Fallback)
+  const hasTypeCol = columns.includes('type');
+  let typeFilter = '';
+  
+  if (hasTypeCol) {
+      const allowedTypes = ["'chat'", "'text-generation'"];
+      if (role.needsCoding) allowedTypes.push("'coding'", "'code'");
+      if (role.needsImageGeneration) allowedTypes.push("'image'", "'image-generation'");
+      if (role.needsVision) allowedTypes.push("'vision'", "'multimodal'");
+      
+      const typeList = allowedTypes.join(', ');
+      // We construct a specific condition for type filtering
+      typeFilter = ` AND ("type" IN (${typeList}) OR "type" IS NULL)`;
+  }
+
+  // G. FILTER NON-CHAT MODELS (Pattern Matching)
+  const nonChatPatterns = [
+    'veo', 'tts', 'whisper', 'dall-e', 'embedding', 'moderation', 
+    'aqa', 'ideogram', 'hidream', 'seedance', 'imagen'
+  ];
+  const patternChecks = nonChatPatterns.map(p => `LOWER(model_id) LIKE '%${p}%'`).join(' OR ');
+  const patternFilter = ` AND NOT (${patternChecks} OR model_id ILIKE '%-search')`;
+
+  // COMBINED LOGIC:
+  // We want to try to be specific, but if that yields nothing, we might need to relax?
+  // SQL doesn't support "try this, else that" easily in one query without UNION/CTEs.
+  // Instead, let's be PERMISSIVE:
+  // 1. If type column exists, use it to ALLOW specific types OR NULLs.
+  // 2. ALWAYS apply the blacklist (patternFilter) to avoid clearly wrong models (like 'embedding').
+  
+  if (hasTypeCol) {
+      query += typeFilter;
+      // If type is NULL, we MUST check patterns to avoid 'embedding' models that have null type.
+      // If type is 'chat', we trust it and ignore patterns.
+      query += ` AND ("type" IS NOT NULL OR NOT (${patternChecks} OR model_id ILIKE '%-search'))`;
+  } else {
+      query += patternFilter;
+  }
+
+  // H. SAFETY NET: If the user has a "weird" registry where everything is 'unknown' type, 
+  // we might filter everything out.
+  // But for now, let's assume the blacklist is safe.
 
   // 4. Execute & Pick Random (Load Balancing)
   query += ` LIMIT 50`;
@@ -176,7 +222,8 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   const validCandidates = [];
   for (const model of candidates) {
     const modelId = model.model_id || model.id;
-    const providerId = model.provider_id || model.provider || model.data_source;
+    const modelName = model.model_name || model.name || modelId; // Capture name
+    const providerId = model.provider_id || model.provider || model.data_source || model.provider_name; // Added provider_name just in case
     
     // Exclude models with invalid/malformed names
     if (!modelId || typeof modelId !== 'string') {
@@ -241,12 +288,62 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
     return null;
   }
   
-  console.log(`[Model Selection] ✓ Selected: ${finalModelId} from provider ${finalProviderId}`);
+  // Look up provider name for better logging
+  let providerName = finalProviderId;
+  try {
+    const provider = await prisma.providerConfig.findUnique({ 
+      where: { id: finalProviderId },
+      select: { label: true, type: true }
+    });
+    if (provider) {
+      providerName = `${provider.label} (${provider.type})`;
+    }
+  } catch (e) {
+    // Ignore lookup errors, just use ID
+  }
+  
+  // Resolve Provider ID if it's not a UUID (e.g. "OpenRouter" label)
+  let resolvedProviderId = finalProviderId;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalProviderId);
+  
+  if (!isUuid) {
+      console.log(`[Model Selection] Resolving provider label: "${finalProviderId}"`);
+      // Try to find a provider config that matches this label or type
+      const providerConfig = await prisma.providerConfig.findFirst({
+          where: {
+              OR: [
+                  { id: finalProviderId }, // Just in case
+                  { label: { equals: finalProviderId, mode: 'insensitive' } },
+                  { type: { equals: finalProviderId, mode: 'insensitive' } }
+              ],
+              isEnabled: true
+          }
+      });
+      
+      if (providerConfig) {
+          resolvedProviderId = providerConfig.id;
+          console.log(`[Model Selection] Resolved "${finalProviderId}" -> ${resolvedProviderId}`);
+      } else {
+          console.warn(`[Model Selection] Could not resolve provider "${finalProviderId}" to an active provider config.`);
+          // We return it anyway, but AgentFactory will likely fail.
+      }
+  }
+
+  // CRITICAL FIX: The 'model_id' column in the registry seems to be a UUID (internal ID),
+  // while 'model_name' likely holds the actual API model ID (e.g. "gpt-4").
+  // The AgentFactory/VolcanoAgent expects 'modelId' to be the string passed to the API.
+  // So we MUST return 'model_name' as 'modelId'.
+  
+  const apiModelId = selected.model_name || selected.name || selected.model_id; // Prefer name, fallback to ID
+  const internalId = selected.model_id || selected.id; // Keep UUID for reference if needed
+
+  console.log(`[Model Selection] ✓ Selected: ${apiModelId} (Internal: ${internalId}) from ${resolvedProviderId}`);
   
   // Map to standard format expected by AgentFactory
   return {
-    modelId: finalModelId,
-    providerId: finalProviderId,
+    modelId: apiModelId, // This MUST be the API-compatible string
+    internalId: internalId, // Store UUID separately just in case
+    providerId: resolvedProviderId, 
     ...selected
   };
 }

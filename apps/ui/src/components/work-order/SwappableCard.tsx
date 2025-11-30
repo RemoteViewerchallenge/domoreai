@@ -35,7 +35,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // File State
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [content, setContent] = useState('');
-  const [isAiWorking, setIsAiWorking] = useState(false);
+  // REMOVED: const [isAiWorking, setIsAiWorking] = useState(false);
 
   // Agent Configuration (inherits from role, can be overridden per card)
   const [agentConfig, setAgentConfig] = useState<CardAgentState>({
@@ -55,6 +55,16 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // Fetch available models for the settings panel
   const { data: models } = trpc.model.list.useQuery();
 
+  // Set default role if not provided
+  useEffect(() => {
+    if (!agentConfig.roleId && roles) {
+        const defaultRole = roles.find(r => r.name === 'Default Chat Agent');
+        if (defaultRole) {
+            setAgentConfig(prev => ({ ...prev, roleId: defaultRole.id }));
+        }
+    }
+  }, [roles, agentConfig.roleId]);
+
   // Compute adjusted parameters for the current selection
   const currentRole = roles?.find(r => r.id === agentConfig.roleId);
   
@@ -71,20 +81,41 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // Agent session mutation
   const startSessionMutation = trpc.agent.startSession.useMutation({
     onSuccess: (data) => {
-      console.log('[Card] Agent session started:', data);
-      setIsAiWorking(true);
-      // TODO: Listen for WebSocket events for this cardId
+      console.log('[Card] Agent session completed:', data);
+      // setIsAiWorking(false); // No longer needed
+      
+      if (data.result) {
+          // Append the result to the editor content
+          setContent(prev => {
+              const newContent = prev + '\n\n' + data.result;
+              return newContent;
+          });
+      }
+
+      // Lock in the model if it was dynamically selected
+      if (data.modelId) {
+          setAgentConfig(prev => ({
+              ...prev,
+              modelId: data.modelId,
+              isLocked: true // Optional: visually indicate it's locked?
+          }));
+      }
     },
     onError: (err) => {
       console.error('[Card] Failed to start agent session:', err);
       setError(`Failed to start agent: ${err.message}`);
+      // setIsAiWorking(false); // No longer needed
     },
   });
+
+  const isAiWorking = startSessionMutation.isLoading;
 
   // Removed detached Tiptap editor hook
 
   // Run agent function - wrapped in useCallback to stabilize reference
   const handleRunAgent = useCallback(() => {
+    if (isAiWorking) return; // Prevent multiple clicks
+
     // Strip HTML to get plain text prompt
     const tmp = document.createElement("DIV");
     tmp.innerHTML = content;
@@ -101,6 +132,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     }
 
     // Start the agent session
+    // setIsAiWorking(true); // No longer needed
     startSessionMutation.mutate({
       roleId: agentConfig.roleId,
       modelConfig: {
@@ -111,7 +143,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       userGoal: prompt,
       cardId: id,
     });
-  }, [content, agentConfig, startSessionMutation, id]);
+  }, [content, agentConfig, startSessionMutation, id, isAiWorking]);
 
   // Handle Enter key to run agent
   // Handle Enter key is now managed by SmartEditor via onRun prop
@@ -288,7 +320,13 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                   isUncensored: m.isUncensored,
                   costPer1k: m.costPer1k || undefined
               })) || []}
-              onUpdate={setAgentConfig}
+              onUpdate={(newConfig) => {
+                  // If unlocking, reset modelId to null to allow dynamic selection
+                  if (!newConfig.isLocked && agentConfig.isLocked) {
+                      newConfig.modelId = null;
+                  }
+                  setAgentConfig(newConfig);
+              }}
             />
           )}
   

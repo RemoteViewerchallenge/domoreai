@@ -18,7 +18,18 @@ export class OpenAIProvider implements BaseLLMProvider {
   async getModels(): Promise<LLMModel[]> {
     try {
         const list = await this.client.models.list();
-        return list.data.map((m: any) => ({ id: m.id, ...m }));
+        return list.data.map((m: any) => {
+            // OpenRouter specific: Check pricing
+            let isFree = false;
+            if (m.pricing) {
+                const prompt = parseFloat(m.pricing.prompt);
+                const completion = parseFloat(m.pricing.completion);
+                if (prompt === 0 && completion === 0) {
+                    isFree = true;
+                }
+            }
+            return { id: m.id, providerId: this.id, isFree, ...m };
+        });
     } catch (e) {
         console.error("Failed to fetch OpenAI models", e);
         return [];
