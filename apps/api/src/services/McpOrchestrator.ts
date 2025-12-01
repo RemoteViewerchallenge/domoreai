@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { RegistryClient } from './mcp-registry-client.js';
+import { SandboxTool } from '../types.js';
 
 interface ActiveServer {
   client: Client;
@@ -29,44 +30,47 @@ export class McpOrchestrator {
    * Returns a list of tools formatted for the AgentRuntime/CodeMode sandbox.
    * Each tool includes a 'handler' that proxies the call to the actual MCP server.
    */
-  async getToolsForSandbox() {
-    const sandboxTools: any[] = [];
-
-    for (const [serverName, server] of this.activeServers.entries()) {
+  async getToolsForSandbox(): Promise<SandboxTool[]> {
+    const promises = Array.from(this.activeServers.entries()).map(async ([serverName, server]) => {
       try {
         const { tools } = await server.client.listTools();
-
-        const formattedTools = tools.map((tool) => ({
-          name: `${serverName}_${tool.name}`, // Namespacing to prevent collisions
-          description: tool.description,
-          input_schema: tool.inputSchema,
-          // The Magic: Create a closure that calls the MCP tool
-          handler: async (args: any) => {
-            console.log(`[MCP] Calling ${serverName}:${tool.name}`, args);
-            server.lastUsed = Date.now(); // Update activity
-            
-            try {
-              const result = await server.client.callTool({
-                name: tool.name,
-                arguments: args,
-              });
-              
-              // Return the content directly to the agent
-              return result.content;
-            } catch (error: any) {
-              console.error(`[MCP] Tool Execution Failed:`, error);
-              throw new Error(`MCP Tool Error: ${error.message}`);
-            }
-          }
-        }));
-
-        sandboxTools.push(...formattedTools);
+        return tools.map((tool) => this.formatToolForSandbox(serverName, server, tool));
       } catch (error) {
         console.warn(`[Orchestrator] Failed to fetch tools from ${serverName}:`, error);
+        return [];
       }
-    }
+    });
 
-    return sandboxTools;
+    const results = await Promise.all(promises);
+    return results.flat();
+  }
+
+  private formatToolForSandbox(serverName: string, server: ActiveServer, tool: any): SandboxTool {
+    return {
+      name: `${serverName}_${tool.name}`, // Namespacing to prevent collisions
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      // The Magic: Create a closure that calls the MCP tool
+      handler: async (args: any) => {
+        if (process.env.DEBUG_MCP === 'true') {
+          console.log(`[MCP] Calling ${serverName}:${tool.name}`, args);
+        }
+        server.lastUsed = Date.now(); // Update activity
+        
+        try {
+          const result = await server.client.callTool({
+            name: tool.name,
+            arguments: args,
+          });
+          
+          // Return the content directly to the agent
+          return result.content;
+        } catch (error: any) {
+          console.error(`[MCP] Tool Execution Failed:`, error);
+          throw new Error(`MCP Tool Error: ${error.message}`);
+        }
+      }
+    };
   }
 
   private async ensureServerRunning(serverName: string) {
@@ -110,14 +114,18 @@ export class McpOrchestrator {
     }
   }
 
-  private cleanupIdleServers() {
+  private async cleanupIdleServers() {
     const now = Date.now();
     for (const [name, server] of this.activeServers.entries()) {
       if (now - server.lastUsed > this.SHUTDOWN_TIMEOUT) {
         console.log(`[Orchestrator] Shutting down idle server: ${name}`);
-        // Close the client connection (which typically kills the transport/process)
-        server.client.close().catch(e => console.error("Error closing client:", e));
-        this.activeServers.delete(name);
+        try {
+          await server.client.close();
+        } catch (e) {
+          console.error(`[Orchestrator] Error closing client ${name}:`, e);
+        } finally {
+          this.activeServers.delete(name);
+        }
       }
     }
   }

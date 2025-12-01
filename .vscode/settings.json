@@ -25,6 +25,7 @@
     "deepseek",
     "domore",
     "domoreai",
+    "dotenv",
     "flyonui",
     "genai",
     "Groq",
@@ -62,6 +63,7 @@
     "Turborepo",
     "upserts",
     "Utcp",
-    "VITE"
+    "VITE",
+    "vitest"
   ]
 }

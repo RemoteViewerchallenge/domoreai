@@ -3,6 +3,7 @@ import { OpenAIProvider } from './OpenAIProvider.js';
 import { AnthropicProvider } from './AnthropicProvider.js';
 import { GoogleGenAIProvider } from './GoogleGenAIProvider.js';
 import { OllamaProvider } from './OllamaProvider.js';
+import { MistralProvider } from './MistralProvider.js';
 
 export * from './BaseLLMProvider.js';
 
@@ -14,6 +15,8 @@ export class ProviderFactory {
 
     switch (type) {
       // --- GROUP 1: NATIVE PROVIDERS ---
+      case 'mistral':
+        return new MistralProvider(config);
       case 'anthropic':
         return new AnthropicProvider(config);
         

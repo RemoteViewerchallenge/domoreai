@@ -4,12 +4,12 @@ import type { TerminalMessage } from '@repo/common/agent';
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
 
 function isTerminalMessage(obj: unknown): obj is TerminalMessage {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const msg = obj as Record<string, unknown>;
   return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.timestamp === 'string' &&
-    typeof obj.message === 'string' &&
-    ['info', 'warn', 'error', 'command', 'response'].includes(obj.type as string)
+    typeof msg.timestamp === 'string' &&
+    typeof msg.message === 'string' &&
+    ['info', 'warn', 'error', 'command', 'response'].includes(msg.type as string)
   );
 }
 
@@ -48,7 +48,7 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
       }
 
       set({ status: 'connecting' });
-      const socket = new WebSocket(`ws://localhost:4000?token=${vfsToken}`);
+      const socket = new WebSocket(`ws://localhost:4000/vfs?vfs_token=${vfsToken}`);
 
       socket.onopen = () => {
         set({ status: 'connected', socket });

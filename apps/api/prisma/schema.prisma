@@ -259,3 +259,107 @@ model SshConfig {
   // Note: Passwords/Keys should generally be session-based or encrypted via `utils/encryption.ts`
   createdAt DateTime @default(now())
 }
+
+// -----------------------------------------------------------------
+// Orchestration: Defines workflows between roles
+// -----------------------------------------------------------------
+model Orchestration {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // User ID who created this orchestration
+  
+  // Steps in this orchestration (ordered)
+  steps       OrchestrationStep[]
+  
+  // Execution history
+  executions  OrchestrationExecution[]
+  
+  // Tags for categorization
+  tags        String[] @default([])
+  
+  // Enable/disable this orchestration
+  isActive    Boolean  @default(true)
+}
+
+// -----------------------------------------------------------------
+// OrchestrationStep: Individual step in an orchestration
+// -----------------------------------------------------------------
+model OrchestrationStep {
+  id              String   @id @default(cuid())
+  
+  // Relation to parent orchestration
+  orchestrationId String
+  orchestration   Orchestration @relation(fields: [orchestrationId], references: [id], onDelete: Cascade)
+  
+  // Step metadata
+  name            String   // e.g., "Generate Plan", "Execute Code Review"
+  description     String?  @db.Text
+  order           Int      // Execution order (0, 1, 2, ...)
+  
+  // Role assignment
+  roleId          String?  // Optional: Pre-assign a specific role
+  roleName        String?  // Alternative: Role name for dynamic lookup
+  
+  // Control flow
+  stepType        String   @default("sequential") // "sequential", "parallel", "conditional", "loop"
+  
+  // Conditional logic (JSON schema)
+  condition       Json?    // e.g., { "field": "output.confidence", "operator": ">", "value": 0.8 }
+  
+  // Input/Output mapping
+  inputMapping    Json?    // Maps orchestration context to step input, e.g., { "query": "{{context.userQuery}}" }
+  outputMapping   Json?    // Maps step output to orchestration context, e.g., { "plan": "{{output.result}}" }
+  
+  // Retry configuration
+  maxRetries      Int      @default(0)
+  retryDelay      Int?     // Delay in milliseconds between retries
+  
+  // Timeout
+  timeout         Int?     // Timeout in milliseconds
+  
+  // Parallel execution group (for parallel steps)
+  parallelGroup   String?  // Steps with same group ID execute in parallel
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([orchestrationId, order])
+}
+
+// -----------------------------------------------------------------
+// OrchestrationExecution: Tracks execution of orchestrations
+// -----------------------------------------------------------------
+model OrchestrationExecution {
+  id              String   @id @default(cuid())
+  
+  // Relation to orchestration
+  orchestrationId String
+  orchestration   Orchestration @relation(fields: [orchestrationId], references: [id], onDelete: Cascade)
+  
+  // Execution metadata
+  status          String   @default("pending") // "pending", "running", "completed", "failed", "cancelled"
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  // Input and output
+  input           Json     // Initial input to the orchestration
+  output          Json?    // Final output
+  context         Json     @default("{}") // Shared context across steps
+  
+  // Step execution logs
+  stepLogs        Json     @default("[]") // Array of { stepId, status, input, output, duration, error }
+  
+  // Error tracking
+  error           String?  @db.Text
+  
+  // User who triggered this execution
+  userId          String?
+  
+  @@index([orchestrationId, status])
+  @@index([startedAt])
+}

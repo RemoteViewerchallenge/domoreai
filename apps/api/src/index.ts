@@ -7,7 +7,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
-import { db } from './db.js'; 
+import { db, shutdownDb } from './db.js'; 
 import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
@@ -87,7 +87,7 @@ async function startServer() {
     server.close(async () => {
       console.log('HTTP server closed.');      
       wsService.close(); // Assuming WebSocketService has a .close() method
-      await db.$disconnect();
+      await shutdownDb();
       console.log('Database connection closed.');
       process.exit(0);
     });

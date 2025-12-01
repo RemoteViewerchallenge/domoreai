@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Code, FolderTree, MoreHorizontal, Globe, Terminal, FileCode, Settings, Play } from 'lucide-react';
+import { FileText, Code, FolderTree, Globe, Terminal, FileCode, Settings, Play, Paperclip, X } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import { FileExplorer } from '../FileExplorer.js'; 
 import { useFileSystem } from '../../stores/FileSystemContext.js';
+import XtermTerminal from '../XtermTerminal.js';
 import ResearchBrowser from '../ResearchBrowser.js';
-import TerminalLogViewer from '../TerminalLogViewer.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
 import { SimpleErrorModal } from '../SimpleErrorModal.js';
-// Removed unused useEditor import
+import useWebSocketStore from '../../stores/websocket.store.js';
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
 
@@ -24,7 +24,7 @@ interface RoleWithPreferredModels {
 }
 
 export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
-  const { files, createFile, readFile, currentPath, mkdir } = useFileSystem();
+  const { files, createFile, readFile, currentPath, mkdir, navigate, refresh } = useFileSystem();
   
   // Component Type State (for the main view switcher)
   const [type, setType] = useState<ComponentType>('editor');
@@ -35,6 +35,16 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // File State
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [content, setContent] = useState('');
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  // const [logs, setLogs] = useState<TerminalMessage[]>([]); // Use store logs instead
+  const { messages: storeLogs, actions: wsActions, status: wsStatus } = useWebSocketStore();
+  
+  // Connect to WS on mount
+  useEffect(() => {
+      if (wsStatus === 'disconnected') {
+          wsActions.connect('dummy-token'); // In real app, get token from auth
+      }
+  }, [wsStatus, wsActions]);
   // REMOVED: const [isAiWorking, setIsAiWorking] = useState(false);
 
   // Agent Configuration (inherits from role, can be overridden per card)
@@ -82,14 +92,31 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   const startSessionMutation = trpc.agent.startSession.useMutation({
     onSuccess: (data) => {
       console.log('[Card] Agent session completed:', data);
-      // setIsAiWorking(false); // No longer needed
       
+      if (data.logs && data.logs.length > 0) {
+        // Add logs to store
+        data.logs.forEach((msg: string) => {
+            wsActions.addMessage({
+                timestamp: new Date().toISOString(),
+                type: 'info',
+                message: msg
+            });
+        });
+        // Automatically switch to terminal to show what happened
+        setType('terminal');
+      }
+
       if (data.result) {
           // Append the result to the editor content
           setContent(prev => {
               const newContent = prev + '\n\n' + data.result;
               return newContent;
           });
+          
+          // Heuristic: If result looks like a URL, switch to browser
+          if (data.result.trim().startsWith('http')) {
+             setType('browser');
+          }
       }
 
       // Lock in the model if it was dynamically selected
@@ -104,7 +131,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     onError: (err) => {
       console.error('[Card] Failed to start agent session:', err);
       setError(`Failed to start agent: ${err.message}`);
-      // setIsAiWorking(false); // No longer needed
     },
   });
 
@@ -145,14 +171,28 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     });
   }, [content, agentConfig, startSessionMutation, id, isAiWorking]);
 
+  // Handle file attachment
+  const handleAttachFile = useCallback(async (filePath: string) => {
+    try {
+      const fileContent = await readFile(filePath);
+      const attachmentText = `\n\n---\n**Attached File: ${filePath}**\n\`\`\`\n${fileContent}\n\`\`\`\n---\n\n`;
+      setContent(prev => prev + attachmentText);
+      setShowAttachModal(false);
+    } catch (error) {
+      console.error('Failed to attach file:', error);
+      setError(`Failed to attach file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [readFile]);
+
   // Handle Enter key to run agent
   // Handle Enter key is now managed by SmartEditor via onRun prop
 
   // Auto-creation logic
-  const initializedRef = useRef(false);
+  const initializedRef = useRef<string | null>(null);
   
   useEffect(() => {
-    if (initializedRef.current) return;
+    // Only initialize once per card ID
+    if (initializedRef.current === id) return;
     
     const init = async () => {
         // Ensure we have a valid path to work with, defaulting to currentPath from store
@@ -166,33 +206,41 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
             // Assuming mkdir is idempotent or we ignore error.
             await mkdir(agentsDir).catch(() => {}); 
             
-            // Create the file
-            await createFile(autoFileName, `# Card ${id} Workspace\n\nAuto-generated session.`);
-        } catch (e) {
-            console.error("FS Init Error:", e);
+            // Create the file if it doesn't exist
+            // We can check if it exists by trying to read it first? 
+            // Or just try to create and ignore error if it exists (if createFile throws on exist)
+            // But createFile usually overwrites if not careful. 
+            // Let's try to read first.
+            try {
+                const existing = await readFile(autoFileName);
+                if (!activeFile) {
+                    setActiveFile(autoFileName);
+                    setContent(existing);
+                }
+            } catch {
+                // File doesn't exist, create it
+                await createFile(autoFileName, `# Card ${id} Workspace\n\nAuto-generated session.`);
+                if (!activeFile) {
+                    setActiveFile(autoFileName);
+                    setContent(`# Card ${id} Workspace\n\nAuto-generated session.`);
+                }
+            }
+        } catch {
+            console.error("FS Init Error");
         }
         
-        if (!activeFile) {
-          setActiveFile(autoFileName);
-          try {
-            const content = await readFile(autoFileName);
-            setContent(content);
-          } catch (e) {
-            console.error("Failed to read auto-file", e);
-            setContent("// New Session");
-          }
-        }
-        initializedRef.current = true;
+        initializedRef.current = id;
     };
     init();
-  }, [id, createFile, readFile, activeFile, currentPath, mkdir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, currentPath]); // Removed other dependencies to prevent re-runs
 
   // The "Little Button" Menu options
   const menuItems = [
     { id: 'editor', icon: FileText, label: 'Write (Tiptap)' },
     { id: 'code', icon: Code, label: 'Code (Monaco)' },
     { id: 'browser', icon: Globe, label: 'Research (Browser)' },
-    { id: 'terminal', icon: Terminal, label: 'Logs' },
+    { id: 'terminal', icon: Terminal, label: 'Terminal' },
   ];
 
   return (
@@ -218,11 +266,14 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
             ) : (type === 'editor' || type === 'code') ? (
               <>
                 {activeFile?.endsWith('.md') ? <FileText size={14} className="text-cyan-500" /> : <FileCode size={14} className="text-yellow-500" />}
-                <span className="font-bold text-zinc-200">{activeFile || 'Initializing...'}</span>
+                <span className="font-bold text-zinc-200">{activeFile || 'No File Selected'}</span>
               </>
             ) : (
               <>
-                {menuItems.find(m => m.id === type)?.icon({ size: 14 })}
+                {(() => {
+                  const Item = menuItems.find(m => m.id === type);
+                  return Item ? <Item.icon size={14} /> : null;
+                })()}
                 <span className="uppercase tracking-wider font-bold">
                   {menuItems.find(m => m.id === type)?.label}
                 </span>
@@ -234,15 +285,25 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           <div className="flex items-center gap-2">
             {/* Run Button (only show in editor mode) */}
             {viewMode === 'editor' && type === 'editor' && (
-              <button
-                onClick={handleRunAgent}
-                disabled={isAiWorking || !agentConfig.roleId}
-                className="flex items-center gap-1 px-2 py-1 bg-green-900/30 border border-green-700 text-green-400 hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed rounded text-[10px] font-bold uppercase"
-                title="Run Agent (Cmd/Ctrl + Enter)"
-              >
-                <Play size={12} />
-                Run
-              </button>
+              <>
+                <button
+                  onClick={handleRunAgent}
+                  disabled={isAiWorking || !agentConfig.roleId}
+                  className="flex items-center gap-1 px-2 py-1 bg-green-900/30 border border-green-700 text-green-400 hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed rounded text-[10px] font-bold uppercase"
+                  title="Run Agent (Cmd/Ctrl + Enter)"
+                >
+                  <Play size={12} />
+                  Run
+                </button>
+                <button
+                  onClick={() => setShowAttachModal(true)}
+                  className="flex items-center gap-1 px-2 py-1 bg-cyan-900/30 border border-cyan-700 text-cyan-400 hover:bg-cyan-900/50 rounded text-[10px] font-bold uppercase"
+                  title="Attach File from VFS"
+                >
+                  <Paperclip size={12} />
+                  Attach
+                </button>
+              </>
             )}
   
             {/* Settings Button */}
@@ -274,41 +335,36 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
               </div>
             )}
   
-            {/* Component Swapper */}
-            <div className="group relative">
-              <button className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white">
-                <MoreHorizontal size={16} />
-              </button>
-              
-              <div className="absolute right-0 top-full mt-1 w-40 bg-zinc-900 border border-zinc-700 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none group-hover:pointer-events-auto">
-                {menuItems.map((item) => (
-                  <div 
-                    key={item.id}
-                    onClick={() => {
-                      setType(item.id as ComponentType);
-                      setViewMode('editor');
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 cursor-pointer"
-                  >
-                    <item.icon size={14} />
-                    {item.label}
-                  </div>
-                ))}
-              </div>
+            {/* Component Swapper - Now visible buttons */}
+            <div className="flex items-center gap-1 bg-zinc-950 rounded p-0.5 border border-zinc-800">
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setType(item.id as ComponentType);
+                    setViewMode('editor');
+                  }}
+                  className={`p-1 rounded ${type === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  title={item.label}
+                >
+                  <item.icon size={14} />
+                </button>
+              ))}
             </div>
           </div>
         </div>
   
         {/* BODY */}
         <div className="flex-1 min-h-0 relative bg-black">
-          
+
           {/* SETTINGS VIEW */}
           {viewMode === 'settings' && (
-            <AgentSettings
+            <AgentSettings 
               config={{ ...agentConfig, adjustedParameters }}
               availableRoles={roles?.map(r => ({ id: r.id, name: r.name })) || []}
-              availableModels={models?.map((m: { modelId: string; name: string; provider: { type: string }; hasVision: boolean; hasReasoning: boolean; hasCoding: boolean; supportsTools: boolean; isUncensored: boolean; costPer1k: number | null }) => ({
-                  id: m.modelId, // Use provider's model ID
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              availableModels={models?.map((m: any) => ({
+                  id: m.modelId,
                   name: m.name,
                   provider: m.provider.type,
                   capabilities: {
@@ -320,25 +376,35 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                   isUncensored: m.isUncensored,
                   costPer1k: m.costPer1k || undefined
               })) || []}
-              onUpdate={(newConfig) => {
-                  // If unlocking, reset modelId to null to allow dynamic selection
-                  if (!newConfig.isLocked && agentConfig.isLocked) {
-                      newConfig.modelId = null;
-                  }
-                  setAgentConfig(newConfig);
+              onUpdate={setAgentConfig}
+              fileSystem={{
+                currentPath,
+                onNavigate: (path) => navigate(path)
               }}
             />
           )}
   
           {/* EDITOR / CODE VIEW */}
-          {viewMode === 'editor' && (type === 'editor' || type === 'code') && activeFile && (
-            <SmartEditor 
-              fileName={activeFile} 
-              content={content} 
-              onChange={setContent} 
-              isAiTyping={isAiWorking}
-              onRun={handleRunAgent}
-            />
+          {viewMode === 'editor' && (type === 'editor' || type === 'code') && (
+            activeFile ? (
+              <SmartEditor 
+                fileName={activeFile} 
+                content={content} 
+                onChange={setContent} 
+                isAiTyping={isAiWorking}
+                onRun={handleRunAgent}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4">
+                <div className="text-sm">No file selected</div>
+                <button 
+                  onClick={() => setViewMode('files')}
+                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs border border-zinc-700 transition-colors"
+                >
+                  Open File Explorer
+                </button>
+              </div>
+            )
           )}
   
           {/* FILE EXPLORER VIEW */}
@@ -347,6 +413,10 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
               <div className="text-[10px] uppercase text-zinc-500 mb-2 font-bold">Select file for Card {id}</div>
               <FileExplorer 
                 files={files} 
+                currentPath={currentPath}
+                onNavigate={navigate}
+                onCreateFolder={mkdir}
+                onRefresh={refresh}
                 onSelect={async (path) => {
                   setActiveFile(path);
                   try {
@@ -363,8 +433,15 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           )}
   
           {/* OTHER VIEWS */}
-          {viewMode === 'editor' && type === 'browser' && <ResearchBrowser />}
-          {viewMode === 'editor' && type === 'terminal' && <TerminalLogViewer messages={[]} />}
+          {viewMode === 'editor' && type === 'browser' && <ResearchBrowser initialUrl={content.trim().startsWith('http') ? content.trim() : undefined} />}
+          {viewMode === 'editor' && type === 'terminal' && (
+            <XtermTerminal 
+              logs={storeLogs} 
+              onInput={(data) => {
+                wsActions.sendMessage({ command: data });
+              }} 
+            />
+          )}
   
         </div>
         
@@ -378,8 +455,49 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           {isAiWorking && (
             <div className="text-green-400 animate-pulse">● AI Working...</div>
           )}
+          <div className="text-zinc-600 ml-auto">
+            WS: <span className={wsStatus === 'connected' ? 'text-green-500' : 'text-red-500'}>{wsStatus}</span>
+          </div>
         </div>
       </div>
+
+      {/* File Attachment Modal */}
+      {showAttachModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl w-[600px] h-[500px] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+              <h3 className="text-sm font-bold text-zinc-200">Attach File from VFS</h3>
+              <button
+                onClick={() => setShowAttachModal(false)}
+                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* File Explorer */}
+            <div className="flex-1 overflow-hidden p-4">
+              <FileExplorer 
+                files={files}
+                currentPath={currentPath}
+                onNavigate={navigate}
+                onCreateFolder={mkdir}
+                onRefresh={refresh}
+                onSelect={(path) => {
+                  handleAttachFile(path);
+                }}
+                className="h-full"
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 py-3 border-t border-zinc-800 text-xs text-zinc-500">
+              Click on a file to attach it to your chat
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -5,6 +5,7 @@ import { terminalTools } from '../tools/terminal.js';
 import { createFsTools } from '../tools/filesystem.js';
 import { browserTools } from '../tools/browser.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
+import { metaTools } from '../tools/meta.js';
 
 // --- Local Protocol Implementation ---
 
@@ -119,7 +120,7 @@ export class AgentRuntime {
     return runtime;
   }
 
-  private async init(requestedTools: string[]) {
+  private async init(requestedTools: string[], roleId?: string) {
     this.client = await CodeModeUtcpClient.create();
 
     // ONLY setup tools if explicitly requested
@@ -135,9 +136,9 @@ export class AgentRuntime {
     
     // 1. Initialize Orchestrator & Load Servers
     // We assume requestedTools contains server names like 'git', 'postgres'
-    // Filter out native tools from this list before passing to orchestrator
+    // Filter out native tools and 'meta' from this list before passing to orchestrator
     const nativeToolNames = ['read_file', 'write_file', 'list_files', 'browse'];
-    const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t));
+    const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t) && t !== 'meta');
     
     if (serverNames.length > 0) {
         await mcpOrchestrator.prepareEnvironment(serverNames); 
@@ -146,21 +147,26 @@ export class AgentRuntime {
     // 2. Get Dynamic Tools
     const mcpTools = await mcpOrchestrator.getToolsForSandbox();
     
-    // 3. Register "system" namespace with BOTH Native and MCP tools
+    // 3. Register "system" namespace with Native, MCP, and optionally Meta tools
     const nativeTools = this.getNativeTools().filter(t => 
         requestedTools.includes(t.name)
     );
 
+    // 4. Add meta-tools if requested and role has permission
+    const toolsToRegister = [...nativeTools, ...mcpTools];
+    
+    if (requestedTools.includes('meta')) {
+      console.log('[AgentRuntime] Meta-tools requested - adding role and orchestration management tools');
+      toolsToRegister.push(...metaTools);
+    }
+
     await this.client.registerManual({
       name: 'system',
       call_template_type: 'local',
-      tools: [
-        ...nativeTools, 
-        ...mcpTools
-      ]
+      tools: toolsToRegister
     } as any);
     
-    console.log(`Successfully registered manual 'system' with ${nativeTools.length + mcpTools.length} tools.`);
+    console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
   }
 
   private getNativeTools() {

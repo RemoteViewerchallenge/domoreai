@@ -25,7 +25,7 @@ export interface CardAgentState {
   responseFormat?: 'text' | 'json_object'; // Force JSON output
   
   // NEW: Parameter Safety Feedback
-  adjustedParameters?: Record<string, any>;
+  adjustedParameters?: Record<string, unknown>;
 }
 
 interface ModelOption {
@@ -47,15 +47,38 @@ interface AgentSettingsProps {
   availableRoles: { id: string; name: string }[]; 
   availableModels: ModelOption[];
   onUpdate: (newConfig: CardAgentState) => void;
+  fileSystem?: {
+    currentPath: string;
+    onNavigate: (path: string) => void;
+  };
 }
 
-export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate }) => {
+export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate, fileSystem }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAdjustmentDetails, setShowAdjustmentDetails] = useState(false);
 
   return (
     <div className="h-full w-full bg-zinc-950 text-zinc-300 flex flex-col font-mono text-xs p-4 space-y-6">
       
+      {/* 0. WORKSPACE SETTINGS */}
+      {fileSystem && (
+        <div className="space-y-2 border-b border-zinc-900 pb-4">
+          <label className="uppercase text-[10px] font-bold text-zinc-500 tracking-widest">Base Directory</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={fileSystem.currentPath}
+              onChange={(e) => fileSystem.onNavigate(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-zinc-300 focus:ring-cyan-500/50 outline-none font-mono"
+              placeholder="/path/to/workspace"
+            />
+          </div>
+          <p className="text-[10px] text-zinc-600">
+            The root directory for this card's file operations.
+          </p>
+        </div>
+      )}
+
       {/* 1. ROLE ASSIGNMENT */}
       <div className="space-y-2">
         <label className="uppercase text-[10px] font-bold text-zinc-500 tracking-widest">Assigned Role</label>
@@ -175,9 +198,9 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
             <div className="absolute top-6 right-0 w-64 bg-zinc-900 border border-yellow-700/50 rounded p-2 shadow-xl z-10">
                 <h4 className="text-[10px] font-bold text-yellow-500 mb-1">Auto-Adjusted Parameters</h4>
                 <div className="space-y-1">
-                    {Object.entries(config.adjustedParameters).map(([key, val]: [string, any]) => (
+                    {Object.entries(config.adjustedParameters).map(([key, val]) => (
                         <div key={key} className="text-[9px] border-b border-zinc-800 pb-1 last:border-0">
-                            <span className="text-zinc-400 font-bold">{key}:</span> <span className="text-zinc-500">{val.reason}</span>
+                            <span className="text-zinc-400 font-bold">{key}:</span> <span className="text-zinc-500">{(val as { reason?: string })?.reason || String(val)}</span>
                         </div>
                     ))}
                 </div>

@@ -1,15 +1,6 @@
 import { GoogleGenAI, GenerateContentParameters, Part } from '@google/genai';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
 
-// Convert our standard message format to Google's Part format
-function toGoogleParts(messages: any[]): Part[] {
-  // Simple concatenation for now, as the SDK handles role mapping in chat sessions usually,
-  // but for single generation, we might just want the text.
-  // However, for a chat-like structure, we might need to format differently.
-  // The user provided snippet just maps content to text.
-  return messages.map(msg => ({ text: msg.content }));
-}
-
 export class GoogleGenAIProvider implements BaseLLMProvider {
   id: string;
   private client: GoogleGenAI;
@@ -44,24 +35,60 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
     ];
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
-    // The SDK types might have changed slightly, verifying GenerateContentParameters vs GenerateContentRequest
-    // The user snippet used GenerateContentParameters. I will use what was requested but keep in mind type safety.
+  private formatMessages(messages: any[]): { systemInstruction?: string, contents: any[] } {
+    let systemInstruction: string | undefined;
+    const contents: any[] = [];
+
+    // 1. Extract System Prompt (if any)
+    const systemMessages = messages.filter(m => m.role === 'system');
+    if (systemMessages.length > 0) {
+      systemInstruction = systemMessages.map(m => m.content).join('\n');
+    }
+
+    // 2. Format User/Assistant Messages
+    let isFirstUserMessage = true;
     
+    for (const msg of messages) {
+      if (msg.role === 'system') continue; // Handled above
+
+      let content = msg.content;
+      
+      // Merge system prompt into first user message
+      if (isFirstUserMessage && msg.role === 'user' && systemInstruction) {
+        content = `${systemInstruction}\n\n${content}`;
+        systemInstruction = undefined; // Clear it so we don't use it again
+        isFirstUserMessage = false;
+      } else if (msg.role === 'user') {
+        isFirstUserMessage = false;
+      }
+
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: content }]
+      });
+    }
+    
+    return { contents };
+  }
+
+  async generateCompletion(request: CompletionRequest): Promise<string> {
+    const { contents } = this.formatMessages(request.messages);
+
     const params: GenerateContentParameters = { 
       model: request.modelId,
-      contents: toGoogleParts(request.messages),
+      contents: contents,
       config: {
-        // Map our CompletionRequest to the GenAI SDK config
         temperature: request.temperature,
         maxOutputTokens: request.max_tokens,
       },
     };
 
-    const response = await this.client.models.generateContent(params);
-    
-    // Ensure response.text is treated as string, handling potential undefined if needed, 
-    // though the type error said "possibly undefined", usually we expect text.
-    return response.text || "";
+    try {
+      const response = await this.client.models.generateContent(params);
+      return response.text || "";
+    } catch (error: any) {
+      console.error("GoogleGenAIProvider Error:", error);
+      throw error;
+    }
   }
 }
