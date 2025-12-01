@@ -29,3 +29,16 @@ export interface Provider {
   /** An array of models available from this provider. */
   models: any[];
 }
+
+export interface ProviderError extends Error {
+  status?: number;
+  headers?: any; // Using any for headers as they can be complex objects or Maps depending on the library
+  error?: { message: string };
+}
+
+export interface SandboxTool {
+  name: string;
+  description?: string;
+  inputSchema?: any;
+  handler?: (args: any) => Promise<any>;
+}

@@ -206,6 +206,18 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   // we might filter everything out.
   // But for now, let's assume the blacklist is safe.
 
+  // I. STRICT FREE MODE (User Preference)
+  // The user explicitly requested "only want to use free models for now".
+  // We check for 'is_free' column or 'cost' column.
+  if (columns.includes('is_free')) {
+      query += ` AND is_free = true`;
+  } else if (columns.includes('cost')) {
+      query += ` AND cost = 0`;
+  } else if (columns.includes('pricing')) {
+      // Fallback for JSON pricing if needed, but is_free should be populated by ingestion
+      // query += ` AND pricing->>'prompt' = '0'`; 
+  }
+
   // 4. Execute & Pick Random (Load Balancing)
   query += ` LIMIT 50`;
 

@@ -421,6 +421,26 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
               <Wrench size={12} /> Tools
             </h3>
             <div className="grid grid-cols-2 gap-2">
+              {/* Manual Meta Tool Option */}
+              <label className={`flex items-center gap-2 p-2 border rounded cursor-pointer transition-all ${
+                  formData.tools.includes('meta')
+                    ? 'border-red-500 bg-red-900/10 text-red-300 shadow-[0_0_10px_rgba(0,0,0,0.5)] shadow-red-500/20' 
+                    : 'border-gray-800 hover:border-gray-700 text-gray-500'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.tools.includes('meta')}
+                    onChange={(e) => {
+                      const newTools = e.target.checked
+                        ? [...formData.tools, 'meta']
+                        : formData.tools.filter(t => t !== 'meta');
+                      setFormData({ ...formData, tools: newTools, needsTools: newTools.length > 0 });
+                    }}
+                    className="hidden"
+                  />
+                  <span className="font-bold uppercase text-[10px]">SYSTEM: META CONTROL</span>
+              </label>
+
               {toolsList?.map((tool) => (
                 <label key={tool.name} className={`flex items-center gap-2 p-2 border rounded cursor-pointer transition-all ${
                   formData.tools.includes(tool.name)

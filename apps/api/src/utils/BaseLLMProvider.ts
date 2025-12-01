@@ -3,9 +3,14 @@ export interface LLMModel {
   [key: string]: any;
 }
 
+export interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export interface CompletionRequest {
   modelId: string;
-  messages: any[];
+  messages: Message[];
   temperature?: number;
   max_tokens?: number;
 }

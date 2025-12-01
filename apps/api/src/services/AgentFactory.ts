@@ -1,8 +1,9 @@
-import { db } from "../db.js";
+import { AgentConfigRepository } from "../repositories/AgentConfigRepository.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
-import { type BaseLLMProvider } from "../utils/ProviderFactory.js";
+import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
 import { ModelConfigurator } from "./ModelConfigurator.js";
+import { ProviderError } from "../types.js";
 
 // Represents the state of a single Card's brain
 export interface CardAgentState {
@@ -20,7 +21,7 @@ export class VolcanoAgent {
   constructor(
     private provider: BaseLLMProvider,
     private systemPrompt: string,
-    private config: { modelId: string; temperature: number; maxTokens: number },
+    private config: { apiModelId: string; temperature: number; maxTokens: number },
     private roleId: string
   ) {}
 
@@ -33,9 +34,9 @@ export class VolcanoAgent {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        console.log(`[VolcanoAgent] Generating with model: "${this.config.modelId}" on provider ${this.provider.id}`);
+        console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id}`);
         return await this.provider.generateCompletion({
-          modelId: this.config.modelId,
+          modelId: this.config.apiModelId,
           messages: [
             { role: 'system', content: this.systemPrompt },
             { role: 'user', content: userGoal }
@@ -44,39 +45,17 @@ export class VolcanoAgent {
           max_tokens: this.config.maxTokens,
         });
       } catch (error) {
-        // SPECIFIC FIX FOR GOOGLE MODELS (via OpenRouter/Others)
-        // Some models reject 'system' role messages with "Developer instruction is not enabled"
-        const errorMessage = (error as any).message || (error as any).error?.message || String(error);
-        const isDevInstructionError = errorMessage.includes("Developer instruction is not enabled");
-        
-        if (isDevInstructionError) {
-             console.warn(`[VolcanoAgent] Model rejected system prompt. Retrying with merged prompt...`);
-             try {
-                 return await this.provider.generateCompletion({
-                    modelId: this.config.modelId,
-                    messages: [
-                        // Merge system prompt into user message
-                        { role: 'user', content: `${this.systemPrompt}\n\n${userGoal}` }
-                    ],
-                    temperature: this.config.temperature,
-                    max_tokens: this.config.maxTokens,
-                 });
-             } catch (retryError) {
-                 console.error(`[VolcanoAgent] Merged prompt retry failed:`, retryError);
-                 // Fall through to standard failover logic
-             }
-        }
-
-        console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, error);
+        const err = error as ProviderError;
+        console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, err);
         
         // Track failed provider
-        const providerId = (this.provider as any).id || (this.provider as any).type;
+        const providerId = this.provider.id;
         if (providerId) this.failedProviders.push(providerId);
 
         // Add backoff for rate limits and server errors
-        const status = (error as any).status;
+        const status = err.status;
         if (status === 429 || status === 500) {
-          const retryAfter = (error as any).headers?.get?.('retry-after') || '2';
+          const retryAfter = err.headers?.get?.('retry-after') || '2';
           const waitSeconds = Math.min(parseInt(retryAfter, 10) || 2, 5);
           console.log(`[VolcanoAgent] Encountered ${status} error. Waiting ${waitSeconds}s before failover.`);
           await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
@@ -90,7 +69,12 @@ export class VolcanoAgent {
           const nextModel = await getBestModel(this.roleId, this.failedProviders);
           
           // 2. Reconfigure Agent
-          this.config.modelId = nextModel.modelId;
+          // Ensure we don't pick the same failed provider again
+          if (this.failedProviders.includes(nextModel.providerId)) {
+             throw new Error(`Orchestrator returned failed provider ${nextModel.providerId} despite exclusion list.`);
+          }
+
+          this.config.apiModelId = nextModel.modelId;
           this.config.temperature = nextModel.temperature || this.config.temperature;
           this.config.maxTokens = nextModel.maxTokens || this.config.maxTokens;
           
@@ -104,7 +88,7 @@ export class VolcanoAgent {
           // Loop continues and tries again with new provider...
         } catch (retryError) {
           console.error("[VolcanoAgent] Exhaustive fallback failed:", retryError);
-          throw new Error(`Agent Execution Failed (Exhausted all options): ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(`Agent Execution Failed (Exhausted all options). Final Error: ${retryError instanceof Error ? retryError.message : String(retryError)}`);
         }
       }
     }
@@ -112,8 +96,8 @@ export class VolcanoAgent {
 
   public getConfig() {
       return {
-          modelId: this.config.modelId,
-          providerId: (this.provider as any).id || (this.provider as any).type,
+          modelId: this.config.apiModelId,
+          providerId: this.provider.id,
           temperature: this.config.temperature,
           maxTokens: this.config.maxTokens
       };
@@ -122,9 +106,7 @@ export class VolcanoAgent {
 
 export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
   // 1. Load Role Configuration
-  const role = await db.role.findUnique({ 
-    where: { id: cardConfig.roleId } 
-  });
+  const role = await AgentConfigRepository.getRole(cardConfig.roleId);
   
   if (!role) {
     throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
@@ -154,27 +136,15 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     }
 
     // Fetch the Prisma Model
-    model = await db.model.findUnique({
-       where: { providerId_modelId: { providerId: modelDef.providerId, modelId: modelDef.id } }
-    });
+    model = await AgentConfigRepository.getModel(modelDef.providerId, modelDef.id);
     
     if (!model) {
         // JIT Creation: Model exists in provider but not in DB. Create it now.
         console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
         
         try {
-            model = await db.model.create({
-                data: {
-                    modelId: modelDef.id,
-                    provider: { connect: { id: modelDef.providerId } }, // Connect relation
-                    name: modelDef.name || modelDef.id,
-                    contextWindow: modelDef.contextWindow || 4096, // Default fallback
-                    costPer1k: modelDef.costPer1k || 0,
-                    isFree: modelDef.isFree || false,
-                    providerData: {} // Required by schema
-                    // type: 'chat' // Removed as it causes type error
-                }
-            });
+            model = await AgentConfigRepository.createModel(modelDef);
+            console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
             console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
         } catch (createError) {
              console.error(`[AgentFactory] JIT Creation failed:`, createError);
@@ -192,23 +162,18 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     
     // If we want to find the config for THIS role and THIS model:
     // We need to find a ModelConfig that is connected to this Role AND points to this Model.
-    modelConfig = await db.modelConfig.findFirst({
-        where: {
-            modelId: model.id,
-            roles: { some: { id: cardConfig.roleId } }
-        }
-    });
+    // If we want to find the config for THIS role and THIS model:
+    // We need to find a ModelConfig that is connected to this Role AND points to this Model.
+    modelConfig = await AgentConfigRepository.getModelConfig(model.id, cardConfig.roleId);
 
     if (!modelConfig) {
         // Create a new config for this role
-        modelConfig = await db.modelConfig.create({
-            data: {
-                modelId: model.id,
-                providerId: model.providerId,
-                roles: { connect: { id: cardConfig.roleId } },
-                temperature: cardConfig.temperature,
-                maxTokens: cardConfig.maxTokens
-            }
+        modelConfig = await AgentConfigRepository.createModelConfig({
+            modelId: model.id,
+            providerId: model.providerId,
+            roleId: cardConfig.roleId,
+            temperature: cardConfig.temperature,
+            maxTokens: cardConfig.maxTokens
         });
     }
   }
@@ -228,8 +193,8 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     provider, 
     role.basePrompt, 
     {
-      // CRITICAL FIX: Use modelConfig.modelId which is guaranteed to exist
-      modelId: modelConfig.modelId, // WAS: model.modelId (undefined for dynamic selection)
+      // CRITICAL FIX: Use modelConfig.modelId which is guaranteed to exist and matches the API-expected string
+      apiModelId: modelConfig.modelId,
       temperature: safeParams.temperature ?? 0.7,
       maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
     },

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16; // For AES, this is always 16
@@ -8,15 +8,13 @@ const IV_LENGTH = 16; // For AES, this is always 16
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
 
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-  console.warn(
-    'WARNING: ENCRYPTION_KEY is missing or invalid (must be 64 hex chars). Encryption will fail.'
+  throw new Error(
+    'FATAL: ENCRYPTION_KEY is missing or invalid (must be 64 hex chars). Application cannot start safely.'
   );
 }
 
 function getKeyBuffer(): Buffer {
-  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-    throw new Error('Encryption key must be a 64-character hex string');
-  }
+  // Key is guaranteed valid by the check above
   return Buffer.from(ENCRYPTION_KEY, 'hex');
 }
 
@@ -34,15 +32,25 @@ export function encrypt(text: string): string {
 export function decrypt(text: string): string {
   if (!text) return '';
   
-  const textParts = text.split(':');
-  const ivHex = textParts.shift();
-  if (!ivHex) return '';
-  
-  const iv = Buffer.from(ivHex, 'hex');
-  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, getKeyBuffer(), iv);
-  let decrypted = decipher.update(encryptedText);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  try {
+    const textParts = text.split(':');
+    if (textParts.length !== 2) {
+      throw new Error('Invalid encryption format: Expected IV:EncryptedText');
+    }
+    
+    const ivHex = textParts[0];
+    const encryptedHex = textParts[1];
+    
+    const iv = Buffer.from(ivHex, 'hex');
+    const encryptedText = Buffer.from(encryptedHex, 'hex');
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, getKeyBuffer(), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
 
-  return decrypted.toString();
+    return decrypted.toString();
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error('Decryption failed: Invalid key or corrupted data.');
+  }
 }

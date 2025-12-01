@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import type { IncomingMessage } from 'http';
+import { spawn } from 'child_process';
 
 /**
  * Manages the WebSocket server for handling Virtual File System (VFS) operations.
@@ -34,17 +35,112 @@ export class WebSocketService {
         return;
       }
 
-      console.log('VFS session validated for WebSocket client.');
+      console.log('VFS session validated for WebSocket client. Spawning shell...');
 
-      ws.on('message', (message: string) => {
-        console.log('received: %s', message);
-        // Here you would handle messages from the client, e.g., terminal commands
-        // For now, we just echo the message back
-        ws.send(`Echo: ${message}`);
+      // Fallback to raw bash spawn since node-pty failed to build and python3 is missing/broken.
+      // We implement a custom "Line Editor" in TypeScript to simulate PTY behavior (echo, line buffering).
+      const shell = spawn('/bin/bash', [], {
+        env: { ...process.env, TERM: 'xterm-256color' },
+        cwd: process.cwd()
       });
 
-      ws.on('close', () => {
-        console.log('WebSocket client disconnected');
+      // Send a fake prompt on connection (delayed to ensure client is ready)
+      setTimeout(() => {
+        const prompt = '\r\n\x1b[32m$ \x1b[0m';
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                timestamp: new Date().toISOString(),
+                type: 'info',
+                message: prompt
+            }));
+        }
+      }, 100);
+
+      // Handle shell output
+      shell.stdout.on('data', (data) => {
+        ws.send(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          type: 'info',
+          message: data.toString() + '\r\n\x1b[32m$ \x1b[0m' // Append prompt after output
+        }));
+      });
+
+      shell.stderr.on('data', (data) => {
+        ws.send(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          message: data.toString()
+        }));
+      });
+
+      shell.on('exit', (code) => {
+        console.log(`Shell exited with code ${code}`);
+        ws.close();
+      });
+      
+      ws.on('error', (err) => {
+          console.error('WebSocket error:', err);
+      });
+
+      // Line buffer for editing
+      let currentLine = '';
+
+      // Handle incoming messages (input to shell)
+      ws.on('message', (message: string) => {
+        try {
+          const parsed = JSON.parse(message);
+          
+          // Handle resize (ignored for raw spawn)
+          if (parsed.resize) {
+            return;
+          }
+
+          // Handle input
+          const input = parsed.command || parsed;
+          
+          if (typeof input === 'string') {
+             // Implement basic line discipline (Echo + Editing)
+             for (const char of input) {
+               if (char === '\r' || char === '\n') {
+                 // Enter key: Echo newline, send line to shell, clear buffer
+                 ws.send(JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    type: 'info',
+                    message: '\r\n'
+                 }));
+                 shell.stdin.write(currentLine + '\n');
+                 currentLine = '';
+               } else if (char === '\x7f' || char === '\b') {
+                 // Backspace: Remove last char from buffer, echo backspace sequence
+                 if (currentLine.length > 0) {
+                   currentLine = currentLine.slice(0, -1);
+                   // Move back, print space, move back
+                   ws.send(JSON.stringify({
+                      timestamp: new Date().toISOString(),
+                      type: 'info',
+                      message: '\b \b'
+                   }));
+                 }
+               } else if (char >= ' ') {
+                 // Printable character: Add to buffer, echo
+                 currentLine += char;
+                 ws.send(JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    type: 'info',
+                    message: char
+                 }));
+               }
+             }
+          }
+        } catch (e) {
+            // If parse fails, treat as raw string
+            console.error('Failed to parse message:', e);
+        }
+      });
+
+      ws.on('close', (code, reason) => {
+        console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason}`);
+        shell.kill();
       });
     });
   }

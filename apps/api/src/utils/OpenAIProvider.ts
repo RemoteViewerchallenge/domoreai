@@ -44,29 +44,76 @@ export class OpenAIProvider implements BaseLLMProvider {
 
     console.log(`[OpenAIProvider] Calling API with model: "${request.modelId}"`);
     
-    const response = await this.client.chat.completions.create({
-      model: request.modelId,
-      messages: request.messages as any,
-      temperature: request.temperature,
-      max_tokens: request.max_tokens,
-    }).asResponse();
+    try {
+      const response = await this.client.chat.completions.create({
+        model: request.modelId,
+        messages: request.messages as any,
+        temperature: request.temperature,
+        max_tokens: request.max_tokens,
+      }).asResponse();
 
-    // Extract headers
-    const headers: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      headers[key.toLowerCase()] = value;
-    });
+      // Extract headers
+      const headers: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headers[key.toLowerCase()] = value;
+      });
 
-    // Update dynamic limits
-    await UsageCollector.updateDynamicLimits(this.id, headers);
-    
-    const json = await response.json();
-    const content = json.choices[0]?.message?.content || '';
-    
-    if (!content) {
-      console.warn('[OpenAIProvider] Empty response from model:', json);
+      // Update dynamic limits
+      await UsageCollector.updateDynamicLimits(this.id, headers);
+      
+      const json = await response.json();
+      const content = json.choices[0]?.message?.content || '';
+      
+      if (!content) {
+        console.warn('[OpenAIProvider] Empty response from model:', json);
+      }
+      
+      return content;
+    } catch (error: any) {
+      // FIX: Handle Google models on OpenRouter rejecting system prompts
+      const errorMessage = error.message || error.error?.message || String(error);
+      if (errorMessage.includes("Developer instruction is not enabled")) {
+        console.warn(`[OpenAIProvider] Model rejected system prompt. Retrying with merged prompt...`);
+        
+        // Merge system prompt into user message
+        const mergedMessages = this.mergeSystemPrompt(request.messages);
+        
+        const response = await this.client.chat.completions.create({
+          model: request.modelId,
+          messages: mergedMessages as any,
+          temperature: request.temperature,
+          max_tokens: request.max_tokens,
+        }).asResponse();
+        
+        const json = await response.json();
+        return json.choices[0]?.message?.content || '';
+      }
+      throw error;
     }
-    
-    return content;
+  }
+
+  private mergeSystemPrompt(messages: any[]): any[] {
+    const systemMessages = messages.filter(m => m.role === 'system');
+    if (systemMessages.length === 0) return messages;
+
+    const systemPrompt = systemMessages.map(m => m.content).join('\n');
+    const newMessages: any[] = [];
+    let isFirstUserMessage = true;
+
+    for (const msg of messages) {
+      if (msg.role === 'system') continue;
+      
+      if (isFirstUserMessage && msg.role === 'user') {
+        newMessages.push({
+          role: 'user',
+          content: `${systemPrompt}\n\n${msg.content}`
+        });
+        isFirstUserMessage = false;
+      } else {
+        newMessages.push(msg);
+        if (msg.role === 'user') isFirstUserMessage = false;
+      }
+    }
+    return newMessages;
   }
 }

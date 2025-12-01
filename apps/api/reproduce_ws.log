@@ -1,0 +1,45 @@
+Error: connect ECONNREFUSED 127.0.0.1:4000
+Connection timed out
+Error: connect ECONNREFUSED 127.0.0.1:4000
+Connection timed out
+Connected to WebSocket
+Received: "bash: /home/guy/.deno/envexport: No such file or directory\r\n"
+Received: "\u001b]3008;start=629e59f2-a327-4a6f-9edf-d92fce4a2691;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=373696;type=shell;cwd=/home/guy/mono/apps/api\u001b\\"
+Received: "\u001b[?2004h\u001b[32m[guy@fedora api]\u001b[0m "
+Sending ls command...
+Received: "ls\r\n\u001b[?2004l\r"
+Received: "\u001b]3008;start=0598796d-b237-4812-a905-cd79f3b41261;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=373696;type=command;cwd=/home/guy/mono/apps/api\u001b\\"
+Received: "\u001b[0m\u001b[32mbuild_log_2.txt\u001b[0m       \u001b[00mDockerfile\u001b[0m         \u001b[00mrestore_raw_table.ts\u001b[0m\r\n\u001b[32mbuild_log.txt\u001b[0m         \u001b[00meslint.config.mjs\u001b[0m  \u001b[34msrc\u001b[0m\r\n\u001b[00mcheck_db.ts\u001b[0m           \u001b[00minspect_data.ts\u001b[0m    \u001b[00mtest_pty.ts\u001b[0m\r\n\u001b[00mcheck_providers.ts\u001b[0m    \u001b[00mlist_tables.ts\u001b[0m     \u001b[00mtest_script_pty.ts\u001b[0m\r\n\u001b[00mcheck_registry.ts\u001b[0m     \u001b[34mnode_modules\u001b[0m       \u001b[00mtsconfig.json\u001b[0m\r\n\u001b[00mcheck_sdk.ts\u001b[0m          \u001b[01;32mout.log\u001b[0m            \u001b[32mtsc_output_2.txt\u001b[0m\r\n\u001b[00mcheck_type.ts\u001b[0m         \u001b[00mpackage.json\u001b[0m       \u001b[32mtsc_output_3.txt\u001b[0m\r\n\u001b[34mdata\u001b[0m                  \u001b[34mprisma\u001b[0m             \u001b[32mtsc_output.txt\u001b[0m\r\n\u001b[00mdebug_agent_start.ts\u001b[0m  \u001b[32mreproduce_ws.js\u001b[0m    \u001b[00mvitest.config.ts\u001b[0m\r\n\u001b[00mdebug_simple.ts\u001b[0m       \u001b[01;32mreproduce_ws.log\u001b[0m\r\n\u001b[34mdist\u001b[0m                  \u001b[00mrequests.http\u001b[0m\r\n"
+Received: "\u001b]3008;end=0598796d-b237-4812-a905-cd79f3b41261;exit=success\u001b\\"
+Received: "\u001b]3008;start=629e59f2-a327-4a6f-9edf-d92fce4a2691;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=373696;type=shell;cwd=/home/guy/mono/apps/api\u001b\\\u001b[?2004h\u001b[32m[guy@fedora api]\u001b[0m "
+Connected to WebSocket
+Received: "nvm is not compatible with the \"npm_config_prefix\" environment variable: currently set to \"/usr/local\"\r\nRun `unset npm_config_prefix` to unset it.\r\n"
+Received: "bash: /home/guy/.deno/envexport: No such file or directory\r\n"
+Received: "\u001b]3008;start=843fc9e9-de05-46e7-b283-a48c0f6bdd18;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=378053;type=shell;cwd=/home/guy/mono/apps/api\u001b\\"
+Received: "\u001b[?2004h\u001b[32m[guy@fedora api]\u001b[0m "
+Sending ls command...
+Received: "ls\r\n\u001b[?2004l\r"
+Received: "\u001b]3008;start=03b9d7eb-99cd-4200-9708-83f6b30cc72b;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=378053;type=command;cwd=/home/guy/mono/apps/api\u001b\\"
+Received: "\u001b[0m\u001b[32mbuild_log_2.txt\u001b[0m       \u001b[00mDockerfile\u001b[0m         \u001b[00mrestore_raw_table.ts\u001b[0m\r\n\u001b[32mbuild_log.txt\u001b[0m         \u001b[00meslint.config.mjs\u001b[0m  \u001b[34msrc\u001b[0m\r\n\u001b[00mcheck_db.ts\u001b[0m           \u001b[00minspect_data.ts\u001b[0m    \u001b[00mtest_pty.ts\u001b[0m\r\n\u001b[00mcheck_providers.ts\u001b[0m    \u001b[00mlist_tables.ts\u001b[0m     \u001b[00mtest_script_pty.ts\u001b[0m\r\n\u001b[00mcheck_registry.ts\u001b[0m     \u001b[34mnode_modules\u001b[0m       \u001b[00mtsconfig.json\u001b[0m\r\n\u001b[00mcheck_sdk.ts\u001b[0m          \u001b[01;32mout.log\u001b[0m            \u001b[32mtsc_output_2.txt\u001b[0m\r\n\u001b[00mcheck_type.ts\u001b[0m         \u001b[00mpackage.json\u001b[0m       \u001b[32mtsc_output_3.txt\u001b[0m\r\n\u001b[34mdata\u001b[0m                  \u001b[34mprisma\u001b[0m             \u001b[32mtsc_output.txt\u001b[0m\r\n\u001b[00mdebug_agent_start.ts\u001b[0m  \u001b[32mreproduce_ws.js\u001b[0m    \u001b[00mvitest.config.ts\u001b[0m\r\n\u001b[00mdebug_simple.ts\u001b[0m       \u001b[01;32mreproduce_ws.log\u001b[0m\r\n\u001b[34mdist\u001b[0m                  \u001b[00mrequests.http\u001b[0m\r\n"
+Received: "\u001b]3008;end=03b9d7eb-99cd-4200-9708-83f6b30cc72b;exit=success\u001b\\"
+Received: "\u001b]3008;start=843fc9e9-de05-46e7-b283-a48c0f6bdd18;user=guy;hostname=fedora;machineid=34605c8bf6c94113a544f18ee544b01b;bootid=b52f8f23-05ba-4950-9cab-914ee6516eee;pid=378053;type=shell;cwd=/home/guy/mono/apps/api\u001b\\"
+Received: "\u001b[?2004h\u001b[32m[guy@fedora api]\u001b[0m "
+Error: connect ECONNREFUSED 127.0.0.1:4000
+Connection timed out
+Connected to WebSocket
+Sending ls command...
+Received: "build_log_2.txt\nbuild_log.txt\ncheck_db.ts\ncheck_providers.ts\ncheck_registry.ts\ncheck_sdk.ts\ncheck_type.ts\ndata\ndebug_agent_start.ts\ndebug_simple.ts\ndist\nDockerfile\neslint.config.mjs\ninspect_data.ts\nlist_tables.ts\nnode_modules\nout.log\npackage.json\nprisma\nreproduce_ws.js\nreproduce_ws.log\nrequests.http\nrestore_raw_table.ts\nsrc\ntest_bash_i.ts\ntest_pty.ts\ntest_script_pty.ts\ntsconfig.json\ntsc_output_2.txt\ntsc_output_3.txt\ntsc_output.txt\nvitest.config.ts\n"
+Connected to WebSocket
+Received: "\r\n\u001b[32m$ \u001b[0m"
+Sending ls command...
+Received: "l"
+Received: "s"
+Received: "\r\n"
+Received: "build_log_2.txt\nbuild_log.txt\ncheck_db.ts\ncheck_providers.ts\ncheck_registry.ts\ncheck_sdk.ts\ncheck_type.ts\ndata\ndebug_agent_start.ts\ndebug_simple.ts\ndist\nDockerfile\neslint.config.mjs\ninspect_data.ts\nlist_tables.ts\nnode_modules\nout.log\npackage.json\nprisma\nreproduce_ws.js\nreproduce_ws.log\nrequests.http\nrestore_raw_table.ts\nsrc\ntest_bash_i.ts\ntest_pty.ts\ntest_script_pty.ts\ntsconfig.json\ntsc_output_2.txt\ntsc_output_3.txt\ntsc_output.txt\nvitest.config.ts\n\r\n\u001b[32m$ \u001b[0m"
+Connected to WebSocket
+Received: "\r\n\u001b[32m$ \u001b[0m"
+Sending ls command...
+Received: "l"
+Received: "s"
+Received: "\r\n"
+Received: "build_log_2.txt\nbuild_log.txt\ncheck_db.ts\ncheck_providers.ts\ncheck_registry.ts\ncheck_sdk.ts\ncheck_type.ts\ndata\ndebug_agent_start.ts\ndebug_simple.ts\ndist\nDockerfile\neslint.config.mjs\ninspect_data.ts\nlist_tables.ts\nnode_modules\nout.log\npackage.json\nprisma\nreproduce_ws.js\nreproduce_ws.log\nrequests.http\nrestore_raw_table.ts\nsrc\ntest_bash_i.ts\ntest_pty.ts\ntest_script_pty.ts\ntsconfig.json\ntsc_output_2.txt\ntsc_output_3.txt\ntsc_output.txt\nvitest.config.ts\n\r\n\u001b[32m$ \u001b[0m"

@@ -19,7 +19,12 @@ export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     connectionId: sshConnectionId || undefined
   }, {
     keepPreviousData: true,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: false,
+    onError: (err) => {
+        console.error("VFS List Error:", err);
+        // Optional: fallback to a safe path if needed, but for now just stop the loop
+    }
   });
 
   // --- TRPC MUTATIONS ---
