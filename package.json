@@ -9,17 +9,28 @@
     "lint:fix": "turbo run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "db:push": "prisma db push --schema=apps/api/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=apps/api/prisma/schema.prisma"
+    "db:studio": "prisma studio --schema=apps/api/prisma/schema.prisma",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/picomatch": "^4.0.2",
     "cross-env": "^7.0.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^2.8.8",
     "turbo": "latest"
   },
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
     "vscode-ws-jsonrpc": "^3.5.0"
+  },
+  "lint-staged": {
+    "apps/api/**/*.{ts,tsx}": [
+      "eslint --config apps/api/eslint.config.mjs --fix"
+    ],
+    "apps/ui/**/*.{ts,tsx}": [
+      "eslint --config apps/ui/eslint.config.mjs --fix"
+    ]
   }
 }

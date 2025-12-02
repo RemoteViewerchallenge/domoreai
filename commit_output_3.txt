@@ -1,0 +1,89 @@
+🔍 Running Lint on staged files...
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (0599769)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json — 22 files
+[STARTED] apps/api/**/*.{ts,tsx} — 2 files
+[STARTED] apps/ui/**/*.{ts,tsx} — 0 files
+[SKIPPED] apps/ui/**/*.{ts,tsx} — no files
+[STARTED] eslint --config apps/api/eslint.config.mjs --fix
+[COMPLETED] eslint --config apps/api/eslint.config.mjs --fix
+[COMPLETED] apps/api/**/*.{ts,tsx} — 2 files
+[COMPLETED] package.json — 22 files
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[COMPLETED] Applying modifications from tasks...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+🏗️ Running Build...
+
+> mono-repo@1.0.0 build /home/guy/mono
+> turbo run build
+
+turbo 2.6.1
+
+• Packages in scope: @repo/agents, @repo/api-contract, @repo/common, @repo/eslint-config, @repo/mcp-server-vfs, @repo/typescript-config, api, ui
+• Running build in 8 packages
+• Remote caching disabled
+@repo/mcp-server-vfs:build: cache hit, replaying logs 436bfb7e78f1037f
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: > @repo/mcp-server-vfs@1.0.0 build /home/guy/mono/packages/mcp-server-vfs
+@repo/mcp-server-vfs:build: > tsc
+@repo/mcp-server-vfs:build: 
+@repo/agents:build: cache hit, replaying logs 4b3359fe16e22d5b
+@repo/agents:build: 
+@repo/agents:build: 
+@repo/agents:build: > @repo/agents@1.0.0 build /home/guy/mono/packages/agents
+@repo/agents:build: > tsc
+@repo/agents:build: 
+@repo/common:build: cache hit, replaying logs 010e8f23f9c1232d
+@repo/common:build: 
+@repo/common:build: 
+@repo/common:build: > @repo/common@1.0.0 build /home/guy/mono/packages/common
+@repo/common:build: > tsc
+@repo/common:build: 
+@repo/api-contract:build: cache hit, replaying logs 3a336aec3ada70ec
+@repo/api-contract:build: 
+@repo/api-contract:build: 
+@repo/api-contract:build: > @repo/api-contract@1.0.0 build /home/guy/mono/packages/api-contract
+@repo/api-contract:build: > tsc
+@repo/api-contract:build: 
+api:build: cache miss, executing 3a4e07c2692b9407
+api:build: 
+api:build: > api@1.0.0 build /home/guy/mono/apps/api
+api:build: > tsc -b
+api:build: 
+ui:build: cache miss, executing 193d42a13eafa301
+ui:build: 
+ui:build: > ui@0.0.0 build /home/guy/mono/apps/ui
+ui:build: > vite build
+ui:build: 
+ui:build: vite v5.4.21 building for production...
+ui:build: transforming...
+ui:build: 
+ui:build: 🚀   flyonui 1.3.1
+ui:build: ├─ ✔︎ 2 themes added		https://flyonui.com/docs/customization/themes/
+ui:build: ╰─ ★ Star FlyonUI on GitHub		https://github.com/themeselection/flyonui
+ui:build: 
+ui:build: ✓ 164 modules transformed.
+ui:build: x Build failed in 3.05s
+ui:build: error during build:
+ui:build: Could not resolve "../../hooks/useVFS.js" from "src/pages/workspace/[id].tsx"
+ui:build: file: /home/guy/mono/apps/ui/src/pages/workspace/[id].tsx
+ui:build:     at getRollupError (file:///home/guy/mono/node_modules/.pnpm/rollup@4.53.2/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+ui:build:     at error (file:///home/guy/mono/node_modules/.pnpm/rollup@4.53.2/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+ui:build:     at ModuleLoader.handleInvalidResolvedId (file:///home/guy/mono/node_modules/.pnpm/rollup@4.53.2/node_modules/rollup/dist/es/shared/node-entry.js:21576:24)
+ui:build:     at file:///home/guy/mono/node_modules/.pnpm/rollup@4.53.2/node_modules/rollup/dist/es/shared/node-entry.js:21536:26
+ui:build:  ELIFECYCLE  Command failed with exit code 1.
+ui:build: ERROR: command finished with error: command (/home/guy/mono/apps/ui) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+ui#build: command (/home/guy/mono/apps/ui) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+
+ Tasks:    5 successful, 6 total
+Cached:    4 cached, 6 total
+  Time:    4.937s 
+Failed:    ui#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.
+husky - pre-commit script failed (code 1)
