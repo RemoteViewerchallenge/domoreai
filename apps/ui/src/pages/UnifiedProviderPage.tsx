@@ -5,18 +5,18 @@ import { Database, ArrowRight } from 'lucide-react';
 
 const UnifiedProviderPage: React.FC = () => {
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-base-300 text-base-content">
-      {/* Navigation Header */}
-      <div className="flex-none h-12 px-4 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between">
+    <div className="flex flex-col h-full overflow-hidden bg-black text-zinc-200">
+      {/* Page Header */}
+      <div className="flex-none h-10 px-4 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Database className="text-cyan-500" size={16} />
-          <span className="text-lg font-bold tracking-wider text-zinc-200">DATA ENGINEERING NODE</span>
+          <span className="text-sm font-bold tracking-wider uppercase">Providers</span>
         </div>
         <Link 
           to="/data-lake"
-          className="flex items-center gap-2 px-3 py-1.5 bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-700 rounded transition-all text-xs"
+          className="flex items-center gap-2 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-all text-xs font-bold uppercase shadow-[0_0_15px_rgba(6,182,212,0.6)]"
         >
-          Go to Data Lake <ArrowRight size={14} />
+          Data Lake <ArrowRight size={14} />
         </Link>
       </div>
       

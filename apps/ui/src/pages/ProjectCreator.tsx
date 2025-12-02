@@ -63,17 +63,17 @@ const ProjectCreator: React.FC = () => {
   return (
     <div className="h-full w-full bg-black overflow-hidden flex flex-col font-mono text-gray-100">
       {/* Header */}
-      <div className="flex-none h-12 bg-zinc-950 border-b border-purple-900/50 flex items-center justify-between px-4">
+      <div className="flex-none h-10 bg-zinc-950 border-b border-purple-900/50 flex items-center justify-between px-4">
         <span className="text-sm font-bold text-white uppercase tracking-widest">
           Create New Project
         </span>
         <button
           onClick={handleSaveProject}
           disabled={createProjectMutation.isLoading}
-          className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded shadow-lg shadow-purple-900/20 transition-all text-xs"
+          className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded shadow-[0_0_15px_rgba(168,85,247,0.6)] transition-all text-xs"
         >
           <Save size={14} />
-          {createProjectMutation.isLoading ? 'Saving...' : 'Save Project'}
+          {createProjectMutation.isLoading ? 'Saving...' : 'Save'}
         </button>
       </div>
 

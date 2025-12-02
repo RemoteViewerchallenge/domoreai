@@ -47,6 +47,7 @@
     "mydb",
     "mypassword",
     "myuser",
+    "networkidle",
     "Ollama",
     "openrouter",
     "openrouterfree",
