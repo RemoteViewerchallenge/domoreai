@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { IVfsProvider, FileEntry } from './IVfsProvider.js';
+import { emitFileWriteEvent } from './events.js';
 
 export class LocalProvider implements IVfsProvider {
   private rootPath: string;
@@ -38,11 +39,16 @@ export class LocalProvider implements IVfsProvider {
     return fs.readFile(fullPath, 'utf-8');
   }
 
-  async write(filePath: string, content: string): Promise<void> {
+  async write(filePath: string, content: string | Buffer): Promise<void> {
     const fullPath = this.resolvePath(filePath);
+    const contentBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf-8');
+
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, content, 'utf-8');
+    await fs.writeFile(fullPath, contentBuffer);
+
+    // Emit the file write event for ingestion
+    emitFileWriteEvent(this, filePath, contentBuffer);
   }
 
   async mkdir(dirPath: string): Promise<void> {

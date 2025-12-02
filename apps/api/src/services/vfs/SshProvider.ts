@@ -1,6 +1,7 @@
 import Client from 'ssh2-sftp-client';
 import path from 'path';
 import { IVfsProvider, FileEntry } from './IVfsProvider.js';
+import { emitFileWriteEvent } from './events.js';
 
 export class SshProvider implements IVfsProvider {
   private client: Client;
@@ -38,9 +39,10 @@ export class SshProvider implements IVfsProvider {
     throw new Error('Unexpected return type from sftp.get');
   }
 
-  async write(filePath: string, content: string): Promise<void> {
+  async write(filePath: string, content: string | Buffer): Promise<void> {
     const fullPath = this.resolvePath(filePath);
     const dir = path.posix.dirname(fullPath);
+    const contentBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf-8');
     
     // Ensure directory exists
     const dirExists = await this.client.exists(dir);
@@ -48,7 +50,10 @@ export class SshProvider implements IVfsProvider {
         await this.client.mkdir(dir, true);
     }
     
-    await this.client.put(Buffer.from(content), fullPath);
+    await this.client.put(contentBuffer, fullPath);
+
+    // Emit the file write event for ingestion
+    emitFileWriteEvent(this, filePath, contentBuffer);
   }
 
   async mkdir(dirPath: string): Promise<void> {
