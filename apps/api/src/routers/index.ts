@@ -12,8 +12,10 @@ import { orchestratorRouter } from './orchestrator.router.js';
 import { orchestrationManagementRouter } from './orchestrationManagement.router.js';
 import { usageRouter } from './usage.router.js';
 import { browserRouter } from './browser.router.js';
+import { projectRouter } from './project.router.js';
 
 export const appRouter = createTRPCRouter({
+  project: projectRouter,
   git: gitRouter,
   providers: providerRouter,
   role: roleRouter,

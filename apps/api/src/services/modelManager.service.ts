@@ -1,5 +1,18 @@
 import { PrismaClient } from '@prisma/client';
-import type { RawProviderOutput } from './modelManager.mocks.ts';
+// import type { RawProviderOutput } from './modelManager.mocks.ts';
+
+// Define a basic interface for the expected data structure.
+interface RawProviderOutput {
+  modelConfigId: string;
+  roleId: string;
+  userId: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+  cost?: number;
+  [key: string]: any; // Allow for other unknown properties
+}
 
 // This would be your singleton Prisma client, passed in or imported
 const prisma = new PrismaClient();
