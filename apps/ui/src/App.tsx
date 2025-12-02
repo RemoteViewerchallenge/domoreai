@@ -6,8 +6,10 @@ import WorkspaceListPage from './pages/WorkspaceList.js';
 import ModelsPage from './pages/admin/models.js';
 import DataLake from './pages/DataLake.js';
 import RoleCreator from './pages/RoleCreator.js';
+import ProjectCreator from './pages/ProjectCreator.js';
+import ProjectsDashboard from './pages/ProjectsDashboard.js';
+import ProjectPage from './pages/ProjectPage.js';
 import WorkSpace from './pages/WorkSpace.js';
-import Planner from './pages/Planner.js';
 import ProviderRecovery from './pages/ProviderRecovery.js';
 import './App.css';
 
@@ -26,7 +28,8 @@ function App() {
         v1.0.5 - DEBUG MODE: UI UPDATED AT {new Date().toLocaleTimeString()}
       </div>
         <Routes>
-          <Route path="/" element={<WorkspaceListPage />} />
+          <Route path="/" element={<ProjectsDashboard />} />
+          <Route path="/projects" element={<ProjectsDashboard />} />
           <Route path="/providers" element={<UnifiedProviderPage />} />
           <Route path="/admin/models" element={<ModelsPage />} />
           <Route path="/admin/models" element={<ModelsPage />} />
@@ -34,7 +37,8 @@ function App() {
           <Route path="/workspace/:id" element={<MyWorkspacePage />} />
           <Route path="/data-lake" element={<DataLake />} />
           <Route path="/role-creator" element={<RoleCreator />} />
-          <Route path="/planner" element={<Planner />} />
+          <Route path="/project-creator" element={<ProjectCreator />} />
+          <Route path="/project/:id" element={<ProjectPage />} />
           <Route path="/workspace" element={<WorkSpace />} />
 
           <Route path="/workspace-v2" element={<WorkSpace />} />
