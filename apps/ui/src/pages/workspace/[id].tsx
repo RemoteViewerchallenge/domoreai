@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom';
 
 import { GitControls } from '../../components/GitControls.js';
 import { FileExplorer } from '../../components/FileExplorer.js';
-import { MonacoEditor } from '../../components/MonacoEditor.js';
+import MonacoEditor from '../../components/MonacoEditor.js';
 import { useVFS } from '../../hooks/useVFS.js';
 import { useEffect, useState } from 'react';
 import { Panel } from '../../components/ui/Panel.js';

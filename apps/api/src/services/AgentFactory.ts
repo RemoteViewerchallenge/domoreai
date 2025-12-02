@@ -1,5 +1,5 @@
 import { AgentConfigRepository } from "../repositories/AgentConfigRepository.js";
-import { loadSOP } from "../../../packages/agents/src/utils/SOPLoader.js";
+import { loadSOP } from "@repo/agents";
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
 import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
@@ -32,7 +32,7 @@ export class VolcanoAgent {
    * NOW WITH EXHAUSTIVE FALLBACK!
    */
   async generate(userGoal: string): Promise<string> {
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       try {
         console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id}`);

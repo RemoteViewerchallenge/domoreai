@@ -1,4 +1,4 @@
-import path from 'path';
+import * as path from 'path';
 
 const searchInFile = async (fs: any, filePath: string, query: string): Promise<boolean> => {
   try {

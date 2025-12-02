@@ -250,7 +250,7 @@ export async function saveQueryResults(
   `);
 
   // 4. Insert the results
-  for (const row of results as any[]) {
+  for (const row of results) {
     const columnNames = columns.map(col => `"${col.name}"`).join(', ');
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
     const values = columns.map(col => row[col.originalName] ?? null);

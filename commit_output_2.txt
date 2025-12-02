@@ -1,0 +1,63 @@
+🔍 Running Lint on staged files...
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (b4fbd97)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json — 16 files
+[STARTED] apps/api/**/*.{ts,tsx} — 1 file
+[STARTED] apps/ui/**/*.{ts,tsx} — 0 files
+[SKIPPED] apps/ui/**/*.{ts,tsx} — no files
+[STARTED] eslint --config apps/api/eslint.config.mjs --fix
+[COMPLETED] eslint --config apps/api/eslint.config.mjs --fix
+[COMPLETED] apps/api/**/*.{ts,tsx} — 1 file
+[COMPLETED] package.json — 16 files
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[COMPLETED] Applying modifications from tasks...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+🏗️ Running Build...
+
+> mono-repo@1.0.0 build /home/guy/mono
+> turbo run build
+
+turbo 2.6.1
+
+• Packages in scope: @repo/api-contract, @repo/common, @repo/eslint-config, @repo/mcp-server-vfs, @repo/typescript-config, api, ui
+• Running build in 7 packages
+• Remote caching disabled
+@repo/common:build: cache hit, replaying logs 010e8f23f9c1232d
+@repo/common:build: 
+@repo/common:build: 
+@repo/common:build: > @repo/common@1.0.0 build /home/guy/mono/packages/common
+@repo/common:build: > tsc
+@repo/common:build: 
+@repo/mcp-server-vfs:build: cache hit, replaying logs 436bfb7e78f1037f
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: > @repo/mcp-server-vfs@1.0.0 build /home/guy/mono/packages/mcp-server-vfs
+@repo/mcp-server-vfs:build: > tsc
+@repo/mcp-server-vfs:build: 
+@repo/api-contract:build: cache hit, replaying logs 3a336aec3ada70ec
+@repo/api-contract:build: 
+@repo/api-contract:build: 
+@repo/api-contract:build: > @repo/api-contract@1.0.0 build /home/guy/mono/packages/api-contract
+@repo/api-contract:build: > tsc
+@repo/api-contract:build: 
+api:build: cache miss, executing af5c2e473620c47c
+api:build: 
+api:build: > api@1.0.0 build /home/guy/mono/apps/api
+api:build: > tsc -b
+api:build: 
+api:build: src/services/AgentFactory.ts(2,25): error TS2307: Cannot find module '../../../packages/agents/src/utils/SOPLoader.js' or its corresponding type declarations.
+api:build:  ELIFECYCLE  Command failed with exit code 1.
+api:build: ERROR: command finished with error: command (/home/guy/mono/apps/api) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+api#build: command (/home/guy/mono/apps/api) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+
+ Tasks:    3 successful, 4 total
+Cached:    3 cached, 4 total
+  Time:    8.388s 
+Failed:    api#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.
+husky - pre-commit script failed (code 1)
