@@ -1,4 +1,5 @@
 import { AgentConfigRepository } from "../repositories/AgentConfigRepository.js";
+import { loadSOP } from "../../../packages/agents/src/utils/SOPLoader.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
 import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
@@ -189,9 +190,16 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
   }
 
   // 5. Return the Configured Agent
+  let basePrompt: string;
+  try {
+    basePrompt = await loadSOP(role.name, {});
+  } catch (error) {
+    console.warn(`[AgentFactory] SOP for role "${role.name}" not found. Falling back to default.`);
+    basePrompt = await loadSOP('default', {});
+  }
   return new VolcanoAgent(
-    provider, 
-    role.basePrompt, 
+    provider,
+    basePrompt,
     {
       // CRITICAL FIX: Use modelConfig.modelId which is guaranteed to exist and matches the API-expected string
       apiModelId: modelConfig.modelId,
