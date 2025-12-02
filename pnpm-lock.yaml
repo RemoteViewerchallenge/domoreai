@@ -69,6 +69,9 @@ importers:
       '@repo/common':
         specifier: workspace:*
         version: link:../../packages/common
+      '@repo/mcp-server-vfs':
+        specifier: workspace:*
+        version: link:../../packages/mcp-server-vfs
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.2
@@ -385,6 +388,19 @@ importers:
       eslint-config-turbo:
         specifier: ^2.0.4
         version: 2.6.1(eslint@8.57.1)(turbo@2.6.1)
+
+  packages/mcp-server-vfs:
+    dependencies:
+      memfs:
+        specifier: ^4.51.0
+        version: 4.51.0
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   packages/typescript-config: {}
 

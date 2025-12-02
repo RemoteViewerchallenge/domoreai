@@ -6,6 +6,8 @@ import { createFsTools } from '../tools/filesystem.js';
 import { browserTools } from '../tools/browser.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
 import { metaTools } from '../tools/meta.js';
+import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
+import { vfsSessionService } from './vfsSession.service.js';
 
 // --- Local Protocol Implementation ---
 
@@ -109,8 +111,10 @@ CallTemplateSerializer.registerCallTemplate('local', new LocalCallTemplateSerial
 export class AgentRuntime {
   private client!: CodeModeUtcpClient;
   private fsTools: ReturnType<typeof createFsTools>;
+  private rootPath: string;
 
   constructor(rootPath: string = process.cwd()) {
+    this.rootPath = rootPath;
     this.fsTools = createFsTools(rootPath);
   }
 
@@ -218,6 +222,34 @@ export class AgentRuntime {
                     url: { type: 'string' }
                 },
                 required: ['url']
+            }
+        },
+        {
+            name: 'search_codebase',
+            handler: async (args: { query:string }) => {
+                const fs = await vfsSessionService.getProvider({ provider: 'local', rootPath: this.rootPath });
+                return searchCodebase(fs, args.query);
+            },
+            description: 'Search the codebase for a string',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string' }
+                },
+                required: ['query']
+            }
+        },
+        {
+            name: 'list_files_tree',
+            handler: async () => {
+                const fs = await vfsSessionService.getProvider({ provider: 'local', rootPath: this.rootPath });
+                return listFilesTree(fs, '/');
+            },
+            description: 'List files in a tree structure',
+            input_schema: {
+                type: 'object',
+                properties: {},
+                required: []
             }
         }
      ];
