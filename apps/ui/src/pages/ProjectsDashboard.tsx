@@ -16,17 +16,17 @@ const ProjectsDashboard: React.FC = () => {
   return (
     <div className="h-full w-full bg-black overflow-hidden flex flex-col font-mono">
       {/* Header */}
-      <div className="flex-none h-12 bg-zinc-950 border-b border-purple-900/50 flex items-center justify-between px-4">
+      <div className="flex-none h-10 bg-zinc-950 border-b border-purple-900/50 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <LayoutGrid className="text-purple-400" size={18} />
-          <span className="text-sm font-bold text-white uppercase tracking-widest">Projects Dashboard</span>
+          <LayoutGrid className="text-purple-400" size={16} />
+          <span className="text-sm font-bold text-white uppercase tracking-widest">Projects</span>
         </div>
         <Link
           to="/project-creator"
-          className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/30 border border-purple-500 text-purple-300 hover:bg-purple-900/50 hover:text-white transition-all uppercase tracking-wider text-xs font-bold"
+          className="flex items-center gap-2 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white transition-all uppercase tracking-wider text-xs font-bold rounded shadow-[0_0_15px_rgba(168,85,247,0.6)]"
         >
           <Plus size={14} />
-          New Project
+          New
         </Link>
       </div>
 
@@ -47,7 +47,8 @@ const ProjectsDashboard: React.FC = () => {
 
         {projects && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {projects.map((project) => {
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {projects.map((project: any) => {
               const statusStyle = statusConfig[project.status as keyof typeof statusConfig] || statusConfig.not_started;
               return (
                 <Link to={`/project/${project.id}`} key={project.id} className="block bg-zinc-950 border border-zinc-800 hover:border-purple-900/50 transition-all p-4 rounded-lg">

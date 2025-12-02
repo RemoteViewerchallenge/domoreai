@@ -9,6 +9,7 @@ import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js
 import { trpc } from '../../utils/trpc.js';
 import { SimpleErrorModal } from '../SimpleErrorModal.js';
 import useWebSocketStore from '../../stores/websocket.store.js';
+import { getNeonColorForPath, NEON_BUTTON_COLORS } from '../../utils/neonTheme.js';
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
 
@@ -47,27 +48,31 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   }, [wsStatus, wsActions]);
   // REMOVED: const [isAiWorking, setIsAiWorking] = useState(false);
 
-  // Agent Configuration (inherits from role, can be overridden per card)
-  const [agentConfig, setAgentConfig] = useState<CardAgentState>({
-    roleId: roleId || '',
-    modelId: null,
-    isLocked: false,
-    temperature: 0.7,
-    maxTokens: 2048,
-    topP: 1.0,
-    frequencyPenalty: 0.0,
-    presencePenalty: 0.0,
-  });
-
   // Fetch available roles for the settings panel
   const { data: roles } = trpc.role.list.useQuery();
   
   // Fetch available models for the settings panel
   const { data: models } = trpc.model.list.useQuery();
 
-  // Set default role if not provided
+  // Agent Configuration (inherits from role, can be overridden per card)
+  const [agentConfig, setAgentConfig] = useState<CardAgentState>(() => {
+    // Try to set Default Chat Agent immediately if roles are cached
+    const defaultRole = roles?.find(r => r.name === 'Default Chat Agent');
+    return {
+      roleId: roleId || defaultRole?.id || '',
+      modelId: null,
+      isLocked: false,
+      temperature: 0.7,
+      maxTokens: 2048,
+      topP: 1.0,
+      frequencyPenalty: 0.0,
+      presencePenalty: 0.0,
+    };
+  });
+
+  // Set default role to "Default Chat Agent" when roles load
   useEffect(() => {
-    if (!agentConfig.roleId && roles) {
+    if (roles && roles.length > 0 && !agentConfig.roleId) {
         const defaultRole = roles.find(r => r.name === 'Default Chat Agent');
         if (defaultRole) {
             setAgentConfig(prev => ({ ...prev, roleId: defaultRole.id }));
@@ -243,6 +248,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     { id: 'terminal', icon: Terminal, label: 'Terminal' },
   ];
 
+  const neonColor = getNeonColorForPath(currentPath);
+  
   return (
     <>
       <SimpleErrorModal 
@@ -251,13 +258,36 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         error={error} 
       />
       
-      <div className="flex flex-col h-full w-full bg-zinc-950 border border-zinc-800 rounded overflow-hidden">
+      <div 
+        className="flex flex-col h-full w-full bg-zinc-950 rounded overflow-hidden transition-all"
+        style={{ 
+          border: `2px solid ${neonColor}`,
+          boxShadow: `0 0 10px ${neonColor}40, inset 0 0 10px ${neonColor}20`
+        }}
+      >
         
         {/* HEADER with File Controls */}
-        <div className="flex-none h-9 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-3">
+        <div className="flex-none h-8 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-2">
           
-          {/* Left: Active File Name or Component Label */}
+          {/* Left: VFS Badge + Component Label */}
           <div className="flex items-center gap-2 text-xs text-zinc-400">
+            {/* VFS Path Badge - Minimal */}
+            <div 
+              className="group relative px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider cursor-help"
+              style={{ 
+                backgroundColor: `${neonColor}20`,
+                color: neonColor,
+                border: `1px solid ${neonColor}60`
+              }}
+            >
+              <span className="opacity-60 group-hover:opacity-100 transition-opacity">
+                {currentPath.split('/').pop() || '/'}
+              </span>
+              {/* Tooltip on hover */}
+              <div className="absolute left-0 top-full mt-1 px-2 py-1 bg-black border border-zinc-700 rounded text-[9px] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                {currentPath}
+              </div>
+            </div>
             {viewMode === 'settings' ? (
               <>
                 <Settings size={14} className="text-cyan-500" />
@@ -266,7 +296,9 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
             ) : (type === 'editor' || type === 'code') ? (
               <>
                 {activeFile?.endsWith('.md') ? <FileText size={14} className="text-cyan-500" /> : <FileCode size={14} className="text-yellow-500" />}
-                <span className="font-bold text-zinc-200">{activeFile || 'No File Selected'}</span>
+                <span className="font-bold text-zinc-200">
+                  {activeFile ? activeFile.split('/').pop() : 'No File Selected'}
+                </span>
               </>
             ) : (
               <>
@@ -283,33 +315,35 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   
           {/* Right: Controls */}
           <div className="flex items-center gap-2">
-            {/* Run Button (only show in editor mode) */}
+            {/* Run Button - Icon Only */}
             {viewMode === 'editor' && type === 'editor' && (
               <>
                 <button
                   onClick={handleRunAgent}
                   disabled={isAiWorking || !agentConfig.roleId}
-                  className="flex items-center gap-1 px-2 py-1 bg-green-900/30 border border-green-700 text-green-400 hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed rounded text-[10px] font-bold uppercase"
+                  className={`p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all ${NEON_BUTTON_COLORS.run.bg} ${NEON_BUTTON_COLORS.run.hover} ${NEON_BUTTON_COLORS.run.text} ${NEON_BUTTON_COLORS.run.border} ${NEON_BUTTON_COLORS.run.glow}`}
                   title="Run Agent (Cmd/Ctrl + Enter)"
                 >
-                  <Play size={12} />
-                  Run
+                  <Play size={14} />
                 </button>
                 <button
                   onClick={() => setShowAttachModal(true)}
-                  className="flex items-center gap-1 px-2 py-1 bg-cyan-900/30 border border-cyan-700 text-cyan-400 hover:bg-cyan-900/50 rounded text-[10px] font-bold uppercase"
+                  className={`p-1.5 rounded transition-all ${NEON_BUTTON_COLORS.attach.bg} ${NEON_BUTTON_COLORS.attach.hover} ${NEON_BUTTON_COLORS.attach.text} ${NEON_BUTTON_COLORS.attach.border} ${NEON_BUTTON_COLORS.attach.glow}`}
                   title="Attach File from VFS"
                 >
-                  <Paperclip size={12} />
-                  Attach
+                  <Paperclip size={14} />
                 </button>
               </>
             )}
   
-            {/* Settings Button */}
+            {/* Settings Button - Neon */}
             <button
               onClick={() => setViewMode(viewMode === 'settings' ? 'editor' : 'settings')}
-              className={`p-1 rounded ${viewMode === 'settings' ? 'bg-cyan-900/30 text-cyan-400' : 'text-zinc-500 hover:text-cyan-400'}`}
+              className={`p-1.5 rounded transition-all ${
+                viewMode === 'settings' 
+                  ? `${NEON_BUTTON_COLORS.settings.bg} ${NEON_BUTTON_COLORS.settings.text} ${NEON_BUTTON_COLORS.settings.glow}`
+                  : 'text-zinc-500 hover:text-purple-400 hover:bg-zinc-800'
+              }`}
               title="Toggle Settings"
             >
               <Settings size={14} />
