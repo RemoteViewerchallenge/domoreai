@@ -1,6 +1,7 @@
 import './instrumentation.js'; // Must be top line
 import { WebSocketService } from './services/websocket.service.js';
 import { appRouter } from './routers/index.js';
+import '../../../../packages/src/agents/specialists/IngestionAgent.js';
 import { createExpressMiddleware, type CreateExpressContextOptions } from '@trpc/server/adapters/express';
 import express from 'express';
 import cors from 'cors';
