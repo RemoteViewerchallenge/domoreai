@@ -37,7 +37,7 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({ logs, 
         )}
         {logs.map((log, i) => (
           <div key={i} className="flex gap-2 break-all">
-            <span className="text-zinc-500 shrink-0">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+            <span className="text-[var(--color-text-secondary)] shrink-0">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
             <span className={`
               ${log.type === 'error' ? 'text-red-500' : ''}
               ${log.type === 'warn' ? 'text-yellow-500' : ''}
@@ -55,7 +55,7 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({ logs, 
 
       {/* Input Area */}
       <div className="flex items-center gap-2 p-2 bg-zinc-900 border-t border-zinc-800">
-        <TerminalIcon size={16} className="text-zinc-500" />
+        <TerminalIcon size={16} className="text-[var(--color-text-secondary)]" />
         <input
           className="flex-1 bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-600"
           placeholder="Type a command..."
@@ -65,7 +65,7 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({ logs, 
         />
         <button 
           onClick={handleSend}
-          className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors"
+          className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white transition-colors"
         >
           <Send size={16} />
         </button>

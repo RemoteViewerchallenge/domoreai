@@ -66,7 +66,7 @@ export const SimpleTableView: React.FC<SimpleTableViewProps> = ({ rawData }) => 
     }
   } else {
     return (
-      <div className="p-4 text-sm text-gray-500">
+      <div className="p-4 text-sm text-[var(--color-text-secondary)]">
         <pre className="bg-base-200 p-4 rounded overflow-auto max-h-96">
           {JSON.stringify(rawData, null, 2)}
         </pre>
@@ -75,7 +75,7 @@ export const SimpleTableView: React.FC<SimpleTableViewProps> = ({ rawData }) => 
   }
 
   if (dataArray.length === 0) {
-    return <div className="p-4 text-sm text-gray-500">No data available</div>;
+    return <div className="p-4 text-sm text-[var(--color-text-secondary)]">No data available</div>;
   }
 
   // Get all unique keys from all objects
@@ -132,7 +132,7 @@ export const SimpleTableView: React.FC<SimpleTableViewProps> = ({ rawData }) => 
                 const value = row[header];
                 const displayValue = typeof value === 'object' 
                   ? JSON.stringify(value) 
-                  : String(value ?? '');
+                  : ((value === null || value === undefined) ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value as any)));
                 return (
                   <td 
                     key={colIdx} 

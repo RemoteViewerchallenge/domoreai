@@ -104,17 +104,17 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
   };
 
   return (
-    <div className={`flex bg-black text-gray-100 font-mono text-xs h-full ${className}`}>
+    <div className={`flex bg-[var(--color-background)] text-[var(--color-text)] font-mono text-xs h-full ${className}`}>
       {/* Sidebar */}
-      <div className="w-64 bg-gray-950 border-r border-blue-900/50 flex flex-col flex-shrink-0">
-        <div className="p-2 border-b border-blue-900/50 flex justify-between items-center">
-          <span className="font-bold text-blue-400 uppercase tracking-wider">Orchestrations</span>
+      <div className="w-64 bg-[var(--color-background-secondary)] border-r border-[var(--color-primary)]/50 flex flex-col flex-shrink-0">
+        <div className="p-2 border-b border-[var(--color-primary)]/50 flex justify-between items-center">
+          <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider">Orchestrations</span>
           <button
             onClick={() => {
               setSelectedId(null);
               setFormData({ name: '', description: '', tags: [], steps: [] });
             }}
-            className="px-2 py-0.5 bg-blue-900/30 border border-blue-500 text-blue-300 hover:bg-blue-900/50 hover:text-white transition-all uppercase text-[10px] font-bold"
+            className="px-2 py-0.5 bg-[var(--color-primary)]/30 border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 hover:text-[var(--color-text)] transition-all uppercase text-[10px] font-bold"
           >
             + New
           </button>
@@ -124,12 +124,12 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
             <div
               key={orch.id}
               onClick={() => handleSelect(orch)}
-              className={`p-2 cursor-pointer border-b border-gray-900 hover:bg-gray-900 transition-colors ${
-                selectedId === orch.id ? 'bg-blue-900/20 border-l-2 border-l-blue-500' : 'border-l-2 border-l-transparent'
+              className={`p-2 cursor-pointer border-b border-[var(--color-border)] hover:bg-[var(--color-background)] transition-colors ${
+                selectedId === orch.id ? 'bg-[var(--color-primary)]/20 border-l-2 border-l-[var(--color-primary)]' : 'border-l-2 border-l-transparent'
               }`}
             >
-              <div className="font-bold text-gray-200 truncate">{orch.name}</div>
-              <div className="text-[10px] text-gray-500 truncate">{orch.steps.length} steps</div>
+              <div className="font-bold text-[var(--color-text)] truncate">{orch.name}</div>
+              <div className="text-[10px] text-[var(--color-text-secondary)] truncate">{orch.steps.length} steps</div>
             </div>
           ))}
         </div>
@@ -138,20 +138,20 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
       {/* Main Editor */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="border-b border-gray-800 p-4 flex justify-between items-start bg-gray-950/30">
+        <div className="border-b border-[var(--color-border)] p-4 flex justify-between items-start bg-[var(--color-background-secondary)]/30">
           <div className="flex-1 mr-4">
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-transparent text-xl font-bold text-white focus:outline-none border-b border-gray-800 focus:border-blue-500 placeholder-gray-700 mb-2"
+              className="w-full bg-transparent text-xl font-bold text-white focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)] placeholder-[var(--color-text-secondary)] mb-2"
               placeholder="ORCHESTRATION NAME"
             />
             <input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full bg-transparent text-sm text-gray-400 focus:outline-none border-b border-gray-800 focus:border-blue-500 placeholder-gray-700"
+              className="w-full bg-transparent text-sm text-[var(--color-text-secondary)] focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)] placeholder-[var(--color-text-secondary)]"
               placeholder="Description..."
             />
           </div>
@@ -160,14 +160,14 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
               <>
                 <button
                   onClick={() => executeMutation.mutate({ orchestrationId: selectedId, input: {} })}
-                  className="p-2 text-green-500 hover:bg-green-900/20 rounded transition-all"
+                  className="p-2 text-[var(--color-success)] hover:bg-[var(--color-success)]/20 rounded transition-all"
                   title="Execute"
                 >
                   <Play size={16} />
                 </button>
                 <button
                   onClick={() => deleteMutation.mutate({ id: selectedId })}
-                  className="p-2 text-red-500 hover:bg-red-900/20 rounded transition-all"
+                  className="p-2 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 rounded transition-all"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -175,7 +175,7 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
             )}
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded shadow-lg shadow-blue-900/20 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-white font-bold rounded shadow-lg shadow-[var(--glow-primary)] transition-all"
             >
               <Save size={16} />
               SAVE
@@ -184,31 +184,31 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
         </div>
 
         {/* Steps Editor */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-black">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--color-background)]">
           {formData.steps.map((step, index) => (
-            <div key={index} className="border border-gray-800 rounded bg-gray-950/50 p-3 relative group">
+            <div key={index} className="border border-[var(--color-border)] rounded bg-[var(--color-background-secondary)]/50 p-3 relative group">
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => removeStep(index)} className="text-red-500 hover:text-red-400">
+                <button onClick={() => removeStep(index)} className="text-[var(--color-error)] hover:text-[var(--color-error)]">
                   <Trash2 size={14} />
                 </button>
               </div>
               
               <div className="flex items-center gap-4 mb-3">
-                <div className="w-6 h-6 rounded-full bg-blue-900/50 text-blue-300 flex items-center justify-center font-bold border border-blue-500/30">
+                <div className="w-6 h-6 rounded-full bg-blue-900/50 text-[var(--color-primary)] flex items-center justify-center font-bold border border-[var(--color-primary)]/30">
                   {index + 1}
                 </div>
                 <input
                   type="text"
                   value={step.name}
                   onChange={(e) => updateStep(index, { name: e.target.value })}
-                  className="bg-transparent font-bold text-gray-200 focus:outline-none border-b border-transparent focus:border-blue-500"
+                  className="bg-transparent font-bold text-[var(--color-text)] focus:outline-none border-b border-transparent focus:border-[var(--color-primary)]"
                   placeholder="Step Name"
                 />
                 <select
                   value={step.stepType}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onChange={(e) => updateStep(index, { stepType: e.target.value as any })}
-                  className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[10px] uppercase"
+                  className="bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded px-2 py-1 text-[10px] uppercase"
                 >
                   <option value="sequential">Sequential</option>
                   <option value="parallel">Parallel</option>
@@ -220,11 +220,11 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
               <div className="grid grid-cols-2 gap-4 pl-10">
                 {/* Role Selection */}
                 <div>
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">Role</label>
+                  <label className="block text-[10px] uppercase text-[var(--color-text-secondary)] mb-1">Role</label>
                   <select
                     value={step.roleName || ''}
                     onChange={(e) => updateStep(index, { roleName: e.target.value })}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
+                    className="w-full bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded px-2 py-1 text-xs"
                   >
                     <option value="">Select Role...</option>
                     {roles?.map(r => (
@@ -236,12 +236,12 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
                 {/* Parallel Group */}
                 {step.stepType === 'parallel' && (
                   <div>
-                    <label className="block text-[10px] uppercase text-gray-500 mb-1">Parallel Group</label>
+                    <label className="block text-[10px] uppercase text-[var(--color-text-secondary)] mb-1">Parallel Group</label>
                     <input
                       type="text"
                       value={step.parallelGroup || ''}
                       onChange={(e) => updateStep(index, { parallelGroup: e.target.value })}
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
+                      className="w-full bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded px-2 py-1 text-xs"
                       placeholder="e.g. 'search'"
                     />
                   </div>
@@ -249,7 +249,7 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
 
                 {/* Input Mapping */}
                 <div className="col-span-2">
-                  <label className="block text-[10px] uppercase text-gray-500 mb-1">Input Mapping (JSON)</label>
+                  <label className="block text-[10px] uppercase text-[var(--color-text-secondary)] mb-1">Input Mapping (JSON)</label>
                   <textarea
                     value={JSON.stringify(step.inputMapping || {}, null, 2)}
                     onChange={(e) => {
@@ -259,7 +259,7 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
                         // Allow typing invalid JSON temporarily
                       }
                     }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 font-mono text-[10px] h-20"
+                    className="w-full bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded p-2 font-mono text-[10px] h-20"
                     placeholder='{ "query": "{{context.input}}" }'
                   />
                 </div>
@@ -269,7 +269,7 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
 
           <button
             onClick={addStep}
-            className="w-full py-3 border-2 border-dashed border-gray-800 rounded text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-wider"
+            className="w-full py-3 border-2 border-dashed border-[var(--color-border)] rounded text-[var(--color-text-secondary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-wider"
           >
             <Plus size={16} /> Add Step
           </button>

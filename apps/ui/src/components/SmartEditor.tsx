@@ -50,7 +50,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     if (!editor || !onRun || isCode) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      if (event.key === 'Enter' && event.shiftKey) {
         event.preventDefault();
         onRun();
       }

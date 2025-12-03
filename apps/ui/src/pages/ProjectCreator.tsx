@@ -83,7 +83,7 @@ const ProjectCreator: React.FC = () => {
           <h2 className="text-lg font-bold text-purple-400 mb-4">Project Details</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+              <label className="block text-[10px] font-bold text-[var(--color-text-secondary)] uppercase mb-1">
                 Project Name
               </label>
               <input
@@ -95,7 +95,7 @@ const ProjectCreator: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+              <label className="block text-[10px] font-bold text-[var(--color-text-secondary)] uppercase mb-1">
                 Description
               </label>
               <textarea

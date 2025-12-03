@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { createVolcanoAgent } from './AgentFactory.js';
 import type { Orchestration, OrchestrationStep, OrchestrationExecution } from '@prisma/client';
 
@@ -38,7 +38,7 @@ export class OrchestrationService {
    * Create a new orchestration
    */
   static async createOrchestration(input: CreateOrchestrationInput): Promise<Orchestration> {
-    const orchestration = await db.orchestration.create({
+    const orchestration = await prisma.orchestration.create({
       data: {
         name: input.name,
         description: input.description,
@@ -86,7 +86,7 @@ export class OrchestrationService {
       where.isActive = filters.isActive;
     }
 
-    return db.orchestration.findMany({
+    return prisma.orchestration.findMany({
       where,
       include: {
         steps: {
@@ -105,7 +105,7 @@ export class OrchestrationService {
    * Get a single orchestration by ID or name
    */
   static async getOrchestration(idOrName: string) {
-    return db.orchestration.findFirst({
+    return prisma.orchestration.findFirst({
       where: {
         OR: [{ id: idOrName }, { name: idOrName }],
       },
@@ -133,7 +133,7 @@ export class OrchestrationService {
       isActive?: boolean;
     }
   ) {
-    return db.orchestration.update({
+    return prisma.orchestration.update({
       where: { id },
       data: updates,
       include: {
@@ -148,7 +148,7 @@ export class OrchestrationService {
    * Delete an orchestration
    */
   static async deleteOrchestration(id: string) {
-    return db.orchestration.delete({
+    return prisma.orchestration.delete({
       where: { id },
     });
   }
@@ -161,7 +161,7 @@ export class OrchestrationService {
     input: any,
     userId?: string
   ): Promise<OrchestrationExecution> {
-    const orchestration = await db.orchestration.findUnique({
+    const orchestration = await prisma.orchestration.findUnique({
       where: { id: orchestrationId },
       include: {
         steps: {
@@ -179,7 +179,7 @@ export class OrchestrationService {
     }
 
     // Create execution record
-    const execution = await db.orchestrationExecution.create({
+    const execution = await prisma.orchestrationExecution.create({
       data: {
         orchestrationId,
         input,
@@ -265,7 +265,7 @@ export class OrchestrationService {
       }
 
       // Mark as completed
-      await db.orchestrationExecution.update({
+      await prisma.orchestrationExecution.update({
         where: { id: executionId },
         data: {
           status: 'completed',
@@ -277,7 +277,7 @@ export class OrchestrationService {
       });
     } catch (error: any) {
       // Mark as failed
-      await db.orchestrationExecution.update({
+      await prisma.orchestrationExecution.update({
         where: { id: executionId },
         data: {
           status: 'failed',
@@ -308,9 +308,9 @@ export class OrchestrationService {
       try {
         // Find the role
         const role = step.roleId
-          ? await db.role.findUnique({ where: { id: step.roleId } })
+          ? await prisma.role.findUnique({ where: { id: step.roleId } })
           : step.roleName
-          ? await db.role.findUnique({ where: { name: step.roleName } })
+          ? await prisma.role.findUnique({ where: { name: step.roleName } })
           : null;
 
         if (!role) {
@@ -523,7 +523,7 @@ export class OrchestrationService {
    * Get execution status
    */
   static async getExecutionStatus(executionId: string) {
-    return db.orchestrationExecution.findUnique({
+    return prisma.orchestrationExecution.findUnique({
       where: { id: executionId },
       include: {
         orchestration: {
@@ -541,7 +541,7 @@ export class OrchestrationService {
    * List executions for an orchestration
    */
   static async listExecutions(orchestrationId: string, limit = 50) {
-    return db.orchestrationExecution.findMany({
+    return prisma.orchestrationExecution.findMany({
       where: { orchestrationId },
       orderBy: { startedAt: 'desc' },
       take: limit,

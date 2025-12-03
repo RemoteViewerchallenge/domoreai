@@ -1,4 +1,5 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
+import type { Model } from '@prisma/client';
 
 export interface DynamicModel {
   id: string;
@@ -12,7 +13,12 @@ export interface DynamicModel {
   rpm_limit?: number;
   rpd_limit?: number;
   is_free_tier?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+}
+
+// Interface for raw database rows from dynamic tables
+interface RawModelRow {
+  [key: string]: unknown;
 }
 
 export class DynamicModelAdapter {
@@ -43,30 +49,28 @@ export class DynamicModelAdapter {
     try {
       // NOTE: This requires Prisma with $queryRawUnsafe support
       // For now, we'll fall back to SimpleDB if this fails
-      // @ts-ignore - db might be Prisma or SimpleDB
-      if (typeof db.$queryRawUnsafe === 'function') {
-        // @ts-ignore
-        const rows = await db.$queryRawUnsafe<any[]>(`SELECT * FROM "${tableName}"`);
+      if (typeof prisma.$queryRawUnsafe === 'function') {
+        const rows = await prisma.$queryRawUnsafe<RawModelRow[]>(`SELECT * FROM "${tableName}"`);
         
-        return rows.map((row: any) => ({
-          id: row[this.COLUMN_MAPPING.id] || row.model_id || row.id,
+        return rows.map((row) => ({
+          id: (row[this.COLUMN_MAPPING.id] || row.model_id || row.id) as string,
           // This links the model to a specific API Key in ProviderManager
-          providerConfigId: row[this.COLUMN_MAPPING.providerConfigId] || row.config_id || row.providerConfigId,
+          providerConfigId: (row[this.COLUMN_MAPPING.providerConfigId] || row.config_id || row.providerConfigId) as string,
           
           // Parse generic fields
           cost: Number(row[this.COLUMN_MAPPING.cost] || row.cost_per_token || row.cost || 0),
           contextWindow: Number(row[this.COLUMN_MAPPING.contextWindow] || row.context_length || row.contextWindow || 4096),
           
           // Custom placement logic fields
-          priority: row[this.COLUMN_MAPPING.priority] || row.priority || 50,
-          group_id: row[this.COLUMN_MAPPING.groupId] || row.group_id,
-          target_usage_percent: row[this.COLUMN_MAPPING.targetUsagePercent] || row.target_usage_percent,
-          error_penalty: row[this.COLUMN_MAPPING.errorPenalty] || row.error_penalty || false,
+          priority: (row[this.COLUMN_MAPPING.priority] || row.priority || 50) as number,
+          group_id: (row[this.COLUMN_MAPPING.groupId] || row.group_id) as string | undefined,
+          target_usage_percent: (row[this.COLUMN_MAPPING.targetUsagePercent] || row.target_usage_percent) as number | undefined,
+          error_penalty: (row[this.COLUMN_MAPPING.errorPenalty] || row.error_penalty || false) as boolean,
           
           // Rate limit fields
-          rpm_limit: row[this.COLUMN_MAPPING.rpmLimit] || row.rpm_limit,
-          rpd_limit: row[this.COLUMN_MAPPING.rpdLimit] || row.rpd_limit,
-          is_free_tier: row[this.COLUMN_MAPPING.isFree] || row.is_free_tier || false,
+          rpm_limit: (row[this.COLUMN_MAPPING.rpmLimit] || row.rpm_limit) as number | undefined,
+          rpd_limit: (row[this.COLUMN_MAPPING.rpdLimit] || row.rpd_limit) as number | undefined,
+          is_free_tier: (row[this.COLUMN_MAPPING.isFree] || row.is_free_tier || false) as boolean,
           
           // Store all other fields as metadata
           metadata: row,
@@ -88,20 +92,20 @@ export class DynamicModelAdapter {
    */
   static async loadModelsFromSimpleDB(): Promise<DynamicModel[]> {
     try {
-      const models = await db.model.findMany();
-      return models.map((m: any) => ({
-        id: m.modelId || m.id,
-        providerConfigId: m.providerId || m.providerConfigId,
-        cost: Number(m.cost || 0),
-        contextWindow: Number(m.contextWindow || 4096),
-        priority: m.priority || 50,
-        group_id: m.group_id,
-        target_usage_percent: m.target_usage_percent,
-        error_penalty: m.error_penalty || false,
-        rpm_limit: m.rpm_limit,
-        rpd_limit: m.rpd_limit,
-        is_free_tier: m.isFree || false,
-        metadata: m,
+      const models = await prisma.model.findMany();
+      return models.map((m: Model) => ({
+        id: m.modelId, // Use modelId as the primary ID for logic
+        providerConfigId: m.providerId,
+        cost: m.costPer1k || 0,
+        contextWindow: m.contextWindow || 4096,
+        priority: 50, // Default priority
+        group_id: undefined,
+        target_usage_percent: undefined,
+        error_penalty: false,
+        rpm_limit: m.limitRequestRate || undefined,
+        rpd_limit: undefined, // No direct mapping for RPD in standard model
+        is_free_tier: m.isFree,
+        metadata: m as unknown as Record<string, unknown>,
       }));
     } catch (error) {
       console.error('Failed to load models from Prisma:', error);
@@ -109,3 +113,4 @@ export class DynamicModelAdapter {
     }
   }
 }
+

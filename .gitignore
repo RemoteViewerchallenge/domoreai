@@ -42,3 +42,11 @@ mono.zip
 !**/postcss.config.js
 !**/eslint.config.js
 !**/vite.config.js
+test.txt
+
+# Secrets
+apps/api/token.json
+apps/api/src/scripts/antigravity.ts
+
+# Zips
+*.zip

@@ -1,9 +1,0 @@
-
-> api@1.0.0 build /home/guy/mono/apps/api
-> tsc -b
-
-src/routers/agent.router.ts(84,29): error TS2339: Property 'tools' does not exist on type '{ id: string; name: string; basePrompt: string; minContext: number | null; maxContext: number | null; needsVision: boolean; needsReasoning: boolean; needsCoding: boolean; needsTools: boolean; ... 11 more ...; criteria: JsonValue; }'.
-src/services/modelManager.service.ts(134,16): error TS2339: Property 'needsImageGeneration' does not exist on type '{ id: string; name: string; basePrompt: string; minContext: number | null; maxContext: number | null; needsVision: boolean; needsReasoning: boolean; needsCoding: boolean; needsTools: boolean; ... 11 more ...; criteria: JsonValue; }'.
-/home/guy/mono/apps/api:
- ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  api@1.0.0 build: `tsc -b`
-Exit status 1

@@ -79,7 +79,7 @@ export const DatabaseManagerNode: React.FC = () => {
          <div className="flex gap-2">
             <button 
                onClick={() => setShowQuery(!showQuery)}
-               className={`flex items-center gap-2 px-3 py-1.5 rounded ${showQuery ? 'bg-purple-900 text-purple-200' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}
+               className={`flex items-center gap-2 px-3 py-1.5 rounded ${showQuery ? 'bg-purple-900 text-purple-200' : 'bg-zinc-800 text-[var(--color-text-secondary)] hover:text-white'}`}
             >
                <Play size={14} /> SQL Tool
             </button>
@@ -127,7 +127,7 @@ export const DatabaseManagerNode: React.FC = () => {
       {/* Content Area */}
       <div className="flex-1 overflow-hidden relative bg-black">
          {customData ? (
-            <UniversalDataGrid data={customData as Record<string, unknown>[]} />
+            <UniversalDataGrid data={customData} />
          ) : activeTable && tableData ? (
             <UniversalDataGrid data={tableData.rows as Record<string, unknown>[]} />
          ) : (

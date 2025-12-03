@@ -8,7 +8,7 @@ export const dataRefinementRouter = createTRPCRouter({
   // --- 1. LIST TABLES (For your Sidebar) ---
   listAllTables: publicProcedure.query(async ({ ctx }) => {
     try {
-      const tables = await ctx.db.$queryRawUnsafe<any[]>(
+      const tables = await ctx.prisma.$queryRawUnsafe<any[]>(
         `SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY name`
       );
       return tables.map(t => ({ name: t.name, type: 'table' }));
@@ -23,7 +23,7 @@ export const dataRefinementRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const limit = input.limit || 1000;
       try {
-        const rows = await ctx.db.$queryRawUnsafe<any[]>(
+        const rows = await ctx.prisma.$queryRawUnsafe<any[]>(
           `SELECT * FROM "${input.tableName}" LIMIT ${limit}`
         );
         return { rows };
@@ -36,7 +36,7 @@ export const dataRefinementRouter = createTRPCRouter({
     .input(z.object({ tableName: z.string() }))
     .query(async ({ ctx, input }) => {
       try {
-        const rows = await ctx.db.$queryRawUnsafe<any[]>(
+        const rows = await ctx.prisma.$queryRawUnsafe<any[]>(
           `SELECT * FROM "${input.tableName}" LIMIT 100`
         );
         return rows;
@@ -59,7 +59,7 @@ export const dataRefinementRouter = createTRPCRouter({
       
       // A. Save Config
       const encryptedKey = input.apiKey ? encrypt(input.apiKey) : '';
-      const newProvider = await ctx.db.providerConfig.create({
+      const newProvider = await ctx.prisma.providerConfig.create({
         data: {
           label: input.label,
           type: input.type,
@@ -81,14 +81,14 @@ export const dataRefinementRouter = createTRPCRouter({
       
       try {
         // 1. Drop old table to start fresh (if it exists)
-        await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
 
         // 2. Run the Magic SQL to extract rows
         // DYNAMICALLY EXTRACT ALL KEYS WITHOUT GUESSING
         
         // Step A: Inspect the JSON to find ALL possible keys in the array
         // We use the specific snapshot.id to ensure we target the right data
-        const keysResult = await ctx.db.$queryRawUnsafe<{key: string}[]>(`
+        const keysResult = await ctx.prisma.$queryRawUnsafe<{key: string}[]>(`
           SELECT DISTINCT jsonb_object_keys(elem) as key
           FROM "RawDataLake",
                jsonb_array_elements(
@@ -139,7 +139,7 @@ export const dataRefinementRouter = createTRPCRouter({
           WHERE "RawDataLake".id = '${snapshot.id}'
         `;
 
-        await ctx.db.$executeRawUnsafe(dynamicQuery);
+        await ctx.prisma.$executeRawUnsafe(dynamicQuery);
 
         // Return the CLEAN table name, so the UI switches to it immediately
         return { 
@@ -162,7 +162,7 @@ export const dataRefinementRouter = createTRPCRouter({
   deleteTable: publicProcedure
     .input(z.object({ tableName: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.tableName}" CASCADE`);
+      await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.tableName}" CASCADE`);
       return { success: true };
     }),
 
@@ -170,7 +170,7 @@ export const dataRefinementRouter = createTRPCRouter({
     .input(z.object({ tableName: z.string(), rowId: z.string(), column: z.string(), value: z.any() }))
     .mutation(async ({ ctx, input }) => {
       const val = typeof input.value === 'string' ? `'${input.value}'` : input.value;
-      await ctx.db.$executeRawUnsafe(`UPDATE "${input.tableName}" SET "${input.column}" = ${val} WHERE id = '${input.rowId}'`);
+      await ctx.prisma.$executeRawUnsafe(`UPDATE "${input.tableName}" SET "${input.column}" = ${val} WHERE id = '${input.rowId}'`);
       return { success: true };
     }),
 
@@ -178,14 +178,14 @@ export const dataRefinementRouter = createTRPCRouter({
   addColumn: publicProcedure
     .input(z.object({ tableName: z.string(), columnName: z.string(), type: z.string().default('TEXT') }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.$executeRawUnsafe(`ALTER TABLE "${input.tableName}" ADD COLUMN "${input.columnName}" ${input.type}`);
+      await ctx.prisma.$executeRawUnsafe(`ALTER TABLE "${input.tableName}" ADD COLUMN "${input.columnName}" ${input.type}`);
       return { success: true };
     }),
 
   dropColumn: publicProcedure
     .input(z.object({ tableName: z.string(), columnName: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.$executeRawUnsafe(`ALTER TABLE "${input.tableName}" DROP COLUMN "${input.columnName}"`);
+      await ctx.prisma.$executeRawUnsafe(`ALTER TABLE "${input.tableName}" DROP COLUMN "${input.columnName}"`);
       return { success: true };
     }),
 
@@ -193,7 +193,7 @@ export const dataRefinementRouter = createTRPCRouter({
     .input(z.object({ tableName: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Create a table with a default ID column
-      await ctx.db.$executeRawUnsafe(`
+      await ctx.prisma.$executeRawUnsafe(`
         CREATE TABLE "${input.tableName}" (
           id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
           created_at timestamp DEFAULT now()
@@ -209,8 +209,8 @@ export const dataRefinementRouter = createTRPCRouter({
         // Clean the query - remove trailing semicolons
         const cleanQuery = input.query.trim().replace(/;+$/, '');
         
-        await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.newTableName}"`);
-        await ctx.db.$executeRawUnsafe(`CREATE TABLE "${input.newTableName}" AS (${cleanQuery})`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`CREATE TABLE "${input.newTableName}" AS (${cleanQuery})`);
         return { success: true, newTableName: input.newTableName };
       } catch (error: any) {
         throw new Error(`Transformation failed: ${error.message}`);
@@ -222,7 +222,7 @@ export const dataRefinementRouter = createTRPCRouter({
     .input(z.object({ tableName: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // 1. Find the latest RawDataLake entry
-      const latestSnapshot = await ctx.db.rawDataLake.findFirst({
+      const latestSnapshot = await ctx.prisma.rawDataLake.findFirst({
         orderBy: { ingestedAt: 'desc' }
       });
 
@@ -234,9 +234,9 @@ export const dataRefinementRouter = createTRPCRouter({
 
       // 2. Dynamic Extraction (Same logic as addProviderAndIngest)
       try {
-        await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
 
-        const keysResult = await ctx.db.$queryRawUnsafe<{key: string}[]>(`
+        const keysResult = await ctx.prisma.$queryRawUnsafe<{key: string}[]>(`
           SELECT DISTINCT jsonb_object_keys(elem) as key
           FROM "RawDataLake",
                jsonb_array_elements(
@@ -283,7 +283,7 @@ export const dataRefinementRouter = createTRPCRouter({
           WHERE "RawDataLake".id = '${latestSnapshot.id}'
         `;
 
-        await ctx.db.$executeRawUnsafe(dynamicQuery);
+        await ctx.prisma.$executeRawUnsafe(dynamicQuery);
 
         return { success: true, tableName: newTableName };
       } catch (error: any) {
@@ -297,7 +297,7 @@ export const dataRefinementRouter = createTRPCRouter({
       .input(z.object({ query: z.string() }))
       .mutation(async ({ ctx, input }) => {
         try {
-          const rows = await ctx.db.$queryRawUnsafe<any[]>(input.query);
+          const rows = await ctx.prisma.$queryRawUnsafe<any[]>(input.query);
           return { success: true, rows, rowCount: rows.length };
         } catch (error: any) {
           throw new Error(`Query failed: ${error.message}`);
@@ -312,11 +312,11 @@ export const dataRefinementRouter = createTRPCRouter({
           const targetTable = 'core_models';
           
           // Drop and recreate core_models with the same structure as source
-          await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${targetTable}"`);
-          await ctx.db.$executeRawUnsafe(`CREATE TABLE "${targetTable}" AS SELECT * FROM "${input.sourceTable}"`);
+          await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${targetTable}"`);
+          await ctx.prisma.$executeRawUnsafe(`CREATE TABLE "${targetTable}" AS SELECT * FROM "${input.sourceTable}"`);
           
           // Count the models
-          const result = await ctx.db.$queryRawUnsafe<[{ count: bigint }]>(`SELECT COUNT(*) as count FROM "${targetTable}"`);
+          const result = await ctx.prisma.$queryRawUnsafe<[{ count: bigint }]>(`SELECT COUNT(*) as count FROM "${targetTable}"`);
           const count = Number(result[0].count);
           
           return { success: true, count, tableName: targetTable };
@@ -342,7 +342,7 @@ export const dataRefinementRouter = createTRPCRouter({
         // 1) Resolve providerId
         let providerId = input.providerId || null;
         if (!providerId) {
-          const p = await ctx.db.providerConfig.findFirst({
+          const p = await ctx.prisma.providerConfig.findFirst({
             where: { type: input.providerTypeHint, isEnabled: true },
             orderBy: { createdAt: 'desc' },
             select: { id: true }
@@ -352,7 +352,7 @@ export const dataRefinementRouter = createTRPCRouter({
         }
 
         // 2) Replace strategy: delete existing for provider, then insert fresh from source
-        await ctx.db.$executeRawUnsafe(`DELETE FROM "Model" WHERE "providerId" = '${providerId}'`);
+        await ctx.prisma.$executeRawUnsafe(`DELETE FROM "Model" WHERE "providerId" = '${providerId}'`);
 
         const sql = `
           INSERT INTO "Model" (
@@ -369,10 +369,10 @@ export const dataRefinementRouter = createTRPCRouter({
             AND m.provider_id = '${providerId}'
         `;
 
-        const insertedCount = await ctx.db.$executeRawUnsafe(sql);
+        const insertedCount = await ctx.prisma.$executeRawUnsafe(sql);
 
         // 3) Return counts for visibility
-        const [{ count }] = await ctx.db.$queryRawUnsafe<[{ count: bigint }]>(
+        const [{ count }] = await ctx.prisma.$queryRawUnsafe<[{ count: bigint }]>(
           `SELECT COUNT(*) as count FROM "Model" WHERE "providerId" = '${providerId}'`
         );
         return { success: true, providerId, insertedCount: Number(insertedCount), totalForProvider: Number(count) };
@@ -390,7 +390,7 @@ export const dataRefinementRouter = createTRPCRouter({
       const { RawModelService } = await import('../services/RawModelService.js');
 
       // 1. Fetch Provider Config
-      const provider = await ctx.db.providerConfig.findUnique({
+      const provider = await ctx.prisma.providerConfig.findUnique({
         where: { id: input.providerId }
       });
 
@@ -407,10 +407,10 @@ export const dataRefinementRouter = createTRPCRouter({
 
       try {
         // Drop old table to start fresh
-        await ctx.db.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
 
         // Dynamic Extraction Logic (Reused)
-        const keysResult = await ctx.db.$queryRawUnsafe<{key: string}[]>(`
+        const keysResult = await ctx.prisma.$queryRawUnsafe<{key: string}[]>(`
           SELECT DISTINCT jsonb_object_keys(elem) as key
           FROM "RawDataLake",
                jsonb_array_elements(
@@ -456,7 +456,7 @@ export const dataRefinementRouter = createTRPCRouter({
           WHERE "RawDataLake".id = '${snapshot.id}'
         `;
 
-        await ctx.db.$executeRawUnsafe(dynamicQuery);
+        await ctx.prisma.$executeRawUnsafe(dynamicQuery);
 
         return { success: true, tableName: newTableName, rowCount: 0 }; // TODO: Return actual count if needed
 
@@ -474,7 +474,7 @@ export const dataRefinementRouter = createTRPCRouter({
       targetTable: z.string().optional()
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.savedQuery.upsert({
+      return ctx.prisma.savedQuery.upsert({
         where: { name: input.name },
         update: { query: input.query, targetTable: input.targetTable },
         create: { name: input.name, query: input.query, targetTable: input.targetTable }
@@ -484,7 +484,7 @@ export const dataRefinementRouter = createTRPCRouter({
   listSavedQueries: publicProcedure
     .query(async ({ ctx }) => {
       console.log('Fetching saved queries...');
-      const queries = await ctx.db.savedQuery.findMany({ orderBy: { updatedAt: 'desc' } });
+      const queries = await ctx.prisma.savedQuery.findMany({ orderBy: { updatedAt: 'desc' } });
       console.log(`Found ${queries.length} saved queries.`);
       // Return as strings to avoid SuperJSON serialization issues
       return queries.map(q => ({
@@ -496,11 +496,11 @@ export const dataRefinementRouter = createTRPCRouter({
   executeSavedQuery: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const saved = await ctx.db.savedQuery.findUnique({ where: { name: input.name } });
+      const saved = await ctx.prisma.savedQuery.findUnique({ where: { name: input.name } });
       if (!saved) throw new Error(`Query "${input.name}" not found.`);
       
       // Execute the saved SQL
-      const rows = await ctx.db.$executeRawUnsafe(saved.query);
+      const rows = await ctx.prisma.$executeRawUnsafe(saved.query);
       
       return { success: true, rowsAffected: rows, queryName: saved.name };
     }),
@@ -508,7 +508,7 @@ export const dataRefinementRouter = createTRPCRouter({
   deleteSavedQuery: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.savedQuery.delete({ where: { name: input.name } });
+      await ctx.prisma.savedQuery.delete({ where: { name: input.name } });
       return { success: true };
     }),
 });

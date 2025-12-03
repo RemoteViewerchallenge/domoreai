@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 
 export interface SelectionCriteria {
   model?: string; // Specific override
@@ -33,7 +33,7 @@ export interface Model {
 
 export async function selectCandidateModels(criteria: SelectionCriteria): Promise<Model[]> {
     // 1. Fetch all models from DB
-    const dbModels = await db.model.findMany({
+    const dbModels = await prisma.model.findMany({
         include: { provider: true }
     });
 

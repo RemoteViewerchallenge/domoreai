@@ -18,6 +18,11 @@ export default defineConfig({
     },
     proxy: {
       '/llm': 'http://localhost:4000',
+      '/trpc': 'http://localhost:4000',
+      '/language-server': {
+        target: 'http://localhost:4000',
+        ws: true,
+      },
     }
   },
   build: {

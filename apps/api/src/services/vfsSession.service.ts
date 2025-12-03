@@ -2,7 +2,7 @@ import { IVfsProvider } from './vfs/IVfsProvider.js';
 import { LocalProvider } from './vfs/LocalProvider.js';
 import { SshProvider } from './vfs/SshProvider.js';
 import Client from 'ssh2-sftp-client';
-import { db as prisma } from '../db.js';
+import { prisma } from '../db.js';
 import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
@@ -56,7 +56,7 @@ export class VfsManager {
       return new SshProvider(client, '.');
     }
 
-    throw new Error(`Unsupported provider: ${options.provider}`);
+    throw new Error(`Unsupported provider: ${options.provider as string}`);
   }
 
   async createSshConnection(config: { 

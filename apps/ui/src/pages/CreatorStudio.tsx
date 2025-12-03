@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import RoleCreatorPanel from '../components/RoleCreatorPanel.js';
-import OrchestrationCreatorPanel from '../components/OrchestrationCreatorPanel.js';
+import { OrchestrationDesigner } from '../features/creator-studio/OrchestrationDesigner.js';
 import { Users, Workflow } from 'lucide-react';
 
 export default function CreatorStudio() {
   const [activeTab, setActiveTab] = useState<'roles' | 'orchestrations'>('roles');
 
   return (
-    <div className="h-full w-full bg-black text-gray-100 flex flex-col overflow-hidden font-mono">
+    <div className="flex-1 w-full bg-[var(--color-background)] text-[var(--color-text)] flex flex-col overflow-hidden font-mono">
       {/* Tab Switcher Header */}
-      <div className="flex-none h-10 border-b border-gray-800 bg-gray-950 flex items-center justify-center px-4">
+      <div className="flex-none h-10 border-b border-[var(--color-border)] bg-[var(--color-background-secondary)] flex items-center justify-center px-4">
 
-        <div className="flex bg-gray-900 rounded p-1 border border-gray-800">
+        <div className="flex bg-[var(--color-background)] rounded p-1 border border-[var(--color-border)]">
           <button
             onClick={() => setActiveTab('roles')}
             className={`flex items-center gap-2 px-4 py-1 rounded text-xs font-bold uppercase transition-all ${
               activeTab === 'roles'
-                ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.6)]'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-[var(--color-primary)] text-black shadow-[var(--glow-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
             }`}
           >
             <Users size={14} />
@@ -27,8 +27,8 @@ export default function CreatorStudio() {
             onClick={() => setActiveTab('orchestrations')}
             className={`flex items-center gap-2 px-4 py-1 rounded text-xs font-bold uppercase transition-all ${
               activeTab === 'orchestrations'
-                ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.6)]'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-[var(--color-secondary)] text-black shadow-[var(--glow-secondary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
             }`}
           >
             <Workflow size={14} />
@@ -50,7 +50,7 @@ export default function CreatorStudio() {
         <div className={`absolute inset-0 transition-opacity duration-300 ${
           activeTab === 'orchestrations' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
         }`}>
-          <OrchestrationCreatorPanel className="h-full w-full" />
+          <OrchestrationDesigner />
         </div>
       </div>
     </div>

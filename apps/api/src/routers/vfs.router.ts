@@ -149,4 +149,37 @@ export const vfsRouter = createTRPCRouter({
          });
        }
     }),
+    
+    // 5. Ingest Directory
+    ingestDirectory: publicProcedure
+    .input(z.object({ 
+      path: z.string(), 
+      cardId: z.string().optional(),
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+       try {
+         // Currently only supporting local ingestion for simplicity, but we could expand
+         // For now, we'll just use the path directly if it's local
+         if (input.provider !== 'local') {
+            throw new Error('Remote ingestion not yet supported');
+         }
+         
+         // Import here to avoid circular deps if any, or just standard import
+         const { ingestionAgent } = await import('../services/IngestionAgent.js');
+         
+         // Trigger ingestion in background? Or await? 
+         // User probably wants to know when it starts, but maybe not wait for whole thing?
+         // Let's await for now so we can catch immediate errors
+         await ingestionAgent.ingestRepository(input.path);
+         
+         return { success: true };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Ingestion Failed',
+         });
+       }
+    }),
 });

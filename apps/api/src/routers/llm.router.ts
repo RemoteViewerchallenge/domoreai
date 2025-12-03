@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ProviderManager } from '../services/ProviderManager.js';
 import { db } from '../db.js';
+import { providerConfigs } from '../db/schema.js';
 import { encrypt } from '../utils/encryption.js';
 import { selectCandidateModels } from '../lib/modelSelector.js';
 import { UsageCollector } from '../services/UsageCollector.js';
+import { eq, desc } from 'drizzle-orm';
 
 export const llmRouter: Router = Router();
 
@@ -161,16 +163,16 @@ llmRouter.post('/chat/completions', async (req, res) => {
 // Manage Providers (CRUD)
 llmRouter.get('/configurations', async (req, res) => {
   try {
-    const configs = await db.providerConfig.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
+    const configs = await db.select().from(providerConfigs).orderBy(desc(providerConfigs.createdAt));
+    
     // Don't return the full API key
-    const safeConfigs = configs.map((c: any) => ({
+    const safeConfigs = configs.map((c) => ({
       ...c,
       apiKey: '********' 
     }));
     res.json(safeConfigs);
   } catch (error) {
+    console.error('Failed to fetch configurations:', error);
     res.status(500).json({ error: 'Failed to fetch configurations' });
   }
 });
@@ -184,18 +186,17 @@ llmRouter.post('/configurations', async (req, res) => {
 
   try {
     const encryptedKey = encrypt(apiKey);
-    const config = await db.providerConfig.create({
-      data: {
+    const [config] = await db.insert(providerConfigs).values({
         label,
         type,
         apiKey: encryptedKey,
         baseURL,
         isEnabled: true
-      }
-    });
+    }).returning();
     
     // Re-initialize ProviderManager to pick up new provider
     await ProviderManager.initialize();
+    await ProviderManager.syncModelsToRegistry();
     
     res.json({ ...config, apiKey: '********' });
   } catch (error: any) {
@@ -207,7 +208,7 @@ llmRouter.post('/configurations', async (req, res) => {
 llmRouter.delete('/configurations/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.providerConfig.delete({ where: { id } });
+    await db.delete(providerConfigs).where(eq(providerConfigs.id, id));
     await ProviderManager.initialize();
     res.json({ success: true });
   } catch (error: any) {

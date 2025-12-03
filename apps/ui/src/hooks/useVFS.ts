@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { trpc } from '../utils/trpc';
-import type { VFile } from '../stores/FileSystemTypes';
+import { trpc } from '../utils/trpc.js';
+import type { VFile } from '../stores/FileSystemTypes.js';
 
-export const useVFS = (token: string, initialPath: string = '/') => {
+export const useVFS = (_token: string, initialPath: string = '/') => {
   const [currentPath, setCurrentPath] = useState(initialPath);
   const [files, setFiles] = useState<VFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);

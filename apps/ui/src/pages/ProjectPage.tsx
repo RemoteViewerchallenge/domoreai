@@ -88,7 +88,7 @@ const ProjectPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-black p-4 space-y-4">
-        <p className="text-sm text-gray-400 max-w-3xl">{project.description}</p>
+        <p className="text-sm text-[var(--color-text-secondary)] max-w-3xl">{project.description}</p>
 
         <div className="space-y-2">
           {workflow.map((row, rowIndex) => (
@@ -97,14 +97,14 @@ const ProjectPage: React.FC = () => {
                 {row.map(job => (
                   <div key={job.id} className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg p-3">
                     <h4 className="font-bold text-sm text-white">{job.name}</h4>
-                    <p className="text-xs text-gray-500 mt-1 mb-2 line-clamp-2">{job.description}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1 mb-2 line-clamp-2">{job.description}</p>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-900/20 border border-blue-800 rounded">
                         <User size={9} className="text-blue-400" />
                         <span className="text-[9px] text-blue-300 font-semibold">{job.role?.name || 'Unassigned'}</span>
                       </div>
                        <div className="px-1.5 py-0.5 bg-gray-800 border border-gray-700 rounded">
-                         <span className="text-[9px] text-gray-400 font-semibold uppercase">{job.status.replace(/_/g, ' ')}</span>
+                         <span className="text-[9px] text-[var(--color-text-secondary)] font-semibold uppercase">{job.status.replace(/_/g, ' ')}</span>
                        </div>
                     </div>
                   </div>

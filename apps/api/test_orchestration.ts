@@ -5,7 +5,7 @@
  * This validates that all components are properly connected
  */
 
-import { db } from './src/db.js';
+import { prisma } from './src/db.js';
 import { OrchestrationService } from './src/services/orchestration.service.js';
 
 async function testOrchestrationSystem() {
@@ -14,7 +14,7 @@ async function testOrchestrationSystem() {
   try {
     // Test 1: Create a test role
     console.log('1️⃣ Creating test roles...');
-    const plannerRole = await db.role.create({
+    const plannerRole = await prisma.role.create({
       data: {
         name: 'Test Planner',
         basePrompt: 'You plan tasks step by step.',
@@ -24,7 +24,7 @@ async function testOrchestrationSystem() {
       },
     });
 
-    const coderRole = await db.role.create({
+    const coderRole = await prisma.role.create({
       data: {
         name: 'Test Coder',
         basePrompt: 'You generate code based on plans.',
@@ -83,8 +83,8 @@ async function testOrchestrationSystem() {
     // Cleanup
     console.log('🧹 Cleaning up test data...');
     await OrchestrationService.deleteOrchestration(orchestration.id);
-    await db.role.delete({ where: { id: plannerRole.id } });
-    await db.role.delete({ where: { id: coderRole.id } });
+    await prisma.role.delete({ where: { id: plannerRole.id } });
+    await prisma.role.delete({ where: { id: coderRole.id } });
     console.log(`✅ Cleanup complete\n`);
 
     console.log('✨ All tests passed!');

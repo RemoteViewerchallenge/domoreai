@@ -53,14 +53,14 @@ const ProviderManager: React.FC = () => {
             </div>
           )}
           <div className="p-4">
-            <span className="text-xs font-bold text-zinc-500 mb-4 block">ACTIVE PROVIDERS</span>
+            <span className="text-xs font-bold text-[var(--color-text-secondary)] mb-4 block">ACTIVE PROVIDERS</span>
             <ProviderList 
               onIngest={(id) => debugFetchMutation.mutate({ providerId: id })}
               onSelect={(id) => console.log("Selected", id)}
             />
           </div>
           <div className="flex-1 border-t border-zinc-800 p-4 flex flex-col">
-             <div className="flex items-center gap-2 mb-4 text-zinc-400">
+             <div className="flex items-center gap-2 mb-4 text-[var(--color-text-secondary)]">
                 <Globe size={16} />
                 <span className="text-xs font-bold">QUICK API TEST</span>
              </div>
@@ -78,13 +78,13 @@ const ProviderManager: React.FC = () => {
               <div className="bg-zinc-900/90 backdrop-blur border border-zinc-700 p-1 rounded-full flex shadow-xl pointer-events-auto">
                  <button
                    onClick={() => setViewMode('refine')}
-                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'refine' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'refine' ? 'bg-purple-600 text-white' : 'text-[var(--color-text-secondary)] hover:text-white'}`}
                  >
                     <Database size={14} /> Refinement Node
                  </button>
                  <button
                    onClick={() => setViewMode('manage')}
-                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'manage' ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                   className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'manage' ? 'bg-red-600 text-white' : 'text-[var(--color-text-secondary)] hover:text-white'}`}
                  >
                     <Table size={14} /> DB Manager
                  </button>

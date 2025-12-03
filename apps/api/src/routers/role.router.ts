@@ -1,6 +1,9 @@
 import { z } from 'zod';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { db } from '../db.js';
+import { prisma } from '../db.js';
+import { ingestAgentLibrary } from '../services/RoleIngestionService.js';
 
 const createRoleSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -58,7 +61,7 @@ const updateRoleSchema = z.object({
 export const roleRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
     // Fetch all roles from the database
-    const roles = await db.role.findMany({
+    const roles = await prisma.role.findMany({
       orderBy: {
         name: 'asc',
       },
@@ -103,7 +106,7 @@ export const roleRouter = createTRPCRouter({
     .input(createRoleSchema)
     .mutation(async ({ input }) => {
       // Create a new role in the database
-      const role = await db.role.create({
+      const role = await prisma.role.create({
         data: {
           name: input.name,
           basePrompt: input.basePrompt,
@@ -135,7 +138,7 @@ export const roleRouter = createTRPCRouter({
       const { id, ...data } = input;
       
       // Update the role in the database
-      const role = await db.role.update({
+      const role = await prisma.role.update({
         where: { id },
         data,
       });
@@ -146,9 +149,22 @@ export const roleRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       // Delete the role from the database
-      await db.role.delete({
+      await prisma.role.delete({
         where: { id: input.id },
       });
       return { success: true };
     }),
+
+  ingestLibrary: publicProcedure.mutation(async () => {
+    // Get the directory where this router is located
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const agentsDir = path.join(__dirname, '../../data/agents/en');
+
+    const stats = await ingestAgentLibrary(agentsDir, prisma);
+    return {
+      message: 'Agent library ingestion complete',
+      ...stats,
+    };
+  }),
 });

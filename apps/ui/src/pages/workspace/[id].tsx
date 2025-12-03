@@ -89,9 +89,9 @@ const MyWorkspacePage = () => {
           <Panel borderColor="border-green-400">
             {selectedFile ? (
               <MonacoEditor
-                filePath={selectedFile}
-                content={editorContent}
-                onContentChange={setEditorContent}
+                language={selectedFile?.split('.').pop() || 'javascript'}
+                value={editorContent}
+                onChange={(val) => setEditorContent(val || '')}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-neutral-500">

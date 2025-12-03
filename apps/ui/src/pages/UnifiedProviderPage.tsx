@@ -5,16 +5,16 @@ import { Database, ArrowRight } from 'lucide-react';
 
 const UnifiedProviderPage: React.FC = () => {
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-black text-zinc-200">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--color-background)] text-[var(--color-text)]">
       {/* Page Header */}
-      <div className="flex-none h-10 px-4 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between">
+      <div className="flex-none h-10 px-4 border-b border-[var(--color-border)] bg-[var(--color-background-secondary)] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Database className="text-cyan-500" size={16} />
-          <span className="text-sm font-bold tracking-wider uppercase">Providers</span>
+          <Database className="text-[var(--color-primary)]" size={16} />
+          <span className="text-sm font-bold tracking-wider uppercase">Data</span>
         </div>
         <Link 
           to="/data-lake"
-          className="flex items-center gap-2 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-all text-xs font-bold uppercase shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+          className="flex items-center gap-2 px-3 py-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] rounded transition-all text-xs font-bold uppercase shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.6)]"
         >
           Data Lake <ArrowRight size={14} />
         </Link>

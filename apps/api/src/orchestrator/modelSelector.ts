@@ -1,7 +1,7 @@
 import { DynamicModelAdapter, type DynamicModel } from '../services/DynamicModelAdapter.js';
 import { UsageCollector } from '../services/UsageCollector.js';
 import { getRedisClient } from '../redis.js';
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { AssessmentService } from '../services/AssessmentService.js';
 import { CreditGuard } from '../services/CreditGuard.js';
 
@@ -52,7 +52,7 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
   // These rows now contain your 'priority', 'group_id', etc.
   
   // Fetch config
-  const config = await db.orchestratorConfig.findUnique({ where: { id: 'global' } });
+  const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
   const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
   
   let candidates: DynamicModel[];

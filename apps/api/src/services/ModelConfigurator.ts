@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { Model, ModelConfig, Role, Prisma } from '@prisma/client';
 
 type CompletionParams = {
@@ -142,8 +142,8 @@ export class ModelConfigurator {
     if (Object.keys(adjustments).length > 0) {
         // We don't want to block the response, so we don't await? 
         // But the method is async.
-        // The prompt has `await db.modelConfig.update`.
-        await db.modelConfig.update({
+        // The prompt has `await prisma.modelConfig.update`.
+        await prisma.modelConfig.update({
             where: { id: config.id },
             data: { 
                 adjustedParameters: adjustments as Prisma.InputJsonValue,

@@ -205,7 +205,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
       {/* Browser Bar */}
       <div className="h-10 flex items-center gap-2 px-2 bg-zinc-950 border-b border-zinc-800">
         <button 
-          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white disabled:opacity-30"
+          className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
           onClick={handleBack}
           disabled={isLoading}
           title="Back"
@@ -213,7 +213,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
           <ArrowLeft size={14}/>
         </button>
         <button 
-          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white disabled:opacity-30"
+          className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
           onClick={handleForward}
           disabled={isLoading}
           title="Forward"
@@ -221,7 +221,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
           <ArrowRight size={14}/>
         </button>
         <button 
-          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white disabled:opacity-30"
+          className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
           onClick={handleRefresh}
           disabled={isLoading}
           title="Refresh"
@@ -229,7 +229,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
           {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14}/>}
         </button>
         <button 
-          className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white disabled:opacity-30"
+          className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
           onClick={handleHome}
           disabled={isLoading}
           title="Home"
@@ -257,21 +257,21 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         <div className="flex items-center gap-1 bg-zinc-900 rounded p-0.5 border border-zinc-800">
           <button
             onClick={handleZoomOut}
-            className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+            className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white"
             title="Zoom Out (50%-300%)"
           >
             <ZoomOut size={14} />
           </button>
           <button
             onClick={handleZoomReset}
-            className="px-2 py-0.5 hover:bg-zinc-800 rounded text-[10px] text-zinc-400 hover:text-white font-mono"
+            className="px-2 py-0.5 hover:bg-zinc-800 rounded text-[10px] text-[var(--color-text-secondary)] hover:text-white font-mono"
             title="Reset Zoom"
           >
             {Math.round(zoom * 100)}%
           </button>
           <button
             onClick={handleZoomIn}
-            className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+            className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white"
             title="Zoom In (50%-300%)"
           >
             <ZoomIn size={14} />
@@ -279,7 +279,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         </div>
 
         {title && (
-          <div className="text-xs text-zinc-500 max-w-xs truncate">
+          <div className="text-xs text-[var(--color-text-secondary)] max-w-xs truncate">
             {title}
           </div>
         )}
@@ -316,7 +316,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-4">
+          <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-secondary)] gap-4">
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin" size={48} />
@@ -363,21 +363,21 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
             </button>
             <button
               onClick={() => handleKeyPress('Enter')}
-              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 rounded text-xs"
+              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[var(--color-text-secondary)] rounded text-xs"
               title="Press Enter"
             >
               ↵
             </button>
             <button
               onClick={() => handleKeyPress('Tab')}
-              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 rounded text-xs"
+              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[var(--color-text-secondary)] rounded text-xs"
               title="Press Tab"
             >
               Tab
             </button>
             <button
               onClick={() => setShowKeyboard(false)}
-              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 rounded text-xs"
+              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[var(--color-text-secondary)] rounded text-xs"
               title="Close keyboard"
             >
               ✕

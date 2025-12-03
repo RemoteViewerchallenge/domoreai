@@ -49,7 +49,7 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
             <Terminal size={14} />
             <span>SSH Remote Connection</span>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-[var(--color-text-secondary)] hover:text-white transition-colors">
             <X size={14} />
           </button>
         </div>
@@ -59,9 +59,9 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
           
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1">
-              <label className="text-[10px] uppercase text-zinc-500 font-bold">Host</label>
+              <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-bold">Host</label>
               <div className="relative">
-                <Server size={12} className="absolute left-2.5 top-2.5 text-zinc-500" />
+                <Server size={12} className="absolute left-2.5 top-2.5 text-[var(--color-text-secondary)]" />
                 <input
                   type="text"
                   required
@@ -73,7 +73,7 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] uppercase text-zinc-500 font-bold">Port</label>
+              <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-bold">Port</label>
               <input
                 type="number"
                 required
@@ -85,7 +85,7 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] uppercase text-zinc-500 font-bold">Username</label>
+            <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-bold">Username</label>
             <input
               type="text"
               required
@@ -105,7 +105,7 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
                   onChange={() => setConfig({ ...config, authType: 'key' })}
                   className="accent-cyan-500"
                 />
-                <span className={`text-xs font-bold ${config.authType === 'key' ? 'text-cyan-400' : 'text-zinc-500'}`}>SSH Key</span>
+                <span className={`text-xs font-bold ${config.authType === 'key' ? 'text-cyan-400' : 'text-[var(--color-text-secondary)]'}`}>SSH Key</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input 
@@ -115,7 +115,7 @@ export const SshConnectionModal: React.FC<SshConnectionModalProps> = ({
                   onChange={() => setConfig({ ...config, authType: 'password' })}
                   className="accent-cyan-500"
                 />
-                <span className={`text-xs font-bold ${config.authType === 'password' ? 'text-cyan-400' : 'text-zinc-500'}`}>Password</span>
+                <span className={`text-xs font-bold ${config.authType === 'password' ? 'text-cyan-400' : 'text-[var(--color-text-secondary)]'}`}>Password</span>
               </label>
             </div>
 
