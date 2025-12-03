@@ -7,7 +7,7 @@ import { ProviderFactory } from '../utils/ProviderFactory.js';
 
 export const providerRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.providerConfig.findMany();
+    return ctx.prisma.providerConfig.findMany();
   }),
   add: publicProcedure
     .input(z.object({
@@ -18,7 +18,7 @@ export const providerRouter = createTRPCRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : ''; // Enforce string
-      return ctx.db.providerConfig.create({
+      return ctx.prisma.providerConfig.create({
         data: {
           label: input.name,
           type: input.providerType,
@@ -31,7 +31,7 @@ export const providerRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.providerConfig.delete({
+      return ctx.prisma.providerConfig.delete({
         where: { id: input.id },
       });
     }),
@@ -43,7 +43,7 @@ export const providerRouter = createTRPCRouter({
   fetchAndNormalizeModels: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const providerConfig = await ctx.db.providerConfig.findUnique({
+      const providerConfig = await ctx.prisma.providerConfig.findUnique({
         where: { id: input.providerId },
       });
       if (!providerConfig) {
@@ -80,7 +80,7 @@ export const providerRouter = createTRPCRouter({
         // We need to cast model to any to access potential extra props if needed, 
         // but SDK returns LLMModel which is strict. 
         // For now, we store the whole model object as providerData.
-        return ctx.db.model.upsert({
+        return ctx.prisma.model.upsert({
           where: {
             providerId_modelId: { providerId: providerConfig.id, modelId: modelId },
           },
@@ -108,7 +108,7 @@ export const providerRouter = createTRPCRouter({
   debugFetch: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const providerConfig = await ctx.db.providerConfig.findUnique({
+      const providerConfig = await ctx.prisma.providerConfig.findUnique({
         where: { id: input.providerId },
       });
       if (!providerConfig) {
@@ -138,7 +138,7 @@ export const providerRouter = createTRPCRouter({
       
       const models = await providerInstance.getModels();
       
-      return ctx.db.rawDataLake.create({
+      return ctx.prisma.rawDataLake.create({
         data: {
           provider: providerConfig.type,
           rawData: models as any,
@@ -149,7 +149,7 @@ export const providerRouter = createTRPCRouter({
 
   getRawData: publicProcedure
     .query(async ({ ctx }) => {
-      return ctx.db.rawDataLake.findMany({
+      return ctx.prisma.rawDataLake.findMany({
         orderBy: { ingestedAt: 'desc' },
       });
     }),
@@ -157,7 +157,7 @@ export const providerRouter = createTRPCRouter({
   deleteRawData: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.rawDataLake.delete({
+      return ctx.prisma.rawDataLake.delete({
         where: { id: input.id },
       });
     }),
@@ -168,7 +168,7 @@ export const providerRouter = createTRPCRouter({
       rawData: z.any(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.rawDataLake.create({
+      return ctx.prisma.rawDataLake.create({
         data: {
           provider: input.provider,
           rawData: input.rawData,

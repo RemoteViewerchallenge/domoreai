@@ -71,7 +71,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
         {/* 2. MODEL ALLOCATION - Compact */}
         <div className="p-2 rounded border border-zinc-800 bg-zinc-900/30 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-bold text-zinc-500 flex items-center gap-1">
+            <span className="text-[9px] font-bold text-[var(--color-text-secondary)] flex items-center gap-1">
               <Brain size={10} /> MODEL
             </span>
             <button 
@@ -106,7 +106,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
             <div className="flex items-center justify-between bg-black border border-zinc-800 rounded px-2 py-1">
               <div className="flex items-center gap-1">
                 <Zap size={10} className={isRevealed ? "text-blue-400" : "text-green-500 animate-pulse"} />
-                <span className={`text-[10px] font-bold ${isRevealed ? "text-zinc-200" : "text-zinc-500"}`}>
+                <span className={`text-[10px] font-bold ${isRevealed ? "text-zinc-200" : "text-[var(--color-text-secondary)]"}`}>
                   {isRevealed 
                     ? (availableModels.find(m => m.id === config.modelId)?.name || "Allocating...") 
                     : "Dynamic Free Tier"}
@@ -140,7 +140,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
           {showAdjustmentDetails && config.adjustedParameters && (
             <div className="bg-zinc-900 border border-yellow-700/50 rounded p-2 text-[8px]">
               {Object.entries(config.adjustedParameters).map(([key, val]) => (
-                <div key={key} className="text-zinc-500">
+                <div key={key} className="text-[var(--color-text-secondary)]">
                   {key}: {(val as { reason?: string })?.reason || String(val)}
                 </div>
               ))}
@@ -149,7 +149,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
           
           {/* Temperature */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Temp</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Temp</span>
             <input 
               type="number"
               min={0} max={2} step={0.1}
@@ -161,7 +161,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Max Tokens */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Tokens</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Tokens</span>
             <input 
               type="number"
               min={256} max={8192} step={256}
@@ -173,7 +173,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Top P */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Top P</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Top P</span>
             <input 
               type="number"
               min={0} max={1} step={0.05}
@@ -185,7 +185,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Frequency Penalty */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Freq</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Freq</span>
             <input 
               type="number"
               min={-2} max={2} step={0.1}
@@ -197,7 +197,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Presence Penalty */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Presence</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Presence</span>
             <input 
               type="number"
               min={-2} max={2} step={0.1}
@@ -209,7 +209,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Seed */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Seed</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Seed</span>
             <input
               type="number"
               value={config.seed ?? ''}
@@ -221,7 +221,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Response Format */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] text-zinc-400 w-16">Format</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)] w-16">Format</span>
             <select
               value={config.responseFormat ?? 'text'}
               onChange={(e) => onUpdate({ ...config, responseFormat: e.target.value as 'text' | 'json_object' })}
@@ -234,7 +234,7 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
 
           {/* Stop Sequences */}
           <div className="space-y-1">
-            <span className="text-[9px] text-zinc-400">Stop Sequences</span>
+            <span className="text-[9px] text-[var(--color-text-secondary)]">Stop Sequences</span>
             <input
               type="text"
               value={config.stop?.join(', ') ?? ''}

@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { db } from '../db.js';
+import { providerConfigs, modelRegistry, openAIModels, anthropicModels, googleModels, openRouterModels, genericProviderModels } from '../db/schema.js';
 import { decrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
@@ -8,9 +10,7 @@ export class ProviderManager {
 
   static async initialize() {
     try {
-      const configs = await db.providerConfig.findMany({
-        where: { isEnabled: true },
-      });
+      const configs = await db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
 
       this.providers.clear();
       for (const config of configs) {
@@ -50,56 +50,128 @@ export class ProviderManager {
   }
 
   /**
-   * Syncs all discovered models to the active registry table.
-   * This turns the DB into a mirror of the API state.
+   * Syncs all discovered models to the Drizzle tables.
+   * Splits data between Registry (lookup) and Provider Tables (details).
    */
   static async syncModelsToRegistry() {
-      console.log('[ProviderManager] Starting Registry Sync...');
-      
-      // 1. Get Active Table
-      const config = await db.orchestratorConfig.findUnique({ where: { id: 'global' } });
-      const tableName = config?.activeTableName || 'unified_models';
-      
-      // 2. Iterate Providers
-      for (const [providerId, provider] of this.providers.entries()) {
-          try {
-              console.log(`[Registry Sync] Fetching models for ${providerId}...`);
-              const models = await provider.getModels();
-              
-              if (models.length === 0) continue;
+    console.log('[ProviderManager] Starting Registry Sync (All Models)...');
 
-              // 3. Prepare Data for Insertion
-              // We need to map LLMModel fields to the table columns.
-              // We'll assume standard columns: model_id, provider_id, context_window, cost, is_free, type
-              
-              // OPTIONAL: Wipe existing rows for this provider to remove stale models
-              await db.$executeRawUnsafe(`DELETE FROM "${tableName}" WHERE provider_id = '${providerId}'`);
-              
-              // 4. Insert New Rows
-              // We construct a massive VALUES string.
-              const values = models.map(m => {
-                  const safeId = m.id.replace(/'/g, "''");
-                  const safeName = (m.name || m.id).replace(/'/g, "''");
-                  const context = m.contextWindow || 0;
-                  const cost = m.costPer1k || 0;
-                  const isFree = m.isFree || (cost === 0);
-                  const type = 'chat'; // Default to chat for now
-                  
-                  return `('${safeId}', '${providerId}', '${safeName}', ${context}, ${cost}, ${isFree}, '${type}')`;
-              }).join(', ');
-              
-              const query = `
-                  INSERT INTO "${tableName}" (model_id, provider_id, model_name, context_window, cost, is_free, type)
-                  VALUES ${values}
-              `;
-              
-              await db.$executeRawUnsafe(query);
-              console.log(`[Registry Sync] Synced ${models.length} models for ${providerId}`);
-              
-          } catch (error) {
-              console.error(`[Registry Sync] Failed for provider ${providerId}:`, error);
+    // 2. Iterate Providers
+    for (const [providerId, provider] of this.providers.entries()) {
+      try {
+        console.log(`[Registry Sync] Fetching models for ${providerId}...`);
+        const models = await provider.getModels();
+
+        if (models.length === 0) continue;
+
+        // Get provider config to check type
+        const [providerConfig] = await db.select({ type: providerConfigs.type, label: providerConfigs.label })
+          .from(providerConfigs)
+          .where(eq(providerConfigs.id, providerId))
+          .limit(1);
+
+        if (!providerConfig) continue;
+
+        // 3. Sync ALL models (removed Free Models Only filter)
+        // Deduplicate
+        const uniqueModels = new Map<string, LLMModel>();
+        models.forEach(m => uniqueModels.set(m.id, m));
+
+        console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerConfig.label || providerId}...`);
+
+        for (const m of uniqueModels.values()) {
+          const cost = m.costPer1k as number | undefined;
+          const isFree = m.isFree === true || (typeof cost === 'number' && cost === 0);
+
+          // 1. Upsert into Registry (The Phonebook)
+          await db.insert(modelRegistry).values({
+            modelId: m.id,
+            providerId: providerId,
+            modelName: (m.name as string) || m.id,
+            isFree: isFree,
+            costPer1k: cost || 0
+          }).onConflictDoUpdate({
+            target: [modelRegistry.modelId, modelRegistry.providerId],
+            set: {
+              modelName: (m.name as string) || m.id,
+              isFree: isFree,
+              costPer1k: cost || 0
+            }
+          });
+
+          // 2. Upsert into Provider Specific Table (The Details)
+          const rawData = (m.providerData || {}) as Record<string, unknown>; 
+          
+          if (providerConfig.type === 'openai') {
+            await db.insert(openAIModels).values({
+              modelId: m.id,
+              contextWindow: (m.contextWindow as number) || 0,
+              supportsVision: (m.hasVision as boolean) || false,
+              rawData: rawData
+            }).onConflictDoUpdate({
+              target: openAIModels.modelId,
+              set: { rawData: rawData }
+            });
+          } 
+          else if (providerConfig.type === 'anthropic') {
+            await db.insert(anthropicModels).values({
+              modelId: m.id,
+              maxTokens: (m.contextWindow as number) || 0, 
+              supportsVision: (m.hasVision as boolean) || false,
+              rawData: rawData
+            }).onConflictDoUpdate({
+              target: anthropicModels.modelId,
+              set: { rawData: rawData }
+            });
           }
+          else if (providerConfig.type === 'google') {
+            await db.insert(googleModels).values({
+              modelId: m.id,
+              inputTokenLimit: (m.contextWindow as number) || 0,
+              supportsGeminiTools: true,
+              rawData: rawData
+            }).onConflictDoUpdate({
+              target: googleModels.modelId,
+              set: { rawData: rawData }
+            });
+          }
+          else if (providerConfig.type === 'openrouter') {
+             // Safe access for OpenRouter specific fields
+             const pricing = rawData.pricing;
+             const topProvider = rawData.top_provider;
+
+             await db.insert(openRouterModels).values({
+              modelId: m.id,
+              contextLength: (m.contextWindow as number) || 0,
+              pricing: pricing, 
+              topProvider: topProvider,
+              rawData: rawData
+            }).onConflictDoUpdate({
+              target: openRouterModels.modelId,
+              set: { rawData: rawData }
+            });
+          }
+          else {
+            // Generic Fallback
+            await db.insert(genericProviderModels).values({
+              modelId: m.id,
+              providerId: providerId,
+              rawData: rawData
+            }).onConflictDoUpdate({
+              target: [genericProviderModels.modelId, genericProviderModels.providerId],
+              set: { rawData: rawData }
+            });
+          }
+        }
+
+        console.log(`[Registry Sync] Synced ${uniqueModels.size} models for ${providerConfig.label || providerId}`);
+
+      } catch (error) {
+        console.error(`[Registry Sync] Failed for provider ${providerId}:`, error);
       }
-      console.log('[ProviderManager] Registry Sync Completed.');
+    }
+    console.log('[ProviderManager] Registry Sync Completed.');
   }
 }
+
+

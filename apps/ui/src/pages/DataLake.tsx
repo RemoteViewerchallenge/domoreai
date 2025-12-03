@@ -13,38 +13,37 @@ const DataLake: React.FC = () => {
   const utils = trpc.useContext();
 
   // Data Hooks
-  const { data: tables } = trpc.dataRefinement.listFlattenedTables.useQuery(); // Renamed from flattenedTables
+  const { data: tables } = trpc.dataRefinement.listAllTables.useQuery();
   const { data: allTables } = trpc.dataRefinement.listAllTables.useQuery();
   const { data: tableData } = trpc.dataRefinement.getTableData.useQuery(
     { tableName: selectedTable || '', limit: 1000 },
     { enabled: !!selectedTable }
   );
 
-  const dropTableMutation = trpc.dataRefinement.dropTable.useMutation({
+  const dropTableMutation = trpc.dataRefinement.deleteTable.useMutation({
     onSuccess: () => {
       setSelectedTable(null);
-      utils.dataRefinement.listFlattenedTables.invalidate();
       utils.dataRefinement.listAllTables.invalidate();
     },
     onError: (error) => alert(`Drop failed: ${error.message}`),
   });
 
-  const autoFlattenMutation = trpc.dataRefinement.autoFlatten.useMutation({
+  const autoFlattenMutation = trpc.dataRefinement.flattenRawData.useMutation({
     onSuccess: () => {
-      utils.dataRefinement.listFlattenedTables.invalidate();
+      utils.dataRefinement.listAllTables.invalidate();
       alert("Table Created!");
     },
     onError: (e) => alert("Error: " + e.message)
   });
 
   const executeMutation = trpc.dataRefinement.executeQuery.useMutation({
-    onSuccess: (data) => setCustomData(data as any[])
+    onSuccess: (data) => setCustomData(data.rows as any[])
   });
 
   const saveTableMutation = trpc.dataRefinement.saveQueryResults.useMutation({
     onSuccess: () => {
       alert('Table saved successfully!');
-      utils.dataRefinement.listFlattenedTables.invalidate();
+      utils.dataRefinement.listAllTables.invalidate();
     }
   });
 
@@ -82,7 +81,7 @@ const DataLake: React.FC = () => {
       {showQueryBuilder && (
         <div className="flex-none animate-in slide-in-from-top-2 fade-in duration-200">
            <VisualQueryBuilder 
-             tables={tables?.map(t => t.name) || ['RawDataLake']}
+             activeTable={selectedTable || 'RawDataLake'}
              onExecute={(sql: string) => executeMutation.mutate({ query: sql })}
              onSaveTable={(sql: string, name: string) => saveTableMutation.mutate({ query: sql, newTableName: name })}
              isLoading={executeMutation.isLoading}
@@ -99,7 +98,7 @@ const DataLake: React.FC = () => {
             <button
               onClick={() => setViewMode('all')}
               className={`flex-1 py-2 text-[10px] font-bold uppercase transition-colors ${
-                viewMode === 'all' ? 'bg-zinc-800 text-cyan-400' : 'text-zinc-500 hover:text-zinc-300'
+                viewMode === 'all' ? 'bg-zinc-800 text-cyan-400' : 'text-[var(--color-text-secondary)] hover:text-zinc-300'
               }`}
             >
               All Tables
@@ -107,7 +106,7 @@ const DataLake: React.FC = () => {
             <button
               onClick={() => setViewMode('flattened')}
               className={`flex-1 py-2 text-[10px] font-bold uppercase transition-colors ${
-                viewMode === 'flattened' ? 'bg-zinc-800 text-cyan-400' : 'text-zinc-500 hover:text-zinc-300'
+                viewMode === 'flattened' ? 'bg-zinc-800 text-cyan-400' : 'text-[var(--color-text-secondary)] hover:text-zinc-300'
               }`}
             >
               Flattened
@@ -121,7 +120,7 @@ const DataLake: React.FC = () => {
               return (
                 <div 
                   key={tableName} 
-                  className={`group flex items-center justify-between px-3 py-2 rounded cursor-pointer transition-colors ${selectedTable === tableName ? 'bg-zinc-800 text-cyan-400' : 'hover:bg-zinc-900 text-zinc-400'}`}
+                  className={`group flex items-center justify-between px-3 py-2 rounded cursor-pointer transition-colors ${selectedTable === tableName ? 'bg-zinc-800 text-cyan-400' : 'hover:bg-zinc-900 text-[var(--color-text-secondary)]'}`}
                   onClick={() => {
                     setSelectedTable(tableName);
                     setCustomData(null); // Clear custom query results when selecting a table
@@ -154,15 +153,15 @@ const DataLake: React.FC = () => {
              <div className="absolute inset-0 bg-black">
                 <div className="p-2 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center">
                   <span className="text-xs font-bold text-purple-400">QUERY RESULTS</span>
-                  <button onClick={() => setCustomData(null)} className="text-xs text-zinc-500 hover:text-white">
+                  <button onClick={() => setCustomData(null)} className="text-xs text-[var(--color-text-secondary)] hover:text-white">
                     <X size={14} /> Close Results
                   </button>
                 </div>
-                <UniversalDataGrid data={customData} tableName="QUERY_RESULTS" />
+                <UniversalDataGrid data={customData} />
              </div>
           ) : selectedTable && tableData ? (
             <div className="absolute inset-0">
-               <UniversalDataGrid data={tableData.rows as any[]} tableName={selectedTable} />
+               <UniversalDataGrid data={tableData.rows} />
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-zinc-700 space-y-4">

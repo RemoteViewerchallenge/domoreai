@@ -1,0 +1,250 @@
+/* Theme CSS Variables - Applied by ThemeProvider */
+:root {
+  /* Colors */
+  --color-primary: #00FFFF;
+  --color-secondary: #9D00FF;
+  --color-accent: #FF00FF;
+  --color-success: #00FF00;
+  --color-warning: #FFFF00;
+  --color-error: #FF1493;
+  --color-info: #0080FF;
+  
+  /* Background and Text Colors */
+  --color-background: #000000;
+  --color-background-secondary: #0a0a0a;
+  --color-text: #ffffff;
+  --color-text-secondary: #a0a0a0;
+  --color-border: #1a1a1a;
+  
+  /* Gradients */
+  --gradient-cyberpunk: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+  --gradient-oceanic: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+  --gradient-sunset: linear-gradient(135deg, #FBDA61 0%, #FF5ACD 100%);
+  --gradient-forest: linear-gradient(135deg, #134E5E 0%, #71B280 100%);
+  --gradient-plasma: linear-gradient(135deg, #85FFBD 0%, #FFFB7D 100%);
+  
+  --active-gradient: var(--gradient-cyberpunk);
+
+  /* Glows */
+  --glow-primary: 0 0 20px rgba(0, 255, 255, 0.8);
+  --glow-secondary: 0 0 20px rgba(157, 0, 255, 0.8);
+  --glow-accent: 0 0 20px rgba(255, 0, 255, 0.8);
+  
+  /* Visual */
+  --text-brightness: 100%;
+  --border-brightness: 100%;
+  --bg-darkness: 5%;
+  --glow-intensity: 50%;
+  --font-size-base: 13px;
+  --font-size-secondary: 11px;
+  --font-weight: 600;
+  --line-height: 1.5;
+  --letter-spacing: 0.5px;
+  --border-width: 2px;
+  --transparency: 10%;
+  
+  /* Animation */
+  --animation-speed: 1.2;
+  --transition-duration: 250ms;
+  --hover-intensity: 50%;
+  
+  /* Layout */
+  --spacing-multiplier: 1;
+  --gap-size: 12px;
+}
+
+/* Apply theme variables to body */
+body {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight);
+  line-height: var(--line-height);
+  letter-spacing: var(--letter-spacing);
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Gradient Utility */
+.bg-gradient-active {
+  background: var(--active-gradient) !important;
+}
+
+.btn-gradient {
+  background: var(--active-gradient) !important;
+  color: #000 !important;
+  border: none !important;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: filter 0.2s ease, transform 0.1s ease;
+}
+
+.btn-gradient:hover {
+  filter: brightness(1.2);
+  transform: scale(1.02);
+}
+
+/* Neon text utility classes */
+.text-neon {
+  color: var(--color-primary);
+  filter: brightness(var(--text-brightness));
+  text-shadow: var(--glow-primary);
+}
+
+.text-neon-secondary {
+  color: var(--color-secondary);
+  filter: brightness(var(--text-brightness));
+  text-shadow: var(--glow-secondary);
+}
+
+.text-neon-accent {
+  color: var(--color-accent);
+  filter: brightness(var(--text-brightness));
+  text-shadow: var(--glow-accent);
+}
+
+/* Neon border utility classes */
+.border-neon {
+  border-color: var(--color-primary);
+  border-width: var(--border-width);
+  filter: brightness(var(--border-brightness));
+  box-shadow: var(--glow-primary);
+}
+
+.border-neon-secondary {
+  border-color: var(--color-secondary);
+  border-width: var(--border-width);
+  filter: brightness(var(--border-brightness));
+  box-shadow: var(--glow-secondary);
+}
+
+/* Neon button utility classes */
+.btn-neon {
+  background: var(--color-primary);
+  color: #000;
+  border: var(--border-width) solid var(--color-primary);
+  box-shadow: var(--glow-primary);
+  font-weight: var(--font-weight);
+  transition: all calc(var(--transition-duration) / var(--animation-speed)) ease;
+}
+
+.btn-neon:hover {
+  filter: brightness(calc(100% + var(--hover-intensity)));
+  transform: scale(1.05);
+}
+
+.btn-neon-secondary {
+  background: var(--color-secondary);
+  color: #000;
+  border: var(--border-width) solid var(--color-secondary);
+  box-shadow: var(--glow-secondary);
+  font-weight: var(--font-weight);
+  transition: all calc(var(--transition-duration) / var(--animation-speed)) ease;
+}
+
+.btn-neon-secondary:hover {
+  filter: brightness(calc(100% + var(--hover-intensity)));
+  transform: scale(1.05);
+}
+
+/* Neon glow animation */
+@keyframes neon-pulse {
+  0%, 100% {
+    filter: brightness(100%);
+  }
+  50% {
+    filter: brightness(150%);
+  }
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse calc(2s / var(--animation-speed)) ease-in-out infinite;
+}
+
+/* ULTRA AGGRESSIVE THEME OVERRIDES - Load after everything else */
+/* Target every possible Tailwind background class */
+.bg-black,
+.bg-white,
+[class*=" bg-black"],
+[class*=" bg-white"],
+[class*=" bg-zinc"],
+[class*=" bg-gray"],
+[class*=" bg-slate"],
+div.bg-black,
+div[class*="bg-zinc"],
+div[class*="bg-gray"] {
+  background-color: var(--color-background) !important;
+}
+
+/* Specific overrides for dark backgrounds */
+.bg-zinc-900,
+.bg-zinc-950,
+.bg-gray-900,
+.bg-gray-950,
+.bg-black {
+  background-color: var(--color-background-secondary) !important;
+}
+
+/* Text color overrides */
+.text-white,
+.text-zinc-100,
+.text-zinc-200,
+.text-zinc-300,
+[class*=" text-white"],
+[class*=" text-zinc"],
+[class*=" text-gray"],
+div.text-white,
+p[class*="text-"],
+span[class*="text-"] {
+  color: var(--color-text) !important;
+}
+
+/* Secondary text */
+.text-zinc-400,
+.text-zinc-500,
+.text-gray-400,
+.text-gray-500,
+.text-zinc-600,
+.text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+
+/* VISUAL SETTINGS IMPLEMENTATION */
+
+/* Force border width on standard Tailwind border classes */
+/* Generic border (all sides) */
+.border, .border-2, .border-4, .border-8 {
+  border-width: var(--border-width) !important;
+}
+
+/* Side-specific borders - Only override the specific side width */
+.border-t, .border-t-2, .border-t-4, .border-t-8 { border-top-width: var(--border-width) !important; }
+.border-r, .border-r-2, .border-r-4, .border-r-8 { border-right-width: var(--border-width) !important; }
+.border-b, .border-b-2, .border-b-4, .border-b-8 { border-bottom-width: var(--border-width) !important; }
+.border-l, .border-l-2, .border-l-4, .border-l-8 { border-left-width: var(--border-width) !important; }
+.border-x, .border-x-2, .border-x-4, .border-x-8 { 
+  border-left-width: var(--border-width) !important; 
+  border-right-width: var(--border-width) !important; 
+}
+.border-y, .border-y-2, .border-y-4, .border-y-8 { 
+  border-top-width: var(--border-width) !important; 
+  border-bottom-width: var(--border-width) !important; 
+}
+
+/* Apply border brightness to all elements with borders */
+[class*="border-"] {
+  filter: brightness(var(--border-brightness));
+}
+
+/* Font Size Overrides - Scale relative to base size */
+.text-xs { font-size: var(--font-size-secondary) !important; }
+.text-sm { font-size: calc(var(--font-size-secondary) * 1.1) !important; }
+.text-base { font-size: var(--font-size-base) !important; }
+.text-lg { font-size: calc(var(--font-size-base) * 1.125) !important; }
+.text-xl { font-size: calc(var(--font-size-base) * 1.25) !important; }
+.text-2xl { font-size: calc(var(--font-size-base) * 1.5) !important; }
+.text-3xl { font-size: calc(var(--font-size-base) * 1.875) !important; }
+.text-4xl { font-size: calc(var(--font-size-base) * 2.25) !important; }
+
+/* Apply text brightness to all text */
+body {
+  filter: brightness(var(--text-brightness));
+}

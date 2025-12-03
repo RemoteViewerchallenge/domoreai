@@ -51,7 +51,7 @@ export default function FileLocationPage() {
 
           {/* Current Path Display */}
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-zinc-400 uppercase">Current Path</label>
+            <label className="block text-xs font-bold text-[var(--color-text-secondary)] uppercase">Current Path</label>
             <div className="bg-zinc-950 border border-zinc-800 rounded px-4 py-3 text-sm text-zinc-300 font-mono">
               {currentPath}
             </div>
@@ -59,7 +59,7 @@ export default function FileLocationPage() {
 
           {/* Workspace Root Input */}
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-zinc-400 uppercase">Workspace Root Directory</label>
+            <label className="block text-xs font-bold text-[var(--color-text-secondary)] uppercase">Workspace Root Directory</label>
             <input
               type="text"
               value={workspaceRoot}
@@ -67,7 +67,7 @@ export default function FileLocationPage() {
               placeholder="/path/to/your/workspace"
               className="w-full bg-black border border-zinc-700 text-white text-sm px-4 py-3 rounded font-mono focus:border-green-500 focus:outline-none"
             />
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[var(--color-text-secondary)]">
               Enter the absolute path to your workspace directory
             </p>
           </div>
@@ -75,7 +75,7 @@ export default function FileLocationPage() {
           {/* Saved Root Display */}
           {savedRoot && (
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-zinc-400 uppercase">Saved Workspace Root</label>
+              <label className="block text-xs font-bold text-[var(--color-text-secondary)] uppercase">Saved Workspace Root</label>
               <div className="bg-green-950/30 border border-green-800 rounded px-4 py-3 text-sm text-green-300 font-mono">
                 {savedRoot}
               </div>
@@ -95,11 +95,11 @@ export default function FileLocationPage() {
 
           {/* Additional Info */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-2">
-            <h3 className="text-xs font-bold text-zinc-400 uppercase">Notes</h3>
-            <ul className="text-xs text-zinc-500 space-y-1 list-disc list-inside">
+            <h3 className="text-xs font-bold text-[var(--color-text-secondary)] uppercase">Notes</h3>
+            <ul className="text-xs text-[var(--color-text-secondary)] space-y-1 list-disc list-inside">
               <li>Cards can navigate to other directories manually</li>
               <li>Configuration is saved per browser/device</li>
-              <li>Create or specify a folder that doesn't contain embedded projects</li>
+              <li>Create or specify a folder that doesn&apos;t contain embedded projects</li>
               <li>All card states and positions will be saved relative to this root</li>
             </ul>
           </div>

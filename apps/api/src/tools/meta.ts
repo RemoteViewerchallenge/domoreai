@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { OrchestrationService } from '../services/orchestration.service.js';
 import type { SandboxTool } from '../types.js';
 
@@ -58,7 +58,7 @@ export const metaTools: SandboxTool[] = [
       required: ['name', 'basePrompt'],
     },
     handler: async (args: any) => {
-      const role = await db.role.create({
+      const role = await prisma.role.create({
         data: {
           name: args.name,
           basePrompt: args.basePrompt,
@@ -92,7 +92,7 @@ export const metaTools: SandboxTool[] = [
       properties: {},
     },
     handler: async () => {
-      const roles = await db.role.findMany({
+      const roles = await prisma.role.findMany({
         select: {
           id: true,
           name: true,
@@ -132,7 +132,7 @@ export const metaTools: SandboxTool[] = [
       required: ['roleId', 'updates'],
     },
     handler: async (args: any) => {
-      const role = await db.role.update({
+      const role = await prisma.role.update({
         where: { id: args.roleId },
         data: {
           basePrompt: args.updates.basePrompt,
@@ -164,7 +164,7 @@ export const metaTools: SandboxTool[] = [
       required: ['roleId'],
     },
     handler: async (args: any) => {
-      const role = await db.role.delete({
+      const role = await prisma.role.delete({
         where: { id: args.roleId },
       });
 
@@ -433,7 +433,7 @@ export const metaTools: SandboxTool[] = [
  * Check if a role has permission to use meta-tools
  */
 export async function canUseMetaTools(roleId: string): Promise<boolean> {
-  const role = await db.role.findUnique({
+  const role = await prisma.role.findUnique({
     where: { id: roleId },
     select: { tools: true },
   });

@@ -78,7 +78,7 @@ const ToolSelector: React.FC<ToolSelectorProps> = ({ selectedTools, onChange }) 
     return selectedCount > 0 && selectedCount < serverTools.length;
   };
 
-  if (isLoading) return <div className="p-4 text-center text-gray-500">Loading tools...</div>;
+  if (isLoading) return <div className="p-4 text-center text-[var(--color-text-secondary)]">Loading tools...</div>;
 
   const filteredServers = Object.keys(toolsByServer).filter(serverName => {
     if (serverName.toLowerCase().includes(searchTerm.toLowerCase())) return true;
@@ -107,7 +107,7 @@ const ToolSelector: React.FC<ToolSelectorProps> = ({ selectedTools, onChange }) 
                 <div className="flex items-center gap-2 flex-1">
                   <button 
                     onClick={() => toggleServer(serverName)}
-                    className="text-gray-500 hover:text-white"
+                    className="text-[var(--color-text-secondary)] hover:text-white"
                   >
                     {expandedServers[serverName] ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </button>
@@ -151,7 +151,7 @@ const ToolSelector: React.FC<ToolSelectorProps> = ({ selectedTools, onChange }) 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <Wrench size={10} className="text-gray-600 group-hover:text-blue-400" />
-                          <span className={`text-[10px] truncate ${selectedTools.includes(tool.name) ? 'text-blue-300' : 'text-gray-400'}`}>
+                          <span className={`text-[10px] truncate ${selectedTools.includes(tool.name) ? 'text-blue-300' : 'text-[var(--color-text-secondary)]'}`}>
                             {tool.name}
                           </span>
                         </div>

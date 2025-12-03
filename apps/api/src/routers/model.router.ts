@@ -22,7 +22,7 @@ export const modelRouter = createTRPCRouter({
   // 1. CLEAR C.O.R.E. (Unified Table)
   clearCoreModels: protectedProcedure
     .mutation(async ({ ctx }) => {
-      await ctx.db.model.deleteMany({});
+      await ctx.prisma.model.deleteMany({});
       return { success: true, message: 'Unified Model table cleared.' };
     }),
 
@@ -33,7 +33,7 @@ export const modelRouter = createTRPCRouter({
       mapping: z.record(z.string()) // { sourceCol: destCol }
     }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.tableMapping.upsert({
+      await ctx.prisma.tableMapping.upsert({
         where: { tableName: input.tableName },
         create: { tableName: input.tableName, mapping: input.mapping },
         update: { mapping: input.mapping }
@@ -51,11 +51,11 @@ export const modelRouter = createTRPCRouter({
       const { sourceTableName } = input;
 
       // A. Fetch Raw Data using Unsafe Query (Bypasses Prisma typing for dynamic tables)
-      const rows = await ctx.db.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`) as any[];
+      const rows = await ctx.prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`) as any[];
       if (!rows.length) throw new Error(`Table ${sourceTableName} is empty.`);
 
       // B. Fetch Saved Mapping (if any)
-      const savedMap = await ctx.db.tableMapping.findUnique({
+      const savedMap = await ctx.prisma.tableMapping.findUnique({
         where: { tableName: sourceTableName }
       });
       const mapping = (savedMap?.mapping as Record<string, string>) || {};
@@ -98,7 +98,7 @@ export const modelRouter = createTRPCRouter({
         // E. Upsert into Unified Table
         if (modelData.modelId) {
             if (input.providerId) {
-                await ctx.db.model.upsert({
+                await ctx.prisma.model.upsert({
                     where: { providerId_modelId: { providerId: input.providerId, modelId: modelData.modelId } },
                     create: modelData,
                     update: modelData
@@ -118,7 +118,7 @@ export const modelRouter = createTRPCRouter({
       try {
         // Query the user's "my_free_models" table (or whatever they named it)
         // We assume the user wants 'my_free_models' as the source of truth now.
-        const rows = await ctx.db.$queryRaw`SELECT * FROM "my_free_models"` as any[];
+        const rows = await ctx.prisma.$queryRaw`SELECT * FROM "my_free_models"` as any[];
         
         return rows.map((row: any) => ({
           id: row.id || row.model_id || row.name,
@@ -142,7 +142,7 @@ export const modelRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       try {
         // 1. Get all dynamic tables that are registered
-        const tables = await ctx.db.flattenedTable.findMany({
+        const tables = await ctx.prisma.flattenedTable.findMany({
           select: { name: true }
         });
 
@@ -172,7 +172,7 @@ export const modelRouter = createTRPCRouter({
         const fullQuery = queries.join(' UNION ALL ');
 
         // 3. Execute
-        const rows = await ctx.db.$queryRawUnsafe(fullQuery) as any[];
+        const rows = await ctx.prisma.$queryRawUnsafe(fullQuery) as any[];
 
         return rows.map((row: any) => ({
           id: row.id,

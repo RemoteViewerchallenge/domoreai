@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm --parallel --stream run dev",
+    "dev": "pnpm --parallel --stream --filter=!@repo/voice-input run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
@@ -23,11 +23,12 @@
   },
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
+    "ignore": "^7.0.5",
     "vscode-ws-jsonrpc": "^3.5.0"
   },
   "lint-staged": {
     "apps/api/**/*.{ts,tsx}": [
-      "eslint --config apps/api/eslint.config.mjs --fix"
+      "eslint --config apps/api/.eslintrc.cjs --fix"
     ],
     "apps/ui/**/*.{ts,tsx}": [
       "eslint --config apps/ui/eslint.config.mjs --fix"

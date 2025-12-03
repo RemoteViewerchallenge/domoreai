@@ -26,7 +26,7 @@ export const SimpleErrorModal: React.FC<SimpleErrorModalProps> = ({
             <AlertTriangle size={14} />
             <span>{title}</span>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-[var(--color-text-secondary)] hover:text-white transition-colors">
             <X size={14} />
           </button>
         </div>

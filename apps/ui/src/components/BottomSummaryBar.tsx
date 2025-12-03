@@ -23,7 +23,7 @@ export const BottomSummaryBar = ({ cardCount, onSpawnCard }: BottomSummaryBarPro
           Drop Zone
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-400 font-mono">Cards Below: {cardCount}</span>
+          <span className="text-xs text-[var(--color-text-secondary)] font-mono">Cards Below: {cardCount}</span>
           <button
             onClick={onSpawnCard}
             className="flex items-center gap-1 px-2 py-1 bg-cyan-600/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-600/30 rounded text-[10px] font-bold uppercase tracking-wider transition-all"

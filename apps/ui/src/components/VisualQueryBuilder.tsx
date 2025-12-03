@@ -156,19 +156,19 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
            <div className="flex bg-zinc-900 rounded p-0.5 border border-zinc-800">
              <button 
                onClick={() => setMode('query')}
-               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'query' ? 'bg-zinc-800 text-cyan-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'query' ? 'bg-zinc-800 text-cyan-400 shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-zinc-300'}`}
              >
                <Code size={12} /> Query
              </button>
              <button 
                onClick={() => setMode('schema')}
-               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'schema' ? 'bg-zinc-800 text-orange-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'schema' ? 'bg-zinc-800 text-orange-400 shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-zinc-300'}`}
              >
                <Settings size={12} /> Schema
              </button>
              <button 
                onClick={() => setMode('saved')}
-               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'saved' ? 'bg-zinc-800 text-purple-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+               className={`px-3 py-1 rounded flex items-center gap-2 ${mode === 'saved' ? 'bg-zinc-800 text-purple-400 shadow-sm' : 'text-[var(--color-text-secondary)] hover:text-zinc-300'}`}
              >
                <Save size={12} /> Saved
              </button>
@@ -197,7 +197,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
             {/* Visual Builder Sidebar */}
             <div className="w-64 bg-black/20 border-r border-zinc-800 p-4 overflow-y-auto">
                <div className="mb-6">
-                 <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Columns</h4>
+                 <h4 className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">Columns</h4>
                  <div className="space-y-1">
                    {columns.map(col => (
                      <label key={col} className="flex items-center gap-2 text-zinc-300 cursor-pointer hover:bg-zinc-800/50 p-1 rounded">
@@ -217,11 +217,11 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                </div>
 
                <div>
-                 <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Filters</h4>
+                 <h4 className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">Filters</h4>
                  {filters.map((f, i) => (
                    <div key={i} className="flex items-center gap-1 mb-2 bg-zinc-900 p-1 rounded border border-zinc-800">
                       <span className="text-cyan-300">{f.col}</span>
-                      <span className="text-zinc-500">{f.op}</span>
+                      <span className="text-[var(--color-text-secondary)]">{f.op}</span>
                       <span className="text-zinc-300 truncate max-w-[50px]">{f.val}</span>
                       <button onClick={() => setFilters(filters.filter((_, idx) => idx !== i))} className="ml-auto text-zinc-600 hover:text-red-400"><X size={12}/></button>
                    </div>
@@ -299,7 +299,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                            className="bg-black border border-zinc-700 rounded px-2 py-1 text-zinc-200 outline-none w-40"
                          />
                          <button onClick={handleSaveTable} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold">Save</button>
-                         <button onClick={() => setShowSaveTable(false)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
+                         <button onClick={() => setShowSaveTable(false)} className="text-[var(--color-text-secondary)] hover:text-zinc-300"><X size={14}/></button>
                        </div>
                      )}
 
@@ -317,7 +317,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                               className="bg-black border border-zinc-700 rounded px-2 py-1 text-zinc-200 outline-none w-40"
                             />
                             <button onClick={handleSaveQuery} className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded font-bold">Save</button>
-                            <button onClick={() => setShowSaveQuery(false)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
+                            <button onClick={() => setShowSaveQuery(false)} className="text-[var(--color-text-secondary)] hover:text-zinc-300"><X size={14}/></button>
                           </div>
                         )
                      )}
@@ -345,7 +345,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
 
                 <div className="bg-zinc-900 rounded border border-zinc-800 overflow-hidden mb-8">
                    <table className="w-full text-left">
-                     <thead className="bg-zinc-950 border-b border-zinc-800 text-zinc-500">
+                     <thead className="bg-zinc-950 border-b border-zinc-800 text-[var(--color-text-secondary)]">
                        <tr>
                          <th className="p-3">Column Name</th>
                          <th className="p-3">Action</th>
@@ -372,7 +372,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                 </div>
 
                 <div className="bg-zinc-900/50 p-4 rounded border border-zinc-800 border-dashed">
-                   <h4 className="font-bold text-zinc-400 mb-3">Add New Column</h4>
+                   <h4 className="font-bold text-[var(--color-text-secondary)] mb-3">Add New Column</h4>
                    <div className="flex gap-2">
                      <input 
                        value={newColName} onChange={e => setNewColName(e.target.value)}
@@ -411,7 +411,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                     Saved Queries
                   </h3>
                   {onRefreshSaved && (
-                    <button onClick={onRefreshSaved} className="text-zinc-400 hover:text-white text-xs underline">
+                    <button onClick={onRefreshSaved} className="text-[var(--color-text-secondary)] hover:text-white text-xs underline">
                       Refresh
                     </button>
                   )}
@@ -425,7 +425,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {isLoading && (
-                    <div className="col-span-2 text-center py-12 text-zinc-500 animate-pulse">
+                    <div className="col-span-2 text-center py-12 text-[var(--color-text-secondary)] animate-pulse">
                       Loading saved queries...
                     </div>
                   )}
@@ -434,10 +434,10 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                     <div key={sq.name} className="bg-zinc-900 border border-zinc-800 rounded p-4 hover:border-purple-500/50 transition-colors group">
                        <div className="flex items-center justify-between mb-2">
                           <h4 className="font-bold text-zinc-200">{sq.name}</h4>
-                          <span className="text-[10px] text-zinc-500">{new Date(sq.updatedAt).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-[var(--color-text-secondary)]">{new Date(sq.updatedAt).toLocaleDateString()}</span>
                        </div>
                        <div className="bg-black p-2 rounded border border-zinc-800 mb-3 h-20 overflow-hidden relative">
-                          <pre className="text-[10px] text-zinc-400 font-mono whitespace-pre-wrap break-all">{sq.query}</pre>
+                          <pre className="text-[10px] text-[var(--color-text-secondary)] font-mono whitespace-pre-wrap break-all">{sq.query}</pre>
                           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/80 pointer-events-none" />
                        </div>
                        <div className="flex items-center gap-2">
@@ -461,7 +461,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                   
                   {!isLoading && !error && savedQueries.length === 0 && (
                     <div className="col-span-2 text-center py-12 text-zinc-600 italic">
-                      No saved queries found. Save a query from the "Query" tab to see it here.
+                      No saved queries found. Save a query from the &quot;Query&quot; tab to see it here.
                     </div>
                   )}
                 </div>

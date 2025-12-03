@@ -5,7 +5,7 @@ import { createVolcanoAgent } from '../services/AgentFactory.js';
 import type { CardAgentState } from '../services/AgentFactory.js';
 import { ProviderManager } from '../services/ProviderManager.js';
 import { selectCandidateModels } from '../lib/modelSelector.js';
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 
 /**
  * Agent Router
@@ -39,9 +39,9 @@ Constraints:
 
 async function ensureSqlHelperRole(): Promise<string> {
   const name = 'sql-query-helper';
-  let role = await db.role.findFirst({ where: { name } });
+  let role = await prisma.role.findFirst({ where: { name } });
   if (!role) {
-    role = await db.role.create({
+    role = await prisma.role.create({
       data: {
         name,
         basePrompt: BASE_PROMPT_SQL_HELPER,
@@ -66,6 +66,13 @@ export const agentRouter = createTRPCRouter({
       const { roleId, modelConfig, userGoal, cardId } = input;
 
       try {
+        // 1.5 Fetch Workspace Prompt
+        const card = await prisma.workOrderCard.findUnique({
+             where: { id: cardId },
+             include: { workspace: true }
+        });
+        const projectPrompt = card?.systemPrompt || undefined;
+
         // 1. Create the agent configuration
         const agentConfig: CardAgentState = {
           roleId,
@@ -73,6 +80,8 @@ export const agentRouter = createTRPCRouter({
           isLocked: !!modelConfig.modelId, // Lock if model is explicitly provided
           temperature: modelConfig.temperature,
           maxTokens: modelConfig.maxTokens,
+          userGoal, // Pass user goal for memory injection
+          projectPrompt,
         };
 
         // 2. Create the Volcano agent
@@ -80,15 +89,17 @@ export const agentRouter = createTRPCRouter({
 
         // 2.5 Fetch Role to get Tools
         // We need to fetch the role again (or optimize createVolcanoAgent to return it, but separate fetch is cleaner for now)
-        const role = await db.role.findUnique({ where: { id: roleId } });
+        const role = await prisma.role.findUnique({ where: { id: roleId } });
         const tools = role?.tools || [];
 
         // 3. Create the agent runtime with selected tools
         const runtime = await AgentRuntime.create(undefined, tools);
 
-        // 4. Define the LLM callback that uses our Volcano agent
+        // 4. Define the LLM callback that uses our Volcano agent and enriches
+        //    the system prompt with role context from the runtime's ContextManager.
         const llmCallback = async (prompt: string): Promise<string> => {
-          return await agent.generate(prompt);
+          const basePrompt = role?.basePrompt || '';
+          return await runtime.generateWithContext(agent, basePrompt, prompt, roleId);
         };
 
         // 5. Start the agent loop (Synchronous for now to ensure UI update)
@@ -162,12 +173,12 @@ export const agentRouter = createTRPCRouter({
 
       // 1. Ensure role exists
       await ensureSqlHelperRole();
-      const role = await db.role.findFirstOrThrow({ where: { name: roleName } });
+      const role = await prisma.role.findFirstOrThrow({ where: { name: roleName } });
 
       // 2. Build schema context (lightweight)
       let schemaContext = '';
       if (targetTable) {
-        const rows = await db.$queryRawUnsafe<any[]>(
+        const rows = await prisma.$queryRawUnsafe<any[]>(
           `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${targetTable}'`
         );
         schemaContext = rows.length
@@ -182,11 +193,11 @@ export const agentRouter = createTRPCRouter({
 
       // 4. Pick any enabled model (prefer Ollama), no parameter constraints
       //    This is a temporary bypass to get query generation unblocked.
-      const preferred = await db.model.findFirst({
+      const preferred = await prisma.model.findFirst({
         where: { provider: { isEnabled: true, type: 'ollama' } },
         include: { provider: true },
       });
-      const fallback = preferred || await db.model.findFirst({
+      const fallback = preferred || await prisma.model.findFirst({
         where: { provider: { isEnabled: true } },
         include: { provider: true },
       });

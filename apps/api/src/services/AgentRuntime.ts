@@ -1,13 +1,16 @@
 import { CodeModeUtcpClient } from '@utcp/code-mode';
-import { CallTemplateSerializer, CommunicationProtocol } from '@utcp/sdk';
+import { CallTemplateSerializer, CommunicationProtocol, CallTemplate, IUtcpClient, Tool } from '@utcp/sdk';
 import { z } from 'zod';
 import { terminalTools } from '../tools/terminal.js';
 import { createFsTools } from '../tools/filesystem.js';
 import { browserTools } from '../tools/browser.js';
+import { webScraperTool } from '../tools/webScraper.js';
+import { complexityTool } from '../tools/complexityTool.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
 import { metaTools } from '../tools/meta.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from './vfsSession.service.js';
+import { contextManager } from './ContextManager.js';
 
 // --- Local Protocol Implementation ---
 
@@ -17,19 +20,37 @@ const LocalCallTemplateSchema = z.object({
   tools: z.array(z.any()).optional().default([]),
 }).passthrough();
 
+// Define types for Tool Definition
+interface ToolDefinition {
+  name: string;
+  description?: string;
+  input_schema?: Record<string, unknown>;
+  inputs?: Record<string, unknown>;
+  outputs?: Record<string, unknown>;
+  tags?: string[];
+  handler?: (args: unknown) => unknown;
+}
+
+interface ManualCallTemplate extends CallTemplate {
+  name: string;
+  tools?: ToolDefinition[];
+  call_template_type: string; // Must be string, not optional
+}
+
 class LocalCallTemplateSerializer extends CallTemplateSerializer {
-  toDict(obj: any) { return obj; }
-  validateDict(obj: any) { return LocalCallTemplateSchema.parse(obj); }
+  toDict(obj: CallTemplate) { return obj as unknown as Record<string, unknown>; }
+  validateDict(obj: unknown) { return LocalCallTemplateSchema.parse(obj); }
 }
 
 class LocalCommunicationProtocol extends CommunicationProtocol {
-  private handlers = new Map<string, Function>();
+  private handlers = new Map<string, (args: unknown) => unknown>();
 
-  async registerManual(client: any, manualCallTemplate: any) {
-    const tools: any[] = [];
-    const prefix = manualCallTemplate.name;
+  async registerManual(client: IUtcpClient, manualCallTemplate: CallTemplate) {
+    const template = manualCallTemplate as ManualCallTemplate;
+    const tools: Tool[] = [];
+    const prefix = template.name;
 
-    for (const toolDef of manualCallTemplate.tools || []) {
+    for (const toolDef of template.tools || []) {
       // Ensure tool name is fully qualified if not already
       const fullToolName = toolDef.name.includes('.') ? toolDef.name : `${prefix}.${toolDef.name}`;
       
@@ -51,6 +72,9 @@ class LocalCommunicationProtocol extends CommunicationProtocol {
       });
     }
     
+    // Satisfy async requirement
+    await Promise.resolve();
+
     return {
       success: true,
       manual: {
@@ -58,30 +82,33 @@ class LocalCommunicationProtocol extends CommunicationProtocol {
         manual_version: '1.0.0',
         tools: tools
       },
-      manualCallTemplate: manualCallTemplate, // Added missing property
+      manualCallTemplate: template as unknown as CallTemplate,
       errors: []
     };
   }
 
-  async deregisterManual(client: any, manualCallTemplate: any) {
+  async deregisterManual(client: IUtcpClient, manualCallTemplate: CallTemplate) {
+      const template = manualCallTemplate as ManualCallTemplate;
       // Cleanup handlers for this manual
-      const prefix = manualCallTemplate.name;
+      const prefix = template.name;
       for (const key of this.handlers.keys()) {
           if (key.startsWith(prefix + '.')) {
               this.handlers.delete(key);
           }
       }
+      // Satisfy async requirement
+      await Promise.resolve();
   }
 
-  async callTool(client: any, toolName: string, args: any) {
+  async callTool(client: IUtcpClient, toolName: string, args: unknown) {
     const handler = this.handlers.get(toolName);
     if (!handler) {
         throw new Error(`No local handler found for tool ${toolName}`);
     }
-    return handler(args);
+    return await handler(args);
   }
 
-  async *callToolStreaming(client: any, toolName: string, args: any) {
+  async *callToolStreaming(client: IUtcpClient, toolName: string, args: unknown) {
       // For now, just yield the result of callTool as a single chunk
       const result = await this.callTool(client, toolName, args);
       yield result;
@@ -90,32 +117,18 @@ class LocalCommunicationProtocol extends CommunicationProtocol {
 
 // Register the protocol globally (idempotent)
 CallTemplateSerializer.registerCallTemplate('local', new LocalCallTemplateSerializer());
-// We need to register the protocol instance. Since it holds state (handlers), 
-// we should probably create a shared instance or register it per client.
-// However, CommunicationProtocol.communicationProtocols is static.
-// We'll register a singleton for now, but this might share handlers across clients if not careful.
-// A better approach is to register it on the client instance, but UtcpClient copies from static.
-// We will register a fresh one, but note that `registerManual` populates it.
-// Since `registerManual` is called per client, and we want isolation, this is tricky with the static registry.
-// BUT `UtcpClient` constructor copies the map. So if we register it globally, new clients get a copy?
-// No, it copies the *reference* to the protocol instance.
-// So all clients would share the same protocol instance and handlers!
-// This is bad for isolation if handlers differ.
-// But here, handlers are mostly static (fsTools, browserTools).
-// EXCEPT `fsTools` depends on `rootPath` which is per-client (AgentRuntime instance).
-// So we DO need per-client isolation.
-
-// Workaround: We can't easily register per-client protocol via the static registry.
-// We will rely on the fact that we are in `AgentRuntime` and can hack the client instance.
 
 export class AgentRuntime {
   private client!: CodeModeUtcpClient;
   private fsTools: ReturnType<typeof createFsTools>;
   private rootPath: string;
+  private contextManager = contextManager;
 
   constructor(rootPath: string = process.cwd()) {
     this.rootPath = rootPath;
     this.fsTools = createFsTools(rootPath);
+    // use the shared contextManager singleton
+    this.contextManager = contextManager;
   }
 
   static async create(rootPath?: string, tools: string[] = []): Promise<AgentRuntime> {
@@ -124,7 +137,7 @@ export class AgentRuntime {
     return runtime;
   }
 
-  private async init(requestedTools: string[], roleId?: string) {
+  private async init(requestedTools: string[], _roleId?: string) {
     this.client = await CodeModeUtcpClient.create();
 
     // ONLY setup tools if explicitly requested
@@ -135,13 +148,13 @@ export class AgentRuntime {
 
     // INJECT LOCAL PROTOCOL INSTANCE INTO THIS CLIENT
     const localProtocol = new LocalCommunicationProtocol();
-    // @ts-ignore - accessing private/internal map
+    // @ts-expect-error - accessing private/internal map
     this.client._registeredCommProtocols.set('local', localProtocol);
     
     // 1. Initialize Orchestrator & Load Servers
     // We assume requestedTools contains server names like 'git', 'postgres'
     // Filter out native tools and 'meta' from this list before passing to orchestrator
-    const nativeToolNames = ['read_file', 'write_file', 'list_files', 'browse'];
+    const nativeToolNames = ['read_file', 'write_file', 'list_files', 'browse', 'research.web_scrape', 'analysis.complexity'];
     const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t) && t !== 'meta');
     
     if (serverNames.length > 0) {
@@ -168,16 +181,16 @@ export class AgentRuntime {
       name: 'system',
       call_template_type: 'local',
       tools: toolsToRegister
-    } as any);
+    } as unknown as CallTemplate); // Cast to CallTemplate
     
     console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
   }
 
-  private getNativeTools() {
+  private getNativeTools(): ToolDefinition[] {
      return [
         { 
             name: 'read_file', 
-            handler: this.fsTools.readFile,
+            handler: async (args: unknown) => this.fsTools.readFile(args as { path: string }),
             description: 'Read a file',
             input_schema: {
                 type: 'object',
@@ -189,7 +202,7 @@ export class AgentRuntime {
         },
         { 
             name: 'write_file', 
-            handler: this.fsTools.writeFile,
+            handler: async (args: unknown) => this.fsTools.writeFile(args as { path: string; content: string }),
             description: 'Write to a file',
             input_schema: {
                 type: 'object',
@@ -202,7 +215,7 @@ export class AgentRuntime {
         },
         { 
             name: 'list_files', 
-            handler: this.fsTools.listFiles,
+            handler: async (args: unknown) => this.fsTools.listFiles(args as { path: string }),
             description: 'List files in a directory',
             input_schema: {
                 type: 'object',
@@ -214,7 +227,7 @@ export class AgentRuntime {
         },
         { 
             name: 'browse', 
-            handler: browserTools.fetchPage,
+            handler: async (args: unknown) => browserTools.fetchPage(args as { url: string }),
             description: 'Fetch a web page',
             input_schema: {
                 type: 'object',
@@ -225,10 +238,23 @@ export class AgentRuntime {
             }
         },
         {
+          name: webScraperTool.name,
+          handler: async (args: unknown) => webScraperTool.handler(args as { url: string }),
+          description: webScraperTool.description,
+          input_schema: webScraperTool.input_schema
+        },
+        {
+          name: complexityTool.name,
+          handler: async (args: unknown) => complexityTool.handler(args as { taskDescription: string }),
+          description: complexityTool.description,
+          input_schema: complexityTool.input_schema
+        },
+        {
             name: 'search_codebase',
-            handler: async (args: { query:string }) => {
+            handler: async (args: unknown) => {
+                const typedArgs = args as { query: string };
                 const fs = await vfsSessionService.getProvider({ provider: 'local', rootPath: this.rootPath });
-                return searchCodebase(fs, args.query);
+                return searchCodebase(fs, typedArgs.query);
             },
             description: 'Search the codebase for a string',
             input_schema: {
@@ -296,4 +322,19 @@ export class AgentRuntime {
     // 3. Return logs to your UI Terminal
     return { result, logs };
   }
+
+  /**
+   * Wrap a provider/agent generate call and enhance the system prompt
+   * using the ContextManager state for the given roleId.
+   */
+  async generateWithContext(agent: { generate: (prompt: string) => Promise<unknown> }, baseSystemPrompt: string, prompt: string, roleId?: string) {
+    const roleContext = roleId ? await this.contextManager.getContext(roleId) : { tone: '', style: '', memory: {} };
+    const memoryStr = Object.entries(roleContext.memory || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
+    const enhancedSystemPrompt = `${baseSystemPrompt || ''}\n\n${roleContext.tone || ''}\n\n${memoryStr}`.trim();
+    const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
+    // Delegate to the provided agent/provider
+    return agent.generate(finalPrompt);
+  }
 }
+
+

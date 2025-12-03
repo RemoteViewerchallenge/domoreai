@@ -10,6 +10,8 @@ interface FileExplorerProps {
   onNavigate?: (path: string) => void;
   onCreateFolder?: (path: string) => void;
   onRefresh?: () => void;
+  onEmbedDir?: () => void;
+  onLoadChildren?: (path: string) => Promise<VFile[]>;
 }
 
 // Recursive Tree Node
@@ -17,21 +19,45 @@ const FileNode = ({
   node, 
   onSelect, 
   onNavigate,
+  onLoadChildren,
   depth = 0 
 }: { 
   node: VFile, 
   onSelect: (p: string) => void,
   onNavigate?: (p: string) => void,
+  onLoadChildren?: (path: string) => Promise<VFile[]>,
   depth: number 
 }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [children, setChildren] = useState<VFile[]>(node.children || []);
+  const [isLoading, setIsLoading] = useState(false);
   const paddingLeft = depth * 12 + 12;
+
+  const handleToggle = async () => {
+    if (node.type !== 'directory') return;
+    
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    
+    // Load children when expanding if not already loaded
+    if (newIsOpen && children.length === 0 && onLoadChildren) {
+      setIsLoading(true);
+      try {
+        const loadedChildren = await onLoadChildren(node.path);
+        setChildren(loadedChildren);
+      } catch (err) {
+        console.error('Failed to load children:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   if (node.type === 'file') {
     return (
       <div 
         onClick={() => onSelect(node.path)}
-        className="flex items-center gap-2 py-1 hover:bg-zinc-800 cursor-pointer text-zinc-400 hover:text-cyan-400 text-xs"
+        className="flex items-center gap-2 py-1 hover:bg-zinc-800 cursor-pointer text-[var(--color-text-secondary)] hover:text-cyan-400 text-xs"
         style={{ paddingLeft }}
       >
         <FileText size={13} />
@@ -46,8 +72,14 @@ const FileNode = ({
         className="flex items-center gap-2 py-1 hover:bg-zinc-800 cursor-pointer text-zinc-300 text-xs font-bold"
         style={{ paddingLeft }}
       >
-        <span onClick={() => setIsOpen(!isOpen)} className="flex items-center">
-          {isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <span onClick={handleToggle} className="flex items-center cursor-pointer">
+          {isLoading ? (
+            <div className="w-[13px] h-[13px] border-2 border-zinc-600 border-t-cyan-400 rounded-full animate-spin" />
+          ) : isOpen ? (
+            <ChevronDown size={13} />
+          ) : (
+            <ChevronRight size={13} />
+          )}
         </span>
         <Folder 
           size={13} 
@@ -61,12 +93,13 @@ const FileNode = ({
           {node.path.split('/').pop()}
         </span>
       </div>
-      {isOpen && node.children?.map(child => (
+      {isOpen && children.map(child => (
         <FileNode 
           key={child.path} 
           node={child} 
           onSelect={onSelect} 
           onNavigate={onNavigate}
+          onLoadChildren={onLoadChildren}
           depth={depth + 1} 
         />
       ))}
@@ -81,7 +114,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   currentPath,
   onNavigate,
   onCreateFolder,
-  onRefresh
+  onRefresh,
+  onEmbedDir,
+  onLoadChildren
 }) => {
   const [pathInput, setPathInput] = useState(currentPath || '');
   const [isCreating, setIsCreating] = useState(false);
@@ -115,13 +150,13 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
        {/* Toolbar */}
        <div className="flex flex-col gap-2 p-2 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-1">
-             <button onClick={handleUp} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Go Up">
+             <button onClick={handleUp} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white" title="Go Up">
                 <ArrowUp size={14} />
              </button>
-             <button onClick={() => onNavigate?.('/home/guy')} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Home">
+             <button onClick={() => onNavigate?.('/home/guy')} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white" title="Home">
                 <Home size={14} />
              </button>
-             <button onClick={onRefresh} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Refresh">
+             <button onClick={onRefresh} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white" title="Refresh">
                 <RefreshCw size={14} />
              </button>
              <div className="flex-1 relative">
@@ -132,8 +167,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
                 />
              </div>
-             <button onClick={() => setIsCreating(!isCreating)} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-green-400" title="New Folder">
+             <button onClick={() => setIsCreating(!isCreating)} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-green-400" title="New Folder">
                 <Plus size={14} />
+             </button>
+             <button onClick={onEmbedDir} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-yellow-400" title="Embed Directory">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
              </button>
           </div>
           
@@ -167,6 +205,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 node={f} 
                 onSelect={onSelect} 
                 onNavigate={onNavigate}
+                onLoadChildren={onLoadChildren}
                 depth={0} 
               />
             ))

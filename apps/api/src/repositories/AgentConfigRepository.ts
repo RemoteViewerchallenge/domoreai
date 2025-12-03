@@ -1,18 +1,18 @@
-import { db } from "../db.js";
+import { prisma } from '../db.js';
 
 export class AgentConfigRepository {
   static async getRole(roleId: string) {
-    return db.role.findUnique({ where: { id: roleId } });
+    return prisma.role.findUnique({ where: { id: roleId } });
   }
 
   static async getModel(providerId: string, modelId: string) {
-    return db.model.findUnique({
+    return prisma.model.findUnique({
       where: { providerId_modelId: { providerId, modelId } }
     });
   }
 
   static async createModel(modelDef: any) {
-    return db.model.create({
+    return prisma.model.create({
       data: {
         modelId: modelDef.id,
         provider: { connect: { id: modelDef.providerId } },
@@ -26,7 +26,7 @@ export class AgentConfigRepository {
   }
 
   static async getModelConfig(modelId: string, roleId: string) {
-    return db.modelConfig.findFirst({
+    return prisma.modelConfig.findFirst({
       where: {
         modelId: modelId,
         roles: { some: { id: roleId } }
@@ -35,7 +35,7 @@ export class AgentConfigRepository {
   }
 
   static async createModelConfig(data: { modelId: string, providerId: string, roleId: string, temperature: number, maxTokens: number }) {
-    return db.modelConfig.create({
+    return prisma.modelConfig.create({
       data: {
         modelId: data.modelId,
         providerId: data.providerId,

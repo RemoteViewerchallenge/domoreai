@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import theme overrides AFTER Tailwind so they take precedence */
+@import './theme/global.css';
+
 :root {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-base-300 text-base-content;
+  background-color: var(--color-background);
+  color: var(--color-text);
 }
 
 :root {
@@ -16,8 +20,8 @@ body {
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text, rgba(255, 255, 255, 0.87));
+  background-color: var(--color-background, #242424);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -27,11 +31,11 @@ body {
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-primary, #646cff);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-secondary, #535bf2);
 }
 
 body {
@@ -44,6 +48,44 @@ body {
   overflow: hidden;
   position: fixed;
   inset: 0;
+  background-color: var(--color-background) !important;
+  color: var(--color-text) !important;
+}
+
+/* NUCLEAR OPTION: Force theme colors on EVERYTHING */
+/* This overrides ALL Tailwind background classes */
+*[class*="bg-black"],
+*[class*="bg-zinc"],
+*[class*="bg-slate"],
+*[class*="bg-gray"],
+div[class*="bg-"],
+section[class*="bg-"],
+header[class*="bg-"],
+footer[class*="bg-"],
+nav[class*="bg-"] {
+  background-color: var(--color-background) !important;
+}
+
+/* Secondary backgrounds for panels/cards */
+*[class*="bg-zinc-9"],
+*[class*="bg-gray-9"],
+*[class*="bg-slate-9"] {
+  background-color: var(--color-background-secondary) !important;
+}
+
+/* Force text colors */
+*[class*="text-white"],
+*[class*="text-zinc"],
+*[class*="text-slate"],
+*[class*="text-gray"],
+div[class*="text-"],
+p[class*="text-"],
+span[class*="text-"],
+h1[class*="text-"],
+h2[class*="text-"],
+h3[class*="text-"],
+label[class*="text-"] {
+  color: var(--color-text) !important;
 }
 
 #root {

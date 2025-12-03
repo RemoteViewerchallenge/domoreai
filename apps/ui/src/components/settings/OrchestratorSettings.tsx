@@ -15,7 +15,7 @@ export function OrchestratorSettings() {
     <div className="p-4 border rounded-lg bg-slate-900 border-slate-700">
       <h3 className="text-lg font-medium mb-4 text-white">Model Source Configuration</h3>
       <div className="flex flex-col gap-2">
-        <label className="text-sm text-slate-400">
+        <label className="text-sm text-[var(--color-text-secondary)]">
           Select the database table that defines your Model Catalog:
         </label>
         <select 
@@ -27,7 +27,7 @@ export function OrchestratorSettings() {
             <option key={t.name} value={t.name}>{t.name}</option>
           ))}
         </select>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-[var(--color-text-secondary)] mt-1">
           Only models from this table (joined with real-time telemetry) will be used by Agents.
         </p>
       </div>

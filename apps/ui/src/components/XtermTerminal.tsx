@@ -6,10 +6,11 @@ import type { TerminalMessage } from '@repo/common/agent';
 
 interface XtermTerminalProps {
   logs: TerminalMessage[];
+  workingDirectory?: string;
   onInput: (input: string) => void;
 }
 
-export default function XtermTerminal({ logs, onInput }: XtermTerminalProps) {
+export default function XtermTerminal({ logs, workingDirectory, onInput }: XtermTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -20,6 +21,13 @@ export default function XtermTerminal({ logs, onInput }: XtermTerminalProps) {
   useEffect(() => {
     logsRef.current = logs;
   }, [logs]);
+
+  // Helper to format prompt with working directory
+  const formatPrompt = useCallback((dir?: string) => {
+    if (!dir) return '$ ';
+    const shortDir = dir.replace(/^\/home\/[^/]+/, '~');
+    return `\x1b[36m${shortDir}\x1b[0m $ `;
+  }, []);
 
   // Helper to process logs - stable reference
   const processLogs = useCallback(() => {
@@ -81,6 +89,9 @@ export default function XtermTerminal({ logs, onInput }: XtermTerminalProps) {
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
 
+        // Write initial prompt with working directory
+        term.write(formatPrompt(workingDirectory));
+
         // Handle user input
         term.onData((data) => {
             onInput(data);
@@ -104,7 +115,14 @@ export default function XtermTerminal({ logs, onInput }: XtermTerminalProps) {
           lastProcessedIndexRef.current = -1;
       }
     };
-  }, [onInput, processLogs]); 
+  }, [onInput, processLogs, formatPrompt, workingDirectory]);
+
+  // Update prompt when working directory changes
+  useEffect(() => {
+    if (xtermRef.current && workingDirectory) {
+      xtermRef.current.write(`\r\n${formatPrompt(workingDirectory)}`);
+    }
+  }, [workingDirectory, formatPrompt]);
 
   // Process new logs
   useEffect(() => {

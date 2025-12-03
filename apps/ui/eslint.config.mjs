@@ -1,76 +1,102 @@
-// eslint.config.mjs
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default tseslint.config(
   // 1. GLOBAL IGNORES
-  // Must be the first object with only an 'ignores' key
   {
     ignores: [
       '**/dist',
       '**/node_modules',
       '**/coverage',
       '**/.next',
-      '**/*.d.ts', // Explicitly ignore declaration files
-      '**/src/**/*.js', // Ignore transpiled .js files in src directories
-      'tailwind.config.js', // Ignore tailwind config file from TS parsing
+      '**/*.d.ts',
+      '**/src/**/*.js',
+      'tailwind.config.js',
+      'eslint.config.mjs',
     ],
   },
 
-  // 2. JAVASCRIPT & CONFIG FILES (No Type Checking)
-  // Solves "Parsing error" and "CommonJS globals"
+  // 2. JAVASCRIPT & CONFIG FILES
+  {
+    files: ['eslint.config.mjs'],
+    languageOptions: {
+      parserOptions: {
+        project: null,
+        projectService: false,
+        tsconfigRootDir: resolve(__dirname),
+      },
+    },
+  },
   {
     files: [
       '**/*.cjs',
       '**/*.mjs',
       '**/*.config.js',
-      'eslint.config.mjs', // This file itself
     ],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'module', // Default to module for .mjs, .config.js
+      sourceType: 'module',
       globals: {
-        ...globals.node, // Adds require, module, __dirname, process
+        ...globals.node,
       },
       parserOptions: {
-        project: null, // CRITICAL: Disables TS parser for JS files
+        project: null,
+        projectService: false,
+        tsconfigRootDir: resolve(__dirname),
       },
     },
     rules: {
-      '@typescript-eslint/no-var-requires': 'off', // Allow require() in JS files
+      '@typescript-eslint/no-var-requires': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {
-    files: ['**/*.cjs'], // Specific override for .cjs files
+    files: ['**/*.cjs'],
     languageOptions: {
       sourceType: 'commonjs',
     },
   },
 
-  // 3. TYPESCRIPT FILES (Strict Type Checking)
+  // 3. TYPESCRIPT & REACT FILES
   {
     files: ['**/*.ts', '**/*.tsx'],
-    // Use the new tseslint utility to combine configs
     extends: [
       ...tseslint.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
     ],
+    plugins: {
+      react: reactPlugin,
+      'react-hooks': reactHooks,
+    },
     languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
       parserOptions: {
-        project: ['./tsconfig.app.json', './tsconfig.node.json'], // Adjust to your monorepo structure
-        tsconfigRootDir: import.meta.dirname,
+        project: ['./tsconfig.json', './tsconfig.app.json', './tsconfig.node.json'],
+        tsconfigRootDir: resolve(__dirname),
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
+    settings: {
+      react: {
+        version: 'detect',
       },
     },
     rules: {
-      // Downgrade specific rules to warnings as requested
+      // TypeScript Rules
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/ban-ts-comment': 'warn', // Allow @ts-ignore with a warning
-
-      // Temporarily downgrade no-unsafe-* rules to warnings
+      '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -80,35 +106,10 @@ export default tseslint.config(
       '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/no-misused-promises': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
-    },
-  },
 
-  // 4. REACT FILES (Manual Plugin Config)
-  {
-    files: ['**/*.jsx', '**/*.tsx'],
-    plugins: {
-      react: reactPlugin,
-      'react-hooks': reactHooks,
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-      globals: {
-        ...globals.browser, // Adds window, document, etc.
-      },
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
-    rules: {
+      // React Rules
       ...reactPlugin.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      // Disable rules for new JSX transform (React 17+)
       'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
     },

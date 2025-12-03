@@ -1,5 +1,6 @@
 import { db } from '../db.js';
 import { getRedisClient } from '../redis.js';
+import { modelUsage } from '../db/schema.js';
 
 export interface UsageLogData {
   modelId: string;
@@ -31,6 +32,7 @@ export class UsageCollector {
       const [rpmRem, tpmRem] = await client.mGet([`${base}:rpm:current`, `${base}:tpm:current`]);
       
       // If we have dynamic data, and it says 0 remaining, BLOCK.
+      // We assume 'current' stores the REMAINING requests from the header.
       if (rpmRem !== null && parseInt(rpmRem) <= 0) {
         console.warn(`Provider ${providerConfigId} rate limited by dynamic header (RPM exhausted).`);
         return false;
@@ -65,20 +67,18 @@ export class UsageCollector {
    */
   static async logRequest(data: UsageLogData): Promise<void> {
     try {
-      // 1. Log to Persistent DB (Prisma ModelUsage table)
-      await db.modelUsage.create({
-        data: {
-          userId: data.userId || 'system',
-          modelConfigId: data.modelId, // This should be a ModelConfig ID
-          roleId: data.roleId || 'default-role',
-          promptTokens: data.tokensIn,
-          completionTokens: data.tokensOut,
-          cost: 0, // Calculate based on model rates if needed
-          metadata: {
-            status: data.status,
-            duration: data.durationMs,
-            providerConfigId: data.providerConfigId
-          }
+      // 1. Log to Persistent DB (Drizzle ModelUsage table)
+      await db.insert(modelUsage).values({
+        userId: data.userId || 'system',
+        modelConfigId: data.modelId, // This should be a ModelConfig ID
+        roleId: data.roleId || 'default-role',
+        promptTokens: data.tokensIn,
+        completionTokens: data.tokensOut,
+        cost: 0, // Calculate based on model rates if needed
+        metadata: {
+          status: data.status,
+          duration: data.durationMs,
+          providerConfigId: data.providerConfigId
         }
       });
 
@@ -131,11 +131,15 @@ export class UsageCollector {
       const tpmMax = headers['x-ratelimit-limit-tokens'];
       const tpmRem = headers['x-ratelimit-remaining-tokens'];
 
-      // Set keys if they exist
-      if (rpmMax) await client.set(`${base}:rpm:max`, rpmMax);
-      if (rpmRem) await client.set(`${base}:rpm:current`, rpmRem); // 'current' here means 'remaining' in the UI context usually, or we can invert it. The user prompt says "RPM: 45 / 200 (Discovered)". If 45 is usage, then remaining is 155. But usually headers give remaining. Let's store what we get.
-      if (tpmMax) await client.set(`${base}:tpm:max`, tpmMax);
-      if (tpmRem) await client.set(`${base}:tpm:current`, tpmRem);
+      const resetTime = headers['x-ratelimit-reset'] || headers['x-ratelimit-reset-requests'] || '60';
+      let ttl = Math.ceil(parseFloat(resetTime));
+      if (ttl <= 0) ttl = 60; // Default fallback
+
+      // Set keys if they exist with TTL
+      if (rpmMax) await client.set(`${base}:rpm:max`, rpmMax, { EX: ttl });
+      if (rpmRem) await client.set(`${base}:rpm:current`, rpmRem, { EX: ttl }); 
+      if (tpmMax) await client.set(`${base}:tpm:max`, tpmMax, { EX: ttl });
+      if (tpmRem) await client.set(`${base}:tpm:current`, tpmRem, { EX: ttl });
 
       // Also keep the JSON for internal logic if needed, or migrate internal logic to use these new keys.
       // For now, I'll keep the old key too to avoid breaking modelSelector if it relies on it (though I should check that).

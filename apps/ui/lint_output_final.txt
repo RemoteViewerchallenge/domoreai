@@ -1,0 +1,189 @@
+
+> ui@0.0.0 lint /home/guy/mono/apps/ui
+> eslint -c eslint.config.mjs .
+
+
+/home/guy/mono/apps/ui/src/App.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/AddProviderForm.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/BottomSummaryBar.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/DataLakeTable.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/DataNode.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/DualRangeSlider.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/FileExplorer.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/GitControls.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/InteractiveTerminal.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/MonacoEditor.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/OrchestrationCreatorPanel.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ProviderList.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ResearchBrowser.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/RoleCreatorPanel.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/SimpleErrorModal.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/SimpleTableView.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/SmartEditor.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/SshConnectionModal.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/TerminalLogViewer.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ToolSelector.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/TopSummaryBar.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/UnifiedMenuBar.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/UniversalDataGrid.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/VfsViewer.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/VisualQueryBuilder.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/XtermTerminal.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/nodes/ApiExplorerNode.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/nodes/DatabaseManagerNode.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/settings/AgentSettings.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/settings/OrchestratorSettings.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/settings/WorkspaceSettings.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ui/Accordion.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ui/Button.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ui/Icon.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/ui/Panel.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/work-order/SwappableCard.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/work-order/WorkOrderCard.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/components/work-order/WorkOrderColumn.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/hooks/useCardVFS.ts
+  67:5  warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/home/guy/mono/apps/ui/src/hooks/useColumnFocus.ts
+  7:32  warning  'columns' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/home/guy/mono/apps/ui/src/hooks/useVFS.ts
+  19:19  warning  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  28:5   warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/home/guy/mono/apps/ui/src/main.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/CreatorStudio.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/DataLake.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/FileLocationPage.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/ProjectCreator.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/ProjectPage.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/ProjectsDashboard.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/ProviderManager.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/ProviderRecovery.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/RoleCreator.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/SettingsPage.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/UnifiedProviderPage.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/WorkSpace.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/WorkspaceList.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/admin/models.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/workspace/SmartSwitch.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/pages/workspace/[id].tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/stores/FileSystemContext.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+/home/guy/mono/apps/ui/src/stores/FileSystemStore.tsx
+  0:0  error  Parsing error: parserOptions.tsconfigRootDir must be an absolute path, but received: ".". This is a bug in your configuration; please supply an absolute path
+
+✖ 61 problems (57 errors, 4 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

@@ -125,31 +125,22 @@ export const DataNode: React.FC = () => {
       
       {/* --- SIDEBAR: TABLE LIST --- */}
       <div className="w-64 flex-none border-r border-zinc-800 bg-zinc-950 flex flex-col">
-        {/* Header / Add Provider */}
+        {/* Header */}
         <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
-           <span className="font-bold text-zinc-400">EXPLORER</span>
-           <div className="flex gap-1">
-             <button 
-               onClick={handleCreateTable}
-               className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-200" 
-               title="New Empty Table"
-             >
-               <Table size={14} />
-             </button>
-             <button 
-               onClick={() => setShowAddProvider(true)}
-               className="p-1 hover:bg-zinc-800 rounded text-green-400" 
-               title="Add Data Source"
-             >
-               <Plus size={14} />
-             </button>
-           </div>
+           <span className="font-bold text-[var(--color-text-secondary)]">EXPLORER</span>
+           <button 
+             onClick={handleCreateTable}
+             className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200" 
+             title="New Empty Table"
+           >
+             <Table size={14} />
+           </button>
         </div>
 
         {/* Search */}
         <div className="p-3 border-b border-zinc-800">
           <div className="flex items-center gap-2 bg-zinc-900 px-2 py-1.5 rounded border border-zinc-800">
-            <Search size={12} className="text-zinc-500" />
+            <Search size={12} className="text-[var(--color-text-secondary)]" />
             <input 
               className="bg-transparent outline-none text-zinc-300 w-full placeholder-zinc-600"
               placeholder="Search tables..."
@@ -162,20 +153,22 @@ export const DataNode: React.FC = () => {
         {/* List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider px-2 mb-2 mt-2">Database Tables</div>
-          {filteredTables.map((t: TableItem) => (
-            <button
-              key={t.name}
-              onClick={() => setActiveTable(t.name)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all ${
-                activeTable === t.name 
-                  ? 'bg-cyan-900/30 text-cyan-200 border border-cyan-900/50' 
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-              }`}
-            >
-              {t.name === 'RawDataLake' ? <Database size={14} className="text-purple-400"/> : <Table size={14} />}
-              <span className="truncate">{t.name}</span>
-            </button>
-          ))}
+          {filteredTables
+            .filter((t: TableItem) => t.name !== 'RawDataLake')
+            .map((t: TableItem) => (
+              <button
+                key={t.name}
+                onClick={() => setActiveTable(t.name)}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-all ${
+                  activeTable === t.name 
+                    ? 'bg-cyan-900/30 text-cyan-200 border border-cyan-900/50' 
+                    : 'text-[var(--color-text-secondary)] hover:bg-zinc-900 hover:text-zinc-200'
+                }`}
+              >
+                <Table size={14} />
+                <span className="truncate">{t.name}</span>
+              </button>
+            ))}
         </div>
       </div>
 
@@ -202,11 +195,11 @@ export const DataNode: React.FC = () => {
                    {activeTable}
                  </>
                ) : (
-                 <span className="text-zinc-500">No Table Selected</span>
+                 <span className="text-[var(--color-text-secondary)]">No Table Selected</span>
                )}
              </h2>
              {activeTable && (
-               <button onClick={() => refetchData()} className="p-1 hover:bg-zinc-800 rounded text-zinc-500">
+               <button onClick={() => refetchData()} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)]">
                  <RefreshCw size={12} />
                </button>
              )}
@@ -215,23 +208,10 @@ export const DataNode: React.FC = () => {
           {/* Actions */}
           {activeTable && (
             <div className="flex items-center gap-2">
-               {/* SPECIAL ACTION: IMPORT JSON (Only for Raw Data) */}
-               {activeTable === 'RawDataLake' && (
-                 <button 
-                   onClick={() => {
-                     const name = prompt("Enter name for new table:", "refined_models");
-                     if (name) flattenMutation.mutate({ tableName: name });
-                   }}
-                   className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow-lg shadow-purple-900/20 mr-2"
-                 >
-                   <FileJson size={14} />
-                   IMPORT LATEST RAW DATA
-                 </button>
-               )}
 
                <button 
                  onClick={() => setShowQuery(!showQuery)}
-                 className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${showQuery ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent hover:bg-zinc-900 text-zinc-400'}`}
+                 className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${showQuery ? 'bg-zinc-800 border-zinc-600 text-white' : 'border-transparent hover:bg-zinc-900 text-[var(--color-text-secondary)]'}`}
                >
                  <Play size={14} /> SQL EDITOR
                </button>
@@ -253,7 +233,7 @@ export const DataNode: React.FC = () => {
 
                <button 
                  onClick={() => { if(confirm('Delete this table?')) deleteTableMutation.mutate({ tableName: activeTable }) }}
-                 className="p-2 hover:bg-red-900/20 text-zinc-500 hover:text-red-400 rounded transition-colors"
+                 className="p-2 hover:bg-red-900/20 text-[var(--color-text-secondary)] hover:text-red-400 rounded transition-colors"
                  title="Delete Table"
                >
                  <Trash2 size={14} />

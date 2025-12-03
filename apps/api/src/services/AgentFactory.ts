@@ -1,5 +1,9 @@
 import { AgentConfigRepository } from "../repositories/AgentConfigRepository.js";
-import { loadSOP } from "@repo/agents";
+import { AssessmentService } from "./AssessmentService.js";
+import { loadSOP, PromptFactory } from "@repo/agents";
+import { db } from "../db.js";
+import { PrismaLessonProvider } from "./PrismaLessonProvider.js";
+
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
 import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
@@ -8,12 +12,17 @@ import { ProviderError } from "../types.js";
 
 // Represents the state of a single Card's brain
 export interface CardAgentState {
+
   roleId: string;
   modelId: string | null;
   isLocked: boolean;
   temperature: number;
   maxTokens: number;
+  userGoal?: string; // Optional context for memory injection
+  projectPrompt?: string; // Optional project-specific system prompt
 }
+
+
 
 // A simple wrapper ensuring the Agent has a standard .generate() interface
 export class VolcanoAgent {
@@ -23,7 +32,8 @@ export class VolcanoAgent {
     private provider: BaseLLMProvider,
     private systemPrompt: string,
     private config: { apiModelId: string; temperature: number; maxTokens: number },
-    private roleId: string
+    private roleId: string,
+    private orchestrationConfig?: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number }
   ) {}
 
   /**
@@ -36,15 +46,73 @@ export class VolcanoAgent {
     while (true) {
       try {
         console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id}`);
-        return await this.provider.generateCompletion({
-          modelId: this.config.apiModelId,
-          messages: [
-            { role: 'system', content: this.systemPrompt },
-            { role: 'user', content: userGoal }
-          ],
-          temperature: this.config.temperature,
-          max_tokens: this.config.maxTokens,
-        });
+          const response = await this.provider.generateCompletion({
+            modelId: this.config.apiModelId,
+            messages: [
+              { role: 'system', content: this.systemPrompt },
+              { role: 'user', content: userGoal }
+            ],
+            temperature: this.config.temperature,
+            max_tokens: this.config.maxTokens,
+          });
+
+          // --- JUDGE VERIFICATION ---
+          if (this.orchestrationConfig?.requiresCheck && this.orchestrationConfig.judgeRoleId) {
+            console.log(`[VolcanoAgent] Judge verification required (Judge Role: ${this.orchestrationConfig.judgeRoleId})`);
+            
+            // We need to instantiate the Judge Agent.
+            // CAUTION: To avoid circular dependency issues or infinite loops, we should be careful.
+            // Ideally, we'd use a separate service to run the judge.
+            // For now, we'll do a simplified check: Just use the same provider or a smart provider to check.
+            // But the requirement is to use a specific "Judge Role".
+            
+            // We'll use a simplified flow here to avoid recursion hell:
+            // 1. Fetch Judge Role Prompt
+            // 2. Run check using the current provider (or a smart one)
+            
+            try {
+               // We can't easily create a full agent here without circular imports if we use createVolcanoAgent.
+               // So we'll do a lightweight check.
+               const judgeRole = await AgentConfigRepository.getRole(this.orchestrationConfig.judgeRoleId);
+               if (judgeRole) {
+                 const verificationPrompt = `
+                 ${judgeRole.basePrompt}
+                 
+                 TASK: Verify the following output against the user goal.
+                 
+                 USER GOAL: ${userGoal}
+                 
+                 OUTPUT TO VERIFY:
+                 ${response}
+                 
+                 Respond with "PASS" if it meets the criteria, or "FAIL: <reason>" if it does not.
+                 `;
+                 
+                 const verification = await this.provider.generateCompletion({
+                   modelId: this.config.apiModelId, // Use same model for now, or find a smart one
+                   messages: [{ role: 'user', content: verificationPrompt }],
+                   temperature: 0.0,
+                   max_tokens: 500
+                 });
+                 
+                 if (!verification.includes("PASS")) {
+                   console.warn(`[VolcanoAgent] Judge Failed: ${verification}`);
+                   // Record Failure
+                   await AssessmentService.recordFailure(this.roleId, this.systemPrompt, verification);
+                   
+                   // For now, we still return the response but maybe prepend a warning?
+                   // Or throw? Let's prepend a warning.
+                   return `[⚠️ JUDGE FAILED: ${verification}]\n\n${response}`;
+                 } else {
+                   console.log(`[VolcanoAgent] Judge Passed.`);
+                 }
+               }
+            } catch (judgeError) {
+              console.error("[VolcanoAgent] Judge execution failed:", judgeError);
+            }
+          }
+
+          return response;
       } catch (error) {
         const err = error as ProviderError;
         console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, err);
@@ -191,12 +259,31 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
 
   // 5. Return the Configured Agent
   let basePrompt: string;
+  
   try {
-    basePrompt = await loadSOP(role.name, {});
+    // Use PromptFactory to assemble the prompt with memory
+    const lessonProvider = new PrismaLessonProvider();
+    const promptFactory = new PromptFactory(lessonProvider);
+    
+    // We pass the role name and the user's goal (or empty string if not provided)
+    // The PromptFactory handles loading the SOP and injecting lessons
+    basePrompt = await promptFactory.build(
+        role.name, 
+        cardConfig.userGoal || '', 
+        (role as any).memoryConfig,
+        role.tools,
+        cardConfig.projectPrompt
+    );
   } catch (error) {
-    console.warn(`[AgentFactory] SOP for role "${role.name}" not found. Falling back to default.`);
-    basePrompt = await loadSOP('default', {});
+    console.warn(`[AgentFactory] PromptFactory failed for role "${role.name}". Falling back to simple SOP load.`, error);
+    try {
+      basePrompt = await loadSOP(role.name, {});
+    } catch (fallbackError) {
+      console.warn(`[AgentFactory] SOP for role "${role.name}" not found. Falling back to default.`);
+      basePrompt = await loadSOP('default', {});
+    }
   }
+
   return new VolcanoAgent(
     provider,
     basePrompt,
@@ -206,6 +293,8 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
       temperature: safeParams.temperature ?? 0.7,
       maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
     },
-    role.id // Pass Role ID for fallback logic
+    role.id, // Pass Role ID for fallback logic
+    (role as any).orchestrationConfig
   );
 }
+

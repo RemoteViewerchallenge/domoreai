@@ -42,7 +42,36 @@ export class McpOrchestrator {
     });
 
     const results = await Promise.all(promises);
-    return results.flat();
+    const mcpTools = results.flat();
+
+    // Inject Internal Tools
+    const internalTools = this.getInternalTools();
+    
+    return [...mcpTools, ...internalTools];
+  }
+
+  private getInternalTools(): SandboxTool[] {
+    return [
+      {
+        name: 'search_codebase',
+        description: 'Semantic search over the codebase using vector embeddings. Use this to find relevant code snippets or documentation.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'The search query' },
+            limit: { type: 'number', description: 'Max results to return (default 5)' }
+          },
+          required: ['query']
+        },
+        handler: async (args: any) => {
+          const { vectorStore, createEmbedding } = await import('./vector.service.js');
+          const queryEmbedding = await createEmbedding(args.query);
+          const results = await vectorStore.search(queryEmbedding, args.limit || 5);
+          
+          return results.map(r => `File: ${r.metadata.filePath}\nSimilarity: ${(r as any).similarity.toFixed(4)}\nContent:\n${r.metadata.chunk}\n---`).join('\n');
+        }
+      }
+    ];
   }
 
   private formatToolForSandbox(serverName: string, server: ActiveServer, tool: any): SandboxTool {
@@ -108,6 +137,14 @@ export class McpOrchestrator {
       });
       
       console.log(`[Orchestrator] Connected to ${serverName}`);
+
+      // Document the server
+      // We run this in background so it doesn't block startup
+      import('./ToolDocumenter.js').then(({ ToolDocumenter }) => {
+        ToolDocumenter.documentServer(serverName, client).catch(err => {
+          console.error(`[Orchestrator] Failed to document ${serverName}:`, err);
+        });
+      });
     } catch (error) {
       console.error(`[Orchestrator] Failed to start server ${serverName}:`, error);
       throw error;

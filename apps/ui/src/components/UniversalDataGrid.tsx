@@ -58,7 +58,7 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   }, [resizing]);
 
   if (!data || data.length === 0) return (
-    <div className="flex flex-col items-center justify-center h-full text-zinc-500 bg-zinc-900/20 border border-zinc-800/50 rounded-lg m-2">
+    <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-secondary)] bg-zinc-900/20 border border-zinc-800/50 rounded-lg m-2">
         <span className="text-xs font-mono">NO DATA FOUND</span>
     </div>
   );
@@ -75,7 +75,7 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
 
               return (
                 <th key={col} className="relative p-0 border-b border-zinc-800 group" style={{ width: columnWidths[col] || 150 }}>
-                  <div className={`flex items-center justify-between px-2 py-2 h-full ${isMapped ? 'bg-indigo-900/20 text-indigo-300' : 'text-zinc-400'}`}>
+                  <div className={`flex items-center justify-between px-2 py-2 h-full ${isMapped ? 'bg-indigo-900/20 text-indigo-300' : 'text-[var(--color-text-secondary)]'}`}>
                     
                     {/* Header Content */}
                     {isEditing ? (
@@ -103,7 +103,7 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
                             {onColumnMapChange && (
                                 <button 
                                     onClick={() => { setEditingHeader(col); setTempHeaderVal(mappedName); }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-opacity"
+                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white transition-opacity"
                                 >
                                     <Edit2 size={10} />
                                 </button>
@@ -122,7 +122,7 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
                   
                   {/* Mapping Indicator */}
                   {isMapped && !isEditing && (
-                      <div className="absolute top-0 right-1 text-[8px] text-zinc-500 font-normal opacity-50">
+                      <div className="absolute top-0 right-1 text-[8px] text-[var(--color-text-secondary)] font-normal opacity-50">
                           {col}
                       </div>
                   )}
@@ -136,7 +136,9 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
             <tr key={rowIndex} className="hover:bg-zinc-900/50 transition-colors group">
               {columns.map((col) => (
                 <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-zinc-800/30 last:border-r-0 overflow-hidden text-zinc-300 whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
-                  <span className="opacity-90 group-hover:opacity-100">{String(row[col] ?? '')}</span>
+                  <span className="opacity-90 group-hover:opacity-100">
+                    {(row[col] === null || row[col] === undefined) ? '' : (typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] as any))}
+                  </span>
                 </td>
               ))}
             </tr>

@@ -30,7 +30,7 @@ export const DataLakeTable: React.FC = () => {
               <td className="text-xs whitespace-nowrap">
                 {new Date(row.ingestedAt).toLocaleString()}
               </td>
-              <td className="text-xs font-mono text-gray-400 truncate max-w-md">
+              <td className="text-xs font-mono text-[var(--color-text-secondary)] truncate max-w-md">
                 {JSON.stringify(row.rawData).substring(0, 150)}
               </td>
               <td className="text-right">
@@ -49,7 +49,7 @@ export const DataLakeTable: React.FC = () => {
           ))}
           {rawData?.length === 0 && (
             <tr>
-              <td colSpan={5} className="text-center text-gray-500 py-8">
+              <td colSpan={5} className="text-center text-[var(--color-text-secondary)] py-8">
                 Data Lake is empty. Ingest data from the sidebar.
               </td>
             </tr>

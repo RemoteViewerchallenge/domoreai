@@ -29,7 +29,7 @@ const ProviderStats = ({ providerId }: { providerId: string }) => {
        
        {/* Popover */}
        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-black border border-slate-700 p-2 rounded shadow-xl z-50 text-[10px] font-mono pointer-events-none">
-         <div className="font-bold text-slate-400 mb-1">Live Stats</div>
+         <div className="font-bold text-[var(--color-text-secondary)] mb-1">Live Stats</div>
          <div className="flex justify-between">
            <span>RPM:</span>
            <span className={stats.rpm.current < 10 ? 'text-red-500' : 'text-green-400'}>
@@ -69,7 +69,7 @@ export const ProviderList: React.FC<ProviderListProps> = ({ onIngest, onSelect }
     }
   });
 
-  if (isLoading) return <div className="text-xs text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="text-xs text-[var(--color-text-secondary)]">Loading...</div>;
 
   return (
     <div className="space-y-1">
@@ -85,7 +85,7 @@ export const ProviderList: React.FC<ProviderListProps> = ({ onIngest, onSelect }
             </div>
             <div className="flex flex-col truncate">
               <span className="text-xs font-bold truncate">{provider.label}</span>
-              <span className="text-[10px] text-gray-500 truncate">{provider.baseURL}</span>
+              <span className="text-[10px] text-[var(--color-text-secondary)] truncate">{provider.baseURL}</span>
             </div>
             
             {/* Live Stats Badge */}
@@ -131,7 +131,7 @@ export const ProviderList: React.FC<ProviderListProps> = ({ onIngest, onSelect }
       ))}
       
       {providers?.length === 0 && (
-        <div className="text-xs text-gray-500 text-center py-4">
+        <div className="text-xs text-[var(--color-text-secondary)] text-center py-4">
           No providers yet.
         </div>
       )}

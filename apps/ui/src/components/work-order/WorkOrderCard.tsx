@@ -43,7 +43,7 @@ const WorkOrderCard: React.FC<WorkOrderCardProps> = ({
     // CSS GRID LAYOUT
     // Rows: [Split%] [2px] [Rest of space]
     <div 
-      className={`w-full h-full grid bg-black overflow-hidden ${isActive ? 'z-10' : ''}`}
+      className={`w-full h-full grid bg-[var(--color-background)] overflow-hidden ${isActive ? 'z-10' : ''}`}
       style={{ 
         gridTemplateRows: `${splitRatio}% 2px 1fr`,
         transition: 'grid-template-rows 0.3s ease-out' // Smooth animation
@@ -52,11 +52,11 @@ const WorkOrderCard: React.FC<WorkOrderCardProps> = ({
       
       {/* --- ROW 1: PROMPT --- */}
       <div 
-        className="relative min-h-0 w-full bg-zinc-900 border-b border-zinc-800"
+        className="relative min-h-0 w-full bg-[var(--color-background-secondary)] border-b border-[var(--color-border)]"
         onClick={() => setFocus('prompt')}
       >
         {/* Label */}
-        <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'prompt' ? 'bg-cyan-950 text-cyan-400 border-cyan-700' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
+        <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'prompt' ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)] border-[var(--color-primary)]/50' : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
           Input
         </div>
         {/* Editor */}
@@ -73,15 +73,15 @@ const WorkOrderCard: React.FC<WorkOrderCardProps> = ({
       </div>
 
       {/* --- ROW 2: DIVIDER --- */}
-      <div className="w-full h-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)] z-50 relative" />
+      <div className="w-full h-full bg-[var(--color-primary)] shadow-[var(--glow-primary)] z-50 relative" />
 
       {/* --- ROW 3: OUTPUT --- */}
       <div 
-        className="relative min-h-0 w-full bg-black"
+        className="relative min-h-0 w-full bg-[var(--color-background)]"
         onClick={() => setFocus('gen')}
       >
          {/* Label */}
-         <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'gen' ? 'bg-green-950 text-green-400 border-green-700' : 'bg-zinc-900 text-zinc-600 border-zinc-800'}`}>
+         <div className={`absolute top-0 right-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest border-l border-b transition-colors duration-300 z-30 ${focus === 'gen' ? 'bg-[var(--color-success)]/20 text-[var(--color-success)] border-[var(--color-success)]/50' : 'bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
           Output
         </div>
         {/* Editor */}

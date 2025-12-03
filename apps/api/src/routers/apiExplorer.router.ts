@@ -37,7 +37,7 @@ export const apiExplorerRouter = createTRPCRouter({
   saveResponse: publicProcedure
     .input(z.object({ providerName: z.string(), data: z.any() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.rawDataLake.create({
+      return ctx.prisma.rawDataLake.create({
         data: { provider: input.providerName, rawData: input.data }
       });
     })

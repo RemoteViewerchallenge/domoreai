@@ -31,6 +31,7 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
       { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp', contextWindow: 1000000, isFree: true, providerId: this.id },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: false, providerId: this.id },
+      { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Antigravity)', contextWindow: 2000000, isFree: false, providerId: this.id },
       // ... others
     ];
   }
@@ -82,6 +83,14 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
         maxOutputTokens: request.max_tokens,
       },
     };
+
+    // ANTIGRAVITY: Enable Thinking for Gemini 3
+    if (request.modelId.includes('gemini-3')) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (params.config as any).thinkingConfig = {
+            thinkingLevel: "high"
+        };
+    }
 
     try {
       const response = await this.client.models.generateContent(params);

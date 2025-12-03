@@ -1,11 +1,11 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { decrypt } from '../utils/encryption.js';
 
 export class RawModelService {
   
   static async fetchAndSnapshot(providerConfigId: string) {
     // 1. Get Config
-    const config = await db.providerConfig.findUnique({ 
+    const config = await prisma.providerConfig.findUnique({ 
       where: { id: providerConfigId } 
     });
     
@@ -79,7 +79,7 @@ export class RawModelService {
       const normalized = looksLikeOllama && rawJson && rawJson.models ? rawJson.models : rawJson;
 
       // 5. Save to DB (Exact dump)
-      const snapshot = await db.rawDataLake.create({
+      const snapshot = await prisma.rawDataLake.create({
         data: {
           provider: config.type,
           rawData: normalized, 

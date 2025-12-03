@@ -7,7 +7,7 @@ const ModelsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-500">
+      <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
         <span className="loading loading-spinner loading-md"></span>
       </div>
     );
@@ -42,12 +42,12 @@ const ModelsPage = () => {
             {models?.map((model, index) => (
               <tr key={`${model.source}-${model.id}-${index}`} className="hover:bg-base-300/50">
                 <td className="font-medium text-slate-200">{model.name}</td>
-                <td className="font-mono text-xs text-slate-400">{model.id}</td>
-                <td className="text-slate-400">
+                <td className="font-mono text-xs text-[var(--color-text-secondary)]">{model.id}</td>
+                <td className="text-[var(--color-text-secondary)]">
                   {model.contextLength > 0 ? model.contextLength.toLocaleString() : '-'}
                 </td>
                 <td>
-                  <span className="badge badge-sm badge-outline border-slate-600 text-slate-400">
+                  <span className="badge badge-sm badge-outline border-slate-600 text-[var(--color-text-secondary)]">
                     {model.source}
                   </span>
                 </td>
@@ -55,7 +55,7 @@ const ModelsPage = () => {
             ))}
             {models?.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-center py-8 text-slate-500">
+                <td colSpan={4} className="text-center py-8 text-[var(--color-text-secondary)]">
                   No models found in registered tables.
                 </td>
               </tr>
@@ -64,7 +64,7 @@ const ModelsPage = () => {
         </table>
       </div>
       
-      <div className="text-xs text-slate-500 px-1">
+      <div className="text-xs text-[var(--color-text-secondary)] px-1">
         Showing {models?.length || 0} models from all dynamic sources.
       </div>
     </div>

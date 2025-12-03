@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../db.js';
 import { z } from 'zod';
 import { modelInputSchema } from '@repo/api-contract';
 import type { Prisma } from '@prisma/client';
@@ -10,7 +10,7 @@ export class ModelService {
     const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = input;
 
     // Simple implementation with our JSON DB
-    return db.model.upsert({
+    return prisma.model.upsert({
       where: {
         providerId_modelId: { providerId, modelId },
       },
@@ -38,7 +38,7 @@ export class ModelService {
   }
 
   async listModels() {
-    return db.model.findMany({
+    return prisma.model.findMany({
       include: {
         provider: true,
       },

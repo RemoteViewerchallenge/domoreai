@@ -68,7 +68,7 @@ export const ApiExplorerNode: React.FC = () => {
 
           {/* Headers */}
           <div className="flex flex-col gap-1 flex-1">
-            <label className="text-zinc-500 font-bold flex items-center gap-2"><Code size={12}/> Headers (JSON)</label>
+            <label className="text-[var(--color-text-secondary)] font-bold flex items-center gap-2"><Code size={12}/> Headers (JSON)</label>
             <textarea 
               value={headers}
               onChange={(e) => setHeaders(e.target.value)}
@@ -79,7 +79,7 @@ export const ApiExplorerNode: React.FC = () => {
           {/* Body */}
           {method !== 'GET' && (
             <div className="flex flex-col gap-1 flex-1">
-              <label className="text-zinc-500 font-bold flex items-center gap-2"><Code size={12}/> Body (JSON)</label>
+              <label className="text-[var(--color-text-secondary)] font-bold flex items-center gap-2"><Code size={12}/> Body (JSON)</label>
               <textarea 
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -101,7 +101,7 @@ export const ApiExplorerNode: React.FC = () => {
         {/* Right: Response */}
         <div className="flex-1 bg-black p-4 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-             <span className="text-zinc-500 font-bold">RESPONSE</span>
+             <span className="text-[var(--color-text-secondary)] font-bold">RESPONSE</span>
              {status && (
                <div className="flex items-center gap-4">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${status >= 200 && status < 300 ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>

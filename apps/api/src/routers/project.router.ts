@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { db as prisma } from '../db.js';
+import { prisma } from '../db.js';
 
 export const projectRouter = createTRPCRouter({
   /**

@@ -7,7 +7,7 @@ const ProjectsDashboard: React.FC = () => {
   const { data: projects, isLoading, error } = trpc.project.list.useQuery();
 
   const statusConfig = {
-    not_started: { color: 'text-gray-500', bg: 'bg-gray-900/30' },
+    not_started: { color: 'text-[var(--color-text-secondary)]', bg: 'bg-gray-900/30' },
     in_progress: { color: 'text-cyan-400', bg: 'bg-cyan-900/20' },
     on_hold: { color: 'text-orange-400', bg: 'bg-orange-900/20' },
     completed: { color: 'text-green-400', bg: 'bg-green-900/20' },
@@ -58,10 +58,10 @@ const ProjectsDashboard: React.FC = () => {
                       {project.status.replace(/_/g, ' ')}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                  <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2 mb-3">
                     {project.description || 'No description available.'}
                   </p>
-                  <div className="border-t border-zinc-800 pt-2 flex justify-between items-center text-xs text-gray-400">
+                  <div className="border-t border-zinc-800 pt-2 flex justify-between items-center text-xs text-[var(--color-text-secondary)]">
                     <span className="font-bold">{project.jobs.length} Jobs</span>
                     <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
                   </div>

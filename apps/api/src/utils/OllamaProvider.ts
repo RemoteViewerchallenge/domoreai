@@ -51,4 +51,17 @@ export class OllamaProvider implements BaseLLMProvider {
     // Non-streaming response has { response: string, done: boolean }
     return resp.data?.response || '';
   }
+
+  async generateEmbedding(text: string, model: string = 'mxbai-embed-large'): Promise<number[]> {
+    try {
+      const response = await axios.post(this.baseURL + 'api/embeddings', {
+        model,
+        prompt: text,
+      });
+      return response.data.embedding;
+    } catch (e: any) {
+      const msg = e?.message || 'unknown error';
+      throw new Error(`Ollama embedding failed at ${this.baseURL}. Error: ${msg}`);
+    }
+  }
 }

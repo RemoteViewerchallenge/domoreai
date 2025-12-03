@@ -10,5 +10,14 @@ export async function loadSOP(name: string, context: object): Promise<string> {
     content = content.replace(regex, String(value));
   }
 
+  // Inject memory block if present in context
+  if ('memory_block' in context) {
+    content = content.replace('{{memory_block}}', String((context as Record<string, unknown>).memory_block));
+  } else {
+    // Clean up placeholder if no memory provided
+    content = content.replace('{{memory_block}}', '');
+  }
+
   return content;
 }
+

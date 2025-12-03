@@ -61,7 +61,7 @@ const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
     <div className="w-full py-2 font-mono relative">
       {label && (
         <div className="flex justify-between mb-1">
-          <span className="text-[10px] font-bold text-gray-500 uppercase">{label}</span>
+          <span className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase">{label}</span>
           <span className="text-[10px] text-blue-400">
             {minValue} - {maxValue} {unit}
           </span>

@@ -1,6 +1,6 @@
 import { initTRPC } from '@trpc/server';
 import superjson from 'superjson';
-import { db } from './db.js';
+import { db, prisma } from './db.js';
 import { vfsSessionService } from './services/vfsSession.service.js';
 
 /**
@@ -10,6 +10,7 @@ import { vfsSessionService } from './services/vfsSession.service.js';
 export const createTRPCContext = () => {
   return {
     db,
+    prisma,
     // ✅ FIX: explicit null instead of 'as any'
     session: null, 
     vfsSession: vfsSessionService,

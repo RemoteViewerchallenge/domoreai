@@ -8,12 +8,12 @@ const ProviderRecovery: React.FC = () => {
   return (
     <div className="h-screen w-full bg-black text-zinc-300 flex flex-col p-8">
       <div className="mb-8">
-        <Link to="/providers" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 mb-4 transition-colors">
+        <Link to="/providers" className="flex items-center gap-2 text-[var(--color-text-secondary)] hover:text-zinc-300 mb-4 transition-colors">
           <ArrowLeft size={16} /> Back to Providers
         </Link>
         <h1 className="text-2xl font-bold text-white mb-2">Provider Data Recovery</h1>
-        <p className="text-zinc-500 max-w-2xl">
-          Use this tool to restore your model data tables. Click the <span className="text-green-400 font-bold">Green Refresh Icon</span> next to a provider to re-ingest its data into a specific table (e.g., "orouter", "tgthr").
+        <p className="text-[var(--color-text-secondary)] max-w-2xl">
+          Use this tool to restore your model data tables. Click the <span className="text-green-400 font-bold">Green Refresh Icon</span> next to a provider to re-ingest its data into a specific table (e.g., &quot;orouter&quot;, &quot;tgthr&quot;).
         </p>
       </div>
 

@@ -13,6 +13,7 @@ import { orchestrationManagementRouter } from './orchestrationManagement.router.
 import { usageRouter } from './usage.router.js';
 import { browserRouter } from './browser.router.js';
 import { projectRouter } from './project.router.js';
+import { contextRouter } from './context.router.js';
 
 export const appRouter = createTRPCRouter({
   project: projectRouter,
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   dataRefinement: dataRefinementRouter,
   apiExplorer: apiExplorerRouter,
   agent: agentRouter,
+  context: contextRouter,
   orchestrator: orchestratorRouter,
   orchestrationManagement: orchestrationManagementRouter,
   usage: usageRouter,
