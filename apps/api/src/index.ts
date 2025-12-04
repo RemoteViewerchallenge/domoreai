@@ -12,6 +12,7 @@ import { db, shutdownDb } from './db.js';
 import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
+import { scheduler } from './services/JobScheduler.js';
 
 // Initialize Telemetry
 if (process.env.VOLCANO_TELEMETRY_ENABLED === 'true') {
@@ -98,6 +99,9 @@ async function startServer() {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
+
+// START THE AUTONOMY ENGINE
+scheduler.start(5000); // Check for work every 5 seconds
 
 console.log('Server starting... (Force Restart 2)');
 startServer();
