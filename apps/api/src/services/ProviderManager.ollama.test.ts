@@ -1,8 +1,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ProviderManager } from './ProviderManager';
+import { ProviderManager } from './ProviderManager.js';
 import axios from 'axios';
-import { db } from '../db';
+import { db } from '../db.js';
 
 // Mock dependencies
 vi.mock('axios');

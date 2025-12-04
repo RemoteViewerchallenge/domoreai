@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { prisma } from '../db.js';
+import { ProjectArchitect } from '../services/ProjectArchitect.js';
+import { projects } from '../db/schema.js'; // Ensure proper file extension for NodeNext module resolution
 
 export const projectRouter = createTRPCRouter({
   /**
@@ -10,7 +12,7 @@ export const projectRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string(),
-        description: z.string().optional(),
+        description: z.string(), // Made description mandatory
         priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
         jobs: z.array(
           z.object({
@@ -21,43 +23,28 @@ export const projectRouter = createTRPCRouter({
             dependsOn: z.number().optional(), // Index of the job it depends on in the array
             parallelGroup: z.string().optional(),
           })
-        ),
+        ).optional(), // Made jobs optional
       })
     )
-    .mutation(async ({ input }) => {
-      const { name, description, priority, jobs } = input;
+    .mutation(async ({ input, ctx }) => {
+      const { name, description } = input;
 
-      return await prisma.$transaction(async (tx) => {
-        const project = await tx.project.create({
-          data: {
-            name,
-            description,
-            priority,
-          },
-        });
+      const [project] = await ctx.db.insert(projects).values({
+        name,
+        description,
+        status: 'planning',
+      }).returning() as { id: string }[]; // Ensure type safety without casting to unknown
 
-        const createdJobs: { [index: number]: { id: string } } = {};
+      const architect: ProjectArchitect = new ProjectArchitect(); // Explicitly type the architect instance
+      if (project && typeof project.id === 'string') { // Add type guard for project.id
+        architect.draftBlueprint(project.id, description)
+          .then(() => console.log("Blueprint complete"))
+          .catch(err => console.error("Blueprint failed", err));
+      } else {
+        console.error("Project creation failed or returned invalid ID.");
+      }
 
-        for (const [index, jobInput] of jobs.entries()) {
-          const createdJob = await tx.job.create({
-            data: {
-              name: jobInput.name,
-              description: jobInput.description,
-              priority: jobInput.priority,
-              projectId: project.id,
-              roleId: jobInput.roleId,
-              parallelGroup: jobInput.parallelGroup,
-              dependsOnJobId:
-                jobInput.dependsOn !== undefined && createdJobs[jobInput.dependsOn]
-                  ? createdJobs[jobInput.dependsOn].id
-                  : undefined,
-            },
-          });
-          createdJobs[index] = { id: createdJob.id };
-        }
-
-        return project;
-      });
+      return project; // Ensure safe return of project
     }),
 
   /**
