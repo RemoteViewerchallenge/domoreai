@@ -99,7 +99,7 @@ export const agentRouter = createTRPCRouter({
         //    the system prompt with role context from the runtime's ContextManager.
         const llmCallback = async (prompt: string): Promise<string> => {
           const basePrompt = role?.basePrompt || '';
-          return await runtime.generateWithContext(agent, basePrompt, prompt, roleId);
+          return (await runtime.generateWithContext(agent, basePrompt, prompt, roleId)) as string;
         };
 
         // 5. Start the agent loop (Synchronous for now to ensure UI update)

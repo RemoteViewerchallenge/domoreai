@@ -25,34 +25,29 @@ interface AddProviderFormProps {
 export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onCancel, customMutation }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  // FIX: Renamed 'name' -> 'label' and 'providerType' -> 'type' to match API schema
   const [formData, setFormData] = useState({
     label: '', 
     type: 'openai',
     baseURL: '',
     apiKey: '',
-    tableName: '',
   });
 
   const mutation = customMutation || trpc.providers.add.useMutation({
     onSuccess: () => {
       onSuccess?.();
-      setFormData({ label: '', type: 'openai', baseURL: '', apiKey: '', tableName: '' });
+      setFormData({ label: '', type: 'openai', baseURL: '', apiKey: '' });
       setIsOpen(false);
     },
   });
 
   const normalizeOllamaUrl = (url: string) => {
-    // Strip any trailing /v1 and trailing slash for Ollama native endpoints
     try {
       const u = new URL(url);
       if (u.pathname.endsWith('/v1')) {
         u.pathname = u.pathname.replace(/\/v1$/, '/');
       }
-      // Ensure a single trailing slash is OK, backend normalizes
       return u.origin + (u.pathname === '/' ? '' : u.pathname);
     } catch {
-      // Fallback if not a valid URL
       return url.replace(/\/?v1\/?$/, '').replace(/\/$/, '');
     }
   };
@@ -62,7 +57,6 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
 
-      // Provider type selection defaults
       if (name === 'type') {
         if (value === 'ollama') newData.baseURL = 'http://localhost:11434';
         else if (value === 'openai') newData.baseURL = 'https://api.openai.com/v1';
@@ -72,17 +66,15 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
         else if (value === 'azure') newData.baseURL = 'https://{resource}.openai.azure.com/';
       }
 
-      // Auto-detect Ollama by port 11434 and correct type + URL
       if (name === 'baseURL') {
         const looksLikeOllama = /:11434(\/|$)/.test(value);
         if (looksLikeOllama) {
           newData.type = 'ollama';
-          newData.apiKey = ''; // Ollama generally doesn't need a key by default
+          newData.apiKey = ''; 
           newData.baseURL = normalizeOllamaUrl(value);
         }
       }
 
-      // If type is ollama, normalize URL to native (remove /v1)
       if (newData.type === 'ollama' && newData.baseURL) {
         newData.baseURL = normalizeOllamaUrl(newData.baseURL);
       }
@@ -93,17 +85,14 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Final normalization before submit
     const payload = { ...formData };
     if (payload.type === 'ollama') {
       payload.baseURL = normalizeOllamaUrl(payload.baseURL);
-      // If user pasted an OpenAI-style /v1 path, it has been stripped
     }
 
     if (customMutation) {
       customMutation.mutate(payload);
     } else {
-      // Default mutation expects name/providerType
       mutation.mutate({
         name: payload.label,
         providerType: payload.type,
@@ -130,10 +119,10 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
             <label className="label py-0"><span className="label-text text-xs">Name</span></label>
             <input
               className="input input-xs input-bordered w-full"
-              name="label" /* FIX: name="label" */
+              name="label"
               type="text"
               placeholder="My Provider"
-              value={formData.label} /* FIX: value={formData.label} */
+              value={formData.label}
               onChange={handleChange}
               required
             />
@@ -143,8 +132,8 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
             <label className="label py-0"><span className="label-text text-xs">Type</span></label>
             <select
               className="select select-xs select-bordered w-full"
-              name="type" /* FIX: name="type" */
-              value={formData.type} /* FIX: value={formData.type} */
+              name="type"
+              value={formData.type}
               onChange={handleChange}
             >
               {PROVIDER_TYPES.map((pt) => (
@@ -186,18 +175,6 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
               type="password"
               placeholder="sk-..."
               value={formData.apiKey}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div>
-            <label className="label py-0"><span className="label-text text-xs">Target Table Name (Optional)</span></label>
-            <input
-              className="input input-xs input-bordered w-full"
-              name="tableName"
-              type="text"
-              placeholder="e.g. my_models"
-              value={formData.tableName}
               onChange={handleChange}
             />
           </div>

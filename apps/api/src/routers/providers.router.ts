@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
-
+import { providerConfigs, genericProviderModels, modelRegistry } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 
 export const providerRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
-    return ctx.prisma.providerConfig.findMany();
+    return ctx.db.select().from(providerConfigs);
   }),
+
   add: publicProcedure
     .input(z.object({
       name: z.string(),
@@ -17,40 +19,44 @@ export const providerRouter = createTRPCRouter({
       apiKey: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : ''; // Enforce string
-      return ctx.prisma.providerConfig.create({
-        data: {
-          label: input.name,
-          type: input.providerType,
-          baseURL: input.baseURL,
-          apiKey: encryptedApiKey,
-          isEnabled: true,
-        },
-      });
+      const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : '';
+      
+      // Insert into Drizzle table
+      const [newProvider] = await ctx.db.insert(providerConfigs).values({
+        label: input.name,
+        type: input.providerType,
+        baseURL: input.baseURL,
+        apiKey: encryptedApiKey,
+        isEnabled: true,
+      }).returning();
+
+      return newProvider;
     }),
+
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.providerConfig.delete({
-        where: { id: input.id },
-      });
+      return ctx.db.delete(providerConfigs).where(eq(providerConfigs.id, input.id));
     }),
 
   /**
-   * Step 1: Fetch and Normalize Models (The "Dumb Scrape")
+   * Step 1: Fetch and Normalize Models (The "Smart Scrape")
    * Fetches models from the provider's API and upserts them into the database.
+   * STORES RAW DATA to avoid "wiping" or "misaligning" data.
    */
   fetchAndNormalizeModels: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const providerConfig = await ctx.prisma.providerConfig.findUnique({
-        where: { id: input.providerId },
+      // 1. Get Provider Config
+      const providerConfig = await ctx.db.query.providerConfigs.findFirst({
+        where: eq(providerConfigs.id, input.providerId),
       });
+
       if (!providerConfig) {
         throw new Error('Provider not found');
       }
 
-      // 3. Decrypt the API key
+      // 2. Decrypt the API key
       let apiKey: string;
       try {
         apiKey = decrypt(providerConfig.apiKey);
@@ -59,122 +65,65 @@ export const providerRouter = createTRPCRouter({
         throw new Error('Invalid API key configuration');
       }
 
-      // 4. Get the models using Volcano SDK
+      // 3. Get the models using Volcano SDK
       const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
         id: providerConfig.id,
         apiKey,
         baseURL: providerConfig.baseURL || undefined,
       });
 
+      console.log(`[ProviderRouter] Fetching models for ${providerConfig.label} (${providerConfig.type})...`);
       const rawModelList = await providerInstance.getModels();
+      console.log(`[ProviderRouter] Got ${rawModelList.length} models.`);
 
-      // Batch "upsert" models into the database.
-      const upsertPromises = rawModelList.map((model) => {
+      // 4. Batch "upsert" models into the database.
+      // We store TWO things:
+      // A. The RAW DATA (for flexibility)
+      // B. The REGISTRY ENTRY (for routing)
+
+      const upsertPromises = rawModelList.map(async (model) => {
         const modelId = model.id;
-        if (!modelId) {
-            return null;
-        }
-        // Use model.id as name if name is missing (SDK models usually have id)
-        const modelName = model.id; 
-        
-        // We need to cast model to any to access potential extra props if needed, 
-        // but SDK returns LLMModel which is strict. 
-        // For now, we store the whole model object as providerData.
-        return ctx.prisma.model.upsert({
-          where: {
-            providerId_modelId: { providerId: providerConfig.id, modelId: modelId },
-          },
-          create: {
-            providerId: providerConfig.id,
+        if (!modelId) return;
+
+        // A. Store Raw Data (Generic Table)
+        await ctx.db.insert(genericProviderModels)
+          .values({
             modelId: modelId,
-            name: modelName,
-            providerData: model as any, 
-            isFree: false, // Default, logic can be improved
-          },
-          update: {
-            name: modelName,
-            providerData: model as any,
-          },
-        });
-      }).filter(p => p !== null);
+            providerId: providerConfig.id,
+            rawData: model as any, // Store the full JSON object
+          })
+          .onConflictDoUpdate({
+            target: [genericProviderModels.modelId, genericProviderModels.providerId],
+            set: { rawData: model as any },
+          });
+
+        // B. Update Registry (Phonebook)
+        // We only update if it's new, or we can update cost/free status if available
+        await ctx.db.insert(modelRegistry)
+          .values({
+            modelId: modelId,
+            providerId: providerConfig.id,
+            modelName: modelId, // Default to ID if name missing
+            isFree: model.isFree || false,
+            costPer1k: model.costPer1k || 0,
+          })
+          .onConflictDoUpdate({
+            target: [modelRegistry.modelId, modelRegistry.providerId],
+            set: {
+              isFree: model.isFree || false,
+              // Don't overwrite manual overrides if we had them, but for now we trust the API
+            },
+          });
+      });
 
       await Promise.all(upsertPromises);
       return { count: rawModelList.length };
     }),
 
-  /**
-   * Step 2: Raw Data Lake Ingestion (The "Smart Scrape")
-   */
-  debugFetch: publicProcedure
-    .input(z.object({ providerId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const providerConfig = await ctx.prisma.providerConfig.findUnique({
-        where: { id: input.providerId },
-      });
-      if (!providerConfig) {
-        throw new Error('Provider not found');
-      }
-
-      const apiKey = decrypt(providerConfig.apiKey);
-
-      // Use SDK provider as the "adapter"
-      // Note: IngestionService might expect the old LLMAdapter interface.
-      // If so, we might need to adapt or update IngestionService.
-      // For now, let's assume we can just use the SDK provider's getModels/getRawModels if available.
-      // But SDK doesn't have getRawModels. 
-      // We'll skip IngestionService for now and just do a direct fetch using the SDK if possible,
-      // or throw not implemented if IngestionService is strictly typed to old adapters.
-      
-      // Let's try to use the SDK provider.
-      const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
-        id: providerConfig.id,
-        apiKey,
-        baseURL: providerConfig.baseURL || undefined,
-      });
-
-      // If IngestionService expects the old adapter, this will fail.
-      // Given the refactor, we should probably update IngestionService too, 
-      // but for this file, let's just use the SDK to get data and save to RawDataLake directly.
-      
-      const models = await providerInstance.getModels();
-      
-      return ctx.prisma.rawDataLake.create({
-        data: {
-          provider: providerConfig.type,
-          rawData: models as any,
-          ingestedAt: new Date(),
-        },
-      });
-    }),
-
-  getRawData: publicProcedure
-    .query(async ({ ctx }) => {
-      return ctx.prisma.rawDataLake.findMany({
-        orderBy: { ingestedAt: 'desc' },
-      });
-    }),
-
-  deleteRawData: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.rawDataLake.delete({
-        where: { id: input.id },
-      });
-    }),
-
-  createRawData: publicProcedure
-    .input(z.object({
-      provider: z.string(),
-      rawData: z.any(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.rawDataLake.create({
-        data: {
-          provider: input.provider,
-          rawData: input.rawData,
-          ingestedAt: new Date(),
-        },
-      });
-    }),
+  // Legacy/Debug endpoints (kept for compatibility or removed if unused)
+  getRawData: publicProcedure.query(async () => { return []; }),
+  deleteRawData: publicProcedure.input(z.object({ id: z.string() })).mutation(async () => { return null; }),
+  createRawData: publicProcedure.input(z.any()).mutation(async () => { return null; }),
 });
+
 

@@ -1,0 +1,446 @@
+commit af8dc134caeccaaaca2bea1250bf8744354235e3
+Author: guysilvermt <guysilvermt@gmail.com>
+Date:   Thu Dec 4 07:14:39 2025 -0700
+
+    fixed up
+
+ .gitignore                                         |   9 +-
+ apps/api/ingest-agents.ts                          |   6 +-
+ apps/api/manage_providers.ts                       |  10 +-
+ apps/api/prisma/schema.prisma                      |  60 +-
+ apps/api/src/db.ts                                 |  12 +
+ apps/api/src/lib/modelSelector.ts                  |   4 +-
+ apps/api/src/orchestrator/modelSelector.ts         |   4 +-
+ apps/api/src/repositories/AgentConfigRepository.ts |  12 +-
+ apps/api/src/routers/agent.router.ts               |  20 +-
+ apps/api/src/routers/apiExplorer.router.ts         |   2 +-
+ apps/api/src/routers/card.router.ts                |  14 +-
+ apps/api/src/routers/dataRefinement.router.ts      |  70 +-
+ apps/api/src/routers/model.router.ts               |  16 +-
+ apps/api/src/routers/orchestrator.router.ts        |  14 +-
+ apps/api/src/routers/project.router.ts             |   2 +-
+ apps/api/src/routers/providers.router.ts           |  20 +-
+ apps/api/src/routers/role.router.ts                |  12 +-
+ apps/api/src/routers/workspace.router.ts           |   8 +-
+ apps/api/src/scripts/antigravity.ts                | 176 -----
+ apps/api/src/scripts/setup-vector-db.ts            |  10 +-
+ apps/api/src/services/AgentRuntime.ts              |  98 +--
+ apps/api/src/services/DynamicModelAdapter.ts       |  65 +-
+ apps/api/src/services/ModelConfigurator.ts         |   6 +-
+ apps/api/src/services/PrismaLessonProvider.ts      |   4 +-
+ apps/api/src/services/RawModelService.ts           |   6 +-
+ apps/api/src/services/ToolDocumenter.ts            |  28 +-
+ apps/api/src/services/model.service.ts             |   6 +-
+ apps/api/src/services/orchestration.service.ts     |  28 +-
+ apps/api/src/services/vector.service.ts            |   6 +-
+ apps/api/src/services/vfsSession.service.ts        |   2 +-
+ apps/api/src/tools/meta.ts                         |  12 +-
+ apps/api/src/trpc.ts                               |   3 +-
+ apps/api/test_orchestration.ts                     |  10 +-
+ apps/api/token.json                                |   1 -
+ apps/ui/src/App.tsx                                |  53 +-
+ apps/ui/src/components/BottomSummaryBar.tsx        |   2 +-
+ apps/ui/src/components/DataLakeTable.tsx           |   4 +-
+ apps/ui/src/components/DataNode.tsx                |  16 +-
+ apps/ui/src/components/DualRangeSlider.tsx         |   2 +-
+ apps/ui/src/components/ErrorBoundary.tsx           |  52 ++
+ apps/ui/src/components/FileExplorer.tsx            |  12 +-
+ apps/ui/src/components/InteractiveTerminal.tsx     |   6 +-
+ .../src/components/OrchestrationCreatorPanel.tsx   |  56 +-
+ apps/ui/src/components/ProviderList.tsx            |   8 +-
+ apps/ui/src/components/ResearchBrowser.tsx         |  24 +-
+ apps/ui/src/components/RoleCreatorPanel.tsx        | 148 ++--
+ apps/ui/src/components/SimpleErrorModal.tsx        |   2 +-
+ apps/ui/src/components/SimpleTableView.tsx         |   4 +-
+ apps/ui/src/components/SmartEditor.tsx             |   2 +-
+ apps/ui/src/components/SshConnectionModal.tsx      |  14 +-
+ apps/ui/src/components/ToolSelector.tsx            |   6 +-
+ apps/ui/src/components/TopSummaryBar.tsx           |   2 +-
+ apps/ui/src/components/UnifiedMenuBar.tsx          |  30 +-
+ apps/ui/src/components/UniversalDataGrid.tsx       |   8 +-
+ apps/ui/src/components/VisualQueryBuilder.tsx      |  28 +-
+ apps/ui/src/components/nodes/ApiExplorerNode.tsx   |   6 +-
+ .../src/components/nodes/DatabaseManagerNode.tsx   |   2 +-
+ apps/ui/src/components/settings/AgentSettings.tsx  |  22 +-
+ .../components/settings/OrchestratorSettings.tsx   |   4 +-
+ .../src/components/settings/WorkspaceSettings.tsx  | 100 ++-
+ .../src/components/work-order/CardAgentPrompt.tsx  |   4 +-
+ .../components/work-order/CardCustomButtons.tsx    |   6 +-
+ .../ui/src/components/work-order/SwappableCard.tsx |  54 +-
+ .../ui/src/components/work-order/WorkOrderCard.tsx |  12 +-
+ .../src/components/work-order/WorkOrderColumn.tsx  |  22 +-
+ .../ui/src/features/creator-studio/CustomNodes.tsx |  40 +-
+ .../src/features/creator-studio/InspectorPanel.tsx |  72 +-
+ .../creator-studio/OrchestrationDesigner.tsx       |  38 +-
+ apps/ui/src/pages/CreatorStudio.tsx                |  14 +-
+ apps/ui/src/pages/DataLake.tsx                     |   8 +-
+ apps/ui/src/pages/FileLocationPage.tsx             |  12 +-
+ apps/ui/src/pages/ProjectCreator.tsx               |   4 +-
+ apps/ui/src/pages/ProjectPage.tsx                  |   6 +-
+ apps/ui/src/pages/ProjectsDashboard.tsx            |   6 +-
+ apps/ui/src/pages/ProviderManager.tsx              |   8 +-
+ apps/ui/src/pages/ProviderRecovery.tsx             |   4 +-
+ apps/ui/src/pages/SettingsPage.tsx                 | 795 ++++++++++++---------
+ apps/ui/src/pages/UnifiedProviderPage.tsx          |   8 +-
+ apps/ui/src/pages/WorkSpace.tsx                    |  82 ++-
+ apps/ui/src/pages/admin/models.tsx                 |  12 +-
+ apps/ui/src/theme/global.css                       |  78 +-
+ apps/ui/src/theme/presets.ts                       |  10 +
+ mcp/Anubis-MCP-main.zip                            | Bin 559214 -> 0 bytes
+ mcp/claude-agents-power-mcp-server-main.zip        | Bin 16285012 -> 0 bytes
+ mcp/zmcptools                                      |   1 -
+ 85 files changed, 1449 insertions(+), 1216 deletions(-)
+
+commit b27de0f65c07e2dc2df20974a5250093ee8a81c9
+Merge: 96e7ad8 0d6bddf
+Author: guysilvermt <guysilvermt@gmail.com>
+Date:   Wed Dec 3 03:10:17 2025 -0700
+
+    feat: merge UI improvements (theme system, hotkeys, components)
+
+commit 96e7ad8927cf95c58732b77729e7d3cf069e6198
+Author: guysilvermt <guysilvermt@gmail.com>
+Date:   Wed Dec 3 03:02:41 2025 -0700
+
+    ci: relax ESLint type rules in apps/api for pre-commit stability
+
+ apps/api/.eslintrc.cjs                             |  23 ++
+ apps/api/data/agents/en/account-manager.md         |  29 +++
+ apps/api/data/agents/en/accountant.md              |  30 +++
+ apps/api/data/agents/en/accounting-manager.md      |  29 +++
+ apps/api/data/agents/en/agile-coach.md             |  29 +++
+ apps/api/data/agents/en/ai-researcher.md           |  29 +++
+ apps/api/data/agents/en/backend-developer.md       |  30 +++
+ apps/api/data/agents/en/backend-engineer.md        |  30 +++
+ apps/api/data/agents/en/bi-developer.md            |  31 +++
+ apps/api/data/agents/en/blockchain-developer.md    |  29 +++
+ apps/api/data/agents/en/brand-manager.md           |  29 +++
+ apps/api/data/agents/en/budget-analyst.md          |  29 +++
+ apps/api/data/agents/en/business-analyst.md        |  29 +++
+ apps/api/data/agents/en/business-developer.md      |  30 +++
+ .../data/agents/en/business-development-manager.md |  29 +++
+ .../agents/en/business-intelligence-analyst.md     |  29 +++
+ .../api/data/agents/en/business-process-analyst.md |  29 +++
+ .../data/agents/en/change-management-specialist.md |  29 +++
+ apps/api/data/agents/en/change-manager.md          |  30 +++
+ apps/api/data/agents/en/chief-data-officer.md      |  29 +++
+ apps/api/data/agents/en/chief-executive-officer.md |  29 +++
+ apps/api/data/agents/en/chief-financial-officer.md |  29 +++
+ .../agents/en/chief-human-resources-officer.md     |  29 +++
+ .../data/agents/en/chief-information-officer.md    |  29 +++
+ apps/api/data/agents/en/chief-marketing-officer.md |  29 +++
+ apps/api/data/agents/en/chief-operating-officer.md |  29 +++
+ apps/api/data/agents/en/chief-product-officer.md   |  29 +++
+ .../api/data/agents/en/chief-technology-officer.md |  29 +++
+ apps/api/data/agents/en/clinical-researcher.md     |  30 +++
+ apps/api/data/agents/en/cloud-architect.md         |  29 +++
+ apps/api/data/agents/en/communications-director.md |  30 +++
+ .../agents/en/compensation-benefits-manager.md     |  29 +++
+ apps/api/data/agents/en/compensation-benefits.md   |  30 +++
+ apps/api/data/agents/en/compliance-manager.md      |  29 +++
+ apps/api/data/agents/en/compliance-officer.md      |  30 +++
+ apps/api/data/agents/en/content-creator.md         |  30 +++
+ apps/api/data/agents/en/content-marketer.md        |  30 +++
+ .../data/agents/en/content-marketing-manager.md    |  29 +++
+ apps/api/data/agents/en/contract-manager.md        |  30 +++
+ apps/api/data/agents/en/controller.md              |  30 +++
+ apps/api/data/agents/en/copywriter.md              |  29 +++
+ apps/api/data/agents/en/corporate-trainer.md       |  30 +++
+ apps/api/data/agents/en/creative-director.md       |  29 +++
+ apps/api/data/agents/en/credit-analyst.md          |  29 +++
+ apps/api/data/agents/en/curriculum-developer.md    |  30 +++
+ .../api/data/agents/en/customer-service-manager.md |  29 +++
+ .../api/data/agents/en/customer-success-manager.md |  29 +++
+ apps/api/data/agents/en/data-analyst.md            |  29 +++
+ apps/api/data/agents/en/data-engineer.md           |  29 +++
+ apps/api/data/agents/en/data-scientist.md          |  29 +++
+ apps/api/data/agents/en/database-administrator.md  |  29 +++
+ apps/api/data/agents/en/design-lead.md             |  29 +++
+ apps/api/data/agents/en/devops-engineer.md         |  29 +++
+ apps/api/data/agents/en/digital-marketer.md        |  30 +++
+ .../data/agents/en/digital-marketing-specialist.md |  29 +++
+ .../data/agents/en/diversity-inclusion-manager.md  |  29 +++
+ apps/api/data/agents/en/diversity-inclusion.md     |  30 +++
+ .../data/agents/en/embedded-systems-engineer.md    |  29 +++
+ apps/api/data/agents/en/environmental-engineer.md  |  30 +++
+ apps/api/data/agents/en/event-manager.md           |  29 +++
+ apps/api/data/agents/en/executive-assistant.md     |  29 +++
+ apps/api/data/agents/en/facilities-manager.md      |  29 +++
+ apps/api/data/agents/en/facility-manager.md        |  30 +++
+ apps/api/data/agents/en/financial-analyst.md       |  29 +++
+ apps/api/data/agents/en/financial-controller.md    |  29 +++
+ apps/api/data/agents/en/frontend-developer.md      |  29 +++
+ apps/api/data/agents/en/full-stack-developer.md    |  29 +++
+ apps/api/data/agents/en/game-developer.md          |  29 +++
+ apps/api/data/agents/en/graphic-designer.md        |  29 +++
+ apps/api/data/agents/en/growth-hacker.md           |  30 +++
+ .../api/data/agents/en/growth-marketing-manager.md |  29 +++
+ apps/api/data/agents/en/health-informatics.md      |  30 +++
+ apps/api/data/agents/en/healthcare-analyst.md      |  30 +++
+ apps/api/data/agents/en/help-desk-specialist.md    |  30 +++
+ apps/api/data/agents/en/hr-manager.md              |  29 +++
+ .../data/agents/en/implementation-consultant.md    |  29 +++
+ apps/api/data/agents/en/innovation-manager.md      |  30 +++
+ apps/api/data/agents/en/instructional-designer.md  |  30 +++
+ apps/api/data/agents/en/interaction-designer.md    |  29 +++
+ apps/api/data/agents/en/internal-auditor.md        |  29 +++
+ apps/api/data/agents/en/investment-analyst.md      |  29 +++
+ .../data/agents/en/investor-relations-manager.md   |  29 +++
+ apps/api/data/agents/en/investor-relations.md      |  30 +++
+ apps/api/data/agents/en/it-administrator.md        |  30 +++
+ .../data/agents/en/learning-development-manager.md |  29 +++
+ apps/api/data/agents/en/learning-development.md    |  30 +++
+ apps/api/data/agents/en/legal-counsel.md           |  29 +++
+ .../data/agents/en/machine-learning-engineer.md    |  29 +++
+ apps/api/data/agents/en/marketing-analyst.md       |  30 +++
+ apps/api/data/agents/en/marketing-manager.md       |  29 +++
+ apps/api/data/agents/en/medical-writer.md          |  30 +++
+ apps/api/data/agents/en/mobile-developer.md        |  29 +++
+ apps/api/data/agents/en/motion-designer.md         |  30 +++
+ apps/api/data/agents/en/network-engineer.md        |  29 +++
+ apps/api/data/agents/en/office-manager.md          |  29 +++
+ apps/api/data/agents/en/operations-manager.md      |  29 +++
+ .../api/data/agents/en/organizational-developer.md |  30 +++
+ .../en/organizational-development-manager.md       |  29 +++
+ apps/api/data/agents/en/partnership-manager.md     |  29 +++
+ apps/api/data/agents/en/patent-engineer.md         |  30 +++
+ apps/api/data/agents/en/payroll-manager.md         |  29 +++
+ apps/api/data/agents/en/pr-manager.md              |  30 +++
+ apps/api/data/agents/en/pre-sales-consultant.md    |  29 +++
+ apps/api/data/agents/en/privacy-officer.md         |  29 +++
+ apps/api/data/agents/en/process-engineer.md        |  30 +++
+ apps/api/data/agents/en/procurement-manager.md     |  29 +++
+ apps/api/data/agents/en/procurement-specialist.md  |  30 +++
+ apps/api/data/agents/en/product-designer.md        |  29 +++
+ apps/api/data/agents/en/product-manager.md         |  29 +++
+ apps/api/data/agents/en/product-owner.md           |  29 +++
+ apps/api/data/agents/en/production-manager.md      |  30 +++
+ apps/api/data/agents/en/program-manager.md         |  29 +++
+ apps/api/data/agents/en/project-manager.md         |  29 +++
+ .../api/data/agents/en/public-relations-manager.md |  29 +++
+ apps/api/data/agents/en/qa-engineer.md             |  29 +++
+ .../data/agents/en/quality-assurance-manager.md    |  29 +++
+ apps/api/data/agents/en/quality-engineer.md        |  30 +++
+ apps/api/data/agents/en/r-and-d-engineer.md        |  30 +++
+ apps/api/data/agents/en/real-estate-analyst.md     |  30 +++
+ apps/api/data/agents/en/research-scientist.md      |  29 +++
+ apps/api/data/agents/en/risk-manager.md            |  29 +++
+ apps/api/data/agents/en/sales-engineer.md          |  29 +++
+ apps/api/data/agents/en/sales-manager.md           |  29 +++
+ apps/api/data/agents/en/scrum-master.md            |  29 +++
+ apps/api/data/agents/en/security-engineer.md       |  29 +++
+ apps/api/data/agents/en/seo-specialist.md          |  29 +++
+ .../data/agents/en/site-reliability-engineer.md    |  29 +++
+ apps/api/data/agents/en/social-media-manager.md    |  29 +++
+ apps/api/data/agents/en/software-engineer.md       |  29 +++
+ apps/api/data/agents/en/solution-architect.md      |  29 +++
+ apps/api/data/agents/en/strategy-consultant.md     |  30 +++
+ apps/api/data/agents/en/supply-chain-manager.md    |  29 +++
+ apps/api/data/agents/en/sustainability-manager.md  |  30 +++
+ .../agents/en/talent-acquisition-specialist.md     |  29 +++
+ apps/api/data/agents/en/talent-acquisition.md      |  30 +++
+ apps/api/data/agents/en/tax-manager.md             |  29 +++
+ apps/api/data/agents/en/tech-lead.md               |  29 +++
+ apps/api/data/agents/en/technical-pm.md            |  30 +++
+ .../data/agents/en/technical-support-engineer.md   |  29 +++
+ apps/api/data/agents/en/technical-support.md       |  30 +++
+ apps/api/data/agents/en/technical-writer.md        |  29 +++
+ apps/api/data/agents/en/training-specialist.md     |  29 +++
+ apps/api/data/agents/en/treasury-manager.md        |  29 +++
+ apps/api/data/agents/en/ui-designer.md             |  29 +++
+ apps/api/data/agents/en/ux-designer.md             |  29 +++
+ apps/api/data/agents/en/ux-researcher.md           |  29 +++
+ apps/api/data/agents/en/video-producer.md          |  29 +++
+ apps/api/data/context_store.json                   |   1 +
+ apps/api/ingest-agents.ts                          |  35 ++++
+ apps/api/package.json                              |   2 +
+ .../migration.sql                                  | 232 +++++++++++++++++++++
+ apps/api/prisma/schema.prisma                      |   8 +
+ apps/api/scripts/smoke-context.ts                  |  30 +++
+ apps/api/src/routers/agent.router.ts               |   6 +-
+ apps/api/src/routers/context.router.ts             |  40 ++++
+ apps/api/src/routers/index.ts                      |   2 +
+ apps/api/src/routers/role.router.ts                |  16 ++
+ apps/api/src/services/AgentRuntime.ts              |  33 ++-
+ apps/api/src/services/ComplexityRouter.ts          |  99 +++++++++
+ apps/api/src/services/ContextManager.ts            | 120 +++++++++++
+ apps/api/src/services/RoleIngestionService.ts      | 220 +++++++++++++++++++
+ apps/api/src/tools/complexityTool.ts               |  15 ++
+ apps/api/src/tools/webScraper.ts                   |  47 +++++
+ package.json                                       |   2 +-
+ 164 files changed, 5208 insertions(+), 4 deletions(-)
+
+commit 0d6bddffbf6be985f25b80a326ac8cb2bdc1842a
+Author: guysilvermt <guysilvermt@gmail.com>
+Date:   Wed Dec 3 01:05:17 2025 -0700
+
+    colors
+
+ .agent/enhanced-theme-system.md                    |  196 ++
+ .agent/global-theme-override-fix.md                |   57 +
+ .agent/ui-settings-implementation.md               |  112 +
+ .gitignore                                         |    3 +-
+ .mcp-debug-tools/config.json                       |    7 +
+ .vscode/settings.json                              |   24 +-
+ =5.7.2:                                            |    0
+ Layout info:                                       | 2419 -------------------
+ MCP-Server-main.zip                                |  Bin 0 -> 95315 bytes
+ VOICE_INPUT.md                                     |   28 +
+ all_files.txt                                      |   11 -
+ api@1.0.0                                          |    0
+ api_build_log.txt                                  |    9 -
+ api_build_log_2.txt                                |    9 -
+ api_build_log_3.txt                                |    9 -
+ api_build_log_4.txt                                |    9 -
+ api_build_log_5.txt                                |    9 -
+ api_build_log_6.txt                                |    4 -
+ api_dev.log                                        |    3 -
+ apps/api/.turbo/turbo-build.log                    |    9 +-
+ apps/api/.turbo/turbo-lint$colon$fix.log           | 1593 +++++++++----
+ apps/api/.turbo/turbo-lint.log                     | 2135 +++++++++--------
+ apps/api/backup_providers.ts                       |   33 +
+ apps/api/check_count.ts                            |   11 +
+ apps/api/drizzle.config.ts                         |   18 +
+ apps/api/manage_providers.ts                       |   54 +
+ apps/api/package.json                              |   12 +-
+ apps/api/prisma/dev.db                             |    0
+ .../migrations/20251116075756_role/migration.sql   |   54 -
+ .../migrations/20251117020310_rpm/migration.sql    |   59 -
+ .../migrations/20251123131147_init/migration.sql   |   70 -
+ .../20251123143112_init_limit_fields/migration.sql |   14 -
+ .../migration.sql                                  |   23 -
+ apps/api/prisma/migrations/migration_lock.toml     |    3 -
+ apps/api/prisma/schema.prisma                      |  462 ----
+ apps/api/src/db.ts                                 |   33 +-
+ apps/api/src/db/providers_backup.json              |   68 +
+ apps/api/src/db/schema.ts                          |   96 +
+ apps/api/src/db/seed.ts                            |  114 +
+ apps/api/src/index.ts                              |    3 +-
+ apps/api/src/routers/agent.router.ts               |    9 +
+ apps/api/src/routers/card.router.ts                |  160 ++
+ apps/api/src/routers/index.ts                      |    4 +
+ apps/api/src/routers/llm.router.ts                 |   19 +-
+ apps/api/src/routers/orchestrator.router.ts        |   46 +
+ apps/api/src/routers/role.router.ts                |   74 +
+ apps/api/src/routers/vfs.router.ts                 |   33 +
+ apps/api/src/routers/workspace.router.ts           |   43 +
+ apps/api/src/scripts/antigravity.ts                |  176 ++
+ apps/api/src/scripts/ingest-codebase.ts            |   17 +
+ apps/api/src/scripts/setup-vector-db.ts            |   37 +
+ apps/api/src/services/AgentFactory.ts              |  119 +-
+ apps/api/src/services/AssessmentService.ts         |   77 +-
+ apps/api/src/services/IngestionAgent.ts            |  154 ++
+ apps/api/src/services/McpOrchestrator.ts           |   39 +-
+ apps/api/src/services/PrismaLessonProvider.ts      |   33 +
+ apps/api/src/services/ProviderManager.ts           |  172 +-
+ apps/api/src/services/ToolDocumenter.ts            |  150 ++
+ apps/api/src/services/UsageCollector.ts            |   42 +-
+ apps/api/src/services/vector.service.ts            |   87 +-
+ apps/api/src/services/vfsSession.service.ts        |    2 +-
+ apps/api/src/utils/GoogleGenAIProvider.ts          |    9 +
+ apps/api/src/utils/OllamaProvider.ts               |   13 +
+ apps/api/src/utils/OpenAIProvider.ts               |    1 +
+ apps/api/sync_registry.ts                          |   29 +
+ apps/api/token.json                                |    1 +
+ apps/ui/eslint.config.js                           |   29 -
+ apps/ui/eslint.config.mjs                          |   95 +-
+ apps/ui/lint_output.txt                            |  139 ++
+ apps/ui/lint_output_final.txt                      |  189 ++
+ apps/ui/package.json                               |    1 +
+ apps/ui/src/App.css                                |    2 +
+ apps/ui/src/App.tsx                                |   94 +-
+ apps/ui/src/components/DataNode.tsx                |   68 +-
+ apps/ui/src/components/FileExplorer.tsx            |   49 +-
+ apps/ui/src/components/RoleCreatorPanel.tsx        |  730 ++++--
+ apps/ui/src/components/SimpleTableView.tsx         |    2 +-
+ apps/ui/src/components/UnifiedMenuBar.tsx          |  149 +-
+ apps/ui/src/components/UniversalDataGrid.tsx       |    4 +-
+ apps/ui/src/components/VisualQueryBuilder.tsx      |    2 +-
+ apps/ui/src/components/XtermTerminal.tsx           |   22 +-
+ .../src/components/nodes/DatabaseManagerNode.tsx   |    2 +-
+ .../src/components/settings/ThemeCustomization.tsx |  262 ++
+ .../src/components/settings/WorkspaceSettings.tsx  |  133 ++
+ .../src/components/work-order/CardAgentPrompt.tsx  |  107 +
+ .../components/work-order/CardCustomButtons.tsx    |  101 +
+ .../ui/src/components/work-order/SwappableCard.tsx |  128 +-
+ .../ui/src/features/creator-studio/CustomNodes.tsx |   96 +
+ .../src/features/creator-studio/InspectorPanel.tsx |  260 ++
+ .../creator-studio/OrchestrationDesigner.tsx       |  234 ++
+ apps/ui/src/features/creator-studio/types.ts       |   58 +
+ apps/ui/src/hooks/useCardVFS.ts                    |  152 ++
+ apps/ui/src/hooks/useHotkeys.ts                    |   57 +
+ apps/ui/src/hooks/useTheme.ts                      |    5 +
+ apps/ui/src/hooks/useVFS.ts                        |    6 +-
+ apps/ui/src/index.css                              |   52 +-
+ apps/ui/src/main.tsx                               |    2 +-
+ apps/ui/src/pages/CreatorStudio.tsx                |    4 +-
+ apps/ui/src/pages/DataLake.tsx                     |   19 +-
+ apps/ui/src/pages/FileLocationPage.tsx             |    2 +-
+ apps/ui/src/pages/ProviderRecovery.tsx             |    2 +-
+ apps/ui/src/pages/SettingsPage.tsx                 |  416 +++-
+ apps/ui/src/pages/UnifiedProviderPage.tsx          |    4 +-
+ apps/ui/src/pages/WorkSpace.tsx                    |   24 +-
+ apps/ui/src/pages/workspace/[id].tsx               |    6 +-
+ apps/ui/src/theme/ThemeProvider.tsx                |  109 +
+ apps/ui/src/theme/global.css                       |  184 ++
+ apps/ui/src/theme/presets.ts                       |  296 +++
+ apps/ui/src/theme/types.ts                         |  111 +
+ apps/ui/vite.config.ts                             |    5 +
+ apps/voice-input-chrome/INSTALL.md                 |   84 +
+ apps/voice-input-chrome/README.md                  |  183 ++
+ apps/voice-input-chrome/icon128.png                |  Bin 0 -> 395420 bytes
+ apps/voice-input-chrome/icon16.png                 |  Bin 0 -> 1244 bytes
+ apps/voice-input-chrome/icon48.png                 |  Bin 0 -> 3473 bytes
+ apps/voice-input-chrome/manifest.json              |   35 +
+ apps/voice-input-chrome/popup.html                 |  181 ++
+ apps/voice-input/.gitignore                        |    5 +
+ apps/voice-input/.npmrc                            |    3 +
+ apps/voice-input/INSTALL_COMPLETE.md               |  173 ++
+ apps/voice-input/MONOREPO_NOTE.md                  |   62 +
+ apps/voice-input/QUICKSTART.md                     |  192 ++
+ apps/voice-input/README.md                         |  206 ++
+ apps/voice-input/SETUP_COMPLETE.md                 |  133 ++
+ apps/voice-input/TESTING.md                        |  163 ++
+ apps/voice-input/install-standalone.sh             |   39 +
+ apps/voice-input/package.json                      |   42 +
+ apps/voice-input/renderer/index.html               |  177 ++
+ apps/voice-input/src/main.ts                       |  170 ++
+ apps/voice-input/tsconfig.json                     |   18 +
+ apps/voice-input/voice_input.py                    |  229 ++
+ commit_output.txt                                  |   68 -
+ commit_output_2.txt                                |   63 -
+ commit_output_3.txt                                |   89 -
+ .../CREATOR_STUDIO_README.md                       |    0
+ .../ORCHESTRATION_GUIDE.md                         |    0
+ .../ORCHESTRATION_IMPLEMENTATION.md                |    0
+ .../ORCHESTRATION_STATUS.md                        |    0
+ .../PROJECT_MANAGEMENT_AI_GUIDE.md                 |    0
+ .../PROJECT_MANAGEMENT_HUMAN_GUIDE.md              |    0
+ docs/project_structure.md                          |   82 -
+ docs/walkthroughs.md                               |  134 --
+ lint_output.txt                                    | 1021 --------
+ mcp/Anubis-MCP-main.zip                            |  Bin 0 -> 559214 bytes
+ mcp/claude-agents-power-mcp-server-main.zip        |  Bin 0 -> 16285012 bytes
+ openrouter_models.json                             |    1 -
+ package.json                                       |    3 +-
+ packages/agents/eslint.config.mjs                  |   68 +
+ packages/agents/package.json                       |    6 +-
+ packages/agents/src/core/PromptFactory.ts          |  119 +
+ packages/agents/src/index.ts                       |    3 +
+ packages/agents/src/roles/Librarian.ts             |   27 +
+ packages/agents/src/utils/SOPLoader.ts             |    9 +
+ packages/src/agents/specialists/IngestionAgent.ts  |   85 -
+ packages/src/llm-adapter.ts                        |   20 -
+ pnpm-lock.yaml                                     | 2496 +++++++++++++++++++-
+ start-voice-input.sh                               |   26 +
+ vertexstudiomodels.json                            |  835 -------
+ 158 files changed, 13365 insertions(+), 7616 deletions(-)
+
+commit 0dbfba1dbed87df5f07dfa3979aba977a4b02e73
+Author: guysilvermt <guysilvermt@gmail.com>
+Date:   Tue Dec 2 01:17:38 2025 -0700
+
+    chore: disable husky hooks temporarily
+
+ .husky/pre-commit | 34 ----------------------------------
+ 1 file changed, 34 deletions(-)

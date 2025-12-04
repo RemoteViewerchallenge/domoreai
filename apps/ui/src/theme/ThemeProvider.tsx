@@ -72,7 +72,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
   }, [theme]);
 
-  const setTheme = (partial: Partial<Theme>) => {
+  const setTheme = React.useCallback((partial: Partial<Theme>) => {
     setThemeState((prev: Theme) => ({
       ...prev,
       ...partial,
@@ -83,15 +83,15 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       widgets: { ...prev.widgets, ...(partial.widgets || {}) },
       layout: { ...prev.layout, ...(partial.layout || {}) },
     }));
-  };
+  }, []);
 
-  const applyPreset = (preset: ThemePreset) => {
+  const applyPreset = React.useCallback((preset: ThemePreset) => {
     setThemeState(themePresets[preset]);
-  };
+  }, []);
 
-  const resetToDefault = () => {
+  const resetToDefault = React.useCallback(() => {
     setThemeState(defaultTheme);
-  };
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, applyPreset, resetToDefault }}>
