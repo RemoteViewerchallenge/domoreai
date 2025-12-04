@@ -6,9 +6,20 @@
   // This is what's currently hiding your .env file.
   "explorer.excludeGitIgnore": false,
 
+  "terminal.integrated.gpuAcceleration": "on",
+
+
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
     "**/.env": false
+  },
+  "files.watcherExclude": {
+    "apps/api/data/agents/en/**/*.md": true,
+    "agents/**/*.md": true
+  },
+  "search.exclude": {
+    "apps/api/data/agents/en/**/*.md": true,
+    "agents/**/*.md": true
   },
   "cSpell.words": [
     "activebackground",

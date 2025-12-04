@@ -12,6 +12,9 @@ export class ProviderManager {
     try {
       const configs = await db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
 
+      // 1. Auto-detect Local Ollama (Priority)
+      await this.detectLocalOllama();
+
       this.providers.clear();
       for (const config of configs) {
         try {
@@ -170,7 +173,39 @@ export class ProviderManager {
         console.error(`[Registry Sync] Failed for provider ${providerId}:`, error);
       }
     }
+
     console.log('[ProviderManager] Registry Sync Completed.');
+  }
+
+  /**
+   * Auto-detects a local Ollama instance and registers it as a provider.
+   * This allows "zero-config" usage of local models.
+   */
+  private static async detectLocalOllama() {
+    const ollamaHost = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
+    const providerId = 'ollama-local';
+
+    // If already configured in DB, skip auto-detection to respect user config
+    if (this.providers.has(providerId)) return;
+
+    try {
+        // Try to connect
+        const provider = ProviderFactory.createProvider('ollama', {
+            id: providerId,
+            baseURL: ollamaHost,
+        });
+
+        // Test connection by fetching models
+        const models = await provider.getModels();
+        
+        if (models.length > 0) {
+            console.log(`[ProviderManager] Auto-detected local Ollama at ${ollamaHost} with ${models.length} models.`);
+            this.providers.set(providerId, provider);
+        }
+    } catch (e) {
+        // Silent failure - Ollama just isn't running
+        // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
+    }
   }
 }
 

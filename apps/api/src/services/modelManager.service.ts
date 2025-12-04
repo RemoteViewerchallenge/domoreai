@@ -231,21 +231,43 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
       // query += ` AND pricing->>'prompt' = '0'`; 
   }
 
+  // J. OLLAMA INCLUSION (User Request)
+  // "they should be placed in every role despite anything else doesnt matter if it fits the role parameters availability trumps everything else"
+  // We construct a secondary query to fetch ALL Ollama models that are not failed.
+  let ollamaQuery = `SELECT * FROM "${tableName}" WHERE (provider_id = 'ollama-local' OR provider_id = 'ollama')`;
+  
+  if (failedProviders.length > 0) {
+      const validFailedProviders = failedProviders.filter(p => p && p.trim() !== '');
+      if (validFailedProviders.length > 0) {
+          const exclusionList = validFailedProviders.map(p => `'${p}'`).join(', ');
+          ollamaQuery += ` AND provider_id NOT IN (${exclusionList})`;
+      }
+  }
+  
+  // We will execute both and merge.
+
   // 4. Execute & Pick Random (Load Balancing)
   query += ` LIMIT 50`;
 
   console.log(`[Model Selection] Executing query for role ${roleId}:`, query);
   const candidates = await prisma.$queryRawUnsafe<any[]>(query);
-  console.log(`[Model Selection] Query returned ${candidates.length} candidates`);
+  
+  // Execute Ollama query
+  const ollamaCandidates = await prisma.$queryRawUnsafe<any[]>(ollamaQuery);
+  
+  // Merge candidates (deduplicating by model_id if necessary, though unlikely to overlap with strict filters)
+  const allCandidates = [...candidates, ...ollamaCandidates];
+  
+  console.log(`[Model Selection] Query returned ${candidates.length} standard candidates and ${ollamaCandidates.length} Ollama candidates.`);
 
-  if (candidates.length === 0) {
+  if (allCandidates.length === 0) {
     console.warn(`[Model Selection] No candidates found for role ${roleId}. Check criteria and table data.`);
     return null; // Exhausted
   }
 
   // Validate and filter model names
   const validCandidates = [];
-  for (const model of candidates) {
+  for (const model of allCandidates) {
     const modelId = model.model_id || model.id;
     const modelName = model.model_name || model.name || modelId; // Capture name
     const providerId = model.provider_id || model.provider || model.data_source || model.provider_name; // Added provider_name just in case
@@ -297,7 +319,7 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   }
 
   if (validCandidates.length === 0) {
-    console.warn(`[Model Validation] All ${candidates.length} candidates were invalid. Check your model data.`);
+    console.warn(`[Model Validation] All ${allCandidates.length} candidates were invalid. Check your model data.`);
     return null;
   }
 

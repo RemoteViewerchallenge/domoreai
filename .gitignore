@@ -50,3 +50,7 @@ apps/api/src/scripts/antigravity.ts
 
 # Zips
 *.zip
+
+# Role Markdown Files
+apps/api/data/agents/en/*.md
+agents/*.md

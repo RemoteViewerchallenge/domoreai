@@ -134,7 +134,6 @@ export default function SettingsPage() {
   const applyScheme = useCallback((scheme: ColorScheme) => {
     setTheme({
       colors: {
-        ...theme.colors,
         primary: { name: 'Primary', value: scheme.colors.primary, glow: `0 0 20px ${scheme.colors.primary}80` },
         secondary: { name: 'Secondary', value: scheme.colors.secondary, glow: `0 0 20px ${scheme.colors.secondary}80` },
         accent: { name: 'Accent', value: scheme.colors.accent, glow: `0 0 20px ${scheme.colors.accent}80` },
@@ -146,7 +145,7 @@ export default function SettingsPage() {
         border: scheme.colors.border,
       },
     });
-  }, [setTheme, theme.colors]);
+  }, [setTheme]);
 
   // When selected scheme changes, apply it
   useEffect(() => {
