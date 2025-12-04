@@ -101,7 +101,9 @@ async function startServer() {
 }
 
 // START THE AUTONOMY ENGINE
-scheduler.start(5000); // Check for work every 5 seconds
+// scheduler.start(5000); // Check for work every 5 seconds
+// NOTE: Disabled until jobs table is created via migration.
+// JobScheduler will gracefully handle missing tables when enabled.
 
 console.log('Server starting... (Force Restart 2)');
 startServer();
