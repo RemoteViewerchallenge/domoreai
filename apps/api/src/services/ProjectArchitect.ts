@@ -56,25 +56,34 @@ export class ProjectArchitect {
         // We need to map the relative indices to actual DB IDs
         const createdJobIds: string[] = [];
 
-        for (const jobSpec of plan) {
-            const dependencyId = (jobSpec.dependsOnJobIndex !== undefined && createdJobIds[jobSpec.dependsOnJobIndex])
-                ? createdJobIds[jobSpec.dependsOnJobIndex]
-                : undefined;
+        try {
+          for (const jobSpec of plan) {
+              const dependencyId = (jobSpec.dependsOnJobIndex !== undefined && createdJobIds[jobSpec.dependsOnJobIndex])
+                  ? createdJobIds[jobSpec.dependsOnJobIndex]
+                  : undefined;
 
-            const [job] = await db.insert(jobs).values({
-                projectId: projectId,
-                name: jobSpec.name,
-                description: jobSpec.description,
-                priority: jobSpec.priority || 'medium',
-                parallelGroup: jobSpec.parallelGroup,
-                dependsOnJobId: dependencyId,
-                status: 'not_started'
-            }).returning();
+              const [job] = await db.insert(jobs).values({
+                  projectId: projectId,
+                  name: jobSpec.name,
+                  description: jobSpec.description,
+                  priority: jobSpec.priority || 'medium',
+                  parallelGroup: jobSpec.parallelGroup,
+                  dependsOnJobId: dependencyId,
+                  status: 'not_started'
+              }).returning();
 
-            createdJobIds.push(job.id);
+              createdJobIds.push(job.id);
+          }
+
+          console.log(`[Architect] ✅ Blueprint active. Workers notified.`);
+        } catch (dbError: any) {
+          // Silently handle if jobs table doesn't exist yet
+          if (dbError?.code === '42P01' || dbError?.message?.includes('does not exist')) {
+            console.log(`[Architect] ⚠️ Jobs table not yet created. Plan generated but not persisted. Run migrations when ready.`);
+            return;
+          }
+          throw dbError;
         }
-
-        console.log(`[Architect] ✅ Blueprint active. Workers notified.`);
 
     } catch (e) {
         console.error("[Architect] 💥 Planning meeting failed:", e);
