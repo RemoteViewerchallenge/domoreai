@@ -250,6 +250,16 @@ export class AgentRuntime {
           input_schema: complexityTool.input_schema
         },
         {
+            name: 'terminal_execute',
+            handler: async (args: unknown) => {
+                // delegate to the centralized terminal tool implementation
+                // terminalTools.execute.handler expects { command, cwd }
+                return await (terminalTools.execute.handler as any)(args as any);
+            },
+            description: terminalTools.execute.description,
+            input_schema: terminalTools.execute.inputSchema as unknown as Record<string, unknown>
+        },
+        {
             name: 'search_codebase',
             handler: async (args: unknown) => {
                 const typedArgs = args as { query: string };
@@ -336,5 +346,3 @@ export class AgentRuntime {
     return agent.generate(finalPrompt);
   }
 }
-
-

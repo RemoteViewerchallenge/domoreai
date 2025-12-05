@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db.js';
 import { providerConfigs, modelRegistry, openAIModels, anthropicModels, googleModels, openRouterModels, genericProviderModels } from '../db/schema.js';
-import { decrypt } from '../utils/encryption.js';
+import { decrypt, encrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
 
@@ -9,12 +9,14 @@ export class ProviderManager {
   private static providers: Map<string, BaseLLMProvider> = new Map();
 
   static async initialize() {
+    // 1. AUTO-BOOTSTRAP FROM ENV (The "Free Labor" Fix)
+    // This checks your .env file and inserts them into the DB if missing
+    await this.bootstrapFromEnv();
+
+    // 2. Load from DB
     try {
       const configs = await db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
-
-      // 1. Auto-detect Local Ollama (Priority)
-      await this.detectLocalOllama();
-
+      
       this.providers.clear();
       for (const config of configs) {
         try {
@@ -25,18 +27,65 @@ export class ProviderManager {
             baseURL: config.baseURL || undefined,
           });
           this.providers.set(config.id, provider);
-          console.log(`Initialized provider: ${config.label} (${config.type})`);
+          console.log(`[ProviderManager] ✅ Online: ${config.label} (${config.type})`);
         } catch (error) {
-          console.error(`Failed to initialize provider ${config.label}:`, error);
+          console.error(`[ProviderManager] ❌ Failed to init ${config.label}:`, error);
         }
       }
+      
+      // 3. Auto-detect Ollama (Local)
+      await this.detectLocalOllama();
+
     } catch (error) {
-      console.error('Failed to load provider configs:', error);
+      console.error('[ProviderManager] Critical Error loading providers:', error);
+    }
+  }
+
+  private static async bootstrapFromEnv() {
+    const { v4: uuidv4 } = await import('uuid');
+    const mappings = [
+      { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
+      { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },
+      { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: 'https://openrouter.ai/api/v1' },
+      { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: 'https://api.groq.com/openai/v1' }
+    ];
+
+    for (const map of mappings) {
+      const key = process.env[map.env];
+      if (key) {
+        // Check if already exists to avoid duplicates
+        const existing = await db.query.providerConfigs.findFirst({
+           where: eq(providerConfigs.label, map.label)
+        });
+
+        if (!existing) {
+           console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
+           await db.insert(providerConfigs).values({
+             id: uuidv4(),
+             label: map.label,
+             type: map.type,
+             apiKey: encrypt(key),
+             baseURL: map.url || '',
+             isEnabled: true
+           });
+        }
+      }
     }
   }
 
   static getProvider(id: string): BaseLLMProvider | undefined {
-    return this.providers.get(id);
+    // Allow lookup by "type" as well if ID fails (e.g. "google")
+    if (this.providers.has(id)) return this.providers.get(id);
+    
+    // Fallback: Find first provider of this type
+    for (const [_, p] of this.providers) {
+        if ((p as any).id === id || (p as any).id.includes(id)) return p;
+    }
+    return undefined;
+  }
+  
+  static hasProvider(partialId: string): boolean {
+      return Array.from(this.providers.keys()).some(k => k.includes(partialId));
   }
 
   static async getAllModels(): Promise<LLMModel[]> {
@@ -46,7 +95,7 @@ export class ProviderManager {
         const models = await provider.getModels();
         allModels.push(...models);
       } catch (error) {
-        console.error(`Failed to fetch models from provider ${provider.id}:`, error);
+        console.error(`Failed to fetch models from provider ${provider.id}`);
       }
     }
     return allModels;
