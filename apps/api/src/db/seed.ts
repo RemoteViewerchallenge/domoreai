@@ -1,13 +1,15 @@
-import { db, shutdownDb } from '../db.js';
-import { providerConfigs } from './schema.js';
-import { encrypt } from '../utils/encryption.js';
-import * as dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import { eq, and } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
 
-const __filename = fileURLToPath(import.meta.url);
+// ... existing imports ...
+
+// ... inside main loop ...
+        await db.insert(providerConfigs).values({
+            id: uuidv4(),
+            label: p.label,
+            type: p.type,
+            apiKey: encryptedKey,
+            isEnabled: true,
+        });
 const __dirname = path.dirname(__filename);
 
 const log = (msg: string) => {

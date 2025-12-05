@@ -1,4 +1,42 @@
 
+
 > api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
+[96msrc/db/seed.ts[0m:[93m98[0m:[93m42[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ label: string; type: string; apiKey: string; isEnabled: true; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+      Property 'id' is missing in type '{ label: string; type: string; apiKey: string; isEnabled: true; }' but required in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'label' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]'.
+
+[7m98[0m         await db.insert(providerConfigs).values({
+[7m  [0m [91m                                         ~~~~~~[0m
+
+
+[96msrc/routers/llm.router.ts[0m:[93m189[0m:[93m55[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ label: any; type: any; apiKey: string; baseURL: any; isEnabled: true; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+      Property 'id' is missing in type '{ label: any; type: any; apiKey: string; baseURL: any; isEnabled: true; }' but required in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'label' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]'.
+
+[7m189[0m     const [config] = await db.insert(providerConfigs).values({
+[7m   [0m [91m                                                      ~~~~~~[0m
+
+
+[96msrc/routers/providers.router.ts[0m:[93m25[0m:[93m66[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Argument of type '{ label: string; type: string; baseURL: string; apiKey: string; isEnabled: true; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+      Property 'id' is missing in type '{ label: string; type: string; baseURL: string; apiKey: string; isEnabled: true; }' but required in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'label' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; label: string | SQL<unknown> | Placeholder<string, any>; type: string | SQL<unknown> | Placeholder<string, any>; ... 5 more ...; createdAt?: Date | ... 2 more ... | undefined; }[]'.
+
+[7m25[0m       const [newProvider] = await ctx.db.insert(providerConfigs).values({
+[7m  [0m [91m                                                                 ~~~~~~[0m
+
+
+
+Found 3 errors.
+
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

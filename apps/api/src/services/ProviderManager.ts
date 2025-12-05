@@ -60,13 +60,16 @@ export class ProviderManager {
 
         if (!existing) {
            console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
+           const now = new Date();
            await db.insert(providerConfigs).values({
              id: uuidv4(),
              label: map.label,
              type: map.type,
              apiKey: encrypt(key),
              baseURL: map.url || '',
-             isEnabled: true
+             isEnabled: true,
+             createdAt: now,
+             updatedAt: now
            });
         }
       }

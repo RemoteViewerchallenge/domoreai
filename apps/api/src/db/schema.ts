@@ -1,10 +1,10 @@
-import { pgTable, text, boolean, integer, timestamp, jsonb, doublePrecision, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, integer, timestamp, jsonb, doublePrecision, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // --- Core Configuration ---
 
 export const providerConfigs = pgTable('ProviderConfig', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: text('id').primaryKey(),
   label: text('label').notNull(),
   type: text('type').notNull(),
   apiKey: text('apiKey').notNull(),
@@ -26,6 +26,7 @@ export const orchestratorConfigs = pgTable('OrchestratorConfig', {
 // --- Model Registry (The "Phonebook") ---
 // Minimal info to route the request: Who has it? What's it called?
 export const modelRegistry = pgTable('model_registry', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
   modelId: text('model_id').notNull(),
   providerId: text('provider_id').notNull(),
   // We keep these for quick lookup/display without joining
@@ -37,9 +38,11 @@ export const modelRegistry = pgTable('model_registry', {
   providerData: jsonb('provider_data').default({}),
   aiData: jsonb('ai_data').default({}),
   specs: jsonb('specs').default({}),
+  
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => {
   return {
-    pk: primaryKey({ columns: [table.modelId, table.providerId] }),
+    unq: uniqueIndex('model_registry_provider_id_model_id_key').on(table.providerId, table.modelId),
   };
 });
 
