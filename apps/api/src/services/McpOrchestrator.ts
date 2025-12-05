@@ -75,28 +75,37 @@ export class McpOrchestrator {
   }
 
   private formatToolForSandbox(serverName: string, server: ActiveServer, tool: any): SandboxTool {
+    const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');
+
     return {
-      name: `${serverName}_${tool.name}`, // Namespacing to prevent collisions
-      description: tool.description,
+      name: safeName,
+      description: `\n      [MCP Server: ${serverName}] ${tool.description}\n      @example\n      // Call the tool from code-mode:\n      await ${safeName}({ /* tool arguments here */ });\n      `,
       inputSchema: tool.inputSchema,
-      // The Magic: Create a closure that calls the MCP tool
       handler: async (args: any) => {
-        if (process.env.DEBUG_MCP === 'true') {
-          console.log(`[MCP] Calling ${serverName}:${tool.name}`, args);
-        }
-        server.lastUsed = Date.now(); // Update activity
-        
+        server.lastUsed = Date.now();
+
         try {
           const result = await server.client.callTool({
             name: tool.name,
             arguments: args,
           });
-          
-          // Return the content directly to the agent
-          return result.content;
+
+          // If the MCP protocol returned an application-level error, THROW so generated code's try/catch can handle it
+          if (result && typeof result === 'object' && (result.isError || result.error)) {
+            console.warn(`[MCP] Tool Logic Error from ${serverName}:${tool.name}:`, result);
+            throw new Error(`MCP Tool Error: ${JSON.stringify(result.content ?? result)}`);
+          }
+
+          // Unwrap single text content for convenience
+          if (result && result.content && Array.isArray(result.content) && result.content.length === 1 && result.content[0].type === 'text') {
+            return result.content[0].text;
+          }
+
+          return result.content ?? result;
+
         } catch (error: any) {
-          console.error(`[MCP] Tool Execution Failed:`, error);
-          throw new Error(`MCP Tool Error: ${error.message}`);
+          console.error(`[MCP] Protocol Error calling ${serverName}:${tool.name}:`, error);
+          throw new Error(`Failed to execute ${safeName}: ${error.message || String(error)}`);
         }
       }
     };

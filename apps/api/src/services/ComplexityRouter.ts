@@ -1,3 +1,5 @@
+import { ProviderManager } from './ProviderManager.js';
+
 export type ComplexityScore = {
   decision: 'single-agent' | 'swarm';
   complexityLevel: 'simple' | 'moderate' | 'complex';
@@ -60,10 +62,31 @@ export class ComplexityRouter {
     if (specs.length === 0) specs.push('generalist');
     reasoning.push('Detected specializations: ' + specs.join(', '));
 
-    // Model mapping
-    let recommendedModel = 'gpt-4o';
-    if (level === 'simple') recommendedModel = 'gpt-4o-mini';
-    if (level === 'complex') recommendedModel = 'gpt-4o-standalone';
+    // --- THE NEW ROUTING LOGIC (Zero-Burn) ---
+    let recommendedModel = 'gpt-4o-mini'; // Default safe fallback
+
+    // 1. HEAVY DUTY (Code/Arch) -> Google Free Tier
+    if (taskDescription.includes('code') || taskDescription.length > 500) {
+         if (ProviderManager.hasProvider('google')) {
+             recommendedModel = 'gemini-1.5-pro'; // The King of Free Tier
+         }
+    }
+    // 2. REASONING/WRITING -> Mistral Free
+    else if (taskDescription.includes('plan') || taskDescription.includes('write')) {
+         if (ProviderManager.hasProvider('mistral')) {
+             recommendedModel = 'mistral-small-latest';
+         } else if (ProviderManager.hasProvider('openrouter')) {
+             recommendedModel = 'meta-llama/llama-3-8b-instruct:free';
+         }
+    }
+    // 3. FAST/SIMPLE -> OpenRouter Free
+    else {
+         if (ProviderManager.hasProvider('openrouter')) {
+             recommendedModel = 'google/gemma-2-9b-it:free';
+         }
+    }
+
+    reasoning.push('Routed via Zero-Burn Protocol');
 
     // Duration estimate (minutes)
     let duration = level === 'simple' ? 15 : level === 'moderate' ? 45 : 180;

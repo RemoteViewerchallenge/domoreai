@@ -4,17 +4,37 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 export const terminalTools = {
-  execute: async ({ command, cwd }: { command: string, cwd?: string }) => {
-    // Security check: prevent 'rm -rf /' etc. if needed
-    try {
-      const { stdout, stderr } = await execAsync(command, { cwd: cwd || process.cwd() });
-      return { stdout, stderr, exitCode: 0 };
-    } catch (error: any) {
-      return { 
-        stdout: error.stdout, 
-        stderr: error.stderr || error.message, 
-        exitCode: error.code || 1 
-      };
+  execute: {
+    name: 'terminal_execute',
+    description: 'EXECUTE: Run a bash command in the project root.\n\nRULES:\n1. You are in a secure environment.\n2. Output (stdout/stderr) is captured and returned to you.\n3. Use this to run tests, install packages (npm install), or manage git.\n4. Do NOT run interactive commands (like `top` or `nano`).\n5. Commands run with a 30s timeout; long-running tasks should be broken into smaller steps.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'The bash command to run' },
+        cwd: { type: 'string', description: 'Optional working directory (relative to repo root)' }
+      },
+      required: ['command']
+    },
+    handler: async ({ command, cwd }: { command: string; cwd?: string }) => {
+      try {
+        console.log(`[Terminal] 💻 Executing: ${command}`);
+        const { stdout, stderr } = await execAsync(command, { cwd: cwd || process.cwd(), timeout: 30000 });
+        return {
+          status: 'success',
+          stdout: stdout ? stdout.toString().trim() : '',
+          stderr: stderr ? stderr.toString().trim() : '',
+          exitCode: 0,
+        };
+      } catch (error: any) {
+        console.warn(`[Terminal] ⚠️ Error executing: ${command}`);
+        return {
+          status: 'error',
+          stdout: error.stdout ? String(error.stdout).trim() : '',
+          stderr: error.stderr ? String(error.stderr).trim() : (error.message || 'Unknown error'),
+          exitCode: typeof error.code === 'number' ? error.code : 1,
+          hint: 'Check command syntax, working directory, and avoid interactive commands.'
+        };
+      }
     }
   }
 };
