@@ -1,5 +1,5 @@
 import { prisma } from '../db.js';
-import { LessonProvider, AgentLesson } from '@repo/agents';
+import { LessonProvider, AgentLesson } from './PromptFactory.js';
 
 export class PrismaLessonProvider implements LessonProvider {
   async getLessons(keywords: string[]): Promise<AgentLesson[]> {

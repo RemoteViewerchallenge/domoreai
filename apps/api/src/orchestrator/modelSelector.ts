@@ -49,15 +49,11 @@ export interface SelectedModel extends DynamicModel {
 export async function selectModel(criteria: SelectionCriteria): Promise<SelectedModel | null> {
   const client = await getRedisClient();
 
-  // 1. LOAD: Fetch your custom rows from the Data Lake table
-  // These rows now contain your 'priority', 'group_id', etc.
-  
-  // Fetch config
+  // 1. LOAD: Fetch all models
   const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
   const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
   
   let candidates: DynamicModel[];
-  
   try {
     candidates = await DynamicModelAdapter.loadModelsFromTable(tableName);
   } catch (error) {
@@ -70,167 +66,86 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
     return null;
   }
 
-  // 2. FILTER: Basic hard constraints
-  let pool = candidates.filter(m => {
-    // Filter by specific model name
-    if (criteria.modelName && m.id !== criteria.modelName) return false;
-    
-    // Filter by group_id (your custom column)
-    if (criteria.groupId && m.group_id !== criteria.groupId) return false;
-    
-    // Filter by max cost
-    if (criteria.maxCost !== undefined && m.cost > criteria.maxCost) return false;
-    
-    return true;
-  });
+  const providers = new Map(candidates.map(m => [m.id, m]));
 
-  // 2.5 SAFETY CHECK: Filter out anything that isn't explicitly marked free
-  // This protects you if you accidentally synced a paid model to the DB
-  const safeCandidates = pool.filter(m => {
-    // If your DB says it has a cost, block it
-    if (m.cost > 0) {
-      console.warn(`SAFETY BLOCKED: Model ${m.id} has a cost > 0 (${m.cost}). Skipping to prevent spending.`);
-      return false;
-    }
-    // Double-check the is_free_tier flag if it exists
-    if (m.is_free_tier === false) {
-      console.warn(`SAFETY BLOCKED: Model ${m.id} is not marked as free tier. Skipping.`);
-      return false;
-    }
-    return true;
-  });
-
-  if (safeCandidates.length === 0) {
-    console.error('SAFE MODE: No free models available. Request aborted to prevent spending.');
-    console.error('Original pool size:', pool.length, 'After safety filter:', safeCandidates.length);
-    throw new Error('SAFE MODE: No free models available. Request aborted to prevent spending.');
-  }
-
-  pool = safeCandidates;
-
-  if (pool.length === 0) {
-    console.warn('No models match the criteria:', criteria);
-    return null;
-  }
-
-  // 3. SCORE: Apply your "Dynamic Placement Logic"
-  const scoredModels: ScoredModel[] = await Promise.all(pool.map(async (m) => {
-    let score = m.priority || 50; // Default score from your table
-    const reasons: string[] = [`Base Priority: ${score}`];
-
-    // Logic A: Rate Limits (Redis)
-    const currentUsage = await UsageCollector.getCurrentUsage(m.providerConfigId);
-    const limit = m.rpm_limit || 1000;
-    
-    if (currentUsage >= limit) {
-      score = -1000; // Hard Fail
-      reasons.push('Rate Limit Exceeded');
-    } else if (currentUsage > limit * 0.8) {
-      score -= 30; // Soft penalty for nearing limit
-      reasons.push(`Near Rate Limit (${currentUsage}/${limit})`);
-    }
-
-    // Logic B: Error Rate Penalty (Feedback Loop)
-    // If this provider failed recently, lower its score
-    if (m.error_penalty) {
-      const errorRate = await UsageCollector.getErrorRate(m.providerConfigId);
-      if (errorRate > 0.1) { // >10% errors
-        score -= 50;
-        reasons.push(`High Error Rate: ${(errorRate * 100).toFixed(1)}%`);
+  // Tier 1: Free Cloud Models (Groq/Gemini)
+  const freeCloudModels = ['gemini-1.5-flash', 'mixtral-8x7b-32768'];
+  for (const modelId of freeCloudModels) {
+    const model = providers.get(modelId);
+    if (model) {
+      const currentUsage = await UsageCollector.getCurrentUsage(model.providerConfigId);
+      const limit = model.rpm_limit || 1000; // Default limit
+      if (currentUsage < limit) {
+        console.log(`Selected Tier 1 model: ${modelId}`);
+        return { ...model, onComplete: createOnCompleteCallback(model) };
       }
     }
-
-    // Logic C: Cost Preference (lower cost = higher score)
-    if (m.cost === 0) {
-      score += 20; // Bonus for free models
-      reasons.push('Free Tier Bonus');
-    } else {
-      score -= m.cost * 10; // Penalty proportional to cost
-      reasons.push(`Cost Penalty: -${(m.cost * 10).toFixed(1)}`);
-    }
-
-    // Logic D: Target Usage Distribution
-    // If you want to balance load across providers (e.g., 80% to Key A, 20% to Key B)
-    if (m.target_usage_percent) {
-      // This is a simplified version - you could implement more sophisticated load balancing
-      const randomFactor = Math.random() * 100;
-      if (randomFactor < m.target_usage_percent) {
-        score += 10;
-        reasons.push('Target Usage Distribution Match');
-      }
-    }
-
-    // Logic E: Random Jitter (to prevent "thundering herd" on the top model)
-    const jitter = Math.random() * 5;
-    score += jitter;
-    reasons.push(`Jitter: +${jitter.toFixed(2)}`);
-
-    // Logic F: Quality Score (Auditor)
-    const quality = await AssessmentService.getAverageQuality(m.id);
-    if (quality < 0.5) {
-      score -= 20;
-      reasons.push(`Low Quality: ${quality.toFixed(2)}`);
-    } else if (quality > 0.9) {
-      score += 10;
-      reasons.push(`High Quality: ${quality.toFixed(2)}`);
-    }
-
-    return { model: m, score, reasons };
-  }));
-
-  // 4. SELECT: Sort by score (highest first)
-  scoredModels.sort((a, b) => b.score - a.score);
-  
-  const winner = scoredModels[0];
-
-  if (!winner || winner.score < 0) {
-    console.warn("No suitable models found. Top rejection:", winner?.reasons);
-
-    // Fallback: try local Ollama provider if available
-    try {
-      const provider = ProviderManager.getProvider('ollama-local');
-      if (provider) {
-        const models = await provider.getModels();
-        if (models && models.length > 0) {
-          console.warn('No suitable remote models found — falling back to local Ollama model', models[0].id);
-          const fm = models[0];
-          const fallbackModel: SelectedModel = {
-            id: fm.id,
-            providerConfigId: 'ollama-local',
-            cost: 0,
-            contextWindow: (fm.contextWindow as number) || 4096,
-            is_free_tier: true,
-            metadata: fm as unknown as Record<string, unknown>
-          } as SelectedModel;
-
-          return fallbackModel;
-        }
-      }
-    } catch (e) {
-      console.warn('Ollama fallback failed:', e);
-    }
-
-    return null;
   }
 
-  console.log(`Selected model: ${winner.model.id} (score: ${winner.score.toFixed(2)})`, winner.reasons);
+  // Tier 2: Fallback to Local (Ollama)
+  const ollamaModel = Array.from(providers.values()).find(m => m.providerConfigId.startsWith('ollama'));
+  if (ollamaModel) {
+    console.log(`Falling back to Tier 2 Local Ollama: ${ollamaModel.id}`);
+    return { ...ollamaModel, onComplete: createOnCompleteCallback(ollamaModel) };
+  }
 
-  // 5. RETURN & TRACK
-  // We return a wrapped object that knows how to log its own completion
-  return {
-    ...winner.model,
-    // Attach a "done" callback for the router to call
-    onComplete: (status: 'SUCCESS' | 'FAILURE' | 'RATE_LIMIT', tokensIn: number, tokensOut: number, duration: number) => {
-      UsageCollector.logRequest({
-        modelId: winner.model.id,
-        providerConfigId: winner.model.providerConfigId,
-        status,
-        tokensIn,
-        tokensOut,
-        durationMs: duration
-      });
-    }
+  // Tier 3: Last Resort (Paid Models if configured)
+  // This part is left simple. You can add more complex logic to select among paid models.
+  const paidModel = Array.from(providers.values()).find(m => m.cost > 0);
+  if (paidModel) {
+    console.warn(`Warning: Using Tier 3 paid model: ${paidModel.id}`);
+    return { ...paidModel, onComplete: createOnCompleteCallback(paidModel) };
+  }
+
+  // If no model is found
+  console.error("No free or local models available!");
+  return null;
+}
+
+function createOnCompleteCallback(model: DynamicModel) {
+  return (status: 'SUCCESS' | 'FAILURE' | 'RATE_LIMIT', tokensIn: number, tokensOut: number, duration: number) => {
+    UsageCollector.logRequest({
+      modelId: model.id,
+      providerConfigId: model.providerConfigId,
+      status,
+      tokensIn,
+      tokensOut,
+      durationMs: duration
+    });
   };
+}
+
+export async function selectCandidateModels(criteria: SelectionCriteria): Promise<DynamicModel[]> {
+  // 1. LOAD: Fetch all models
+  const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
+  const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
+  
+  let candidates: DynamicModel[];
+  try {
+    candidates = await DynamicModelAdapter.loadModelsFromTable(tableName);
+  } catch (error) {
+    console.warn(`Failed to load from table ${tableName}, falling back to SimpleDB:`, error);
+    candidates = await DynamicModelAdapter.loadModelsFromSimpleDB();
+  }
+
+  if (criteria.modelName) {
+      candidates = candidates.filter(c => c.id.includes(criteria.modelName!));
+  }
+
+  // Rank candidates
+  const rankedCandidates = candidates.map(model => {
+    let rank = 3; // Default rank (Tier 3 - Paid)
+    if (model.providerConfigId.startsWith('ollama')) {
+      rank = 2; // Tier 2 - Local
+    }
+    const freeCloudModels = ['gemini-1.5-flash', 'mixtral-8x7b-32768'];
+    if (freeCloudModels.includes(model.id)) {
+      rank = 1; // Tier 1 - Free Cloud
+    }
+    return { ...model, rank };
+  }).sort((a, b) => a.rank - b.rank);
+
+  return rankedCandidates;
 }
 
 /**

@@ -4,7 +4,7 @@ import { AgentRuntime } from '../services/AgentRuntime.js';
 import { createVolcanoAgent } from '../services/AgentFactory.js';
 import type { CardAgentState } from '../services/AgentFactory.js';
 import { ProviderManager } from '../services/ProviderManager.js';
-import { selectCandidateModels } from '../lib/modelSelector.js';
+
 import { prisma } from '../db.js';
 
 /**

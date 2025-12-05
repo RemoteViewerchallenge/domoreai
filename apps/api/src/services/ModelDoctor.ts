@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { db } from '../db.js';
 import { modelRegistry, providerConfigs } from '../db/schema.js';
 import { eq, and, or, isNull } from 'drizzle-orm';
@@ -5,6 +6,31 @@ import { createVolcanoAgent } from './AgentFactory.js';
 import { webScraperTool } from '../tools/webScraper.js';
 
 export class ModelDoctor {
+  public async heal<T>(data: any, schema: z.ZodSchema<T>, model: string): Promise<T | any> {
+    const validation = schema.safeParse(data);
+
+    if (validation.success) {
+      return validation.data;
+    }
+
+    // 1. FAST PATH: If data is usable but imperfect, return it with metadata
+    // This ensures the application KEEPS RUNNING.
+    console.warn(`[ModelDoctor] Schema mismatch. Returning raw data for UI.`);
+    
+    // Attach a hidden field so the UI knows it's "dirty" data
+    return {
+      ...data,
+      _metadata: {
+        status: 'needs_repair',
+        errors: validation.error.issues,
+        timestamp: Date.now()
+      }
+    };
+
+    // 2. BACKGROUND PATH (Optional): Queue this for repair later using Ollama
+    // this.queueForBackgroundRepair(data, schema);
+  }
+
   // Bulk Operation: iterate all models and diagnose
   async healModels(forceResearch = false) {
     const allModels = await db.query.modelRegistry.findMany();

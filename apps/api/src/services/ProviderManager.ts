@@ -8,6 +8,25 @@ import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js
 
 export class ProviderManager {
   private static providers: Map<string, BaseLLMProvider> = new Map();
+  private static unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
+
+  public static markUnhealthy(providerId: string, cooldownSeconds: number) {
+    this.unhealthyProviders.set(providerId, Date.now() + cooldownSeconds * 1000);
+    console.warn(`[ProviderManager] Marked ${providerId} as unhealthy. Cooldown for ${cooldownSeconds}s.`);
+  }
+
+  public static isHealthy(providerId: string): boolean {
+      const cooldownEndTime = this.unhealthyProviders.get(providerId);
+      if (!cooldownEndTime) {
+          return true;
+      }
+      if (Date.now() > cooldownEndTime) {
+          this.unhealthyProviders.delete(providerId);
+          console.log(`[ProviderManager] ${providerId} is healthy again.`);
+          return true;
+      }
+      return false;
+  }
 
   static async initialize() {
     // 1. AUTO-BOOTSTRAP FROM ENV (The "Free Labor" Fix)

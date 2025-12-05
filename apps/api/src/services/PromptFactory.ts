@@ -1,4 +1,5 @@
-import { loadSOP } from '../utils/SOPLoader';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export interface AgentLesson {
   rule: string;
@@ -7,6 +8,34 @@ export interface AgentLesson {
 
 export interface LessonProvider {
   getLessons(keywords: string[]): Promise<AgentLesson[]>;
+}
+
+/**
+ * Loads a role's base prompt from the markdown files in apps/api/data/agents/en/
+ */
+export async function loadRolePrompt(roleName: string): Promise<string> {
+  const agentsDir = path.join(process.cwd(), 'data', 'agents', 'en');
+  
+  // Try to find the markdown file for this role
+  // Role names in DB might be like "Backend Developer" but files are "backend-developer.md"
+  const normalizedName = roleName.toLowerCase().replace(/\s+/g, '-');
+  const filePath = path.join(agentsDir, `${normalizedName}.md`);
+  
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    
+    // Extract the body (after frontmatter)
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (frontmatterMatch) {
+      return content.substring(frontmatterMatch[0].length).trim();
+    }
+    
+    return content;
+  } catch (error) {
+    // If file doesn't exist, return a default prompt
+    console.warn(`[PromptFactory] Role prompt not found for "${roleName}", using default`);
+    return `You are a helpful ${roleName}. Assist the user with their request.`;
+  }
 }
 
 export class PromptFactory {
@@ -19,20 +48,10 @@ export class PromptFactory {
     tools?: string[],
     projectPrompt?: string
   ): Promise<string> {
-    // 1. Load Static Layers
-    // We try to load a global system prompt, falling back if not found (though usually it should exist)
-    let globalPrompt = '';
-    try {
-      globalPrompt = await loadSOP('system_global', {});
-    } catch {
-      // Ignore if global prompt doesn't exist or handle gracefully
-    }
+    // 1. Load the role's base prompt from markdown
+    const rolePrompt = await loadRolePrompt(role);
 
-    // Load the specific role prompt
-    const rolePrompt = await loadSOP(role, {});
-
-    // 2. Identify Context (Simple keyword matching for now)
-    // 3. Load Dynamic Layer (The "Learning" Integration)
+    // 2. Load Dynamic Layer (The "Learning" Integration)
     let lessons: AgentLesson[] = [];
     
     if (memoryConfig?.useProjectMemory) {
@@ -44,15 +63,10 @@ export class PromptFactory {
       ? `\n## 🧠 PREVIOUS LESSONS\n${lessons.map(l => `- ${l.rule}`).join('\n')}`
       : '';
 
-    // 4. Load Tool Definitions & Examples
+    // 3. Load Tool Definitions & Examples
     let toolSection = '';
     try {
-      // Dynamic import fs to avoid bundling issues if this package is ever used in browser
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
       // Resolve path to .domoreai/tools
-      // Assuming process.cwd() is the project root or apps/api
       let rootDir = process.cwd();
       if (rootDir.endsWith('apps/api')) {
           rootDir = path.resolve(rootDir, '../../');
@@ -67,9 +81,6 @@ export class PromptFactory {
 
       for (const file of files) {
           // If tools list is provided, only include files that start with one of the tool names
-          // The file naming convention is [serverName].d.ts or [serverName]_examples.md
-          // We assume 'tools' array contains server names like 'git', 'postgres'
-          
           let shouldInclude = true;
           if (tools && tools.length > 0) {
              const serverName = file.split('.')[0].split('_')[0];
@@ -105,15 +116,14 @@ ${toolExamples}
       // Ignore errors if tools directory doesn't exist or can't be read
     }
 
-    // 5. Project Specific Prompt
+    // 4. Project Specific Prompt
     const projectSection = projectPrompt ? `\n## 🏗️ PROJECT CONTEXT & GUIDELINES\n${projectPrompt}\n` : '';
 
-    return `${globalPrompt}\n\n${rolePrompt}\n${projectSection}\n${memoryBlock}${toolSection}`;
+    return `${rolePrompt}\n${projectSection}\n${memoryBlock}${toolSection}`;
   }
 
   private extractKeywords(query: string): string[] {
     // Simple logic: split by space, filter common words
-    // Or use a lightweight NLP library
     return query.toLowerCase().split(' ').filter(w => w.length > 3);
   }
 }
