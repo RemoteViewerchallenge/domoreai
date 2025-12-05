@@ -481,8 +481,11 @@ export async function getBestModel(roleId: string, failedProviders: string[] = [
     if (failedProviders.includes(provider.id)) continue;
 
     // If provider has no rate limit defined, it's good to go
-    if (!provider.requestsPerMinute) {
-      return modelConfig; // This is a valid model
+    const rpm = (provider as any).requestsPerMinute ?? Infinity;
+
+    // If provider declares no RPM limit in DB, treat as unlimited and pick it
+    if (rpm === Infinity) {
+      return modelConfig;
     }
 
     // Check usage in the last minute
@@ -498,7 +501,7 @@ export async function getBestModel(roleId: string, failedProviders: string[] = [
     });
 
     // If usage is *under* the limit, this model is available
-    if (usageCount < provider.requestsPerMinute) {
+    if (usageCount < rpm) {
       return modelConfig; // This is a valid model
     }
   }

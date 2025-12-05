@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { encrypt } from '../utils/encryption.js'; 
 import { ProviderManager } from '../services/ProviderManager.js'; 
+import { ModelDoctor } from '../services/ModelDoctor.js'; 
 
 export const dataRefinementRouter = createTRPCRouter({
   
@@ -380,8 +381,41 @@ export const dataRefinementRouter = createTRPCRouter({
 
     promoteToApp: publicProcedure.input(z.any()).mutation(async () => ({ count: 0 })),
 
-    // --- REFRESH DATA (Recovery Feature) ---
-    refreshProviderData: protectedProcedure
+    // --- MODEL DOCTOR ---
+    healData: protectedProcedure
+      .input(z.object({
+        modelId: z.string().optional(),
+        providerId: z.string().optional(),
+        runAll: z.boolean().optional()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Instantiate ModelDoctor with no arguments (constructor expects none now)
+        const doctor = new ModelDoctor();
+
+        if (input.modelId) {
+          const result = await doctor.healModel(input.modelId);
+          return { success: true, results: [result] };
+        }
+
+        if (input.runAll) {
+          const stats = await doctor.healModels();
+          return { success: true, stats };
+        }
+
+        return { success: false, message: "No target specified" };
+      }),
+
+    // Expose a dedicated single-model endpoint if callers prefer it
+    healModel: protectedProcedure
+      .input(z.object({ modelId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const doctor = new ModelDoctor();
+        const result = await doctor.healModel(input.modelId);
+        return result;
+      }),
+
+  // --- REFRESH DATA (Recovery Feature) ---
+  refreshProviderData: protectedProcedure
     .input(z.object({
       providerId: z.string(),
       targetTableName: z.string()

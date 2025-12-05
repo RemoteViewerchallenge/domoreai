@@ -39,26 +39,33 @@ export async function selectCandidateModels(criteria: SelectionCriteria): Promis
 
     // Map to internal Model interface
     const allModels: Model[] = dbModels.map(m => {
-        const providerType = m.provider.type;
+        // Safe provider type
+        const providerType = m.provider?.type ?? 'unknown';
+
+        // Read the resilient JSON specs layer populated by agents/ingestion
+        const specs = (m.specs as any) || {};
+
         const computedCost =
           m.costPer1k !== null && m.costPer1k !== undefined
             ? m.costPer1k
-            : (m.isFree ? 0 : (providerType === 'ollama' ? 0 : 100));
+            : (specs.costPer1k !== undefined ? specs.costPer1k : (m.isFree ? 0 : (providerType === 'ollama' ? 0 : 100)));
 
         return {
           id: m.modelId,
           name: m.name,
           provider: providerType,
           providerConfigId: m.providerId,
-          contextWindow: m.contextWindow || 4096,
+          // Prefer specs, then legacy columns (if any), then default
+          contextWindow: (specs.contextWindow ?? specs.context_window ?? (m as any).contextWindow) || 4096,
           capabilities: {
-            vision: m.hasVision,
-            reasoning: m.hasReasoning,
-            coding: m.hasCoding,
+            vision: (specs.hasVision ?? specs.vision ?? (m as any).hasVision) || false,
+            reasoning: (specs.hasReasoning ?? specs.reasoning ?? (m as any).hasReasoning) || false,
+            coding: (specs.hasCoding ?? specs.coding ?? (m as any).hasCoding) || false,
           },
           costPer1k: computedCost,
-          limitRequestRate: m.limitRequestRate,
-          limitWindow: m.limitWindow,
+          // Rate limits moved to specs
+          limitRequestRate: specs.limitRequestRate ?? (m as any).limitRequestRate ?? null,
+          limitWindow: specs.limitWindow ?? (m as any).limitWindow ?? null,
         };
     });
 

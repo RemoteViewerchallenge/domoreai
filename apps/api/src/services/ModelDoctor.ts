@@ -5,51 +5,83 @@ import { createVolcanoAgent } from './AgentFactory.js';
 import { webScraperTool } from '../tools/webScraper.js';
 
 export class ModelDoctor {
+  // Bulk Operation: iterate all models and diagnose
   async healModels(forceResearch = false) {
     const allModels = await db.query.modelRegistry.findMany();
-    let stats = { inferred: 0, researched: 0, failed: 0 };
+    let stats = { inferred: 0, researched: 0, failed: 0, skipped: 0 };
 
-    const analyst = await createVolcanoAgent({
-        roleId: 'analyst',
-        modelId: null,
-        isLocked: false,
-        temperature: 0.1,
-        maxTokens: 1000
-    });
+    const analyst = await this.createAnalyst();
 
     for (const model of allModels) {
-      const aiData = (model.aiData as any) || {};
-      const specs = (model.specs as any) || {};
-
-      if (!forceResearch && specs.contextWindow && specs.contextWindow > 0) {
-        continue;
-      }
-
-      console.log(`[ModelDoctor] 🩺 Diagnosing: ${model.modelId}...`);
-
-      const inference = await this.inferSpecs(analyst, model.modelId, model.providerData as any);
-
-      if (inference.confidence === 'high') {
-        console.log(`[ModelDoctor] 🧠 Inferred:`, inference.data);
-        await this.saveKnowledge(model, inference.data, 'inference');
-        stats.inferred++;
-        continue;
-      }
-
-      console.log(`[ModelDoctor] 📉 Inference unsure. Dispatching Research Scraper...`);
-      const research = await this.researchSpecs(analyst, model);
-
-      if (research) {
-        console.log(`[ModelDoctor] 🔬 Research Found:`, research);
-        await this.saveKnowledge(model, research, 'research');
-        stats.researched++;
+      const result = await this.diagnoseModel(model, analyst, forceResearch);
+      if (result) {
+        stats[result]++;
       } else {
-        console.warn(`[ModelDoctor] ❌ Diagnosis failed for ${model.modelId}`);
-        stats.failed++;
+        stats.skipped++;
       }
     }
 
     return stats;
+  }
+
+  // Single Operation: diagnose a single model by modelId
+  async healModel(modelId: string) {
+    const model = await db.query.modelRegistry.findFirst({
+      where: eq(modelRegistry.modelId, modelId)
+    });
+
+    if (!model) {
+      throw new Error(`Model ${modelId} not found in registry`);
+    }
+
+    const analyst = await this.createAnalyst();
+    const result = await this.diagnoseModel(model, analyst, true); // force check for single target
+
+    return { success: true, status: result || 'skipped', modelId };
+  }
+
+  // --- Shared Logic ---
+
+  private async createAnalyst() {
+    return await createVolcanoAgent({
+        roleId: 'analyst',
+        modelId: null, // System picks default
+        isLocked: false,
+        temperature: 0.1,
+        maxTokens: 1000
+    });
+  }
+
+  private async diagnoseModel(model: any, agent: any, forceResearch: boolean): Promise<'inferred' | 'researched' | 'failed' | null> {
+      const specs = (model.specs as any) || {};
+
+      // Skip if already healthy and not forced
+      if (!forceResearch && specs.contextWindow && specs.contextWindow > 0) {
+        return null;
+      }
+
+      console.log(`[ModelDoctor] 🩺 Diagnosing: ${model.modelId}...`);
+
+      // 1. Inference
+      const inference = await this.inferSpecs(agent, model.modelId, model.providerData as any);
+      if (inference.confidence === 'high') {
+        console.log(`[ModelDoctor] 🧠 Inferred:`, inference.data);
+        await this.saveKnowledge(model, inference.data, 'inference');
+        return 'inferred';
+      }
+
+      // 2. Research
+      console.log(`[ModelDoctor] 📉 Inference unsure. Dispatching Research Scraper...`);
+      const research = await this.researchSpecs(agent, model);
+
+      if (research) {
+        console.log(`[ModelDoctor] 🔬 Research Found:`, research);
+        await this.saveKnowledge(model, research, 'research');
+        return 'researched';
+      } else {
+        console.warn(`[ModelDoctor] ❌ Diagnosis failed for ${model.modelId}`);
+        return 'failed';
+      }
   }
 
   private async inferSpecs(agent: any, modelId: string, rawData: any) {

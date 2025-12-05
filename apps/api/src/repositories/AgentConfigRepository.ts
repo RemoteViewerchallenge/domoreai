@@ -17,10 +17,17 @@ export class AgentConfigRepository {
         modelId: modelDef.id,
         provider: { connect: { id: modelDef.providerId } },
         name: modelDef.name || modelDef.id,
-        contextWindow: modelDef.contextWindow || 4096,
-        costPer1k: modelDef.costPer1k || 0,
-        isFree: modelDef.isFree || false,
-        providerData: {}
+        // Pack transient/spec fields into the specs JSON
+        costPer1k: modelDef.costPer1k ?? 0,
+        isFree: modelDef.isFree ?? false,
+        providerData: modelDef.providerData ?? {},
+        specs: {
+            contextWindow: modelDef.contextWindow ?? 4096,
+            hasVision: modelDef.hasVision ?? false,
+            hasReasoning: modelDef.hasReasoning ?? false,
+            hasCoding: modelDef.hasCoding ?? false,
+            lastUpdated: new Date().toISOString()
+        }
       }
     });
   }

@@ -93,24 +93,26 @@ export class DynamicModelAdapter {
   static async loadModelsFromSimpleDB(): Promise<DynamicModel[]> {
     try {
       const models = await prisma.model.findMany();
-      return models.map((m: Model) => ({
-        id: m.modelId, // Use modelId as the primary ID for logic
-        providerConfigId: m.providerId,
-        cost: m.costPer1k || 0,
-        contextWindow: m.contextWindow || 4096,
-        priority: 50, // Default priority
-        group_id: undefined,
-        target_usage_percent: undefined,
-        error_penalty: false,
-        rpm_limit: m.limitRequestRate || undefined,
-        rpd_limit: undefined, // No direct mapping for RPD in standard model
-        is_free_tier: m.isFree,
-        metadata: m as unknown as Record<string, unknown>,
-      }));
+      return models.map((m: Model) => {
+        const specs = (m.specs as any) || {};
+        return {
+          id: m.modelId, // Use modelId as the primary ID for logic
+          providerConfigId: m.providerId,
+          cost: m.costPer1k ?? specs.costPer1k ?? 0,
+          contextWindow: specs.contextWindow ?? specs.context_window ?? (m as any).contextWindow ?? 4096,
+          priority: 50, // Default priority
+          group_id: undefined,
+          target_usage_percent: undefined,
+          error_penalty: false,
+          rpm_limit: specs.limitRequestRate ?? specs.rpm_limit ?? (m as any).limitRequestRate ?? undefined,
+          rpd_limit: undefined, // No direct mapping for RPD in standard model
+          is_free_tier: m.isFree ?? false,
+          metadata: m as unknown as Record<string, unknown>,
+        };
+      });
     } catch (error) {
       console.error('Failed to load models from Prisma:', error);
       return [];
     }
   }
 }
-
