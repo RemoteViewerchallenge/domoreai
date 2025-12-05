@@ -1,5 +1,5 @@
-import { ingestAgentLibrary } from './src/services/RoleIngestionService.js';
-import { prisma } from './src/db.js';
+import { ingestAgentLibrary } from '../services/RoleIngestionService.js';
+import { prisma } from '../db.js';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 

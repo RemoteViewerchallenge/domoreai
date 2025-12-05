@@ -5,7 +5,6 @@ import { ProviderManager } from '../services/ProviderManager.js';
 import { db } from '../db.js';
 import { providerConfigs } from '../db/schema.js';
 import { encrypt } from '../utils/encryption.js';
-import { selectCandidateModels } from '../lib/modelSelector.js';
 import { UsageCollector } from '../services/UsageCollector.js';
 import { eq, desc } from 'drizzle-orm';
 
@@ -39,11 +38,13 @@ llmRouter.post('/chat/completions', async (req, res) => {
 
     const input = schema.parse(req.body);
 
-    // 2. Get Candidates
-    const candidates = await selectCandidateModels({
-        model: input.model,
-        // Optional: Add other criteria here if passed in request
-    });
+    // 2. Get all enabled models from database
+    const allModels = await ProviderManager.getAllModels();
+    
+    // Filter for the requested model or get all as candidates
+    const candidates = input.model 
+      ? allModels.filter(m => m.id === input.model || m.name === input.model)
+      : allModels;
 
     if (candidates.length === 0) {
         return res.status(404).json({ error: 'No_Models_Found', message: 'No models available matching criteria.' });

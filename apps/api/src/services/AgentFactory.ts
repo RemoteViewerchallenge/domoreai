@@ -1,6 +1,6 @@
 import { AgentConfigRepository } from "../repositories/AgentConfigRepository.js";
 import { AssessmentService } from "./AssessmentService.js";
-import { loadSOP, PromptFactory } from "@repo/agents";
+import { PromptFactory, loadRolePrompt } from "./PromptFactory.js";
 import { db } from "../db.js";
 import { PrismaLessonProvider } from "./PrismaLessonProvider.js";
 
@@ -9,6 +9,7 @@ import { getBestModel } from "../services/modelManager.service.js";
 import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
 import { ModelConfigurator } from "./ModelConfigurator.js";
 import { ProviderError } from "../types.js";
+import { executeWithRateLimit } from '../rateLimiter.js';
 
 // Represents the state of a single Card's brain
 export interface CardAgentState {
@@ -46,7 +47,7 @@ export class VolcanoAgent {
     while (true) {
       try {
         console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id}`);
-          const response = await this.provider.generateCompletion({
+        const response = await executeWithRateLimit(this.provider, {
             modelId: this.config.apiModelId,
             messages: [
               { role: 'system', content: this.systemPrompt },
@@ -60,19 +61,7 @@ export class VolcanoAgent {
           if (this.orchestrationConfig?.requiresCheck && this.orchestrationConfig.judgeRoleId) {
             console.log(`[VolcanoAgent] Judge verification required (Judge Role: ${this.orchestrationConfig.judgeRoleId})`);
             
-            // We need to instantiate the Judge Agent.
-            // CAUTION: To avoid circular dependency issues or infinite loops, we should be careful.
-            // Ideally, we'd use a separate service to run the judge.
-            // For now, we'll do a simplified check: Just use the same provider or a smart provider to check.
-            // But the requirement is to use a specific "Judge Role".
-            
-            // We'll use a simplified flow here to avoid recursion hell:
-            // 1. Fetch Judge Role Prompt
-            // 2. Run check using the current provider (or a smart one)
-            
             try {
-               // We can't easily create a full agent here without circular imports if we use createVolcanoAgent.
-               // So we'll do a lightweight check.
                const judgeRole = await AgentConfigRepository.getRole(this.orchestrationConfig.judgeRoleId);
                if (judgeRole) {
                  const verificationPrompt = `
@@ -88,7 +77,10 @@ export class VolcanoAgent {
                  Respond with "PASS" if it meets the criteria, or "FAIL: <reason>" if it does not.
                  `;
                  
-                 const verification = await this.provider.generateCompletion({
+                 // Use a new provider for judge, maybe a specific one
+                 const judgeProvider = ProviderManager.getProvider(this.provider.id) ?? this.provider;
+
+                 const verification = await executeWithRateLimit(judgeProvider, {
                    modelId: this.config.apiModelId, // Use same model for now, or find a smart one
                    messages: [{ role: 'user', content: verificationPrompt }],
                    temperature: 0.0,
@@ -97,11 +89,7 @@ export class VolcanoAgent {
                  
                  if (!verification.includes("PASS")) {
                    console.warn(`[VolcanoAgent] Judge Failed: ${verification}`);
-                   // Record Failure
                    await AssessmentService.recordFailure(this.roleId, this.systemPrompt, verification);
-                   
-                   // For now, we still return the response but maybe prepend a warning?
-                   // Or throw? Let's prepend a warning.
                    return `[⚠️ JUDGE FAILED: ${verification}]\n\n${response}`;
                  } else {
                    console.log(`[VolcanoAgent] Judge Passed.`);
@@ -214,7 +202,6 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
         try {
             model = await AgentConfigRepository.createModel(modelDef);
             console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
-            console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
         } catch (createError) {
              console.error(`[AgentFactory] JIT Creation failed:`, createError);
              throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
@@ -222,17 +209,6 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     }
 
     // Find or Create ModelConfig
-    // We look for an existing config for this role/model pair
-    // We can't use findFirst with 'roles' directly easily without include, but we can query ModelConfig
-    // Actually ModelConfig has a many-to-many with Role?
-    // Schema says: roles Role[] @relation("PreferredModels")
-    // So a ModelConfig can belong to multiple roles?
-    // And a Role has preferredModels ModelConfig[]
-    
-    // If we want to find the config for THIS role and THIS model:
-    // We need to find a ModelConfig that is connected to this Role AND points to this Model.
-    // If we want to find the config for THIS role and THIS model:
-    // We need to find a ModelConfig that is connected to this Role AND points to this Model.
     modelConfig = await AgentConfigRepository.getModelConfig(model.id, cardConfig.roleId);
 
     if (!modelConfig) {
@@ -248,7 +224,6 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
   }
 
   // 3. Configure & Validate Parameters
-  // We import ModelConfigurator dynamically or at top level. I'll assume top level import.
   const [safeParams, _adjustments] = await ModelConfigurator.configure(model, role, modelConfig);
 
   // 4. Initialize Provider
@@ -265,8 +240,6 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     const lessonProvider = new PrismaLessonProvider();
     const promptFactory = new PromptFactory(lessonProvider);
     
-    // We pass the role name and the user's goal (or empty string if not provided)
-    // The PromptFactory handles loading the SOP and injecting lessons
     basePrompt = await promptFactory.build(
         role.name, 
         cardConfig.userGoal || '', 
@@ -275,26 +248,19 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
         cardConfig.projectPrompt
     );
   } catch (error) {
-    console.warn(`[AgentFactory] PromptFactory failed for role "${role.name}". Falling back to simple SOP load.`, error);
-    try {
-      basePrompt = await loadSOP(role.name, {});
-    } catch (fallbackError) {
-      console.warn(`[AgentFactory] SOP for role "${role.name}" not found. Falling back to default.`);
-      basePrompt = await loadSOP('default', {});
-    }
+    console.warn(`[AgentFactory] PromptFactory failed for role "${role.name}". Falling back to simple role prompt load.`, error);
+    basePrompt = await loadRolePrompt(role.name);
   }
 
   return new VolcanoAgent(
     provider,
     basePrompt,
     {
-      // CRITICAL FIX: Use modelConfig.modelId which is guaranteed to exist and matches the API-expected string
       apiModelId: modelConfig.modelId,
       temperature: safeParams.temperature ?? 0.7,
-      maxTokens: safeParams.max_tokens ?? 2048 // Map back to camelCase for VolcanoAgent
+      maxTokens: safeParams.max_tokens ?? 2048
     },
-    role.id, // Pass Role ID for fallback logic
+    role.id,
     (role as any).orchestrationConfig
   );
 }
-

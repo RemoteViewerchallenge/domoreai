@@ -1,7 +1,0 @@
-7:56:40 PM - Projects in this build: 
-    * tsconfig.json
-
-7:56:40 PM - Project 'tsconfig.json' is out of date because buildinfo file 'dist/tsconfig.tsbuildinfo' indicates that program needs to report errors.
-
-7:56:40 PM - Building project '/home/guy/mono/apps/api/tsconfig.json'...
-

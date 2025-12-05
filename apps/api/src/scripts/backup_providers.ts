@@ -1,5 +1,5 @@
-import { db, shutdownDb } from './src/db.js';
-import { providerConfigs } from './src/db/schema.js';
+import { db, shutdownDb } from '../db.js';
+import { providerConfigs } from '../db/schema.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

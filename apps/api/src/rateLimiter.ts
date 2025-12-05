@@ -30,3 +30,30 @@ export class RateLimiter {
     return current <= limit;
   }
 }
+
+import { ProviderManager } from './services/ProviderManager.js';
+import { type BaseLLMProvider, type CompletionRequest } from './utils/BaseLLMProvider.js';
+
+export async function executeWithRateLimit(provider: BaseLLMProvider, request: CompletionRequest): Promise<string> {
+  try {
+    if (!ProviderManager.isHealthy(provider.id)) {
+      // Create an error object that looks like an axios error
+      const error = new Error(`Provider ${provider.id} is on cooldown.`);
+      (error as any).status = 429;
+      throw error;
+    }
+    return await provider.generateCompletion(request);
+  } catch (error: any) {
+    const status = error.response?.status || error.status;
+    if (status === 429) { 
+      console.warn(`[RateLimit] ${provider.id} exhausted. Marking as unhealthy.`);
+      ProviderManager.markUnhealthy(provider.id, 60); // Cooldown for 60 seconds
+    }
+    // Also mark provider as unhealthy on other server-side errors
+    if (status >= 500) {
+        console.warn(`[RateLimit] ${provider.id} returned a server error. Marking as unhealthy.`);
+        ProviderManager.markUnhealthy(provider.id, 30); // Shorter cooldown for general errors
+    }
+    throw error;
+  }
+}
