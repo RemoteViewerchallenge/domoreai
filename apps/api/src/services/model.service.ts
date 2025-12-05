@@ -9,6 +9,15 @@ export class ModelService {
   async saveNormalizedModel(input: ModelInput) {
     const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = input;
 
+    // [RESILIENCE] Pack strict columns into the Triple Layer (specs)
+    const specsData = {
+        contextWindow,
+        hasVision,
+        hasReasoning,
+        hasCoding,
+        lastUpdated: new Date().toISOString()
+    };
+
     // Simple implementation with our JSON DB
     return prisma.model.upsert({
       where: {
@@ -17,10 +26,8 @@ export class ModelService {
       update: {
         name,
         isFree,
-        contextWindow,
-        hasVision,
-        hasReasoning,
-        hasCoding,
+        // Update JSON layers instead of (possibly removed) columns
+        specs: specsData as Prisma.InputJsonValue,
         providerData: providerData as Prisma.InputJsonValue,
       },
       create: {
@@ -28,10 +35,7 @@ export class ModelService {
         modelId,
         name,
         isFree,
-        contextWindow,
-        hasVision,
-        hasReasoning,
-        hasCoding,
+        specs: specsData as Prisma.InputJsonValue,
         providerData: providerData as Prisma.InputJsonValue,
       },
     });

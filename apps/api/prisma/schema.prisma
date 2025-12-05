@@ -10,9 +10,6 @@ generator client {
 // -----------------------------------------------------------------
 // Stores the provider-specific credentials and configuration
 // -----------------------------------------------------------------
-// -----------------------------------------------------------------
-// Stores the provider-specific credentials and configuration
-// -----------------------------------------------------------------
 model ProviderConfig {
   id          String   @id @default(uuid())
   label       String
@@ -20,6 +17,7 @@ model ProviderConfig {
   apiKey      String   // Encrypted
   baseURL     String?
   isEnabled   Boolean  @default(true)
+  requestsPerMinute Int? @default(60)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   models      Model[]
@@ -52,7 +50,7 @@ model Model {
   // 3. Specs: The computed view (Provider + AI Overrides) used by the app.
   specs        Json    @default("{}") @map("specs")
 
-  // Extra fields from previous definition that might be needed or were in Drizzle
+  // Kept for backward compatibility with Drizzle/Router until fully migrated
   isFree       Boolean @default(false) @map("is_free")
   costPer1k    Float?  @map("cost_per_1k")
 

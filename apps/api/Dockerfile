@@ -23,5 +23,8 @@ COPY --from=builder /app .
 # Install only production dependencies for the API
 RUN pnpm install --prod --filter=api
 
+# Generate Prisma Client (CRITICAL STEP)
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+
 EXPOSE 4000
 CMD ["node", "apps/api/dist/index.js"]
