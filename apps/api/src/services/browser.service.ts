@@ -145,11 +145,12 @@ class BrowserService {
     }
   }
 
-  async pressKey(sessionId: string, key: KeyInput) {
+  async pressKey(sessionId: string, key: string) {
     const session = await this.getOrCreateSession(sessionId);
     
     try {
-      await session.page.keyboard.press(key);
+      // Cast to KeyInput to satisfy Puppeteer's typing at runtime.
+      await session.page.keyboard.press(key as KeyInput);
 
       await new Promise(resolve => setTimeout(resolve, 300));
 

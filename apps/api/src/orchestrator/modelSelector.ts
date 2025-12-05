@@ -3,6 +3,7 @@ import { UsageCollector } from '../services/UsageCollector.js';
 import { getRedisClient } from '../redis.js';
 import { prisma } from '../db.js';
 import { AssessmentService } from '../services/AssessmentService.js';
+import { ProviderManager } from '../services/ProviderManager.js';
 import { CreditGuard } from '../services/CreditGuard.js';
 
 // --- Error Classes ---
@@ -184,6 +185,31 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
 
   if (!winner || winner.score < 0) {
     console.warn("No suitable models found. Top rejection:", winner?.reasons);
+
+    // Fallback: try local Ollama provider if available
+    try {
+      const provider = ProviderManager.getProvider('ollama-local');
+      if (provider) {
+        const models = await provider.getModels();
+        if (models && models.length > 0) {
+          console.warn('No suitable remote models found — falling back to local Ollama model', models[0].id);
+          const fm = models[0];
+          const fallbackModel: SelectedModel = {
+            id: fm.id,
+            providerConfigId: 'ollama-local',
+            cost: 0,
+            contextWindow: (fm.contextWindow as number) || 4096,
+            is_free_tier: true,
+            metadata: fm as unknown as Record<string, unknown>
+          } as SelectedModel;
+
+          return fallbackModel;
+        }
+      }
+    } catch (e) {
+      console.warn('Ollama fallback failed:', e);
+    }
+
     return null;
   }
 

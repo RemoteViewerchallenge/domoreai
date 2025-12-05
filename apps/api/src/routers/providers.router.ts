@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
-import { providerConfigs, genericProviderModels, modelRegistry } from '../db/schema.js';
+import { providerConfigs, modelRegistry } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export const providerRouter = createTRPCRouter({
@@ -87,33 +87,34 @@ export const providerRouter = createTRPCRouter({
         const modelId = model.id;
         if (!modelId) return;
 
-        // A. Store Raw Data (Generic Table)
-        await ctx.db.insert(genericProviderModels)
-          .values({
-            modelId: modelId,
-            providerId: providerConfig.id,
-            rawData: model as any, // Store the full JSON object
-          })
-          .onConflictDoUpdate({
-            target: [genericProviderModels.modelId, genericProviderModels.providerId],
-            set: { rawData: model as any },
-          });
+        const specs = {
+          contextWindow: model.contextWindow,
+          hasVision: model.hasVision,
+          hasReasoning: model.hasReasoning || false,
+          hasCoding: model.hasCoding || false,
+        };
 
-        // B. Update Registry (Phonebook)
-        // We only update if it's new, or we can update cost/free status if available
+        // Consolidated upsert into modelRegistry including providerData/specs
         await ctx.db.insert(modelRegistry)
           .values({
+            id: uuidv4(),
             modelId: modelId,
             providerId: providerConfig.id,
-            modelName: modelId, // Default to ID if name missing
+            modelName: (model.name as string) || modelId,
             isFree: model.isFree || false,
             costPer1k: model.costPer1k || 0,
+            providerData: model as any,
+            specs: specs as any,
+            aiData: {},
           })
           .onConflictDoUpdate({
             target: [modelRegistry.modelId, modelRegistry.providerId],
             set: {
+              modelName: (model.name as string) || modelId,
               isFree: model.isFree || false,
-              // Don't overwrite manual overrides if we had them, but for now we trust the API
+              costPer1k: model.costPer1k || 0,
+              providerData: model as any,
+              specs: specs as any,
             },
           });
       });
