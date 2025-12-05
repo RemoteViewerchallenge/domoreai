@@ -10,61 +10,59 @@ generator client {
 // -----------------------------------------------------------------
 // Stores the provider-specific credentials and configuration
 // -----------------------------------------------------------------
+// -----------------------------------------------------------------
+// Stores the provider-specific credentials and configuration
+// -----------------------------------------------------------------
 model ProviderConfig {
   id          String   @id @default(uuid())
-  label       String   // e.g. "My Personal OpenAI", "Team OpenRouter"
-  type        String   // e.g. "openai", "anthropic", "generic-openai"
-  apiKey      String   // Encrypt this field in the application layer!
-  baseURL     String?  // Crucial for generic providers
+  label       String
+  type        String
+  apiKey      String   // Encrypted
+  baseURL     String?
   isEnabled   Boolean  @default(true)
-  requestsPerMinute Int? // Rate limit for this provider
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // --- Relations ---
-  models       Model[]
+  models      Model[]
+  
+  // Keep existing relation
   modelConfigs ModelConfig[]
 }
 
 // -----------------------------------------------------------------
 // Stores the individual models from all providers
 // -----------------------------------------------------------------
+// THE FLEXIBLE CORE
 model Model {
   id        String @id @default(cuid())
   
-  // --- Relation to Provider ---
-  providerId String
+  providerId String @map("provider_id")
   provider   ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  // --- Normalized Data (What YOU care about) ---
-  modelId      String  // The ID from the provider (e.g., "gpt-4o-mini")
-  name         String  // The human-readable name
-  isFree       Boolean @default(false)
-  limitRequestRate Int?    // Requests allowed per window
-  limitWindow      Int?    // Window size in seconds (e.g., 60 for 1 minute)
-  costPer1k        Float?  // Cost per 1k tokens (for sorting)
+  // Strict Identity
+  modelId      String  @map("model_id")
+  name         String  @map("model_name")
 
-  // --- Fields for the "Role Fiddler" ---
-  // These will be populated by your "Enrichment Agent"
-  contextWindow  Int?
-  hasVision      Boolean @default(false)
-  hasReasoning   Boolean @default(false)
-  hasCoding      Boolean @default(false)
+  // THE TRIPLE LAYER SYSTEM
+  // 1. Raw Data: Exactly what the API sent us. Never touched by us.
+  providerData Json    @default("{}") @map("provider_data")
   
-  // NEW: Capabilities & Censorship
-  supportedParameters Json? 
-  supportsTools       Boolean @default(false) 
-  supportsJson        Boolean @default(false)
-  isUncensored        Boolean @default(false) // NEW: Derived from is_moderated = false
+  // 2. AI Knowledge: Data inferred or researched by our Agents.
+  aiData       Json    @default("{}") @map("ai_data")
 
-  // --- The Solution ---
-  // Stores the *entire, raw JSON* from the provider's API.
-  providerData Json
+  // 3. Specs: The computed view (Provider + AI Overrides) used by the app.
+  specs        Json    @default("{}") @map("specs")
 
-  // This is the other side of the `model` relation in `ModelConfig`.
+  // Extra fields from previous definition that might be needed or were in Drizzle
+  isFree       Boolean @default(false) @map("is_free")
+  costPer1k    Float?  @map("cost_per_1k")
+
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Keep existing relation
   modelConfigs ModelConfig[]
 
-  @@unique([providerId, modelId]) // Prevent duplicate models
+  @@unique([providerId, modelId])
+  @@map("model_registry")
 }
 
 // -----------------------------------------------------------------
