@@ -5,28 +5,6 @@
 # --- Configuration ---
 PORTS_TO_STOP=(4000 5173) # API port and UI port
 
-# --- Helper Function ---
-# Tries to stop a process gracefully, then forcefully.
-stop_process() {
-  local pid=$1
-  echo "  - Attempting graceful shutdown (PID: $pid)..."
-  kill "$pid" &> /dev/null
-  sleep 1 # Give it a moment to shut down
-
-  # Check if the process is still running
-  if ps -p "$pid" > /dev/null; then
-    echo "  - Process did not stop, forcing shutdown (PID: $pid)..."
-    kill -9 "$pid" &> /dev/null
-    sleep 1
-  fi
-
-  if ps -p "$pid" > /dev/null; then
-    echo "  - FAILED to stop process with PID: $pid."
-  else
-    echo "  - Process stopped successfully."
-  fi
-}
-
 # --- Main Logic ---
 echo "Attempting to stop processes on ports: ${PORTS_TO_STOP[*]}"
 echo "-------------------------------------------------"
@@ -35,13 +13,12 @@ STOPPED_SOMETHING=false
 
 for port in "${PORTS_TO_STOP[@]}"; do
   echo "Checking port $port..."
-  PIDS=$(lsof -t -i:"$port")
-
-  if [ -n "$PIDS" ]; then
+  # Use fuser to find and kill the process on the port. The -k flag sends SIGKILL.
+  # fuser exits with 0 if it finds and kills a process.
+  if fuser -k -n tcp "$port" &>/dev/null; then
     STOPPED_SOMETHING=true
-    for pid in $PIDS; do
-      stop_process "$pid"
-    done
+    echo "  - Process on port $port terminated."
+    sleep 1 # Give a moment for the OS to release the port
   else
     echo "  - No process found on this port."
   fi

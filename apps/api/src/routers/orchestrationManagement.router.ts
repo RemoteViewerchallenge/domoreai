@@ -6,8 +6,6 @@ const createStepSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   order: z.number().int(),
-  roleId: z.string().optional(),
-  roleName: z.string().optional(),
   stepType: z.enum(['sequential', 'parallel', 'conditional', 'loop']).default('sequential'),
   condition: z.any().optional(),
   inputMapping: z.any().optional(),

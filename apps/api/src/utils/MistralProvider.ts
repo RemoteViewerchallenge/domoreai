@@ -1,3 +1,4 @@
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
 import { UsageCollector } from '../services/UsageCollector.js';
 
@@ -14,12 +15,16 @@ export class MistralProvider implements BaseLLMProvider {
 
   async getModels(): Promise<LLMModel[]> {
     try {
+      const proxy = process.env.HTTPS_PROXY;
+      const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
+
       const response = await fetch(`${this.baseUrl}/models`, {
+        agent,
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json'
         }
-      });
+      } as any);
       
       if (!response.ok) {
         throw new Error(`Mistral API error: ${response.statusText}`);
@@ -42,8 +47,12 @@ export class MistralProvider implements BaseLLMProvider {
 
   async generateCompletion(request: CompletionRequest): Promise<string> {
     try {
+      const proxy = process.env.HTTPS_PROXY;
+      const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
+
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
+        agent,
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json'
@@ -55,7 +64,7 @@ export class MistralProvider implements BaseLLMProvider {
           max_tokens: request.max_tokens,
           stream: false
         })
-      });
+      } as any);
 
       // Extract headers for rate limiting
       const headers: Record<string, string> = {};

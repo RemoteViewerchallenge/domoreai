@@ -1,3 +1,4 @@
+import { HttpsProxyAgent } from 'https-proxy-agent';
 // @ts-ignore
 import { OpenAI } from 'openai';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
@@ -9,11 +10,15 @@ export class OpenAIProvider implements BaseLLMProvider {
 
   constructor(config: { id: string; apiKey: string; baseURL?: string }) {
     this.id = config.id;
+    const proxy = process.env.HTTPS_PROXY;
+    const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
+
     this.client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL,
       timeout: 60000, // 60 seconds
-    });
+      httpAgent: agent,
+    } as any);
   }
 
   async getModels(): Promise<LLMModel[]> {

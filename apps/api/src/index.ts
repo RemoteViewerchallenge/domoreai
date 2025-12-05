@@ -2,7 +2,7 @@ import './instrumentation.js'; // Must be top line
 import { WebSocketService } from './services/websocket.service.js';
 import { appRouter } from './routers/index.js';
 import './services/IngestionAgent.js';
-import { createExpressMiddleware, type CreateExpressContextOptions } from '@trpc/server/adapters/express';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -11,6 +11,7 @@ import { createTRPCContext as createContext } from './trpc.js';
 import { db, shutdownDb } from './db.js'; 
 import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
+import { autoLoadRawJsonFiles } from './services/RawJsonLoader.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
 import { scheduler } from './services/JobScheduler.js';
 
@@ -67,6 +68,9 @@ async function startServer() {
   // Initialize Provider Manager
   await ProviderManager.initialize();
   await ProviderManager.syncModelsToRegistry();
+
+  // Load raw JSON files
+  await autoLoadRawJsonFiles();
 
   // Mount RESTful API routers
   app.use('/llm', llmRouter);

@@ -28,28 +28,19 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
     // NOTE: Gemini API models are hardcoded or fetched differently than OpenAI.
     // Updated with latest models as of Dec 2024
     return [
-      // --- GEMINI 2.5 SERIES (Latest) ---
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 2000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.5-flash-preview', name: 'Gemini 2.5 Flash Preview', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.5-flash-lite-preview', name: 'Gemini 2.5 Flash-Lite Preview', contextWindow: 1000000, isFree: true, providerId: this.id },
-      
-      // --- GEMINI 2.0 SERIES ---
+      // FREE / PREVIEW TIER (High Rate Limits)
       { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp', contextWindow: 1000000, isFree: true, providerId: this.id },
       { id: 'gemini-2.0-flash-lite-preview-02-05', name: 'Gemini 2.0 Flash-Lite', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp', contextWindow: 2000000, isFree: true, providerId: this.id },
-      
-      // --- GEMINI 1.5 SERIES (Legacy but still supported) ---
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: true, providerId: this.id },
+      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B', contextWindow: 1000000, isFree: true, providerId: this.id },
       
-      // --- GEMINI 3 (Antigravity - Experimental) ---
+      // EXPERIMENTAL (Often Free)
+      { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp', contextWindow: 2000000, isFree: true, providerId: this.id },
+      { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking', contextWindow: 1000000, isFree: true, providerId: this.id },
+      
+      // STANDARD / PAID TIER (Strict Rate Limits on Free Plan)
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: false, providerId: this.id },
       { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Antigravity)', contextWindow: 2000000, isFree: false, providerId: this.id },
-      
-      // --- EMBEDDING MODELS ---
-      { id: 'text-embedding-004', name: 'Text Embedding 004', contextWindow: 2048, isFree: true, providerId: this.id },
     ];
   }
 

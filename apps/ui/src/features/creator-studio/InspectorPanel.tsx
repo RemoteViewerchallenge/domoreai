@@ -30,10 +30,12 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
     );
   }
 
-  const assignedRole = availableRoles.find(r => r.id === selectedStep.assignedRoleId);
+  // const assignedRole = availableRoles.find(r => r.id === selectedStep.assignedRoleId);
 
   // -- handlers --
   
+  // Role handling removed
+  /*
   const handleRoleChange = (roleId: string) => {
     if (roleId === 'new') {
       // Create a temporary new role and assign it
@@ -54,6 +56,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       onUpdateStep(selectedStep.id, { assignedRoleId: roleId });
     }
   };
+  */
 
   return (
     <div className="w-96 bg-[var(--color-background-secondary)] border-l border-[var(--color-border)] h-full flex flex-col shadow-2xl z-20">
@@ -78,15 +81,6 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           <Workflow className="w-4 h-4" />
           Flow & Inputs
         </button>
-        <button
-          onClick={() => setActiveTab('role')}
-          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-            activeTab === 'role' ? 'text-[var(--color-secondary)] bg-zinc-800/50 border-b-2 border-purple-500' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Identity (Role)
-        </button>
       </div>
 
       {/* Content Scroll Area */}
@@ -107,7 +101,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               />
             </div>
 
-            {/* 2. Role Assignment (The Link) */}
+            {/* 2. Role Assignment (The Link) - Removed */}
+            {/*
             <div className="space-y-2">
               <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">Assigned Role</label>
               <select 
@@ -125,6 +120,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 The identity determines the model, system prompt, and tools.
               </p>
             </div>
+            */}
 
             {/* 3. Inputs (Data Mapping) */}
             <div className="space-y-2">

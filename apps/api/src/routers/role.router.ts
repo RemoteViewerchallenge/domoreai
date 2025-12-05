@@ -1,13 +1,13 @@
-import { z } from 'zod';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { prisma } from '../db.js';
-import { ingestAgentLibrary } from '../services/RoleIngestionService.js';
+import { z } from "zod";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import { createTRPCRouter, publicProcedure } from "../trpc.js";
+import { prisma } from "../db.js";
+import { ingestAgentLibrary } from "../services/RoleIngestionService.js";
 
 const createRoleSchema = z.object({
-  name: z.string().min(1, 'Name is required.'),
-  basePrompt: z.string().min(1, 'Base prompt is required.'),
+  name: z.string().min(1, "Name is required."),
+  basePrompt: z.string().min(1, "Base prompt is required."),
   minContext: z.number().int().optional(),
   maxContext: z.number().int().optional(),
   needsVision: z.boolean().default(false),
@@ -18,23 +18,31 @@ const createRoleSchema = z.object({
   needsUncensored: z.boolean().default(false),
   tools: z.array(z.string()).optional().default([]),
   defaultTemperature: z.number().min(0).max(2).optional().default(0.7),
-  defaultMaxTokens: z.number().int().min(256).max(32000).optional().default(2048),
+  defaultMaxTokens: z
+    .number()
+    .int()
+    .min(256)
+    .max(32000)
+    .optional()
+    .default(2048),
   defaultTopP: z.number().min(0).max(1).optional().default(1.0),
   defaultFrequencyPenalty: z.number().min(-2).max(2).optional().default(0.0),
   defaultPresencePenalty: z.number().min(-2).max(2).optional().default(0.0),
   defaultStop: z.array(z.string()).optional(),
   defaultSeed: z.number().int().optional(),
-  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
-  terminalRestrictions: z.object({
-    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
-    commands: z.array(z.string()),
-  }).optional(),
+  defaultResponseFormat: z.enum(["text", "json_object"]).optional(),
+  terminalRestrictions: z
+    .object({
+      mode: z.enum(["whitelist", "blacklist", "unrestricted"]),
+      commands: z.array(z.string()),
+    })
+    .optional(),
 });
 
 const updateRoleSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Name is required.').optional(),
-  basePrompt: z.string().min(1, 'Base prompt is required.').optional(),
+  name: z.string().min(1, "Name is required.").optional(),
+  basePrompt: z.string().min(1, "Base prompt is required.").optional(),
   minContext: z.number().int().optional().nullable(),
   maxContext: z.number().int().optional().nullable(),
   needsVision: z.boolean().optional(),
@@ -51,11 +59,13 @@ const updateRoleSchema = z.object({
   defaultPresencePenalty: z.number().min(-2).max(2).optional(),
   defaultStop: z.array(z.string()).optional(),
   defaultSeed: z.number().int().optional(),
-  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
-  terminalRestrictions: z.object({
-    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
-    commands: z.array(z.string()),
-  }).optional(),
+  defaultResponseFormat: z.enum(["text", "json_object"]).optional(),
+  terminalRestrictions: z
+    .object({
+      mode: z.enum(["whitelist", "blacklist", "unrestricted"]),
+      commands: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export const roleRouter = createTRPCRouter({
@@ -63,23 +73,23 @@ export const roleRouter = createTRPCRouter({
     // Fetch all roles from the database
     const roles = await prisma.role.findMany({
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
       include: {
         preferredModels: {
-            include: { model: true } // Include model details for the UI
-        }
-      }
+          include: { model: true }, // Include model details for the UI
+        },
+      },
     });
-    
+
     // Return roles, or a default role if none exist (prevents UI crash)
-    return roles.length > 0 
-      ? roles 
+    return roles.length > 0
+      ? roles
       : [
           {
-            id: 'default',
-            name: 'General Assistant',
-            basePrompt: 'You are a helpful AI assistant.',
+            id: "default",
+            name: "General Assistant",
+            basePrompt: "You are a helpful AI assistant.",
             minContext: null,
             maxContext: null,
             needsVision: false,
@@ -136,7 +146,7 @@ export const roleRouter = createTRPCRouter({
     .input(updateRoleSchema)
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      
+
       // Update the role in the database
       const role = await prisma.role.update({
         where: { id },
@@ -159,12 +169,71 @@ export const roleRouter = createTRPCRouter({
     // Get the directory where this router is located
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const agentsDir = path.join(__dirname, '../../data/agents/en');
+    const agentsDir = path.join(__dirname, "../../data/agents/en");
 
     const stats = await ingestAgentLibrary(agentsDir, prisma);
     return {
-      message: 'Agent library ingestion complete',
+      message: "Agent library ingestion complete",
       ...stats,
     };
   }),
+
+  generatePrompt: publicProcedure
+    .input(
+      z.object({
+        name: z.string(),
+        goal: z.string().optional(),
+        tools: z.array(z.string()).optional(),
+        roleId: z.string().optional(), // Keep roleId optional for now
+        context: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { roleId, context, name, goal } = input;
+
+      // If roleId is provided, use the old logic
+      if (roleId) {
+        const role = await prisma.role.findUnique({
+          where: { id: roleId },
+          include: {
+            preferredModels: {
+              include: { model: true },
+            },
+          },
+        });
+
+        if (!role) {
+          throw new Error(`Role with ID ${roleId} not found`);
+        }
+
+        let fullPrompt = role.basePrompt;
+        if (context && context.trim()) {
+          fullPrompt += "\n\n" + context;
+        }
+
+        return {
+          prompt: fullPrompt,
+          role: {
+            id: role.id,
+            name: role.name,
+            basePrompt: role.basePrompt,
+            defaultTemperature: role.defaultTemperature,
+            defaultMaxTokens: role.defaultMaxTokens,
+            preferredModels: role.preferredModels,
+          },
+        };
+      }
+
+      // --- New "Magic Generate" Logic ---
+      // TODO: Replace this with a real call to an LLM to generate a prompt
+      console.log("Generating prompt for:", { name, goal });
+      const generatedPrompt = `## ROLE: ${name}\n\n**GOAL:**\n${
+        goal || "No specific goal provided."
+      }\n\n**CORE INSTRUCTIONS:**\n- You are a specialized AI assistant with the role of ${name}.\n- Your primary objective is to fulfill the user's request based on your defined goal.\n- Analyze the context provided and respond efficiently and accurately.`;
+
+      return {
+        prompt: generatedPrompt,
+        role: null, // No full role object is returned for a generated prompt
+      };
+    }),
 });

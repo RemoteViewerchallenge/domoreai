@@ -34,7 +34,7 @@ export class ModelDoctor {
   // Bulk Operation: iterate all models and diagnose
   async healModels(forceResearch = false) {
     const allModels = await db.query.modelRegistry.findMany();
-    let stats = { inferred: 0, researched: 0, failed: 0, skipped: 0 };
+    const stats = { inferred: 0, researched: 0, failed: 0, skipped: 0 };
 
     const analyst = await this.createAnalyst();
 
@@ -79,7 +79,7 @@ export class ModelDoctor {
   }
 
   private async diagnoseModel(model: any, agent: any, forceResearch: boolean): Promise<'inferred' | 'researched' | 'failed' | null> {
-      const specs = (model.specs as any) || {};
+      const specs = (model.specs) || {};
 
       // Skip if already healthy and not forced
       if (!forceResearch && specs.contextWindow && specs.contextWindow > 0) {
@@ -89,7 +89,7 @@ export class ModelDoctor {
       console.log(`[ModelDoctor] 🩺 Diagnosing: ${model.modelId}...`);
 
       // 1. Inference
-      const inference = await this.inferSpecs(agent, model.modelId, model.providerData as any);
+      const inference = await this.inferSpecs(agent, model.modelId, model.providerData);
       if (inference.confidence === 'high') {
         console.log(`[ModelDoctor] 🧠 Inferred:`, inference.data);
         await this.saveKnowledge(model, inference.data, 'inference');
@@ -131,7 +131,7 @@ export class ModelDoctor {
   }
 
   private async researchSpecs(agent: any, model: any) {
-    const raw = model.providerData as any || {};
+    const raw = model.providerData || {};
     const url = raw.documentation_url || raw.description_url || this.guessUrl(model.modelId);
 
     if (!url) return null;
@@ -154,8 +154,8 @@ export class ModelDoctor {
   }
 
   private async saveKnowledge(model: any, data: any, source: string) {
-    const aiData = { ...(model.aiData as any), ...data, source, lastUpdated: new Date() };
-    const specs = { ...(model.providerData as any), ...aiData };
+    const aiData = { ...(model.aiData), ...data, source, lastUpdated: new Date() };
+    const specs = { ...(model.providerData), ...aiData };
 
     await db.update(modelRegistry)
       .set({ aiData, specs })

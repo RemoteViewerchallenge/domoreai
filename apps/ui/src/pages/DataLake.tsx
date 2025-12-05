@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from '../components/UniversalDataGrid.js';
 import { VisualQueryBuilder } from '../components/VisualQueryBuilder.js';
-import { Trash2, Database, X } from 'lucide-react';
+import { JsonImportModal } from '../components/JsonImportModal.js';
+import { Trash2, Database, X, Upload } from 'lucide-react';
 
 const DataLake: React.FC = () => {
   const [showQueryBuilder, setShowQueryBuilder] = useState(false);
   const [customData, setCustomData] = useState<any[] | null>(null);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'flattened' | 'all'>('all');
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const utils = trpc.useContext();
 
@@ -73,6 +75,13 @@ const DataLake: React.FC = () => {
             className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 border border-purple-700 rounded transition-colors text-xs"
           >
             AUTO-CONVERT TO TABLE
+          </button>
+
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-green-900/30 hover:bg-green-900/50 text-green-400 border border-green-700 rounded transition-colors text-xs"
+          >
+            <Upload size={14} /> IMPORT FROM JSON
           </button>
         </div>
       </div>
@@ -171,6 +180,17 @@ const DataLake: React.FC = () => {
           )}
         </div>
       </div>
+
+      {showImportModal && (
+        <JsonImportModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={(newTableName) => {
+            utils.dataRefinement.listAllTables.invalidate();
+            setSelectedTable(newTableName);
+            setShowImportModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../db.js';
+import { writeFile } from 'fs/promises';
+import { join } from 'path';
+import { db, prisma } from '../db.js';
 import { providerConfigs, modelRegistry } from '../db/schema.js';
 import { decrypt, encrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
@@ -9,6 +11,8 @@ import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js
 export class ProviderManager {
   private static providers: Map<string, BaseLLMProvider> = new Map();
   private static unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
+  // NEW: Store metadata for logging and filtering
+  private static providerMetadata: Map<string, { label: string; type: string }> = new Map();
 
   public static markUnhealthy(providerId: string, cooldownSeconds: number) {
     this.unhealthyProviders.set(providerId, Date.now() + cooldownSeconds * 1000);
@@ -38,6 +42,8 @@ export class ProviderManager {
       const configs = await db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
       
       this.providers.clear();
+      this.providerMetadata.clear(); // Clear metadata
+
       for (const config of configs) {
         try {
           const apiKey = decrypt(config.apiKey);
@@ -47,6 +53,10 @@ export class ProviderManager {
             baseURL: config.baseURL || undefined,
           });
           this.providers.set(config.id, provider);
+          
+          // STORE METADATA HERE
+          this.providerMetadata.set(config.id, { label: config.label, type: config.type });
+          
           console.log(`[ProviderManager] ✅ Online: ${config.label} (${config.type})`);
         } catch (error) {
           console.error(`[ProviderManager] ❌ Failed to init ${config.label}:`, error);
@@ -133,13 +143,47 @@ export class ProviderManager {
 
     for (const [providerId, provider] of this.providers.entries()) {
       try {
-        const models = await provider.getModels();
-        if (models.length === 0) continue;
+        // 1. Get readable name for logs
+        const meta = this.providerMetadata.get(providerId);
+        const providerLabel = meta?.label || providerId;
+        const providerType = meta?.type || 'unknown';
+
+        console.log(`[ProviderManager] Fetching models from ${providerLabel} (${providerType})...`);
+        let models = await provider.getModels();
+        console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}`);
+
+        // SAVE RAW UNFILTERED DATA IMMEDIATELY TO JSON FILE
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const filename = `${providerType}_models_${timestamp}.json`;
+          // Use process.cwd() - this is where node is actually running from
+          const cwd = process.cwd();
+          const filepath = join(cwd, filename);
+          console.log(`[ProviderManager] 📝 CWD=${cwd}`);
+          console.log(`[ProviderManager] 📝 Saving ${models.length} models to: ${filepath}`);
+          await writeFile(filepath, JSON.stringify(models, null, 2), 'utf8');
+          console.log(`[ProviderManager] ✅ Successfully saved ${models.length} records to: ${filename}`);
+        } catch (fileErr) {
+          console.error(`[ProviderManager] ❌ FAILED TO SAVE FILE:`, fileErr);
+        }
+
+        // 2. Apply provider-specific filters AFTER saving raw data
+        if (providerType === 'openrouter') {
+            const originalCount = models.length;
+            models = models.filter(m => m.id.endsWith(':free'));
+            console.log(`[Registry Sync] Filtered OpenRouter: Kept ${models.length} free models (dropped ${originalCount - models.length})`);
+        }
+
+        if (models.length === 0) {
+          console.warn(`[ProviderManager] No models to sync for ${providerLabel} after filtering`);
+          continue;
+        }
 
         const uniqueModels = new Map<string, LLMModel>();
         models.forEach(m => uniqueModels.set(m.id, m));
 
-        console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerId}...`);
+        // 3. Log with readable name
+        console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
 
         for (const m of uniqueModels.values()) {
           const cost = m.costPer1k as number | undefined;
@@ -161,7 +205,7 @@ export class ProviderManager {
             isFree: isFree,
             costPer1k: cost || 0,
             updatedAt: now,
-            providerData: (m.providerData || {}) as any,
+            providerData: (m.providerData || {}),
             specs: specs as any,
             aiData: {} as any
           }).onConflictDoUpdate({
@@ -171,14 +215,21 @@ export class ProviderManager {
               isFree: isFree,
               costPer1k: cost || 0,
               updatedAt: now,
-              providerData: (m.providerData || {}) as any,
+              providerData: (m.providerData || {}),
               specs: specs as any
             }
           });
         }
 
-      } catch (error) {
-        console.error(`[Registry Sync] Failed for provider ${providerId}:`, error);
+      } catch (error: any) {
+        const meta = this.providerMetadata.get(providerId);
+        const providerLabel = meta?.label || providerId;
+        if (error.cause?.code === 'ETIMEDOUT') {
+          console.error(`[Registry Sync] Failed for provider ${providerLabel}: Connection timed out.`);
+          console.error(`If you are behind a firewall, please ensure the HTTPS_PROXY environment variable is correctly configured.`);
+        } else {
+          console.error(`[Registry Sync] Failed for provider ${providerLabel}:`, error);
+        }
       }
     }
 
@@ -239,5 +290,3 @@ export class ProviderManager {
     }
   }
 }
-
-

@@ -56,6 +56,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   });
   const generatePromptMutation = trpc.role.generatePrompt.useMutation();
   const updateToolExamplesMutation = trpc.orchestrator.updateToolExamples.useMutation();
+  const runDoctorMutation = trpc.model.runDoctor.useMutation();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -90,26 +91,9 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
 
   // --- TASK 1: Code Mode Auto-Templating ---
-  useEffect(() => {
-    if (formData.needsCoding || formData.needsTools) {
-      const CODE_MODE_PROTOCOL = `
-## 🛠️ TOOL USAGE PROTOCOL (REQUIRED)
-You are operating in **CODE MODE**. To perform actions, you must write executable TypeScript code blocks.
-- DO NOT ask "Can I use a tool?". Just write the code.
-- Use the \`system\` namespace for tools (e.g., \`await system.read_file({ path: "..." })\`).
-- Always wrap logic in \`async function main() { ... }\` or top-level await blocks.
-- Use \`console.log()\` to output your final answer or reasoning.
-{{tool_definitions}}
-`;
-      setFormData(prev => {
-        if (prev.basePrompt.includes("TOOL USAGE PROTOCOL")) return prev;
-        return {
-          ...prev,
-          basePrompt: prev.basePrompt + CODE_MODE_PROTOCOL
-        };
-      });
-    }
-  }, [formData.needsCoding, formData.needsTools]);
+  // --- TASK 1: Code Mode Auto-Templating ---
+  // REMOVED: Handled by AgentRuntime backend dynamically
+  // The backend will automatically inject the protocol and tool definitions if tools are present.
 
   // --- TASK 2: Magic Generate ---
   const handleMagicGenerate = async () => {
@@ -160,15 +144,19 @@ You are operating in **CODE MODE**. To perform actions, you must write executabl
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return registryData.rows.filter((row: any) => {
-      // Check Type (Default to 'chat' if unknown, unless explicit type column exists)
-      // We assume 'type' column exists or we infer it.
-      const rowType = row.type || row.model_type || 'chat'; 
-      // If rowType is an array (some dbs), check intersection, else check inclusion
-      const typeMatch = Array.isArray(rowType) 
-        ? rowType.some((t: string) => selectedTypes.includes(t))
-        : selectedTypes.includes(rowType);
+      // RELAXED TYPE CHECK:
+      const rowType = (row.type || row.model_type || 'chat').toLowerCase(); 
+      
+      // Allow if ANY selected type matches part of the row type string
+      // e.g. selected=['tts'] matches rowType='text-to-speech'
+      const typeMatch = selectedTypes.some(t => rowType.includes(t.toLowerCase()));
 
-      if (!typeMatch) return false;
+      // If 'chat' is selected, include 'text-generation' and models with NO type
+      if (selectedTypes.includes('chat') && (rowType === 'text-generation' || !row.type)) {
+          // keep it
+      } else if (!typeMatch) {
+          return false;
+      }
 
       // Check standard context window
       const contextCol = Object.keys(row).find(k => k.includes('context') || k.includes('window'));
@@ -750,8 +738,8 @@ You are operating in **CODE MODE**. To perform actions, you must write executabl
                 {/* Provider Breakdown Table */}
                 <div className="pt-4 border-t border-[var(--color-border)]">
                    <div className="flex justify-between items-end mb-2">
-                     <div className="flex gap-1">
-                        {['chat', 'embedding', 'coding', 'tts'].map(type => (
+                     <div className="flex gap-1 flex-wrap">
+                        {['chat', 'embedding', 'coding', 'tts', 'image'].map(type => (
                           <button
                             key={type}
                             onClick={() => {
@@ -770,6 +758,17 @@ You are operating in **CODE MODE**. To perform actions, you must write executabl
                             {type}
                           </button>
                         ))}
+                        <button
+                          onClick={() => {
+                            if (confirm("Run Model Doctor? This will scan all models and infer their specs.")) {
+                                runDoctorMutation.mutate({ force: false });
+                            }
+                          }}
+                          disabled={runDoctorMutation.isLoading}
+                          className="px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded hover:bg-purple-500 transition-all ml-2"
+                        >
+                          {runDoctorMutation.isLoading ? 'HEALING...' : 'RUN DOCTOR'}
+                        </button>
                      </div>
                      <span className="text-xl font-bold text-[var(--color-text)]">{filteredModels.length} <span className="text-xs text-[var(--color-text-muted)] font-normal">TOTAL</span></span>
                    </div>

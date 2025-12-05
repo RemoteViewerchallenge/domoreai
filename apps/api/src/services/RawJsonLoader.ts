@@ -1,0 +1,95 @@
+import { readdir, readFile } from 'fs/promises';
+import { join } from 'path';
+import { prisma } from '../db.js';
+
+/**
+ * Scans for raw JSON files saved by ProviderManager
+ * and creates/populates tables from the JSON data
+ */
+export async function autoLoadRawJsonFiles() {
+  try {
+    const rootDir = process.cwd();
+    console.log(`[JsonLoader] 🔍 Scanning ${rootDir} for provider JSON files...`);
+
+    const files = await readdir(rootDir);
+    const jsonFiles = files.filter(f =>
+      f.match(/^(google|mistral|openrouter|groq|ollama)_models_.*\.json$/)
+    );
+
+    if (jsonFiles.length === 0) {
+      console.log('[JsonLoader] ℹ️ No provider JSON files found in', rootDir);
+      return;
+    }
+
+    console.log(`[JsonLoader] ✓ Found ${jsonFiles.length} files: ${jsonFiles.join(', ')}`);
+
+    for (const file of jsonFiles) {
+      try {
+        const filepath = join(rootDir, file);
+        const content = await readFile(filepath, 'utf-8');
+        const jsonData = JSON.parse(content);
+
+        const match = file.match(/^(\w+)_models_/);
+        if (!match) continue;
+
+        const providerType = match[1];
+        const tableName = `raw_${providerType}_models`;
+        const rows = Array.isArray(jsonData) ? jsonData : [jsonData];
+
+        console.log(`[JsonLoader] 📊 Creating table ${tableName} with ${rows.length} rows...`);
+
+        // Extract all unique keys
+        const keysSet = new Set<string>();
+        rows.forEach(obj => {
+          if (obj && typeof obj === 'object') {
+            Object.keys(obj).forEach(k => keysSet.add(k));
+          }
+        });
+
+        const keys = Array.from(keysSet).sort();
+        if (keys.length === 0) {
+          console.warn(`[JsonLoader] ⚠️ No keys in ${file}`);
+          continue;
+        }
+
+        // Drop existing table
+        await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${tableName}"`);
+
+        // Create table with all columns as TEXT
+        const columnDefs = keys.map(k => `"${k}" TEXT`).join(', ');
+        const createSql = `CREATE TABLE "${tableName}" (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          _loaded_at TIMESTAMP DEFAULT NOW(),
+          ${columnDefs}
+        )`;
+
+        await prisma.$executeRawUnsafe(createSql);
+        console.log(`[JsonLoader] ✅ Created table ${tableName}`);
+
+        // Insert all rows
+        let inserted = 0;
+        for (const row of rows) {
+          const cols = keys.map(k => `"${k}"`).join(', ');
+          const vals = keys.map(k => {
+            const v = (row as Record<string, unknown>)[k];
+            if (v === null || v === undefined) return 'NULL';
+            const s = String(v).replace(/'/g, "''");
+            return `'${s}'`;
+          }).join(', ');
+
+          await prisma.$executeRawUnsafe(`INSERT INTO "${tableName}" (${cols}) VALUES (${vals})`);
+          inserted++;
+        }
+
+        console.log(`[JsonLoader] ✅ Inserted ${inserted} rows into ${tableName}`);
+      } catch (err) {
+        console.error(`[JsonLoader] ✗ Failed to load ${file}:`, (err as Error).message);
+      }
+    }
+
+    console.log('[JsonLoader] ✅ Raw JSON load complete');
+  } catch (err) {
+    console.error('[JsonLoader] ❌ Error:', (err as Error).message);
+  }
+}
+

@@ -1,7 +1,9 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc.js';
 import { ModelService } from '../services/model.service.js';
+import { ModelDoctor } from '../services/ModelDoctor.js';
 import { modelInputSchema } from '@repo/api-contract';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 const modelService = new ModelService();
 
@@ -15,6 +17,48 @@ export const modelRouter = createTRPCRouter({
   list: publicProcedure
     .query(() => {
       return modelService.listModels();
+    }),
+
+  export: publicProcedure
+    .query(() => {
+      return modelService.listModels();
+    }),
+
+  import: protectedProcedure
+    .input(z.array(modelInputSchema))
+    .mutation(async ({ ctx, input }) => {
+      let successCount = 0;
+      for (const model of input) {
+        const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = model;
+        const specsData = {
+            contextWindow,
+            hasVision,
+            hasReasoning,
+            hasCoding,
+            lastUpdated: new Date().toISOString()
+        };
+        await ctx.prisma.model.upsert({
+          where: {
+            providerId_modelId: { providerId, modelId },
+          },
+          update: {
+            name,
+            isFree,
+            specs: specsData as Prisma.InputJsonValue,
+            providerData: providerData as Prisma.InputJsonValue,
+          },
+          create: {
+            providerId,
+            modelId,
+            name,
+            isFree,
+            specs: specsData as Prisma.InputJsonValue,
+            providerData: providerData as Prisma.InputJsonValue,
+          },
+        });
+        successCount++;
+      }
+      return { imported: successCount, total: input.length };
     }),
 
   // --- MERGE TO C.O.R.E. WORKFLOW ---
@@ -51,7 +95,7 @@ export const modelRouter = createTRPCRouter({
       const { sourceTableName } = input;
 
       // A. Fetch Raw Data using Unsafe Query (Bypasses Prisma typing for dynamic tables)
-      const rows = await ctx.prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`) as any[];
+      const rows = await ctx.prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`);
       if (!rows.length) throw new Error(`Table ${sourceTableName} is empty.`);
 
       // B. Fetch Saved Mapping (if any)
@@ -118,7 +162,7 @@ export const modelRouter = createTRPCRouter({
       try {
         // Query the user's "my_free_models" table (or whatever they named it)
         // We assume the user wants 'my_free_models' as the source of truth now.
-        const rows = await ctx.prisma.$queryRaw`SELECT * FROM "my_free_models"` as any[];
+        const rows = await ctx.prisma.$queryRaw`SELECT * FROM "my_free_models"`;
         
         return rows.map((row: any) => ({
           id: row.id || row.model_id || row.name,
@@ -159,11 +203,6 @@ export const modelRouter = createTRPCRouter({
           // In a real scenario, we might check information_schema for columns first.
           // But for this "hacky" unified list, we'll assume a happy path or use NULLs.
           
-          // Let's assume the user has standardized them somewhat or we just take what we can.
-          // We'll try to select 'id', 'name' (or 'model_name'), 'context_length' (or 'context_window')
-          // Since we can't easily check columns per table in a single query builder pass without overhead,
-          // we will construct a query that tries to be safe or we accept that it might fail if schemas diverge wildly.
-          
           // BETTER APPROACH: Just select * and map in JS, but that's heavy.
           // Let's try to select specific columns and assume they exist because the user created them via our tool.
           return `SELECT '${t.name}' as source, "id"::text, "name"::text, "context_length"::numeric as context_length FROM "${t.name}"`;
@@ -172,7 +211,7 @@ export const modelRouter = createTRPCRouter({
         const fullQuery = queries.join(' UNION ALL ');
 
         // 3. Execute
-        const rows = await ctx.prisma.$queryRawUnsafe(fullQuery) as any[];
+        const rows = await ctx.prisma.$queryRawUnsafe(fullQuery);
 
         return rows.map((row: any) => ({
           id: row.id,
@@ -186,5 +225,14 @@ export const modelRouter = createTRPCRouter({
         // Fallback to empty list or handle gracefully
         return [];
       }
+    }),
+
+  // NEW PROCEDURE:
+  runDoctor: protectedProcedure
+    .input(z.object({ force: z.boolean().optional() }))
+    .mutation(async ({ input }) => {
+      const doctor = new ModelDoctor();
+      const stats = await doctor.healModels(input.force);
+      return stats;
     }),
 });
