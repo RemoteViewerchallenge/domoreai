@@ -205,7 +205,7 @@ model TableMapping {
 
 model OrchestratorConfig {
   id             String   @id @default("global")
-  activeTableName String  @default("unified_models") // The user-selected table
+  activeTableName String  @default("model_registry") // The user-selected table
   
   // Future-proofing for strategies
   strategies     Json?    @default("[]") 
