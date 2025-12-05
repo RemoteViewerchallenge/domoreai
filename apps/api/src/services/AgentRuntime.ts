@@ -123,6 +123,7 @@ export class AgentRuntime {
   private fsTools: ReturnType<typeof createFsTools>;
   private rootPath: string;
   private contextManager = contextManager;
+  private toolDocs: string = '';
 
   constructor(rootPath: string = process.cwd()) {
     this.rootPath = rootPath;
@@ -182,6 +183,9 @@ export class AgentRuntime {
       call_template_type: 'local',
       tools: toolsToRegister
     } as unknown as CallTemplate); // Cast to CallTemplate
+    
+    // 5. Load Tool Documentation
+    await this.loadToolDocs(requestedTools);
     
     console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
   }
@@ -340,9 +344,76 @@ export class AgentRuntime {
   async generateWithContext(agent: { generate: (prompt: string) => Promise<unknown> }, baseSystemPrompt: string, prompt: string, roleId?: string) {
     const roleContext = roleId ? await this.contextManager.getContext(roleId) : { tone: '', style: '', memory: {} };
     const memoryStr = Object.entries(roleContext.memory || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
-    const enhancedSystemPrompt = `${baseSystemPrompt || ''}\n\n${roleContext.tone || ''}\n\n${memoryStr}`.trim();
+    
+    let enhancedSystemPrompt = `${baseSystemPrompt || ''}\n\n${roleContext.tone || ''}\n\n${memoryStr}`.trim();
+    
+    // Inject Tool Documentation
+    if (this.toolDocs) {
+        if (enhancedSystemPrompt.includes('{{tool_definitions}}')) {
+            enhancedSystemPrompt = enhancedSystemPrompt.replace('{{tool_definitions}}', this.toolDocs);
+        } else {
+            // Auto-append Protocol + Docs if tag is missing
+            const CODE_MODE_PROTOCOL = `
+## 🛠️ TOOL USAGE PROTOCOL
+You are operating in **CODE MODE**. To perform actions, you must write executable TypeScript code blocks.
+- Use the \`system\` namespace for tools (e.g., \`await system.read_file({ path: "..." })\`).
+- Always wrap logic in \`async function main() { ... }\` or top-level await blocks.
+- Use \`console.log()\` to output your final answer or reasoning.
+
+### Available Tools:
+${this.toolDocs}
+`;
+            enhancedSystemPrompt += CODE_MODE_PROTOCOL;
+        }
+    }
+
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
     // Delegate to the provided agent/provider
     return agent.generate(finalPrompt);
+  }
+
+  private async loadToolDocs(tools: string[]) {
+      const docs: string[] = [];
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      // Resolve path to .domoreai/tools
+      let rootDir = process.cwd();
+      if (rootDir.endsWith('apps/api')) {
+          rootDir = path.resolve(rootDir, '../../');
+      }
+      const toolsDir = path.join(rootDir, '.domoreai/tools');
+
+      const nativeTools = this.getNativeTools();
+
+      for (const tool of tools) {
+          // 1. Native Tools
+          const nativeTool = nativeTools.find(t => t.name === tool);
+          if (nativeTool) {
+              docs.push(`### Tool: \`system.${nativeTool.name}\``);
+              docs.push(`**Description:** ${nativeTool.description}`);
+              docs.push('**Signature:**');
+              docs.push('```typescript');
+              // Simplified signature generation
+              const props = nativeTool.input_schema?.properties || {};
+              const args = Object.entries(props).map(([k, v]) => `${k}: ${(v).type}`).join(', ');
+              docs.push(`await system.${nativeTool.name}({ ${args} })`);
+              docs.push('```');
+              docs.push('---');
+              continue;
+          }
+
+          // 2. MCP Tools (Server Names)
+          // We assume the tool string IS the server name for MCP tools in this context
+          // (AgentRuntime init receives server names)
+          try {
+              const content = await fs.readFile(path.join(toolsDir, `${tool}_examples.md`), 'utf-8');
+              docs.push(content);
+          } catch (e) {
+              // Ignore if no doc found
+          }
+      }
+      
+      this.toolDocs = docs.join('\n\n');
   }
 }

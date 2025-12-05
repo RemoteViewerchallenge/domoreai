@@ -103,6 +103,8 @@ export const OrchestrationDesigner: React.FC = () => {
     });
 
     // Update any nodes that were temporarily assigned the temp ID
+    // Update any nodes that were temporarily assigned the temp ID - Logic removed as roles are decoupled
+    /*
     setNodes(nds => nds.map(node => {
       if (node.data.step.assignedRoleId === newRole.id) {
         return {
@@ -118,6 +120,7 @@ export const OrchestrationDesigner: React.FC = () => {
       }
       return node;
     }));
+    */
   };
 
   const handleUpdateRole = async (updatedRole: RoleConfig) => {
@@ -136,7 +139,6 @@ export const OrchestrationDesigner: React.FC = () => {
       return {
         name: step.label,
         order: index, // TODO: Calculate topological sort order
-        roleId: step.assignedRoleId,
         stepType: step.type === 'judge' ? 'conditional' : 'sequential',
         condition: step.flowControl, // Store flow control in condition JSON
         inputMapping: step.inputMapping,

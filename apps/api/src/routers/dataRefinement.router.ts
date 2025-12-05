@@ -545,4 +545,102 @@ export const dataRefinementRouter = createTRPCRouter({
       await ctx.prisma.savedQuery.delete({ where: { name: input.name } });
       return { success: true };
     }),
+
+  importJsonToTable: publicProcedure
+    .input(z.object({
+        tableName: z.string(),
+        jsonString: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+        // Validate and sanitize table name
+        let safeTableName = input.tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+        if (!safeTableName || safeTableName.match(/^\d/)) {
+            throw new Error("Invalid table name. Must contain letters, numbers, or underscores and not start with a number.");
+        }
+
+        const { jsonString } = input;
+        
+        console.log(`[Import] Starting JSON import to table: ${safeTableName}`);
+
+        // Parse and validate JSON
+        let jsonData: any[];
+        try {
+            jsonData = JSON.parse(jsonString);
+            if (!Array.isArray(jsonData)) {
+                throw new Error("JSON must be an array of objects");
+            }
+            if (jsonData.length === 0) {
+                throw new Error("JSON array is empty");
+            }
+            console.log(`[Import] Parsed ${jsonData.length} records from JSON`);
+        } catch (e) {
+            const errMsg = (e as Error).message || String(e);
+            throw new Error(`Invalid JSON: ${errMsg}`);
+        }
+
+        try {
+            // Drop existing table
+            console.log(`[Import] Dropping table if exists: ${safeTableName}`);
+            await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}"`);
+
+            // Extract all unique keys from all objects
+            const keysSet = new Set<string>();
+            jsonData.forEach(obj => {
+                if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                    Object.keys(obj).forEach(k => keysSet.add(k));
+                }
+            });
+
+            const keys = Array.from(keysSet).sort();
+            console.log(`[Import] Found columns: ${keys.join(', ')}`);
+
+            if (keys.length === 0) {
+                throw new Error("No keys found in JSON objects");
+            }
+
+            // Build CREATE TABLE statement with TEXT columns
+            const columnDefs = keys.map(k => `"${k}" TEXT`).join(', ');
+            const createTableSql = `
+                CREATE TABLE "${safeTableName}" (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    ${columnDefs},
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            `;
+            
+            console.log(`[Import] Creating table with SQL:`, createTableSql.substring(0, 100) + '...');
+            await ctx.prisma.$executeRawUnsafe(createTableSql);
+
+            // Insert rows with proper NULL handling
+            let insertedCount = 0;
+            for (const row of jsonData) {
+                const columns = keys.map(k => `"${k}"`).join(', ');
+                const values = keys.map(k => {
+                    const val = row[k];
+                    if (val === null || val === undefined) return 'NULL';
+                    // Convert to string and escape single quotes
+                    const strVal = String(val).replace(/'/g, "''");
+                    return `'${strVal}'`;
+                }).join(', ');
+
+                const insertSql = `INSERT INTO "${safeTableName}" (${columns}) VALUES (${values})`;
+                await ctx.prisma.$executeRawUnsafe(insertSql);
+                insertedCount++;
+            }
+
+            console.log(`[Import] Inserted ${insertedCount} rows`);
+
+            // Get row count for verification
+            const result = await ctx.prisma.$queryRawUnsafe<[{ count: bigint }]>(`SELECT COUNT(*) as count FROM "${safeTableName}"`);
+            const count = Number(result[0]?.count ?? 0);
+
+            console.log(`[Import] Final row count: ${count}`);
+            return { success: true, tableName: safeTableName, rowCount: count };
+
+        } catch (error: any) {
+            const errMsg = (error as Error).message || String(error);
+            console.error(`[Import] JSON import to table '${safeTableName}' failed:`, errMsg);
+            throw new Error(`Failed to import JSON: ${errMsg}`);
+        }
+    }),
 });

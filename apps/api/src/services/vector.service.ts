@@ -62,7 +62,7 @@ export class PgVectorStore {
        LIMIT $2`,
       vectorString,
       topK
-    ) as any[];
+    );
 
     return results.map(r => ({
       id: r.id,

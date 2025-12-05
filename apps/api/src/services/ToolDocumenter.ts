@@ -8,7 +8,7 @@ interface Tool {
   description?: string;
   inputSchema?: {
     type?: string;
-    properties?: Record<string, unknown>;
+    properties?: Record<string, any>;
     required?: string[];
   };
 }
@@ -20,30 +20,39 @@ export class ToolDocumenter {
     if (root.endsWith('apps/api')) {
         root = path.resolve(root, '../../');
     }
-    return path.resolve(root, '.domoreai/tools');
+    const p = path.resolve(root, '.domoreai/tools');
+    console.log('[ToolDocumenter] Storage Path:', p);
+    return p;
   }
 
   static async documentServer(serverName: string, client: Client) {
     try {
-      // Ensure directory exists
-      await fs.mkdir(this.STORAGE_PATH, { recursive: true });
-
       const result = await client.listTools();
       const tools = result.tools as Tool[];
+      await this.documentTools(serverName, tools);
+    } catch (error) {
+      console.error(`[ToolDocumenter] Failed to document server ${serverName}:`, error);
+    }
+  }
+
+  static async documentTools(sourceName: string, tools: Tool[]) {
+    try {
+      // Ensure directory exists
+      await fs.mkdir(this.STORAGE_PATH, { recursive: true });
       
       if (!tools || tools.length === 0) return;
 
       // 1. Generate Type Definitions
-      const typeDefs = this.generateTypeDefinitions(serverName, tools);
-      await fs.writeFile(path.join(this.STORAGE_PATH, `${serverName}.d.ts`), typeDefs);
+      const typeDefs = this.generateTypeDefinitions(sourceName, tools);
+      await fs.writeFile(path.join(this.STORAGE_PATH, `${sourceName}.d.ts`), typeDefs);
 
-      // 2. Generate Usage Examples
-      const examples = await this.generateUsageExamples(serverName, tools);
-      await fs.writeFile(path.join(this.STORAGE_PATH, `${serverName}_examples.md`), examples);
+      // 2. Generate Comprehensive Documentation
+      const documentation = await this.generateDocumentation(sourceName, tools);
+      await fs.writeFile(path.join(this.STORAGE_PATH, `${sourceName}_examples.md`), documentation);
       
-      console.log(`[ToolDocumenter] Generated documentation for ${serverName}`);
+      console.log(`[ToolDocumenter] Generated documentation for ${sourceName}`);
     } catch (error) {
-      console.error(`[ToolDocumenter] Failed to document server ${serverName}:`, error);
+      console.error(`[ToolDocumenter] Failed to document tools for ${sourceName}:`, error);
     }
   }
 
@@ -66,9 +75,10 @@ export class ToolDocumenter {
       if (schema && schema.properties) {
         for (const [key, value] of Object.entries(schema.properties)) {
           // Cast value to any or check type
-          if (typeof value === 'object' && value !== null && 'type' in (value as any)) {
+          if (typeof value === 'object' && value !== null && 'type' in (value)) {
             const isOptional = !schema.required?.includes(key);
-            const type = this.mapJsonTypeToTs((value as any).type);
+            const type = this.mapJsonTypeToTs((value).type);
+            props.push(`    /** ${(value).description || ''} */`);
             props.push(`    ${key}${isOptional ? '?' : ''}: ${type};`);
           }
         }
@@ -89,26 +99,58 @@ export class ToolDocumenter {
     return lines.join('\n');
   }
 
-  private static async generateUsageExamples(serverName: string, tools: Tool[]): Promise<string> {
-    const examples: string[] = [];
+  private static async generateDocumentation(serverName: string, tools: Tool[]): Promise<string> {
+    const docs: string[] = [];
 
     // We'll try to get a smart model to generate examples
-    // If we can't, we'll generate a basic template
     let model = null;
     try {
-        // Try to find a model that supports reasoning or coding
-        // We'll just ask for a generic best model for 'coding' role if possible, or just any model
-        // Since we don't have a role ID handy, we'll try to find a default model
         const allModels = await ProviderManager.getAllModels();
-        model = allModels.find(m => m.id.includes('claude-3-5') || m.id.includes('gpt-4'));
+        // Prefer a smart model for docs generation
+        model = allModels.find(m => m.id.includes('claude-3-5') || m.id.includes('gpt-4') || m.id.includes('gemini-1.5-pro'));
     } catch (e) {
         // Ignore
     }
 
     for (const tool of tools) {
-      const toolName = `${serverName}_${tool.name}`;
+      const toolName = serverName === 'system' ? tool.name : `${serverName}_${tool.name}`;
+      const interfaceName = `${this.capitalize(serverName)}${this.capitalize(tool.name)}Args`;
       
-      let exampleCode = `await system.${toolName}({ /* args */ });`;
+      docs.push(`### Tool: \`system.${toolName}\``);
+      docs.push(`**Description:** ${tool.description || 'No description provided.'}`);
+      docs.push('');
+      
+      // Signature
+      docs.push('**Signature:**');
+      docs.push('```typescript');
+      docs.push(`await system.${toolName}(args: ${interfaceName})`);
+      docs.push('```');
+      docs.push('');
+
+      // Arguments Table
+      docs.push('**Arguments:**');
+      docs.push('| Name | Type | Required | Description |');
+      docs.push('|------|------|----------|-------------|');
+      
+      const schema = tool.inputSchema;
+      if (schema && schema.properties) {
+        for (const [key, value] of Object.entries(schema.properties)) {
+           const v = value;
+           const type = this.mapJsonTypeToTs(v.type);
+           const required = schema.required?.includes(key) ? 'Yes' : 'No';
+           const desc = (v.description || '').replace(/\n/g, ' ');
+           docs.push(`| \`${key}\` | \`${type}\` | ${required} | ${desc} |`);
+        }
+      } else {
+        docs.push('| - | - | - | No arguments |');
+      }
+      docs.push('');
+
+      // Usage Example
+      docs.push('**Usage Example:**');
+      docs.push('```typescript');
+      
+      let exampleCode = `// Call ${toolName}\nawait system.${toolName}({ /* args */ });`;
 
       if (model) {
         try {
@@ -116,34 +158,39 @@ export class ToolDocumenter {
             if (provider) {
                 const prompt = `
                 You are an expert TypeScript developer.
-                I have a tool named "${toolName}".
+                I have a tool named "system.${toolName}".
                 Description: ${tool.description}
                 Input Schema: ${JSON.stringify(tool.inputSchema)}
 
-                Write a 1-sentence Code Mode example of how to call this tool using await system.${toolName}(...).
-                Do not include markdown code blocks, just the code line.
+                Write a realistic, executable TypeScript code block showing how to use this tool in a "Code Mode" environment.
+                - Use top-level await or an async function.
+                - Include comments explaining the step.
+                - Do NOT wrap in markdown code blocks (I will add them).
+                - Keep it concise (3-5 lines).
                 `;
 
                 const response = await provider.generateCompletion({
                     modelId: model.id,
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.2,
-                    max_tokens: 100
+                    max_tokens: 200
                 });
                 
-                exampleCode = response.trim().replace(/`/g, '');
+                exampleCode = response.trim().replace(/^```typescript\n|^```ts\n|^```/g, '').replace(/```$/g, '');
             }
         } catch (e) {
             console.warn(`[ToolDocumenter] Failed to generate smart example for ${toolName}`, e);
         }
       }
 
-      examples.push(`// Tool: ${toolName}`);
-      examples.push(`// Usage: ${exampleCode}`);
-      examples.push('');
+      docs.push(exampleCode);
+      docs.push('```');
+      docs.push('');
+      docs.push('---');
+      docs.push('');
     }
 
-    return examples.join('\n');
+    return docs.join('\n');
   }
 
   private static capitalize(s: string): string {

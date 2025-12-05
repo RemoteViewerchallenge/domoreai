@@ -403,8 +403,9 @@ model OrchestrationStep {
   order           Int      // Execution order (0, 1, 2, ...)
   
   // Role assignment
-  roleId          String?  // Optional: Pre-assign a specific role
-  roleName        String?  // Alternative: Role name for dynamic lookup
+  // Role assignment removed to decouple Roles from Orchestrations
+  // roleId          String?
+  // roleName        String?
   
   // Control flow
   stepType        String   @default("sequential") // "sequential", "parallel", "conditional", "loop"

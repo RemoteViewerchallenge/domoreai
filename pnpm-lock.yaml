@@ -111,6 +111,9 @@ importers:
       google-auth-library:
         specifier: ^10.5.0
         version: 10.5.0
+      https-proxy-agent:
+        specifier: ^7.0.6
+        version: 7.0.6
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
@@ -409,29 +412,7 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/agents:
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.39.1
-        version: 9.39.1
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^20.12.12
-        version: 20.19.25
-      eslint:
-        specifier: ^8.57.1
-        version: 8.57.1
-      globals:
-        specifier: ^16.5.0
-        version: 16.5.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.47.0
-        version: 8.47.0(eslint@8.57.1)(typescript@5.9.3)
+  packages/agents: {}
 
   packages/api-contract:
     dependencies:

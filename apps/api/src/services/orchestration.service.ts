@@ -21,8 +21,6 @@ interface CreateStepInput {
   name: string;
   description?: string;
   order: number;
-  roleId?: string;
-  roleName?: string;
   stepType?: 'sequential' | 'parallel' | 'conditional' | 'loop';
   condition?: any;
   inputMapping?: any;
@@ -49,8 +47,6 @@ export class OrchestrationService {
             name: step.name,
             description: step.description,
             order: step.order,
-            roleId: step.roleId,
-            roleName: step.roleName,
             stepType: step.stepType || 'sequential',
             condition: step.condition,
             inputMapping: step.inputMapping,
@@ -307,14 +303,18 @@ export class OrchestrationService {
     for (let attempt = 0; attempt <= step.maxRetries; attempt++) {
       try {
         // Find the role
-        const role = step.roleId
-          ? await prisma.role.findUnique({ where: { id: step.roleId } })
-          : step.roleName
-          ? await prisma.role.findUnique({ where: { name: step.roleName } })
-          : null;
+        // Dynamic Role Selection
+        // TODO: Implement sophisticated role selector based on step description
+        // For now, default to 'general_worker' or try to find a role matching the step name
+        let role = await prisma.role.findFirst({ where: { name: 'general_worker' } });
+        
+        if (!role) {
+             // Fallback to first available role if general_worker doesn't exist
+             role = await prisma.role.findFirst();
+        }
 
         if (!role) {
-          throw new Error(`Role not found for step ${step.name}`);
+          throw new Error(`No available role found for step ${step.name}`);
         }
 
         // Create agent for this role

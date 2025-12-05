@@ -27,10 +27,6 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   error,
   onRefreshSaved
 }) => {
-  console.log('VisualQueryBuilder: savedQueries', savedQueries);
-  console.log('VisualQueryBuilder: isLoading', isLoading);
-  console.log('VisualQueryBuilder: error', error);
-
   // --- STATE ---
   const [mode, setMode] = useState<'query' | 'schema' | 'saved'>('query');
   const [sql, setSql] = useState('');
