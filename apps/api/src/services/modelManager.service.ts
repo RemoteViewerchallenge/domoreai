@@ -67,16 +67,17 @@ export async function logUsage(data: RawProviderOutput) {
  */
 /**
  * Selects a model from the ACTIVE REGISTRY based on Role criteria.
- * Supports "Exhaustive Fallback" by excluding failed providers.
+ * Supports "Exhaustive Fallback" by excluding failed models (not providers).
+ * This allows other models from the same provider to remain active.
  */
-export async function selectModelFromRegistry(roleId: string, failedProviders: string[] = []) {
+export async function selectModelFromRegistry(roleId: string, failedModels: string[] = []) {
   // 1. Get Role & Criteria
   const role = await prisma.role.findUnique({ where: { id: roleId } });
   if (!role) throw new Error(`Role not found: ${roleId}`);
 
   // 2. Get Active Registry Table
   const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
-  const tableName = config?.activeTableName || 'unified_models';
+  const tableName = config?.activeTableName || 'model_registry';
 
   // 2.5 Get Table Columns to ensure safety
   const columnsRaw = await prisma.$queryRawUnsafe<any[]>(
@@ -88,22 +89,23 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   let query = `SELECT * FROM "${tableName}" WHERE 1=1`;
   const params: any[] = [];
 
-  // A. Exclude Failed Providers
-  if (failedProviders.length > 0) {
-    // Filter out empty/null provider IDs to prevent UUID parsing errors
-    const validFailedProviders = failedProviders.filter(p => p && p.trim() !== '');
+  // A. Exclude Failed Models (not providers - this is the critical fix)
+  if (failedModels.length > 0) {
+    // Filter out empty/null model IDs
+    const validFailedModels = failedModels.filter(m => m && m.trim() !== '');
     
-    if (validFailedProviders.length > 0) {
-      const exclusionList = validFailedProviders.map(p => `'${p}'`).join(', ');
-      const hasDataSource = columns.includes('data_source');
-      const hasProviderId = columns.includes('provider_id');
+    if (validFailedModels.length > 0) {
+      const exclusionList = validFailedModels.map(m => `'${m.replace(/'/g, "''")}'`).join(', ');
       
+      // Check both model_id and model_name columns (different tables use different naming)
       const conditions: string[] = [];
-      if (hasProviderId) conditions.push(`provider_id NOT IN (${exclusionList})`);
-      if (hasDataSource) conditions.push(`(data_source IS NULL OR data_source NOT IN (${exclusionList}))`);
+      if (columns.includes('model_id')) conditions.push(`model_id NOT IN (${exclusionList})`);
+      if (columns.includes('model_name')) conditions.push(`model_name NOT IN (${exclusionList})`);
+      if (columns.includes('id')) conditions.push(`id NOT IN (${exclusionList})`);
       
       if (conditions.length > 0) {
-          query += ` AND (${conditions.join(' AND ')})`;
+          // Use OR because a model might be identified by any of these columns
+          query += ` AND (${conditions.join(' OR ')})`;
       }
     }
   }
@@ -236,11 +238,20 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
   // We construct a secondary query to fetch ALL Ollama models that are not failed.
   let ollamaQuery = `SELECT * FROM "${tableName}" WHERE (provider_id = 'ollama-local' OR provider_id = 'ollama')`;
   
-  if (failedProviders.length > 0) {
-      const validFailedProviders = failedProviders.filter(p => p && p.trim() !== '');
-      if (validFailedProviders.length > 0) {
-          const exclusionList = validFailedProviders.map(p => `'${p}'`).join(', ');
-          ollamaQuery += ` AND provider_id NOT IN (${exclusionList})`;
+  if (failedModels.length > 0) {
+      const validFailedModels = failedModels.filter(m => m && m.trim() !== '');
+      if (validFailedModels.length > 0) {
+          const exclusionList = validFailedModels.map(m => `'${m.replace(/'/g, "''")}'`).join(', ');
+          
+          // Check both model_id and model_name columns
+          const conditions: string[] = [];
+          if (columns.includes('model_id')) conditions.push(`model_id NOT IN (${exclusionList})`);
+          if (columns.includes('model_name')) conditions.push(`model_name NOT IN (${exclusionList})`);
+          if (columns.includes('id')) conditions.push(`id NOT IN (${exclusionList})`);
+          
+          if (conditions.length > 0) {
+              ollamaQuery += ` AND NOT (${conditions.join(' OR ')})`;
+          }
       }
   }
   
@@ -400,10 +411,10 @@ export async function selectModelFromRegistry(roleId: string, failedProviders: s
  * Finds the best, non-rate-limited model for a given role.
  * UPDATED: Uses Dynamic Registry first, falls back to legacy preferredModels.
  */
-export async function getBestModel(roleId: string, failedProviders: string[] = []) {
+export async function getBestModel(roleId: string, failedModels: string[] = []) {
   // 1. Try Dynamic Registry
   try {
-    const dynamicModel = await selectModelFromRegistry(roleId, failedProviders);
+    const dynamicModel = await selectModelFromRegistry(roleId, failedModels);
     if (dynamicModel) {
       // We need to return it in a format compatible with the rest of the system.
       // The system expects a ModelConfig-like object with a nested 'model' and 'provider'.
@@ -476,9 +487,10 @@ export async function getBestModel(roleId: string, failedProviders: string[] = [
   // Go through preferred models and find the first one that isn't rate-limited
   for (const modelConfig of role.preferredModels) {
     const provider = modelConfig.model.provider; // Access provider through model
+    const modelId = modelConfig.model.modelId;
     
-    // Skip failed providers
-    if (failedProviders.includes(provider.id)) continue;
+    // Skip failed models (Circuit Breaker Fix)
+    if (failedModels.includes(modelId)) continue;
 
     // If provider has no rate limit defined, it's good to go
     const rpm = (provider as any).requestsPerMinute ?? Infinity;

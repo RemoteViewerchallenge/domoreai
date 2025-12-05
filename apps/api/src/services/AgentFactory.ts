@@ -27,7 +27,7 @@ export interface CardAgentState {
 
 // A simple wrapper ensuring the Agent has a standard .generate() interface
 export class VolcanoAgent {
-  private failedProviders: string[] = [];
+  private failedModels: string[] = []; // Track failed models, not providers
 
   constructor(
     private provider: BaseLLMProvider,
@@ -105,9 +105,9 @@ export class VolcanoAgent {
         const err = error as ProviderError;
         console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, err);
         
-        // Track failed provider
-        const providerId = this.provider.id;
-        if (providerId) this.failedProviders.push(providerId);
+        // Track failed model (not provider - allows other models from same provider to work)
+        const modelId = this.config.apiModelId;
+        if (modelId) this.failedModels.push(modelId);
 
         // Add backoff for rate limits and server errors
         const status = err.status;
@@ -120,15 +120,15 @@ export class VolcanoAgent {
 
         // ATTEMPT RECOVERY
         try {
-          console.log(`[VolcanoAgent] Attempting failover... Excluded: [${this.failedProviders.join(', ')}]`);
+          console.log(`[VolcanoAgent] Attempting failover... Excluded models: [${this.failedModels.join(', ')}]`);
           
-          // 1. Get Next Best Model
-          const nextModel = await getBestModel(this.roleId, this.failedProviders);
+          // 1. Get Next Best Model (excluding failed models)
+          const nextModel = await getBestModel(this.roleId, this.failedModels);
           
           // 2. Reconfigure Agent
-          // Ensure we don't pick the same failed provider again
-          if (this.failedProviders.includes(nextModel.providerId)) {
-             throw new Error(`Orchestrator returned failed provider ${nextModel.providerId} despite exclusion list.`);
+          // Ensure we don't pick the same failed model again
+          if (this.failedModels.includes(nextModel.modelId)) {
+             throw new Error(`Orchestrator returned failed model ${nextModel.modelId} despite exclusion list.`);
           }
 
           this.config.apiModelId = nextModel.modelId;
