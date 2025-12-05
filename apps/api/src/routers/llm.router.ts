@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { ProviderManager } from '../services/ProviderManager.js';
 import { db } from '../db.js';
 import { providerConfigs } from '../db/schema.js';
@@ -187,6 +188,7 @@ llmRouter.post('/configurations', async (req, res) => {
   try {
     const encryptedKey = encrypt(apiKey);
     const [config] = await db.insert(providerConfigs).values({
+        id: uuidv4(),
         label,
         type,
         apiKey: encryptedKey,

@@ -1,5 +1,6 @@
 // --- providers.router.ts ---
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
@@ -23,6 +24,7 @@ export const providerRouter = createTRPCRouter({
       
       // Insert into Drizzle table
       const [newProvider] = await ctx.db.insert(providerConfigs).values({
+        id: uuidv4(),
         label: input.name,
         type: input.providerType,
         baseURL: input.baseURL,
