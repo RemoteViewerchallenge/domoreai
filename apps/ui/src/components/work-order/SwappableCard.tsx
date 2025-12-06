@@ -7,6 +7,7 @@ import XtermTerminal from '../XtermTerminal.js';
 import ResearchBrowser from '../ResearchBrowser.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
+import useIngestStore from '../../stores/ingest.store.js';
 import { SimpleErrorModal } from '../SimpleErrorModal.js';
 import useWebSocketStore from '../../stores/websocket.store.js';
 import { getNeonColorForPath, NEON_BUTTON_COLORS } from '../../utils/neonTheme.js';
@@ -152,13 +153,21 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   });
 
   const ingestDirectoryMutation = trpc.vfs.ingestDirectory.useMutation({
+    // We treat ingestion as potentially long-running. Use onMutate to mark start,
+    // and onSettled to clear the indicator regardless of success/failure.
+    onMutate: async () => {
+      // nothing special to do here for now
+    },
     onSuccess: () => {
-      console.log('Ingestion started successfully');
-      // Maybe show a toast? For now just log
+      console.log('Ingestion started/completed successfully');
     },
     onError: (err) => {
       console.error('Ingestion failed:', err);
       setError(`Ingestion failed: ${err.message}`);
+    },
+    onSettled: () => {
+      // decrement global counter when ingestion job finishes (successful or failed)
+      useIngestStore.getState().decrement();
     }
   });
 
@@ -476,6 +485,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                 onRefresh={refresh}
                 onLoadChildren={loadChildren}
                 onEmbedDir={() => {
+                  // Increment global ingestion counter with the current path, then start ingestion.
+                  useIngestStore.getState().increment(currentPath);
                   ingestDirectoryMutation.mutate({ path: currentPath, cardId: id });
                 }}
                 onSelect={async (path) => {

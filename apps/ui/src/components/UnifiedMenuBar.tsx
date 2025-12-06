@@ -1,10 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Settings, FolderOpen, LayoutGrid, Database, Users, Workflow, Briefcase } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import useIngestStore from '../stores/ingest.store';
 
 export const UnifiedMenuBar = () => {
   const location = useLocation();
   const { theme } = useTheme();
+  const isIngesting = useIngestStore(state => state.activeCount > 0);
+  const currentPath = useIngestStore(state => state.currentPath);
+  const filesProcessed = useIngestStore(state => state.filesProcessed);
+  const ingestStatus = currentPath ? `Embedding: ${currentPath} (${filesProcessed} files)` : 'Embedding in progress';
   
   const menuItems = [
     { path: '/workspace', icon: LayoutGrid, label: 'Workspace', color: 'cyan' },
@@ -41,6 +46,12 @@ export const UnifiedMenuBar = () => {
 
         {/* Right: Settings & File Location Icons */}
         <div className="flex items-center gap-1">
+          {isIngesting && (
+            <div title={ingestStatus} className="flex items-center gap-1 mr-1">
+              <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              <span className="text-[8px] text-yellow-400 max-w-[80px] truncate">{currentPath?.split('/').pop() || 'embedding'}</span>
+            </div>
+          )}
           <Link
             to="/settings"
             className={`p-1 rounded transition-all ${
@@ -92,6 +103,12 @@ export const UnifiedMenuBar = () => {
 
         {/* Right: Settings & File Location Buttons */}
         <div className="flex items-center gap-3">
+          {isIngesting && (
+            <div title={ingestStatus} className="flex items-center gap-2 mr-2">
+              <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse" />
+              <span className="text-xs text-yellow-400 max-w-[200px] truncate">{currentPath} ({filesProcessed})</span>
+            </div>
+          )}
           <Link
             to="/settings"
             className={`flex items-center gap-2 px-4 py-2 rounded font-bold uppercase text-xs tracking-wider transition-all ${
@@ -146,6 +163,12 @@ export const UnifiedMenuBar = () => {
 
       {/* Right: Settings & File Location */}
       <div className="flex items-center gap-1">
+        {isIngesting && (
+          <div title={ingestStatus} className="flex items-center gap-1 mr-1">
+            <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+            <span className="text-[8px] text-yellow-400 max-w-[80px] truncate">{currentPath?.split('/').pop() || 'embedding'}</span>
+          </div>
+        )}
         <Link
           to="/settings"
           className={`group flex items-center gap-1.5 px-2 py-1 rounded transition-all font-bold ${

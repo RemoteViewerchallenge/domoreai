@@ -68,37 +68,47 @@ class IngestionAgent {
   }
 
   public async ingestRepository(dir: string) {
-      console.log(`Scanning directory: ${dir}`);
+      console.log(`[IngestionAgent] 🚀 Scanning directory: ${dir}`);
+      let totalFiles = 0;
+      let processedFiles = 0;
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(dir, entry.name);
             if (entry.isDirectory()) {
-                if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.domoreai' || entry.name === 'dist' || entry.name === '.turbo') continue;
+                if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.domoreai' || entry.name === 'dist' || entry.name === '.turbo') {
+                  console.log(`[IngestionAgent] ⏭️  Skipping: ${fullPath}`);
+                  continue;
+                }
                 await this.ingestRepository(fullPath);
             } else {
                 // Check ignore
-                // Note: ignoreFilter expects relative paths usually, but let's see. 
-                // If ignoreFilter is set up with root, we might need relative path.
-                // For now, let's try passing the full path or relative to root.
-                // Assuming this.ignoreFilter works with the paths we have.
-                if (this.ignoreFilter && this.ignoreFilter(fullPath)) continue;
+                if (this.ignoreFilter && this.ignoreFilter(fullPath)) {
+                  console.log(`[IngestionAgent] 🚫 Ignored: ${fullPath}`);
+                  continue;
+                }
                 
                 const ext = path.extname(fullPath).toLowerCase();
                 if (this.textExtensions.includes(ext)) {
+                     totalFiles++;
+                     console.log(`[IngestionAgent] 📄 Processing file ${totalFiles}: ${fullPath}`);
                      const content = await fs.readFile(fullPath);
                      const text = content.toString('utf-8');
                      await this.indexFile(fullPath, text);
+                     processedFiles++;
+                     console.log(`[IngestionAgent] ✅ Indexed file ${processedFiles}/${totalFiles}: ${fullPath}`);
                 }
             }
         }
+        console.log(`[IngestionAgent] 🏁 Completed: ${processedFiles}/${totalFiles} files indexed from ${dir}`);
       } catch (err) {
-          console.error(`Error scanning directory ${dir}:`, err);
+          console.error(`[IngestionAgent] ❌ Error scanning directory ${dir}:`, err);
       }
   }
 
   private async indexFile(filePath: string, content: string) {
     const chunks = chunkText(content);
+    console.log(`[IngestionAgent] 📦 Created ${chunks.length} chunks from ${filePath}`);
     const vectors = await Promise.all(chunks.map(async (chunk, i) => {
       const embedding = await createEmbedding(chunk);
       return {
@@ -112,6 +122,7 @@ class IngestionAgent {
     }));
 
     await vectorStore.add(vectors);
+    console.log(`[IngestionAgent] 💾 Stored ${vectors.length} vectors for ${filePath}`);
   }
 
   private async generateShadowFile(provider: IVfsProvider, originalPath: string, markdownContent: string): Promise<string> {

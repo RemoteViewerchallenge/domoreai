@@ -55,8 +55,12 @@ export async function autoLoadRawJsonFiles() {
         // Drop existing table
         await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${tableName}"`);
 
-        // Create table with all columns as TEXT
-        const columnDefs = keys.map(k => `"${k}" TEXT`).join(', ');
+        // FIX: Handle 'id' collision - rename 'id' to 'model_id' to avoid conflict with PK
+        const columnDefs = keys.map(k => {
+          if (k === 'id') return `"model_id" TEXT`;
+          return `"${k}" TEXT`;
+        }).join(', ');
+
         const createSql = `CREATE TABLE "${tableName}" (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           _loaded_at TIMESTAMP DEFAULT NOW(),
@@ -69,7 +73,12 @@ export async function autoLoadRawJsonFiles() {
         // Insert all rows
         let inserted = 0;
         for (const row of rows) {
-          const cols = keys.map(k => `"${k}"`).join(', ');
+          // FIX: Map column names, renaming 'id' to 'model_id'
+          const cols = keys.map(k => {
+            if (k === 'id') return `"model_id"`;
+            return `"${k}"`;
+          }).join(', ');
+
           const vals = keys.map(k => {
             const v = (row as Record<string, unknown>)[k];
             if (v === null || v === undefined) return 'NULL';
