@@ -33,11 +33,11 @@ import { prisma } from '../db.js';
 export class PgVectorStore {
   async add(vectors: Vector[]) {
     for (const v of vectors) {
-      const vectorString = `[${v.vector.join(',')}]`;
-      // Use raw query for vector insertion
+      const vectorString = JSON.stringify(v.vector);
+      // Store vector as JSON string instead of pgvector type
       await prisma.$executeRawUnsafe(
         `INSERT INTO "VectorEmbedding" ("id", "vector", "content", "filePath", "metadata")
-         VALUES ($1, $2::vector, $3, $4, $5)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT ("id") DO UPDATE SET
          "vector" = EXCLUDED."vector",
          "content" = EXCLUDED."content",

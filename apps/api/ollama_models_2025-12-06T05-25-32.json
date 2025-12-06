@@ -1,0 +1,26 @@
+[
+  {
+    "id": "mxbai-embed-large:latest",
+    "name": "mxbai-embed-large",
+    "providerId": "ollama-local",
+    "family": "bert",
+    "parameter_size": "334M",
+    "isFree": true
+  },
+  {
+    "id": "granite4:micro",
+    "name": "granite4:micro",
+    "providerId": "ollama-local",
+    "family": "granite",
+    "parameter_size": "3.4B",
+    "isFree": true
+  },
+  {
+    "id": "hengwen/watt-tool-8B:latest",
+    "name": "hengwen/watt-tool-8B",
+    "providerId": "ollama-local",
+    "family": "llama",
+    "parameter_size": "8.0B",
+    "isFree": true
+  }
+]

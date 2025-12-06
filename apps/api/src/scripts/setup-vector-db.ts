@@ -3,15 +3,11 @@ import { prisma } from '../db.js';
 
 async function main() {
   try {
-    console.log('Enabling vector extension...');
-    await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS vector;');
-    console.log('Vector extension enabled.');
-    
     console.log('Creating VectorEmbedding table if not exists...');
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "VectorEmbedding" (
         "id" TEXT NOT NULL,
-        "vector" vector,
+        "vector" TEXT,
         "content" TEXT NOT NULL,
         "filePath" TEXT NOT NULL,
         "metadata" JSONB,
@@ -19,7 +15,7 @@ async function main() {
         CONSTRAINT "VectorEmbedding_pkey" PRIMARY KEY ("id")
       );
     `);
-    console.log('Table created.');
+    console.log('Table created (vector stored as TEXT/JSON for now).');
     
     console.log('Creating index...');
     await prisma.$executeRawUnsafe(`
