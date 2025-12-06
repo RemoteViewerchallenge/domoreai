@@ -83,11 +83,11 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   const columnsRaw = await prisma.$queryRawUnsafe<any[]>(
     `SELECT column_name FROM information_schema.columns WHERE table_name = '${tableName}'`
   );
-  const columns = columnsRaw.map(c => c.column_name);
+  const columns = columnsRaw.map((c: { column_name: string }) => c.column_name);
 
   // 3. Build Dynamic Query
   let query = `SELECT * FROM "${tableName}" WHERE 1=1`;
-  const params: any[] = [];
+  // const params: any[] = []; // Unused variable
 
   // A. Exclude Failed Models (not providers - this is the critical fix)
   if (failedModels.length > 0) {
@@ -104,8 +104,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       if (columns.includes('id')) conditions.push(`id NOT IN (${exclusionList})`);
       
       if (conditions.length > 0) {
-          // Use OR because a model might be identified by any of these columns
-          query += ` AND (${conditions.join(' OR ')})`;
+          // Use AND because a model must not match the failed ID in ANY of the potential identifier columns.
+          query += ` AND (${conditions.join(' AND ')})`;
       }
     }
   }
@@ -172,10 +172,17 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   }
 
   // E. CRITICAL: Exclude rows with NULL/empty model_id (composite key requirement)
-  query += ` AND model_id IS NOT NULL AND model_id != ''`;
-  if (columns.includes('provider_id')) {
-    // UUID columns cannot be empty strings, only NULL or valid UUIDs
-    query += ` AND provider_id IS NOT NULL`;
+  // Find the correct model_id column name
+  const modelIdCol = ['model_id', 'modelId', 'id'].find(c => columns.includes(c));
+  if (modelIdCol) {
+    query += ` AND "${modelIdCol}" IS NOT NULL AND "${modelIdCol}" != ''`;
+  }
+
+  // Find the correct provider_id column name
+  const providerIdCol = ['providerId', 'provider_id', 'provider'].find(c => columns.includes(c));
+  if (providerIdCol) {
+    // UUID/string columns cannot be empty strings, only NULL or valid values
+    query += ` AND "${providerIdCol}" IS NOT NULL`;
   }
 
   // F. FILTER BY TYPE (Smart Logic with Fallback)
@@ -236,7 +243,12 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   // J. OLLAMA INCLUSION (User Request)
   // "they should be placed in every role despite anything else doesnt matter if it fits the role parameters availability trumps everything else"
   // We construct a secondary query to fetch ALL Ollama models that are not failed.
-  let ollamaQuery = `SELECT * FROM "${tableName}" WHERE (provider_id = 'ollama-local' OR provider_id = 'ollama')`;
+  let ollamaQuery = '';
+  if (providerIdCol) {
+    ollamaQuery = `SELECT * FROM "${tableName}" WHERE ("${providerIdCol}" = 'ollama-local' OR "${providerIdCol}" = 'ollama-local')`;
+  } else {
+    console.warn(`[Model Selection] Cannot build Ollama query: no provider ID column found in ${tableName}.`);
+  }
   
   if (failedModels.length > 0) {
       const validFailedModels = failedModels.filter(m => m && m.trim() !== '');
@@ -245,12 +257,12 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
           
           // Check both model_id and model_name columns
           const conditions: string[] = [];
-          if (columns.includes('model_id')) conditions.push(`model_id NOT IN (${exclusionList})`);
-          if (columns.includes('model_name')) conditions.push(`model_name NOT IN (${exclusionList})`);
-          if (columns.includes('id')) conditions.push(`id NOT IN (${exclusionList})`);
+          if (columns.includes('model_id')) conditions.push(`"model_id" NOT IN (${exclusionList})`);
+          if (columns.includes('model_name')) conditions.push(`"model_name" NOT IN (${exclusionList})`);
+          if (columns.includes('id')) conditions.push(`"id" NOT IN (${exclusionList})`);
           
           if (conditions.length > 0) {
-              ollamaQuery += ` AND NOT (${conditions.join(' OR ')})`;
+              if (ollamaQuery) ollamaQuery += ` AND NOT (${conditions.join(' OR ')})`;
           }
       }
   }
@@ -261,13 +273,16 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   query += ` LIMIT 50`;
 
   console.log(`[Model Selection] Executing query for role ${roleId}:`, query);
-  const candidates = await prisma.$queryRawUnsafe<any[]>(query);
+  const candidates = await prisma.$queryRawUnsafe<Record<string, any>[]>(query);
   
   // Execute Ollama query
-  const ollamaCandidates = await prisma.$queryRawUnsafe<any[]>(ollamaQuery);
+  let ollamaCandidates: Record<string, any>[] = [];
+  if (ollamaQuery) {
+    ollamaCandidates = await prisma.$queryRawUnsafe<Record<string, any>[]>(ollamaQuery);
+  }
   
   // Merge candidates (deduplicating by model_id if necessary, though unlikely to overlap with strict filters)
-  const allCandidates = [...candidates, ...ollamaCandidates];
+  const allCandidates: Record<string, any>[] = [...candidates, ...ollamaCandidates];
   
   console.log(`[Model Selection] Query returned ${candidates.length} standard candidates and ${ollamaCandidates.length} Ollama candidates.`);
 
@@ -277,11 +292,11 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   }
 
   // Validate and filter model names
-  const validCandidates = [];
+  const validCandidates: Record<string, any>[] = [];
   for (const model of allCandidates) {
     const modelId = model.model_id || model.id;
-    const modelName = model.model_name || model.name || modelId; // Capture name
-    const providerId = model.provider_id || model.provider || model.data_source || model.provider_name; // Added provider_name just in case
+    // const modelName = model.model_name || model.name || modelId; // Unused variable
+    const providerId = model.providerId || model.provider_id || model.provider || model.data_source || model.provider_name; // Added provider_name just in case
     
     // Exclude models with invalid/malformed names
     if (!modelId || typeof modelId !== 'string') {
@@ -338,8 +353,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   const selected = validCandidates[Math.floor(Math.random() * validCandidates.length)];
   
   // CRITICAL: For composite key tables, model_id is the primary identifier (not 'id')
-  const finalModelId = selected.model_id;
-  const finalProviderId = selected.provider_id || selected.provider || selected.data_source;
+  const finalModelId = selected.model_id as string;
+  const finalProviderId = selected.providerId || selected.provider_id || selected.provider || selected.data_source;
   
   if (!finalModelId || !finalProviderId) {
     console.error(`[Model Selection] CRITICAL: Selected model has null model_id or provider_id:`, selected);
@@ -347,7 +362,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   }
   
   // Look up provider name for better logging
-  let providerName = finalProviderId;
+  let providerName = finalProviderId as string;
   try {
     const provider = await prisma.providerConfig.findUnique({ 
       where: { id: finalProviderId },
@@ -356,13 +371,13 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     if (provider) {
       providerName = `${provider.label} (${provider.type})`;
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore lookup errors, just use ID
   }
   
   // Resolve Provider ID if it's not a UUID (e.g. "OpenRouter" label)
   let resolvedProviderId = finalProviderId;
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalProviderId);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalProviderId as string);
   
   if (!isUuid) {
       console.log(`[Model Selection] Resolving provider label: "${finalProviderId}"`);
@@ -392,8 +407,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   // The AgentFactory/VolcanoAgent expects 'modelId' to be the string passed to the API.
   // So we MUST return 'model_name' as 'modelId'.
   
-  const apiModelId = selected.model_name || selected.name || selected.model_id; // Prefer name, fallback to ID
-  const internalId = selected.model_id || selected.id; // Keep UUID for reference if needed
+  const apiModelId = (selected.model_name || selected.name || selected.model_id) as string; // Prefer name, fallback to ID
+  const internalId = (selected.model_id || selected.id) as string; // Keep UUID for reference if needed
 
   console.log(`[Model Selection] ✓ Selected: ${apiModelId} (Internal: ${internalId}) from ${resolvedProviderId}`);
   
@@ -412,10 +427,40 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
  * UPDATED: Uses Dynamic Registry first, falls back to legacy preferredModels.
  */
 export async function getBestModel(roleId: string, failedModels: string[] = []) {
+  // --- HARDCODED OVERRIDE ---
+  // First, check if the role has a specific model assigned to it.
+  // This bypasses all dynamic selection logic.
+  const roleWithOverride = await prisma.role.findUnique({
+    where: { id: roleId },
+    select: { hardcodedModelId: true, hardcodedProviderId: true }
+  });
+
+  if (roleWithOverride?.hardcodedModelId && roleWithOverride.hardcodedProviderId) {
+    const { hardcodedModelId, hardcodedProviderId } = roleWithOverride;
+    console.log(`[Model Selection] ✅ Using hardcoded override for role ${roleId}: ${hardcodedModelId} from ${hardcodedProviderId}`);
+    
+    // Return the model in the format AgentFactory expects.
+    // This structure ensures compatibility with the rest of the system.
+    return {
+      modelId: hardcodedModelId,
+      providerId: hardcodedProviderId,
+      model: {
+        id: hardcodedModelId,
+        providerId: hardcodedProviderId,
+        provider: {
+          id: hardcodedProviderId,
+          type: hardcodedProviderId.split('-')[0] || 'unknown' // Infer type from ID
+        }
+      },
+      temperature: 0.7, // Default values
+      maxTokens: 4096   // Default values
+    };
+  }
+
   // 1. Try Dynamic Registry
   try {
     const dynamicModel = await selectModelFromRegistry(roleId, failedModels);
-    if (dynamicModel) {
+    if (dynamicModel) {      
       // We need to return it in a format compatible with the rest of the system.
       // The system expects a ModelConfig-like object with a nested 'model' and 'provider'.
       // Since we are bypassing the strict Prisma relations, we might need to mock that structure 
@@ -423,7 +468,7 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
       
       // Let's check if this provider/model exists in our strict DB to return a proper object
       const strictModel = await prisma.model.findUnique({
-        where: { providerId_modelId: { providerId: dynamicModel.providerId, modelId: dynamicModel.modelId } },
+        where: { providerId_modelId: { providerId: dynamicModel.providerId as string, modelId: dynamicModel.modelId as string } },
         include: { provider: true }
       });
 
@@ -441,19 +486,19 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
       // If not in strict DB, we might be in "SimpleDB" mode or using a raw table.
       // We'll return a constructed object and hope the caller (AgentFactory) can handle it.
       // AgentFactory looks up the provider via ProviderManager, so as long as providerId is valid, we are good.
-      return {
+      return {        
         modelId: dynamicModel.modelId,
         providerId: dynamicModel.providerId,
         model: {
             id: dynamicModel.modelId,
             providerId: dynamicModel.providerId,
-            provider: { id: dynamicModel.providerId, type: dynamicModel.providerId } // Mock provider
+            provider: { id: dynamicModel.providerId, type: (dynamicModel.providerId as string)?.split('-')[0] || 'unknown' } // Mock provider
         },
         temperature: 0.7,
         maxTokens: 2048
       };
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.warn("Dynamic selection failed, falling back to legacy:", e);
   }
 
@@ -493,7 +538,7 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
     if (failedModels.includes(modelId)) continue;
 
     // If provider has no rate limit defined, it's good to go
-    const rpm = (provider as any).requestsPerMinute ?? Infinity;
+    const rpm = provider.requestsPerMinute ?? Infinity;
 
     // If provider declares no RPM limit in DB, treat as unlimited and pick it
     if (rpm === Infinity) {

@@ -22,10 +22,16 @@ export const orchestratorRouter = createTRPCRouter({
   setActiveRegistry: protectedProcedure
     .input(z.object({ tableName: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Sanitize table name to prevent SQL injection or invalid characters
+      const sanitizedTableName = input.tableName.replace(/[^a-zA-Z0-9_]/g, '');
+      if (!sanitizedTableName) {
+        throw new Error("Invalid table name provided.");
+      }
+
       return ctx.prisma.orchestratorConfig.upsert({
         where: { id: 'global' },
-        update: { activeTableName: input.tableName },
-        create: { id: 'global', activeTableName: input.tableName }
+        update: { activeTableName: sanitizedTableName },
+        create: { id: 'global', activeTableName: sanitizedTableName }
       });
     }),
 
@@ -80,7 +86,18 @@ export const orchestratorRouter = createTRPCRouter({
   listTools: protectedProcedure
     .query(async () => {
       const { RegistryClient } = await import('../services/mcp-registry-client.js');
-      return RegistryClient.listServers();
+      const mcpServers = await RegistryClient.listServers();
+      
+      // Add internal tools
+      const internalTools = [
+        {
+          name: 'search_codebase',
+          description: 'Semantic search over the codebase using vector embeddings. Use this to find relevant code snippets or documentation.',
+          type: 'internal'
+        }
+      ];
+      
+      return [...mcpServers, ...internalTools];
     }),
 
   getToolExamples: protectedProcedure

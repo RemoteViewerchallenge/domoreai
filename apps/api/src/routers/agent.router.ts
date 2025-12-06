@@ -191,28 +191,57 @@ export const agentRouter = createTRPCRouter({
         .replace('[TABLE_SCHEMAS_CONTEXT]', schemaContext)
         .replace('[USER_PROMPT]', userPrompt);
 
-      // 4. Pick any enabled model (prefer Ollama), no parameter constraints
-      //    This is a temporary bypass to get query generation unblocked.
-      const preferred = await prisma.model.findFirst({
-        where: { provider: { isEnabled: true, type: 'ollama' } },
-        include: { provider: true },
-      });
-      const fallback = preferred || await prisma.model.findFirst({
-        where: { provider: { isEnabled: true } },
-        include: { provider: true },
-      });
-      if (!fallback) throw new Error('No suitable models available.');
+      // 4. Select Model using Dynamic Role Criteria
+      // This respects the "wiring" where roles select models based on parameters/criteria.
+      const { getBestModel } = await import('../services/modelManager.service.js');
+      
+      let selectedModel;
+      try {
+        selectedModel = await getBestModel(role.id);
+      } catch (e) {
+        console.warn(`[AgentRouter] Dynamic model selection failed for role ${roleName}:`, e);
+      }
 
-      const provider = ProviderManager.getProvider(fallback.providerId);
-      if (!provider) throw new Error('Selected provider is not initialized.');
+      // Fallback if dynamic selection fails (e.g. strict criteria with no matches)
+      if (!selectedModel) {
+        console.log(`[AgentRouter] Falling back to any enabled model for ${roleName}`);
+        const fallback = await prisma.model.findFirst({
+          where: { provider: { isEnabled: true } },
+          include: { provider: true },
+        });
+        
+        if (fallback) {
+            selectedModel = {
+                modelId: fallback.modelId,
+                providerId: fallback.providerId,
+                temperature: role.defaultTemperature ?? 0.1,
+                maxTokens: role.defaultMaxTokens ?? 1024
+            };
+        }
+      }
+
+      if (!selectedModel) throw new Error('No suitable models available for SQL generation.');
+
+      console.log(`[AgentRouter] Generating SQL using model: ${selectedModel.modelId} (${selectedModel.providerId})`);
+
+      const provider = ProviderManager.getProvider(selectedModel.providerId);
+      if (!provider) throw new Error(`Selected provider ${selectedModel.providerId} is not initialized.`);
 
       const text = await provider.generateCompletion({
-        modelId: fallback.modelId,
+        modelId: selectedModel.modelId,
         messages: [{ role: 'user', content: finalPrompt }],
-        temperature: role.defaultTemperature ?? 0.3,
-        max_tokens: role.defaultMaxTokens ?? 1024,
+        temperature: selectedModel.temperature ?? 0.1,
+        max_tokens: selectedModel.maxTokens ?? 1024,
       });
-      const queryText = (text || '').trim();
+      
+      // Strip markdown code blocks if present
+      let queryText = (text || '').trim();
+      if (queryText.startsWith('```sql')) {
+        queryText = queryText.replace(/^```sql\s*/, '').replace(/\s*```$/, '');
+      } else if (queryText.startsWith('```')) {
+        queryText = queryText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
       return { queryText };
     }),
 });

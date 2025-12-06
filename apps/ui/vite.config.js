@@ -10,8 +10,18 @@ export default defineConfig({
         },
     },
     server: {
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            overlay: true
+        },
         proxy: {
             '/llm': 'http://localhost:4000',
+            '/trpc': 'http://localhost:4000',
+            '/language-server': {
+                target: 'http://localhost:4000',
+                ws: true,
+            },
         }
     },
     build: {
@@ -31,3 +41,4 @@ export default defineConfig({
         }
     },
 });
+//# sourceMappingURL=vite.config.js.map

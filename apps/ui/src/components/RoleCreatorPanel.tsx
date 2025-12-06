@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { trpc } from '../utils/trpc.js';
 import DualRangeSlider from './DualRangeSlider.js';
-import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database } from 'lucide-react';
+import { RoleModelOverride } from './RoleModelOverride.js';
+import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface Role {
   id: string;
   name: string;
   basePrompt: string;
+  category: string; // Ensure category is always a string
   minContext?: number | null;
   maxContext?: number | null;
   needsVision: boolean;
@@ -45,11 +47,23 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const { data: registryData } = trpc.orchestrator.getActiveRegistryData.useQuery();
   const { data: toolsList } = trpc.orchestrator.listTools.useQuery();
 
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   const createRoleMutation = trpc.role.create.useMutation({
-    onSuccess: () => utils.role.list.invalidate(),
+    onSuccess: () => {
+        utils.role.list.invalidate();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+    },
+    onError: () => setSaveStatus('error')
   });
   const updateRoleMutation = trpc.role.update.useMutation({
-    onSuccess: () => utils.role.list.invalidate(),
+    onSuccess: () => {
+        utils.role.list.invalidate();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+    },
+    onError: () => setSaveStatus('error')
   });
   const deleteRoleMutation = trpc.role.delete.useMutation({
     onSuccess: () => utils.role.list.invalidate(),
@@ -62,6 +76,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [formData, setFormData] = useState({
     name: '',
     basePrompt: '',
+    category: '', // Add category to formData
     minContext: 0,
     maxContext: 128000,
     needsVision: false,
@@ -87,34 +102,50 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     memoryConfig: { useProjectMemory: false, readOnly: false },
   });
 
-  const [activeTab, setActiveTab] = useState<'params' | 'capabilities' | 'orchestration' | 'toolPrompts' | 'assignments'>('params');
+  const [leftTab, setLeftTab] = useState<'params' | 'toolPrompts'>('params');
+  const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments'>('capabilities');
+  
   const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [isNewCategory, setIsNewCategory] = useState<boolean>(false);
 
-  // --- TASK 1: Code Mode Auto-Templating ---
-  // --- TASK 1: Code Mode Auto-Templating ---
-  // REMOVED: Handled by AgentRuntime backend dynamically
-  // The backend will automatically inject the protocol and tool definitions if tools are present.
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (roles as any[])?.forEach(role => {
+      if (role.category) categories.add(role.category);
+    });
+    return Array.from(categories).sort();
+  }, [roles]);
 
-  // --- TASK 2: Magic Generate ---
-  const handleMagicGenerate = async () => {
-    if (!formData.name) {
-      alert("Please enter a Role Name first.");
-      return;
-    }
-    try {
-      const result = await generatePromptMutation.mutateAsync({
-        name: formData.name,
-        goal: "Perform tasks as defined by the role name.", // We could add a goal input field later
-        tools: formData.tools
-      });
-      if (result.prompt) {
-        setFormData(prev => ({ ...prev, basePrompt: result.prompt || '' }));
+  // Memoize grouped roles for performance and to ensure categories are processed consistently
+  const groupedRoles = useMemo(() => {
+    if (!roles) return {};
+    const groups: Record<string, Role[]> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (roles as any[])?.forEach(role => {
+      const category = role.category || 'Uncategorized';
+      if (!groups[category]) {
+        groups[category] = [];
       }
-    } catch (e) {
-      console.error("Failed to generate prompt:", e);
-      alert("Failed to generate prompt. See console.");
-    }
-  };
+      groups[category].push(role as Role);
+    });
+    // Sort roles within each category alphabetically
+    Object.keys(groups).forEach(category => {
+      groups[category].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    return groups;
+  }, [roles]);
+
+  // Memoize the currently selected role object for passing to child components
+  const selectedRole = useMemo(() => {
+    if (!selectedRoleId || !roles) return null;
+    return (roles as Role[]).find(r => r.id === selectedRoleId);
+  }, [selectedRoleId, roles]);
+
+  // ... (useEffect removed) ...
+
+  // ... (Tasks 1 & 2) ...
 
   // --- DYNAMIC LOGIC ---
 
@@ -220,15 +251,67 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     return stats;
   }, [registryData, filteredModels]);
 
-
   const handleSave = () => {
+    setSaveStatus('saving');
     if (selectedRoleId) {
       updateRoleMutation.mutate({
         id: selectedRoleId,
-        ...formData,
+        name: formData.name,
+        basePrompt: formData.basePrompt,
+        category: formData.category || 'Uncategorized',
+        minContext: formData.minContext,
+        maxContext: formData.maxContext,
+        needsVision: formData.needsVision,
+        needsReasoning: formData.needsReasoning,
+        needsCoding: formData.needsCoding,
+        needsTools: formData.needsTools,
+        needsJson: formData.needsJson,
+        needsUncensored: formData.needsUncensored,
+        // needsImageGeneration: formData.needsImageGeneration, // Removed as it's not in the schema yet
+        tools: formData.tools,
+        defaultTemperature: formData.defaultTemperature,
+        defaultMaxTokens: formData.defaultMaxTokens,
+        defaultTopP: formData.defaultTopP,
+        defaultFrequencyPenalty: formData.defaultFrequencyPenalty,
+        defaultPresencePenalty: formData.defaultPresencePenalty,
+        defaultStop: formData.defaultStop,
+        defaultSeed: formData.defaultSeed,
+        defaultResponseFormat: formData.defaultResponseFormat,
+        terminalRestrictions: formData.terminalRestrictions,
+        criteria: formData.criteria,
+        orchestrationConfig: formData.orchestrationConfig,
+        memoryConfig: formData.memoryConfig,
       });
     } else {
-      createRoleMutation.mutate(formData);
+      createRoleMutation.mutate({
+        ...formData,
+        category: formData.category || 'Uncategorized',
+      });
+    }
+  };
+
+  const handleMagicGenerate = async () => {
+    if (!formData.name) {
+        alert("Please enter a role name first.");
+        return;
+    }
+    try {
+        const result = await generatePromptMutation.mutateAsync({
+            name: formData.name,
+            category: formData.category,
+            capabilities: {
+                vision: formData.needsVision,
+                reasoning: formData.needsReasoning,
+                coding: formData.needsCoding,
+                tools: formData.needsTools,
+            }
+        });
+        if (result) {
+            setFormData(prev => ({ ...prev, basePrompt: result }));
+        }
+    } catch (error) {
+        console.error("Failed to generate prompt:", error);
+        alert("Failed to generate prompt. Please try again.");
     }
   };
 
@@ -236,11 +319,15 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     setSelectedRoleId(role.id);
     const tools = role.tools || [];
     
+    // Set isNewCategory based on if the role has a category
+    setIsNewCategory(!role.category);
+
     setFormData({
       name: role.name,
       basePrompt: role.basePrompt,
-      minContext: role.minContext || 0,
-      maxContext: role.maxContext || 128000,
+      category: role.category || '',
+      minContext: role.minContext || 0, // Added minContext
+      maxContext: role.maxContext || 128000, // Added maxContext
       needsVision: role.needsVision,
       needsReasoning: role.needsReasoning,
       needsCoding: role.needsCoding,
@@ -348,13 +435,15 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       {/* Sidebar List */}
       <div className="w-48 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
         <div className="p-2 border-b border-[var(--color-border)] flex justify-between items-center">
-          <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider">Roles</span>
+          <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider">Roles (v2)</span>
           <button 
             onClick={() => {
               setSelectedRoleId(null);
+              setIsNewCategory(true); // Always start with new category input for new roles
               setFormData({
                 name: '',
                 basePrompt: '',
+                category: '', // Empty category for new roles
                 minContext: 0,
                 maxContext: 128000,
                 needsVision: false,
@@ -385,15 +474,33 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {roles?.map((role) => (
-            <div
-              key={role.id}
-              onClick={() => { void handleSelectRole(role); }}
-              className={`p-2 cursor-pointer border-b border-[var(--color-border)] hover:bg-[var(--color-background-secondary)] transition-colors ${
-                selectedRoleId === role.id ? 'bg-[var(--color-primary)]/20 border-l-2 border-l-[var(--color-primary)]' : 'border-l-2 border-l-transparent'
-              }`}
-            >
-              <div className="font-bold text-[var(--color-text)] truncate">{role.name}</div>
+          {Object.entries(groupedRoles).map(([category, rolesInCategory]) => (
+            <div key={category} className="border-b border-[var(--color-border)] last:border-b-0">
+              <button
+                onClick={() => {
+                    console.log('Toggling category:', category);
+                    setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+                }}
+                className="flex justify-between items-center w-full p-2 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-secondary)]/70 transition-colors"
+              >
+                <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider text-[10px]">{category}</span>
+                {openCategories[category] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              {openCategories[category] && (
+                <div>
+                  {rolesInCategory.map((role) => (
+                    <div
+                      key={role.id}
+                      onClick={() => { void handleSelectRole(role); }}
+                      className={`p-2 pl-4 cursor-pointer hover:bg-[var(--color-background-secondary)] transition-colors ${
+                        selectedRoleId === role.id ? 'bg-[var(--color-primary)]/20 border-l-2 border-l-[var(--color-primary)]' : 'border-l-2 border-l-transparent'
+                      }`}
+                    >
+                      <div className="font-bold text-[var(--color-text)] truncate">{role.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -406,7 +513,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         <div className="w-[60%] flex flex-col border-r border-[var(--color-border)]">
           {/* Header with Name and Actions */}
           <div className="flex-none border-b border-[var(--color-border)] p-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-2"> {/* Changed to flex-col for better layout of name and category */}
               <input
                 type="text"
                 value={formData.name}
@@ -414,22 +521,62 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 className="w-full px-3 py-2 bg-transparent text-xl font-bold text-[var(--color-text)] focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)] placeholder-[var(--color-text-muted)]"
                 placeholder="ROLE NAME"
               />
-              <div className="flex gap-2 ml-4">
-                {selectedRoleId && (
-                  <button 
-                    onClick={() => deleteRoleMutation.mutate({ id: selectedRoleId })}
-                    className="p-2 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 rounded transition-all"
+              <div className="flex items-center gap-2">
+                {isNewCategory ? (
+                  <input
+                    type="text"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="flex-grow px-3 py-2 bg-transparent text-sm text-[var(--color-text-muted)] focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)] placeholder-[var(--color-text-muted)]"
+                    placeholder="NEW CATEGORY (e.g. 'Marketing')"
+                  />
+                ) : (
+                  <select
+                    value={formData.category}
+                    onChange={(e) => {
+                      if (e.target.value === 'new') {
+                        setIsNewCategory(true);
+                        setFormData({ ...formData, category: '' });
+                      } else {
+                        setIsNewCategory(false);
+                        setFormData({ ...formData, category: e.target.value });
+                      }
+                    }}
+                    className="flex-grow px-3 py-2 bg-transparent text-sm text-[var(--color-text-muted)] focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)]"
                   >
-                    <Trash2 size={16} />
-                  </button>
+                    <option value="" disabled>Select Category</option>
+                    {uniqueCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="new">+ Create New Category</option>
+                  </select>
                 )}
-                <button 
-                  onClick={handleSave}
-                  className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] font-bold rounded shadow-lg shadow-[var(--color-primary)]/20 transition-all"
-                >
-                  <Save size={16} />
-                  SAVE
-                </button>
+                <div className="flex gap-2 ml-4">
+                  {selectedRoleId && (
+                    <button 
+                      onClick={() => deleteRoleMutation.mutate({ id: selectedRoleId })}
+                      className="p-2 text-[var(--color-error)] hover:bg-[var(--color-error)]/20 rounded transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleSave}
+                    disabled={saveStatus === 'saving'}
+                    className={`flex items-center gap-2 px-4 py-2 font-bold rounded shadow-lg transition-all ${
+                        saveStatus === 'saved' ? 'bg-[var(--color-success)] text-white' :
+                        saveStatus === 'error' ? 'bg-[var(--color-error)] text-white' :
+                        'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] shadow-[var(--color-primary)]/20'
+                    }`}
+                  >
+                    {saveStatus === 'saving' ? <Sparkles size={16} className="animate-spin" /> : 
+                     saveStatus === 'saved' ? <CheckCircle size={16} /> :
+                     <Save size={16} />}
+                    {saveStatus === 'saving' ? 'SAVING...' : 
+                     saveStatus === 'saved' ? 'SAVED!' : 
+                     saveStatus === 'error' ? 'ERROR' : 'SAVE'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -438,14 +585,14 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
           <div className="flex-none border-b border-[var(--color-border)]">
             <div className="flex">
               <button
-                onClick={() => setActiveTab('params')}
-                className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'params' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--color-background-secondary)]/50' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                onClick={() => setLeftTab('params')}
+                className={`flex-1 py-2 text-xs font-bold uppercase ${leftTab === 'params' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--color-background-secondary)]/50' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
               >
                 Base Prompt
               </button>
               <button
-                onClick={() => setActiveTab('toolPrompts')}
-                className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'toolPrompts' ? 'text-[var(--color-success)] border-b-2 border-[var(--color-success)] bg-[var(--color-background-secondary)]/50' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                onClick={() => setLeftTab('toolPrompts')}
+                className={`flex-1 py-2 text-xs font-bold uppercase ${leftTab === 'toolPrompts' ? 'text-[var(--color-success)] border-b-2 border-[var(--color-success)] bg-[var(--color-background-secondary)]/50' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
               >
                 Tool Prompts
               </button>
@@ -454,7 +601,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
           
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === 'params' ? (
+            {leftTab === 'params' ? (
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">System Prompt</label>
@@ -546,27 +693,27 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
           {/* Tab Headers */}
           <div className="flex border-b border-[var(--color-border)]">
             <button
-              onClick={() => setActiveTab('capabilities')}
-              className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'capabilities' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              onClick={() => setRightTab('capabilities')}
+              className={`flex-1 py-2 text-xs font-bold uppercase ${rightTab === 'capabilities' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
             >
               Capabilities
             </button>
             <button
-              onClick={() => setActiveTab('orchestration')}
-              className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'orchestration' ? 'text-[var(--color-secondary)] border-b-2 border-[var(--color-secondary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              onClick={() => setRightTab('orchestration')}
+              className={`flex-1 py-2 text-xs font-bold uppercase ${rightTab === 'orchestration' ? 'text-[var(--color-secondary)] border-b-2 border-[var(--color-secondary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
             >
               Orchestration
             </button>
             <button
-              onClick={() => setActiveTab('assignments')}
-              className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'assignments' ? 'text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              onClick={() => setRightTab('assignments')}
+              className={`flex-1 py-2 text-xs font-bold uppercase ${rightTab === 'assignments' ? 'text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
             >
               Assignments
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {activeTab === 'assignments' ? (
+            {rightTab === 'assignments' ? (
               <div className="space-y-4">
                 <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2">
                   Assign Role to Card Components
@@ -581,7 +728,8 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                     { id: 'fileSystem', name: 'File System', desc: 'File operations with this role' },
                     { id: 'monacoEditor', name: 'Monaco Editor', desc: 'Code editing assistance' },
                     { id: 'tiptapEditor', name: 'Tiptap Editor', desc: 'Text editing assistance' },
-                    { id: 'browser', name: 'Browser', desc: 'Web research with this role' }
+                    { id: 'browser', name: 'Browser', desc: 'Web research with this role' },
+                    { id: 'sqlAssistant', name: 'SQL Assistant', desc: 'SQL Query generation assistance' }
                   ].map((component) => (
                     <div key={component.id} className="border border-[var(--color-border)] rounded p-2 bg-[var(--color-background-secondary)]/50">
                       <div className="flex items-center justify-between">
@@ -589,13 +737,20 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                           <div className="text-xs font-bold text-[var(--color-text)]">{component.name}</div>
                           <div className="text-[9px] text-[var(--color-text-muted)]">{component.desc}</div>
                         </div>
-                        <button className="px-2 py-1 bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/80 text-[var(--color-background)] rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(var(--color-accent-rgb),0.4)]">
+                        <button className="px-2 py-1 bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/80 text-[var(--color-background)] rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(var(--color-accent-rgb),0.4)] active:scale-95">
                           Assign
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* --- MODEL OVERRIDE INTEGRATION --- */}
+                {selectedRole && (
+                  <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+                    <RoleModelOverride role={selectedRole as any} />
+                  </div>
+                )}
 
                 <div className="mt-4 border-t border-[var(--color-border)] pt-4">
                   <div className="p-3 bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)]/50 rounded">
@@ -608,7 +763,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                   </div>
                 </div>
               </div>
-            ) : activeTab === 'capabilities' ? (
+            ) : rightTab === 'capabilities' ? (
               <>
                 {/* Capabilities */}
                 <div>

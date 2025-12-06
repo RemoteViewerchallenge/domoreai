@@ -5,13 +5,25 @@ import type { VFile } from '../stores/FileSystemTypes';
 /**
  * Per-card VFS hook that maintains independent directory state for each card
  */
-export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/CORE_Workspace') => {
-  const [currentPath, setCurrentPath] = useState(initialPath);
+export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/mono') => {
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    // Load from localStorage first, then fall back to initialPath
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`core_card_vfs_${cardId}`);
+      if (saved) return saved;
+    }
+    return initialPath;
+  });
   const [files, setFiles] = useState<VFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
+
+  // Persist currentPath to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`core_card_vfs_${cardId}`, currentPath);
+  }, [currentPath, cardId]);
 
   /**
    * Build a tree structure from flat file list

@@ -64,7 +64,7 @@ export class PgVectorStore {
       topK
     );
 
-    return results.map(r => ({
+    return (results as any[]).map((r: any) => ({
       id: r.id,
       vector: [], // Optimization: don't return the full vector
       metadata: { ...r.metadata, chunk: r.content, filePath: r.filePath },
@@ -76,7 +76,7 @@ export class PgVectorStore {
 export const vectorStore = new PgVectorStore();
 
 // A simple text chunking function
-export const chunkText = (text: string, chunkSize: number = 1000, overlap: number = 200): string[] => {
+export const chunkText = (text: string, chunkSize: number = 512, overlap: number = 100): string[] => {
   const chunks: string[] = [];
   let i = 0;
   while (i < text.length) {
@@ -94,28 +94,59 @@ import { OllamaProvider } from '../utils/OllamaProvider.js';
 
 // A placeholder for embedding generation
 // TODO: Replace this with a real embedding model. Consider using a library like sentence-transformers.
-export const createEmbedding = async (text: string): Promise<number[]> => {
-  // console.log(`Creating embedding for text: "${text.substring(0, 50)}..."`);
-  
-  // Try to get the 'local' provider first
-  const provider = ProviderManager.getProvider('local');
-  if (provider && provider instanceof OllamaProvider) {
-    try {
-      return await provider.generateEmbedding(text);
-    } catch (err) {
-      console.warn('Failed to use local provider for embedding, falling back to default localhost', err);
-    }
+// Simple concurrency limiter to prevent overwhelming local Ollama
+class ConcurrencyLimiter {
+  private queue: (() => void)[] = [];
+  private activeCount = 0;
+  private maxConcurrency: number;
+
+  constructor(maxConcurrency: number) {
+    this.maxConcurrency = maxConcurrency;
   }
 
-  try {
-    const response = await axios.post('http://localhost:11434/api/embeddings', {
-      model: 'mxbai-embed-large',
-      prompt: text,
-    });
-    return response.data.embedding;
-  } catch (error) {
-    console.error('Error creating embedding:', error);
-    // Fallback to random vector if Ollama fails, to keep the app running
-    return Array.from({ length: 1024 }, () => Math.random());
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.activeCount >= this.maxConcurrency) {
+      await new Promise<void>(resolve => this.queue.push(resolve));
+    }
+    this.activeCount++;
+    try {
+      return await fn();
+    } finally {
+      this.activeCount--;
+      if (this.queue.length > 0) {
+        const next = this.queue.shift();
+        next?.();
+      }
+    }
   }
+}
+
+const embeddingLimiter = new ConcurrencyLimiter(1); // Limit to 1 concurrent request
+
+export const createEmbedding = async (text: string): Promise<number[]> => {
+  return embeddingLimiter.run(async () => {
+    // console.log(`Creating embedding for text: "${text.substring(0, 50)}..."`);
+    
+    // Try to get the 'local' provider first
+    const provider = ProviderManager.getProvider('local');
+    if (provider && provider instanceof OllamaProvider) {
+      try {
+        return await provider.generateEmbedding(text);
+      } catch (err) {
+        console.warn('Failed to use local provider for embedding, falling back to default localhost', err);
+      }
+    }
+
+    try {
+      const response = await axios.post('http://localhost:11434/api/embeddings', {
+        model: 'mxbai-embed-large',
+        prompt: text,
+      });
+      return response.data.embedding;
+    } catch (error) {
+      console.error('Error creating embedding:', error);
+      // Fallback to random vector if Ollama fails, to keep the app running
+      return Array.from({ length: 1024 }, () => Math.random());
+    }
+  });
 };

@@ -427,7 +427,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           {viewMode === 'settings' && (
             <AgentSettings 
               config={{ ...agentConfig, adjustedParameters }}
-              availableRoles={roles?.map(r => ({ id: r.id, name: r.name })) || []}
+              availableRoles={roles?.map(r => ({ id: r.id, name: r.name, category: r.category })) || []}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               availableModels={models?.map((m: any) => ({
                   id: m.modelId,

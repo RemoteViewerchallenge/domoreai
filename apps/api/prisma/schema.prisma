@@ -69,6 +69,7 @@ model Model {
 model Role {
   id          String @id @default(cuid())
   name        String @unique
+  category    String?
   basePrompt  String @db.Text
   
   // Role Parameters (for the "fiddler")

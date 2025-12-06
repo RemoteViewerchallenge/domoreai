@@ -36,16 +36,19 @@ export class RawModelService {
     if (looksLikeOllama) {
         fetchUrl = url.endsWith('/api/tags') ? url : `${url}/api/tags`;
     } else if (config.type === 'google') {
-        // Google AI Studio: https://generativelanguage.googleapis.com/v1beta/models
-        fetchUrl = url.endsWith('/models') ? url : `${url}/models`;
+        // CORRECTED: Use the v1 endpoint which provides the full model catalog,
+        // not the v1beta endpoint which only lists a small subset.
+        fetchUrl = 'https://generativelanguage.googleapis.com/v1/models?pageSize=100';
     } else {
         // OpenAI Compatible
         fetchUrl = url.endsWith('/models') ? url : `${url}/models`;
     }
 
-    console.log(`[RawModelService] Fetching from: ${fetchUrl}`);
+    console.log(`[RawModelService] Attempting to fetch models from provider endpoint: ${fetchUrl}`);
 
     // 3. Fetch (Raw)
+    const allModels: any[] = [];
+    let nextUrl: string | undefined = fetchUrl;
     const apiKey = decrypt(config.apiKey);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
@@ -61,28 +64,40 @@ export class RawModelService {
           }
       }
 
-      const response = await fetch(fetchUrl, {
-        headers,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      // --- PAGINATION LOOP ---
+      while (nextUrl) {
+        console.log(`[RawModelService] Fetching page: ${nextUrl}`);
+        const response = await fetch(nextUrl, {
+          headers,
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-          const txt = await response.text();
-          throw new Error(`Provider API Error: ${response.status} ${txt}`);
+        if (!response.ok) {
+            const txt = await response.text();
+            throw new Error(`Provider API Error: ${response.status} ${txt}`);
+        }
+        
+        const pageJson = await response.json();
+        
+        // Extract models from the current page
+        const pageModels = pageJson.models || [];
+        allModels.push(...pageModels);
+
+        // Check for the next page token
+        if (pageJson.nextPageToken) {
+          // Construct the URL for the next page
+          const baseUrl = fetchUrl.split('?')[0];
+          nextUrl = `${baseUrl}?pageSize=100&pageToken=${pageJson.nextPageToken}`;
+        } else {
+          nextUrl = undefined; // No more pages, exit loop
+        }
       }
-      
-      // 4. Get JSON (Yes, it is JSON)
-      const rawJson = await response.json();
-      // Normalize Ollama tags payload so downstream flattening can find an array
-      // Ollama returns { models: [...] }
-      const normalized = looksLikeOllama && rawJson && rawJson.models ? rawJson.models : rawJson;
 
       // 5. Save to DB (Exact dump)
       const snapshot = await prisma.rawDataLake.create({
         data: {
           provider: config.type,
-          rawData: normalized, 
+          rawData: allModels, // Save the complete, accumulated list
           ingestedAt: new Date()
         }
       });

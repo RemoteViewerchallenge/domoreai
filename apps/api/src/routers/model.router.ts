@@ -95,7 +95,7 @@ export const modelRouter = createTRPCRouter({
       const { sourceTableName } = input;
 
       // A. Fetch Raw Data using Unsafe Query (Bypasses Prisma typing for dynamic tables)
-      const rows = await ctx.prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`);
+      const rows = await ctx.prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`) as any[];
       if (!rows.length) throw new Error(`Table ${sourceTableName} is empty.`);
 
       // B. Fetch Saved Mapping (if any)
@@ -162,7 +162,7 @@ export const modelRouter = createTRPCRouter({
       try {
         // Query the user's "my_free_models" table (or whatever they named it)
         // We assume the user wants 'my_free_models' as the source of truth now.
-        const rows = await ctx.prisma.$queryRaw`SELECT * FROM "my_free_models"`;
+        const rows = await ctx.prisma.$queryRaw`SELECT * FROM "my_free_models"` as any[];
         
         return rows.map((row: any) => ({
           id: row.id || row.model_id || row.name,
@@ -211,7 +211,7 @@ export const modelRouter = createTRPCRouter({
         const fullQuery = queries.join(' UNION ALL ');
 
         // 3. Execute
-        const rows = await ctx.prisma.$queryRawUnsafe(fullQuery);
+        const rows = await ctx.prisma.$queryRawUnsafe(fullQuery) as any[];
 
         return rows.map((row: any) => ({
           id: row.id,

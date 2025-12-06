@@ -37,7 +37,8 @@ export class MistralProvider implements BaseLLMProvider {
         providerId: this.id,
         contextWindow: m.context_window || 32000, // Mistral default
         isFree: false, // Mistral API is generally paid, but we can check if they add pricing fields
-        name: m.id
+        name: m.id,
+        providerData: m
       }));
     } catch (error) {
       console.error("Failed to fetch Mistral models:", error);

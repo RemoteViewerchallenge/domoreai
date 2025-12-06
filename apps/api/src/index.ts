@@ -64,6 +64,13 @@ async function startServer() {
 
   // Initialize WebSocket service
   const wsService = new WebSocketService(server);
+  // Register singleton so other services can broadcast events
+  try {
+    const { setWebSocketService } = await import('./services/websocket.singleton.js');
+    setWebSocketService(wsService);
+  } catch (err) {
+    console.warn('Failed to register WebSocketService singleton:', err);
+  }
 
   // Initialize Provider Manager
   await ProviderManager.initialize();

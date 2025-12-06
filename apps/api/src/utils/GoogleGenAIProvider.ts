@@ -25,23 +25,30 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
   }
 
   async getModels(): Promise<LLMModel[]> {
-    // NOTE: Gemini API models are hardcoded or fetched differently than OpenAI.
-    // Updated with latest models as of Dec 2024
-    return [
-      // FREE / PREVIEW TIER (High Rate Limits)
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.0-flash-lite-preview-02-05', name: 'Gemini 2.0 Flash-Lite', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', contextWindow: 1000000, isFree: true, providerId: this.id },
-      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B', contextWindow: 1000000, isFree: true, providerId: this.id },
+    try {
+      const response = await this.client.models.list();
       
-      // EXPERIMENTAL (Often Free)
-      { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp', contextWindow: 2000000, isFree: true, providerId: this.id },
-      { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking', contextWindow: 1000000, isFree: true, providerId: this.id },
-      
-      // STANDARD / PAID TIER (Strict Rate Limits on Free Plan)
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', contextWindow: 2000000, isFree: false, providerId: this.id },
-      { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Antigravity)', contextWindow: 2000000, isFree: false, providerId: this.id },
-    ];
+      // Handle SDK response structure (it usually returns an object with a 'models' property)
+      const models = (response as any).models || (Array.isArray(response) ? response : []);
+
+      return models.map((m: any) => {
+        // Google model names are typically "models/gemini-pro". We strip the prefix for the ID.
+        const id = m.name.startsWith('models/') ? m.name.slice(7) : m.name;
+        
+        return {
+          id: id,
+          name: m.displayName || id,
+          contextWindow: m.inputTokenLimit || 32000,
+          // Simple heuristic for free tier, similar to how we handle other providers
+          isFree: id.includes('flash') || id.includes('exp') || id.includes('preview'), 
+          providerId: this.id,
+          providerData: m
+        };
+      });
+    } catch (error) {
+      console.error("Failed to fetch Google models:", error);
+      return [];
+    }
   }
 
   private formatMessages(messages: any[]): { systemInstruction?: string, contents: any[] } {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Brain, Eye, EyeOff, Zap, Lock, Unlock } from 'lucide-react';
 
 // Represents the state of a single Card's brain
@@ -37,7 +37,7 @@ interface ModelOption {
 
 interface AgentSettingsProps {
   config: CardAgentState;
-  availableRoles: { id: string; name: string }[]; 
+  availableRoles: { id: string; name: string; category: string }[]; 
   availableModels: ModelOption[];
   onUpdate: (newConfig: CardAgentState) => void;
   fileSystem?: {
@@ -50,21 +50,89 @@ export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableR
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAdjustmentDetails, setShowAdjustmentDetails] = useState(false);
 
+  // Derive initial category from current role
+  const initialCategory = useMemo(() => {
+    if (!config.roleId) return '';
+    const role = availableRoles.find(r => r.id === config.roleId);
+    return role?.category || '';
+  }, [config.roleId, availableRoles]);
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+
+  // Update selectedCategory if config.roleId changes externally (and category mismatches)
+  // Actually, we probably only want to set it if it's currently empty or if the role changes to something outside the current category?
+  // Let's just sync it when config.roleId changes, if it's not empty.
+  // But be careful not to override user selection if they are browsing.
+  // Let's just use initial state for now, or a useEffect if we want strict sync.
+  // A useEffect is safer for "controlled" behavior.
+  React.useEffect(() => {
+      if (config.roleId) {
+          const role = availableRoles.find(r => r.id === config.roleId);
+          if (role?.category) {
+              setSelectedCategory(role.category);
+          }
+      }
+  }, [config.roleId, availableRoles]);
+
+  const groupedRoles = useMemo(() => {
+    const groups: Record<string, typeof availableRoles> = {};
+    availableRoles.forEach(role => {
+      const category = role.category || 'Uncategorized';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(role);
+    });
+    // Sort roles within each category alphabetically
+    Object.keys(groups).forEach(category => {
+      groups[category].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    return groups;
+  }, [availableRoles]);
+
   return (
     <div className="h-full w-full bg-zinc-950 text-zinc-300 flex flex-col font-mono text-xs overflow-y-auto">
       <div className="p-3 space-y-4">
         
         {/* 1. ROLE ASSIGNMENT - Compact */}
-        <div className="space-y-1">
+        <div className="space-y-2">
+          {/* Category Selector */}
+          <select
+            value={(() => {
+               // If we have a local state for category, use it.
+               // Otherwise, try to derive from current role.
+               // But we need state to allow switching categories without selecting a role yet.
+               // So let's use a state variable.
+               return selectedCategory;
+            })()} 
+            onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                // Optional: Clear role when category changes? Or keep it if it happens to be in the new category (unlikely)
+                // For now, just change category filter.
+            }}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:ring-cyan-500/50 outline-none"
+          >
+            <option value="">All Categories</option>
+            {Object.keys(groupedRoles).sort().map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          {/* Role Selector */}
           <select 
             value={config.roleId} 
             onChange={(e) => onUpdate({ ...config, roleId: e.target.value, isLocked: false })}
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs focus:ring-cyan-500/50 outline-none"
           >
             <option value="">Select a Role...</option>
-            {availableRoles.map(role => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
+            {selectedCategory 
+                ? (groupedRoles[selectedCategory] || []).map(role => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))
+                : availableRoles.sort((a, b) => a.name.localeCompare(b.name)).map(role => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))
+            }
           </select>
         </div>
 

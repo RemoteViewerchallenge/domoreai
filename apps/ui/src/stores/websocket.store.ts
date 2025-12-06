@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import useIngestStore from './ingest.store';
 import type { TerminalMessage } from '@repo/common/agent';
 
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
@@ -56,12 +57,49 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
       socket.onmessage = (event) => {
         try {
-          const data: unknown = JSON.parse(event.data as string);
+          const data: unknown = JSON.parse(event.data as string) as any;
+
+          // Pass through terminal-style messages
           if (isTerminalMessage(data)) {
             get().actions.addMessage(data);
-          } else {
-            console.warn('Received non-TerminalMessage from WebSocket:', data);
+            return;
           }
+
+          // Handle ingest progress events emitted by the server
+          if (data && typeof data.type === 'string' && data.type.startsWith('ingest')) {
+            const ingest = useIngestStore.getState();
+            switch (data.type) {
+              case 'ingest.start':
+                // Mark ingest active for this path
+                ingest.increment(data.path || undefined);
+                break;
+              case 'ingest.file.start':
+                // update current path display
+                useIngestStore.setState({ currentPath: data.filePath || data.file || null });
+                break;
+              case 'ingest.file.complete':
+                // increment processed count
+                const prev = useIngestStore.getState().filesProcessed || 0;
+                useIngestStore.getState().updateProgress(prev + 1);
+                break;
+              case 'ingest.file.skipped':
+                // skipped counts as processed for UI purposes
+                const prev2 = useIngestStore.getState().filesProcessed || 0;
+                useIngestStore.getState().updateProgress(prev2 + 1);
+                break;
+              case 'ingest.complete':
+                // Done scanning this path
+                useIngestStore.getState().decrement();
+                useIngestStore.getState().updateProgress(0);
+                useIngestStore.setState({ currentPath: null });
+                break;
+              default:
+                break;
+            }
+            return;
+          }
+
+          console.warn('Received non-TerminalMessage from WebSocket:', data);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }

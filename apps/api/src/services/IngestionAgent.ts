@@ -3,17 +3,36 @@ import * as path from 'path';
 import fs from 'fs/promises';
 import { IVfsProvider } from './vfs/IVfsProvider.js';
 import { vectorStore, chunkText, createEmbedding } from './vector.service.js';
+import { prisma } from '../db.js';
+import crypto from 'crypto';
 import ignore from 'ignore';
+import { getWebSocketService } from './websocket.singleton.js';
 
 class IngestionAgent {
   private pdfParse: any;
   private ignoreFilter: any;
+  private readonly repoRoot = '/home/guy/mono';
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
   private readonly binaryExtensions = ['.pdf', '.docx', '.png'];
 
   constructor() {
     this.subscribeToVfsEvents();
-    this.initializeIgnoreFilter();
+    // Initialize ignoreFilter synchronously with a placeholder
+    // Will be properly initialized when needed
+    this.ignoreFilter = ignore();
+    this.initializeIgnoreFilter()
+      .then(() => {
+        // Start a full repository ingest on initialization so the project root stays indexed across restarts
+        // this.ingestRepository(this.repoRoot).catch(err => {
+        //   console.error('[IngestionAgent] Failed to ingest repository on startup:', err);
+        // });
+      })
+      .catch(err => {
+        console.warn('Failed to initialize ignore filter:', err);
+        this.ignoreFilter = ignore(); // fallback to empty ignore
+        // Still attempt to ingest even if ignore couldn't be read
+        // this.ingestRepository(this.repoRoot).catch(e => console.error('[IngestionAgent] Failed to ingest repository on startup (fallback):', e));
+      });
   }
 
   private async initializeIgnoreFilter(): Promise<void> {
@@ -21,8 +40,8 @@ class IngestionAgent {
       const gitignoreContent = await this.readGitIgnore();
       this.ignoreFilter = ignore().add(gitignoreContent);
     } catch (error) {
-      console.warn('Failed to read .gitignore.  Indexing all files.', error);
-      this.ignoreFilter = () => false; // Allow all files if .gitignore can't be read
+      console.warn('Failed to read .gitignore. Indexing all files.', error);
+      this.ignoreFilter = ignore(); // Allow all files if .gitignore can't be read
     }
   }
 
@@ -43,11 +62,14 @@ class IngestionAgent {
 
     if (this.textExtensions.includes(fileExtension)) {
        // Check if the file should be ignored
-       if (this.ignoreFilter && !this.ignoreFilter(filePath)) {
+       const relPath = path.relative(this.repoRoot, filePath);
+       if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && !this.ignoreFilter.ignores(relPath)) {
           const text = content.toString('utf-8');
           await this.indexFile(filePath, text);
-       } else {
-          // console.log(`Ignoring file: ${filePath}`);
+       } else if (!this.ignoreFilter || typeof this.ignoreFilter.ignores !== 'function') {
+          // If ignoreFilter not ready, index anyway
+          const text = content.toString('utf-8');
+          await this.indexFile(filePath, text);
        }
     } else if (this.binaryExtensions.includes(fileExtension)) {
       try {
@@ -55,10 +77,12 @@ class IngestionAgent {
         const shadowFilePath = await this.generateShadowFile(provider, filePath, markdownContent);
 
         // Check if the file should be ignored
-        if (!this.ignoreFilter(shadowFilePath)) {
+          const relShadowPath = path.relative(this.repoRoot, shadowFilePath);
+          if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && !this.ignoreFilter.ignores(relShadowPath)) {
           await this.indexFile(shadowFilePath, markdownContent);
-        } else {
-          console.log(`Ignoring file: ${shadowFilePath}`);
+        } else if (!this.ignoreFilter || typeof this.ignoreFilter.ignores !== 'function') {
+          // If ignoreFilter not ready, index anyway
+          await this.indexFile(shadowFilePath, markdownContent);
         }
 
       } catch (error) {
@@ -69,6 +93,7 @@ class IngestionAgent {
 
   public async ingestRepository(dir: string) {
       console.log(`[IngestionAgent] 🚀 Scanning directory: ${dir}`);
+      try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch (e) {}
       let totalFiles = 0;
       let processedFiles = 0;
       try {
@@ -82,31 +107,56 @@ class IngestionAgent {
                 }
                 await this.ingestRepository(fullPath);
             } else {
-                // Check ignore
-                if (this.ignoreFilter && this.ignoreFilter(fullPath)) {
-                  console.log(`[IngestionAgent] 🚫 Ignored: ${fullPath}`);
+                // Check ignore with proper type check
+                const rel = path.relative(this.repoRoot, fullPath);
+                if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && this.ignoreFilter.ignores(rel)) {
+              const displayName = path.basename(fullPath);
+              console.log(`[IngestionAgent] 🚫 Ignored: ${displayName}`);
                   continue;
                 }
                 
                 const ext = path.extname(fullPath).toLowerCase();
                 if (this.textExtensions.includes(ext)) {
                      totalFiles++;
-                     console.log(`[IngestionAgent] 📄 Processing file ${totalFiles}: ${fullPath}`);
+              const displayName = path.basename(fullPath);
+              console.log(`[IngestionAgent] 📄 Processing file ${totalFiles}: ${displayName}`);
+              try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch (e) {}
                      const content = await fs.readFile(fullPath);
                      const text = content.toString('utf-8');
                      await this.indexFile(fullPath, text);
                      processedFiles++;
-                     console.log(`[IngestionAgent] ✅ Indexed file ${processedFiles}/${totalFiles}: ${fullPath}`);
+              console.log(`[IngestionAgent] ✅ Indexed file ${processedFiles}/${totalFiles}: ${displayName}`);
+              try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch (e) {}
                 }
             }
         }
         console.log(`[IngestionAgent] 🏁 Completed: ${processedFiles}/${totalFiles} files indexed from ${dir}`);
+        try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.complete', path: dir, processedFiles, totalFiles }); } catch (e) {}
       } catch (err) {
           console.error(`[IngestionAgent] ❌ Error scanning directory ${dir}:`, err);
       }
   }
 
   private async indexFile(filePath: string, content: string) {
+    // Compute content hash to detect unchanged files
+    const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+
+    try {
+      const existing: any = await prisma.$queryRawUnsafe(
+        `SELECT "contentHash" FROM "FileIndex" WHERE "filePath" = $1 LIMIT 1`,
+        filePath
+      );
+
+      if (existing && existing.length > 0 && existing[0].contentHash === hash) {
+        console.log(`[IngestionAgent] ⚠️ Skipping ${filePath} — content unchanged (hash ${hash})`);
+        try { getWebSocketService()?.broadcast({ type: 'ingest.file.skipped', file: path.basename(filePath), filePath, hash }); } catch (e) {}
+        return;
+      }
+    } catch (err) {
+      console.warn(`[IngestionAgent] Could not check FileIndex for ${filePath}:`, err);
+      // fall through to re-embed
+    }
+
     const chunks = chunkText(content);
     console.log(`[IngestionAgent] 📦 Created ${chunks.length} chunks from ${filePath}`);
     const vectors = await Promise.all(chunks.map(async (chunk, i) => {
@@ -117,12 +167,27 @@ class IngestionAgent {
         metadata: {
           filePath,
           chunk,
+          contentHash: hash,
         },
       };
     }));
 
     await vectorStore.add(vectors);
     console.log(`[IngestionAgent] 💾 Stored ${vectors.length} vectors for ${filePath}`);
+    try { getWebSocketService()?.broadcast({ type: 'ingest.file.stored', file: path.basename(filePath), filePath, chunks: vectors.length }); } catch (e) {}
+    // Upsert file hash into FileIndex so future ingests can skip unchanged files
+    try {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "FileIndex" ("filePath", "contentHash", "updatedAt") VALUES ($1, $2, CURRENT_TIMESTAMP)
+         ON CONFLICT ("filePath") DO UPDATE SET "contentHash" = EXCLUDED."contentHash", "updatedAt" = CURRENT_TIMESTAMP`,
+        filePath,
+        hash
+      );
+      console.log(`[IngestionAgent] 🔖 Updated FileIndex for ${filePath} (hash ${hash})`);
+      try { getWebSocketService()?.broadcast({ type: 'ingest.file.indexed', file: path.basename(filePath), filePath, hash }); } catch (e) {}
+    } catch (err) {
+      console.warn(`[IngestionAgent] Failed to update FileIndex for ${filePath}:`, err);
+    }
   }
 
   private async generateShadowFile(provider: IVfsProvider, originalPath: string, markdownContent: string): Promise<string> {

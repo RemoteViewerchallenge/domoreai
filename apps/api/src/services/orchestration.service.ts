@@ -150,11 +150,16 @@ export class OrchestrationService {
   }
 
   /**
-   * Execute an orchestration
+   * Execute an orchestration with dynamic role assignments
+   * @param orchestrationId - The orchestration to execute
+   * @param input - The initial input data
+   * @param roleAssignments - Optional map of step names to role IDs (e.g., { "step1": "roleId1" })
+   * @param userId - Optional user ID for tracking
    */
   static async executeOrchestration(
     orchestrationId: string,
     input: any,
+    roleAssignments?: Record<string, string>,
     userId?: string
   ): Promise<OrchestrationExecution> {
     const orchestration = await prisma.orchestration.findUnique({
@@ -187,7 +192,7 @@ export class OrchestrationService {
     });
 
     // Execute in background (don't await)
-    this.runOrchestration(execution.id, orchestration, input).catch((error) => {
+    this.runOrchestration(execution.id, orchestration, input, roleAssignments).catch((error) => {
       console.error(`[Orchestration] Execution ${execution.id} failed:`, error);
     });
 
@@ -200,7 +205,8 @@ export class OrchestrationService {
   private static async runOrchestration(
     executionId: string,
     orchestration: Orchestration & { steps: OrchestrationStep[] },
-    input: any
+    input: any,
+    roleAssignments?: Record<string, string>
   ) {
     const context: Record<string, any> = { input };
     const stepLogs: any[] = [];
@@ -213,7 +219,7 @@ export class OrchestrationService {
         if (group.type === 'parallel') {
           // Execute all steps in parallel
           const results = await Promise.allSettled(
-            group.steps.map((step) => this.executeStep(step, context))
+            group.steps.map((step) => this.executeStep(step, context, roleAssignments))
           );
 
           // Process results
@@ -247,7 +253,7 @@ export class OrchestrationService {
               continue;
             }
 
-            const stepLog = await this.executeStep(step, context);
+            const stepLog = await this.executeStep(step, context, roleAssignments);
             stepLogs.push(stepLog);
 
             if (stepLog.status === 'failed') {
@@ -288,10 +294,14 @@ export class OrchestrationService {
 
   /**
    * Execute a single step with retry logic
+   * @param step - The orchestration step to execute
+   * @param context - The current execution context
+   * @param roleAssignments - Optional map of step names to role IDs
    */
   private static async executeStep(
     step: OrchestrationStep,
-    context: Record<string, any>
+    context: Record<string, any>,
+    roleAssignments?: Record<string, string>
   ): Promise<any> {
     const startTime = Date.now();
     let lastError: Error | null = null;
@@ -302,19 +312,30 @@ export class OrchestrationService {
     // Retry logic
     for (let attempt = 0; attempt <= step.maxRetries; attempt++) {
       try {
-        // Find the role
         // Dynamic Role Selection
-        // TODO: Implement sophisticated role selector based on step description
-        // For now, default to 'general_worker' or try to find a role matching the step name
-        let role = await prisma.role.findFirst({ where: { name: 'general_worker' } });
+        let role;
         
-        if (!role) {
-             // Fallback to first available role if general_worker doesn't exist
-             role = await prisma.role.findFirst();
-        }
+        // 1. Check if a role is assigned for this step
+        if (roleAssignments && roleAssignments[step.name]) {
+          role = await prisma.role.findUnique({ where: { id: roleAssignments[step.name] } });
+          if (!role) {
+            throw new Error(`Assigned role ${roleAssignments[step.name]} not found for step ${step.name}`);
+          }
+        } else {
+          // 2. Fallback strategy: Try to find a suitable role
+          // First try 'general_worker'
+          role = await prisma.role.findFirst({ where: { name: 'general_worker' } });
+          
+          if (!role) {
+            // Last resort: use any available role
+            role = await prisma.role.findFirst();
+          }
 
-        if (!role) {
-          throw new Error(`No available role found for step ${step.name}`);
+          if (!role) {
+            throw new Error(`No available role found for step ${step.name}. Please provide roleAssignments or create a 'general_worker' role.`);
+          }
+          
+          console.warn(`[Orchestration] No role assigned for step "${step.name}". Using fallback role "${role.name}".`);
         }
 
         // Create agent for this role

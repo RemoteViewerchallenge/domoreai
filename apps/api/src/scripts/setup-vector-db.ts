@@ -23,6 +23,17 @@ async function main() {
     `);
     console.log('Index created.');
 
+    console.log('Creating FileIndex table if not exists...');
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "FileIndex" (
+        "filePath" TEXT NOT NULL,
+        "contentHash" TEXT NOT NULL,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "FileIndex_pkey" PRIMARY KEY ("filePath")
+      );
+    `);
+    console.log('FileIndex table created.');
+
   } catch (error) {
     console.error('Failed to setup vector DB:', error);
   } finally {
