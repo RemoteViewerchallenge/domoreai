@@ -20,6 +20,23 @@ export class WebSocketService {
   }
 
   /**
+   * Broadcast a JSON-serializable payload to all connected WebSocket clients.
+   * Used for lightweight app events such as ingest progress messages.
+   */
+  public broadcast(payload: any): void {
+    try {
+      const message = JSON.stringify(payload);
+      this.wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+    } catch (err) {
+      console.error('Failed to broadcast WebSocket message:', err);
+    }
+  }
+
+  /**
    * Initializes the WebSocket server and sets up connection handling.
    * @private
    */

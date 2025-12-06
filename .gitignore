@@ -54,3 +54,10 @@ apps/api/src/scripts/antigravity.ts
 # Role Markdown Files
 apps/api/data/agents/en/*.md
 agents/*.md
+
+# Provider model JSON exports (should be in database, not filesystem)
+*_models_*.json
+
+# Build artifacts that shouldn't be in source directories
+apps/api/list_tables.*
+!/apps/api/list_tables.ts

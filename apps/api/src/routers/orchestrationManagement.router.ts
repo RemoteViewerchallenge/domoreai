@@ -35,6 +35,7 @@ const updateOrchestrationSchema = z.object({
 const executeOrchestrationSchema = z.object({
   orchestrationId: z.string(),
   input: z.any(),
+  roleAssignments: z.record(z.string()).optional(), // Map of step names to role IDs
   userId: z.string().optional(),
 });
 
@@ -99,6 +100,7 @@ export const orchestrationManagementRouter = createTRPCRouter({
       return OrchestrationService.executeOrchestration(
         input.orchestrationId,
         input.input,
+        input.roleAssignments,
         input.userId
       );
     }),

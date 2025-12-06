@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
+import { ProviderManager } from '../services/ProviderManager.js';
 import { providerConfigs, modelRegistry } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
@@ -34,6 +35,26 @@ export const providerRouter = createTRPCRouter({
 
       return newProvider;
     }),
+
+  /**
+   * Gets a list of all available models from all active providers.
+   * This is used to populate the model override dropdown in the UI.
+   */
+  listAllAvailableModels: publicProcedure.query(async ({ ctx }) => {
+    // This function already aggregates models from all active providers.
+    const models = await ProviderManager.getAllModels();
+
+    // Fetch provider labels to group the models in the UI dropdown.
+    const providers = await ctx.db.query.providerConfigs.findMany({
+      columns: { id: true, label: true },
+    });
+    const providerMap = new Map(providers.map((p) => [p.id, p.label]));
+
+    return models.map((model) => ({
+      ...model,
+      providerLabel: providerMap.get(model.providerId) || model.providerId,
+    }));
+  }),
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -128,5 +149,3 @@ export const providerRouter = createTRPCRouter({
   deleteRawData: publicProcedure.input(z.object({ id: z.string() })).mutation(async () => { return null; }),
   createRawData: publicProcedure.input(z.any()).mutation(async () => { return null; }),
 });
-
-

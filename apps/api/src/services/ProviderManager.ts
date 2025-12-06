@@ -1,7 +1,5 @@
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
 import { db, prisma } from '../db.js';
 import { providerConfigs, modelRegistry } from '../db/schema.js';
 import { decrypt, encrypt } from '../utils/encryption.js';
@@ -90,9 +88,13 @@ export class ProviderManager {
 
         if (!existing) {
            console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
+           // Create a stable, human-readable ID instead of a random UUID.
+           // e.g., "OpenRouter (Env)" -> "openrouter-env"
+           const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
            const now = new Date();
            await db.insert(providerConfigs).values({
-             id: uuidv4(),
+             id: stableId,
              label: map.label,
              type: map.type,
              apiKey: encrypt(key),
@@ -148,31 +150,48 @@ export class ProviderManager {
         const providerLabel = meta?.label || providerId;
         const providerType = meta?.type || 'unknown';
 
-        console.log(`[ProviderManager] Fetching models from ${providerLabel} (${providerType})...`);
-        let models = await provider.getModels();
-        console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}`);
+        // --- UNIFIED FETCH LOGIC ---
+        // We will now use RawModelService to handle all fetching,
+        // ensuring pagination and correct endpoints are always used.
+        console.log(`[ProviderManager] Fetching models for ${providerLabel} via RawModelService...`);
+        const { RawModelService } = await import('./RawModelService.js');
+        const snapshot = await RawModelService.fetchAndSnapshot(providerId);
+        
+        if (!snapshot || !Array.isArray(snapshot.rawData)) {
+          console.error(`[ProviderManager] Failed to get a valid snapshot for ${providerLabel}.`);
+          continue;
+        }
+        const models = snapshot.rawData as LLMModel[];
+        console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}.`);
 
-        // SAVE RAW UNFILTERED DATA IMMEDIATELY TO JSON FILE
+        // NOTE: Raw JSON file export can be re-enabled here if needed.
+        // Data is already saved to RawDataLake database (see snapshotAndFlatten below)
+        // If you need to export models to JSON, use the Data Refinement UI instead
+        /*
         try {
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
           const filename = `${providerType}_models_${timestamp}.json`;
-          // Use process.cwd() - this is where node is actually running from
-          const cwd = process.cwd();
-          const filepath = join(cwd, filename);
-          console.log(`[ProviderManager] 📝 CWD=${cwd}`);
+          const dataDir = join(process.cwd(), 'apps', 'api', 'data', 'raw_models');
+          await mkdir(dataDir, { recursive: true });
+          const filepath = join(dataDir, filename);
           console.log(`[ProviderManager] 📝 Saving ${models.length} models to: ${filepath}`);
           await writeFile(filepath, JSON.stringify(models, null, 2), 'utf8');
-          console.log(`[ProviderManager] ✅ Successfully saved ${models.length} records to: ${filename}`);
+          console.log(`[Provider Manager] ✅ Successfully saved ${models.length} records to: ${filename}`);
         } catch (fileErr) {
           console.error(`[ProviderManager] ❌ FAILED TO SAVE FILE:`, fileErr);
         }
+        */
+
+        // The snapshot is already created by RawModelService. We just need to flatten.
+        // We pass the snapshot ID to ensure we use the exact data that was saved.
+        await this.flattenSnapshot(snapshot.id, providerType, models);
 
         // 2. Apply provider-specific filters AFTER saving raw data
-        if (providerType === 'openrouter') {
-            const originalCount = models.length;
-            models = models.filter(m => m.id.endsWith(':free'));
-            console.log(`[Registry Sync] Filtered OpenRouter: Kept ${models.length} free models (dropped ${originalCount - models.length})`);
-        }
+        // if (providerType === 'openrouter') {
+        //     const originalCount = models.length;
+        //     models = models.filter(m => m.id.endsWith(':free'));
+        //     console.log(`[Registry Sync] Filtered OpenRouter: Kept ${models.length} free models (dropped ${originalCount - models.length})`);
+        // }
 
         if (models.length === 0) {
           console.warn(`[ProviderManager] No models to sync for ${providerLabel} after filtering`);
@@ -205,7 +224,7 @@ export class ProviderManager {
             isFree: isFree,
             costPer1k: cost || 0,
             updatedAt: now,
-            providerData: (m.providerData || {}),
+            providerData: m, // Store full raw model object
             specs: specs as any,
             aiData: {} as any
           }).onConflictDoUpdate({
@@ -215,7 +234,7 @@ export class ProviderManager {
               isFree: isFree,
               costPer1k: cost || 0,
               updatedAt: now,
-              providerData: (m.providerData || {}),
+              providerData: m, // Store full raw model object
               specs: specs as any
             }
           });
@@ -237,6 +256,29 @@ export class ProviderManager {
   }
 
   /**
+   * Helper to flatten provider data from a snapshot into a dynamic table.
+   * The snapshotting part is now handled by RawModelService.
+   */
+  private static async flattenSnapshot(snapshotId: string, providerType: string, models: any[]) {
+    // Flatten into a dynamic table. This is the critical step.
+    // Table name convention: "{providerType}_models" (e.g. google_models)
+    try {
+      const tableName = `${providerType}_models`;
+      
+      const { flattenRawData } = await import('./dataRefinement.service.js');
+      
+      console.log(`[ProviderManager] 🔨 Flattening data into table: ${tableName}...`);
+      // Pass both snapshotId and the in-memory rawData.
+      // flattenRawData is smart enough to use the rawData if the snapshotId lookup fails for any reason.
+      const result = await flattenRawData({ snapshotId, tableName, rawData: models });
+      console.log(`[ProviderManager] ✅ Created dynamic table ${result.tableName} with ${result.rowCount} rows.`);
+      
+    } catch (error) {
+      console.error(`[ProviderManager] ❌ Failed to snapshot/flatten data for ${providerType}:`, error);
+    }
+  }
+
+  /**
    * Auto-detects a local Ollama instance and registers it as a provider.
    * This allows "zero-config" usage of local models.
    */
@@ -248,40 +290,32 @@ export class ProviderManager {
     if (this.providers.has(providerId)) return;
 
     try {
-        // Try to connect
-        const provider = ProviderFactory.createProvider('ollama', {
-            id: providerId,
-            baseURL: ollamaHost,
-        });
+        // A simple fetch to the root endpoint is enough to see if Ollama is running.
+        const response = await fetch(ollamaHost);
+        const text = await response.text();
 
-        // Test connection by fetching models
-        const models = await provider.getModels();
-        
-        if (models.length > 0) {
-            console.log(`[ProviderManager] Auto-detected local Ollama at ${ollamaHost} with ${models.length} models.`);
+        if (response.ok && text.includes('Ollama is running')) {
+            console.log(`[ProviderManager] ✅ Auto-detected local Ollama at ${ollamaHost}.`);
 
-            // Ensure the ProviderConfig exists in the DB so FK constraints succeed
-            try {
-              const existing = await db.query.providerConfigs.findFirst({ where: eq(providerConfigs.id, providerId) });
-              if (!existing) {
-                const now = new Date();
-                await db.insert(providerConfigs).values({
-                  id: providerId,
-                  label: 'Ollama (Local)',
-                  type: 'ollama',
-                  apiKey: encrypt(''),
-                  baseURL: ollamaHost,
-                  isEnabled: true,
-                  requestsPerMinute: 0,
-                  createdAt: now,
-                  updatedAt: now
-                });
-                console.log('[ProviderManager] Registered local Ollama provider in DB.');
-              }
-            } catch (dbErr) {
-              console.warn('[ProviderManager] Failed to ensure Ollama provider in DB:', dbErr);
+            // Ensure the provider config exists in the database.
+            const existing = await db.query.providerConfigs.findFirst({ where: eq(providerConfigs.id, providerId) });
+            if (!existing) {
+              const now = new Date();
+              await db.insert(providerConfigs).values({
+                id: providerId,
+                label: 'Ollama (Local)',
+                type: 'ollama',
+                apiKey: encrypt(''),
+                baseURL: ollamaHost,
+                isEnabled: true,
+                createdAt: now,
+                updatedAt: now
+              });
+              console.log('[ProviderManager] Registered local Ollama provider in DB.');
             }
 
+            // Add the provider to the active list. The main sync loop will handle fetching its models.
+            const provider = ProviderFactory.createProvider('ollama', { id: providerId, baseURL: ollamaHost });
             this.providers.set(providerId, provider);
         }
     } catch (e) {

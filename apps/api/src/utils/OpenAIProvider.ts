@@ -34,7 +34,7 @@ export class OpenAIProvider implements BaseLLMProvider {
                     isFree = true;
                 }
             }
-            return { id: m.id, providerId: this.id, isFree, ...m };
+            return { id: m.id, providerId: this.id, isFree, providerData: m, ...m };
         });
     } catch (e) {
         console.error("Failed to fetch OpenAI models", e);

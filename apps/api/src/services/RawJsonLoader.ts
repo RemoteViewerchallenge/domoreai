@@ -9,23 +9,24 @@ import { prisma } from '../db.js';
 export async function autoLoadRawJsonFiles() {
   try {
     const rootDir = process.cwd();
-    console.log(`[JsonLoader] 🔍 Scanning ${rootDir} for provider JSON files...`);
+    const latestModelsDir = join(rootDir, 'latest_models');
+    console.log(`[JsonLoader] 🔍 Scanning ${latestModelsDir} for provider JSON files...`);
 
-    const files = await readdir(rootDir);
+    const files = await readdir(latestModelsDir);
     const jsonFiles = files.filter(f =>
       f.match(/^(google|mistral|openrouter|groq|ollama)_models_.*\.json$/)
     );
 
     if (jsonFiles.length === 0) {
-      console.log('[JsonLoader] ℹ️ No provider JSON files found in', rootDir);
+      console.log('[JsonLoader] ℹ️ No provider JSON files found in', latestModelsDir);
       return;
     }
 
-    console.log(`[JsonLoader] ✓ Found ${jsonFiles.length} files: ${jsonFiles.join(', ')}`);
+    console.log(`[JsonLoader] ✓ Found ${jsonFiles.length} latest model files: ${jsonFiles.join(', ')}`);
 
     for (const file of jsonFiles) {
       try {
-        const filepath = join(rootDir, file);
+        const filepath = join(latestModelsDir, file);
         const content = await readFile(filepath, 'utf-8');
         const jsonData = JSON.parse(content);
 

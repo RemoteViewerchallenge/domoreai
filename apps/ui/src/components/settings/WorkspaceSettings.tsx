@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc.js';
-import { Sparkles, Save, Plus, X } from 'lucide-react';
+import { Sparkles, Save, Plus, X, ChevronDown, ChevronRight } from 'lucide-react';
+
+interface Role {
+  id: string;
+  name: string;
+  category?: string;
+}
 
 export const WorkspaceSettings: React.FC = () => {
   const utils = trpc.useContext();
@@ -17,8 +23,26 @@ export const WorkspaceSettings: React.FC = () => {
 
   const generatePromptMutation = trpc.role.generatePrompt.useMutation();
   
+  // Fetch roles for the dropdowns
+  const { data: rolesList } = trpc.role.list.useQuery();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roles = (rolesList || []) as any[];
 
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [isRoleAssignmentOpen, setIsRoleAssignmentOpen] = useState(false);
 
+  const uniqueCategories = React.useMemo(() => {
+    const categories = new Set<string>();
+    roles.forEach(role => {
+      if (role.category) categories.add(role.category);
+    });
+    return Array.from(categories).sort();
+  }, [roles]);
+
+  const filteredRoles = React.useMemo(() => {
+    if (!selectedCategory) return roles;
+    return roles.filter(role => role.category === selectedCategory);
+  }, [roles, selectedCategory]);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showAddProvider, setShowAddProvider] = useState(false);
 
@@ -142,6 +166,49 @@ export const WorkspaceSettings: React.FC = () => {
           <p className="text-[10px] text-[var(--color-text-muted)]">
             Add data sources to your workspace. Providers can be API endpoints, databases, or other data sources.
           </p>
+        </div>
+
+        {/* Default Role Assignment (Collapsible) */}
+        <div className="border border-[var(--color-border)] rounded-lg bg-[var(--color-background-secondary)]/50 overflow-hidden">
+            <button 
+                onClick={() => setIsRoleAssignmentOpen(!isRoleAssignmentOpen)}
+                className="w-full flex justify-between items-center p-4 hover:bg-[var(--color-background-secondary)] transition-colors"
+            >
+                <h3 className="text-sm font-bold text-[var(--color-text)] uppercase">Default Role Assignment</h3>
+                {isRoleAssignmentOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+            
+            {isRoleAssignmentOpen && (
+                <div className="p-4 pt-0 border-t border-[var(--color-border)] mt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">Category</label>
+                            <select 
+                                className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] px-3 py-2 rounded font-mono text-xs focus:border-[var(--color-primary)] focus:outline-none"
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                value={selectedCategory}
+                            >
+                                <option value="">All Categories</option>
+                                {uniqueCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">Role</label>
+                            <select 
+                                className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] px-3 py-2 rounded font-mono text-xs focus:border-[var(--color-primary)] focus:outline-none"
+                                disabled={!selectedCategory && roles.length > 100} // Optional optimization
+                            >
+                                <option value="">Select Role</option>
+                                {filteredRoles.map(role => (
+                                    <option key={role.id} value={role.id}>{role.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* System Prompt Section */}

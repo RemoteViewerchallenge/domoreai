@@ -6,8 +6,6 @@ interface Step {
   name: string;
   description?: string;
   order: number;
-  roleId?: string;
-  roleName?: string;
   stepType: 'sequential' | 'parallel' | 'conditional' | 'loop';
   condition?: Record<string, unknown>;
   inputMapping?: Record<string, unknown>;
@@ -21,7 +19,6 @@ interface Step {
 const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className = '' }) => {
   const utils = trpc.useContext();
   const { data: orchestrations } = trpc.orchestrationManagement.list.useQuery({});
-  const { data: roles } = trpc.role.list.useQuery();
 
   const createMutation = trpc.orchestrationManagement.create.useMutation({
     onSuccess: () => utils.orchestrationManagement.list.invalidate(),
@@ -218,21 +215,6 @@ const OrchestrationCreatorPanel: React.FC<{ className?: string }> = ({ className
               </div>
 
               <div className="grid grid-cols-2 gap-4 pl-10">
-                {/* Role Selection */}
-                <div>
-                  <label className="block text-[10px] uppercase text-[var(--color-text-secondary)] mb-1">Role</label>
-                  <select
-                    value={step.roleName || ''}
-                    onChange={(e) => updateStep(index, { roleName: e.target.value })}
-                    className="w-full bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded px-2 py-1 text-xs"
-                  >
-                    <option value="">Select Role...</option>
-                    {roles?.map(r => (
-                      <option key={r.id} value={r.name}>{r.name}</option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Parallel Group */}
                 {step.stepType === 'parallel' && (
                   <div>

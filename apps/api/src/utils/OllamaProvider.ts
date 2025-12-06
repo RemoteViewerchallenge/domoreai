@@ -30,6 +30,7 @@ export class OllamaProvider implements BaseLLMProvider {
         family: m.details?.family,
         parameter_size: m.details?.parameter_size,
         isFree: true,
+        providerData: m,
       }));
     } catch (e: any) {
       const msg = e?.message || 'unknown error';
