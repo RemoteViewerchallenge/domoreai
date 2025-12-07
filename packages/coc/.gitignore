@@ -1,0 +1,10 @@
+# Build output
+dist/
+
+# Runtime output
+out/traces/*.jsonl
+out/*.json
+!out/.gitignore
+
+# Dependencies
+node_modules/
