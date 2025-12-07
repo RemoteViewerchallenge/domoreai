@@ -194,19 +194,45 @@ export const modelRouter = createTRPCRouter({
           return [];
         }
 
-        // 2. Construct dynamic UNION query
-        // We assume a standard structure or alias columns to match
-        const queries = tables.map(t => {
-          // We try to select common fields. 
-          // Note: This assumes the tables have these columns or we need to be more robust.
-          // For now, we'll try to cast/alias common variations.
-          // In a real scenario, we might check information_schema for columns first.
-          // But for this "hacky" unified list, we'll assume a happy path or use NULLs.
-          
-          // BETTER APPROACH: Just select * and map in JS, but that's heavy.
-          // Let's try to select specific columns and assume they exist because the user created them via our tool.
-          return `SELECT '${t.name}' as source, "id"::text, "name"::text, "context_length"::numeric as context_length FROM "${t.name}"`;
-        });
+        // 2. For each table, detect its columns and build a compatible query
+        const queries: string[] = [];
+        
+        for (const t of tables) {
+          try {
+            // Get columns for this table
+            const columnsRaw = await ctx.prisma.$queryRawUnsafe<{ column_name: string }[]>(
+              `SELECT column_name FROM information_schema.columns 
+               WHERE table_name = '${t.name}' 
+               AND table_schema = 'public'`
+            );
+            const columns = columnsRaw.map(c => c.column_name);
+
+            // Detect common columns with fallbacks
+            const idCol = ['id', 'model_id', 'modelId'].find(c => columns.includes(c)) || 'id';
+            const nameCol = ['name', 'model_name', 'modelName', 'model_id', 'id'].find(c => columns.includes(c)) || idCol;
+            const contextCol = ['context_length', 'context_window', 'contextWindow', 'contextLength'].find(c => columns.includes(c));
+            const providerCol = ['provider', 'provider_id', 'providerId', 'data_source'].find(c => columns.includes(c));
+
+            // Build query with COALESCE for safety
+            const selectParts = [
+              `'${t.name}' as source`,
+              `COALESCE("${idCol}"::text, 'unknown') as id`,
+              `COALESCE("${nameCol}"::text, "${idCol}"::text, 'unknown') as name`,
+              contextCol ? `COALESCE("${contextCol}"::numeric, 0) as context_length` : '0 as context_length',
+              providerCol ? `COALESCE("${providerCol}"::text, 'unknown') as provider` : `'unknown' as provider`
+            ];
+
+            queries.push(`SELECT ${selectParts.join(', ')} FROM "${t.name}"`);
+          } catch (err) {
+            console.error(`Failed to build query for table ${t.name}:`, err);
+            // Skip this table if we can't query its structure
+            continue;
+          }
+        }
+
+        if (queries.length === 0) {
+          return [];
+        }
 
         const fullQuery = queries.join(' UNION ALL ');
 
@@ -217,6 +243,7 @@ export const modelRouter = createTRPCRouter({
           id: row.id,
           name: row.name,
           contextLength: Number(row.context_length || 0),
+          provider: row.provider,
           source: row.source
         }));
 

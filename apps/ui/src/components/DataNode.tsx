@@ -5,7 +5,7 @@ import { VisualQueryBuilder } from './VisualQueryBuilder.js';
 import { AddProviderForm } from './AddProviderForm.js';
 import { 
   Database, Table, Trash2, Play, FileJson, 
-  Search, RefreshCw, Plus, Crown 
+  Search, RefreshCw, Plus, Crown, Download, Upload 
 } from 'lucide-react';
 
 interface TableItem {
@@ -18,6 +18,8 @@ export const DataNode: React.FC = () => {
   const [activeTable, setActiveTable] = useState<string | null>(null);
   const [showQuery, setShowQuery] = useState(false);
   const [filterText, setFilterText] = useState('');
+  const [jsonViewerData, setJsonViewerData] = useState<any>(null);
+  const [showJsonViewer, setShowJsonViewer] = useState(false);
   const [tempQueryResults, setTempQueryResults] = useState<Record<string, unknown>[] | null>(null);
   const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
     onSuccess: (data) => {
@@ -79,6 +81,40 @@ export const DataNode: React.FC = () => {
     
     // Reset file input to allow importing the same file again
     event.target.value = '';
+  };
+
+  // Generic JSON viewer import/export
+  const handleGenericJsonImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result;
+        if (typeof content !== 'string') throw new Error('File content is not a string');
+        const data = JSON.parse(content);
+        setJsonViewerData(data);
+        setShowJsonViewer(true);
+        setActiveTable(null); // Deselect table
+      } catch (error) {
+        alert(`Error: ${(error as Error).message}`);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  const handleGenericJsonExport = () => {
+    if (!jsonViewerData) return;
+    const jsonString = JSON.stringify(jsonViewerData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `export-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
   
   // 2. Manual Flatten (If needed)
@@ -173,22 +209,59 @@ export const DataNode: React.FC = () => {
       {/* --- SIDEBAR: TABLE LIST --- */}
       <div className="w-64 flex-none border-r border-zinc-800 bg-zinc-950 flex flex-col">
         {/* Header */}
-        <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+        <div className="p-3 border-b border-zinc-800">
            <span className="font-bold text-[var(--color-text-secondary)]">EXPLORER</span>
-           <button 
-             onClick={handleCreateTable}
-             className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200" 
-             title="New Empty Table"
-           >
-             <Table size={14} />
-           </button>
-           <button 
-             onClick={() => setShowImportJsonModal(true)}
-             className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200" 
-             title="Import from JSON"
-           >
-             <FileJson size={14} />
-           </button>
+           
+           {/* DATABASE OPERATIONS */}
+           <div className="mt-3">
+             <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Database Tables</div>
+             <div className="flex items-center gap-1">
+               <button 
+                 onClick={handleCreateTable}
+                 className="flex-1 p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200 text-[10px]" 
+                 title="New Empty Table"
+               >
+                 <Table size={12} className="inline mr-1" /> New
+               </button>
+               <button 
+                 onClick={() => setShowImportJsonModal(true)}
+                 className="flex-1 p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200 text-[10px]" 
+                 title="Create Table from JSON Array"
+               >
+                 <FileJson size={12} className="inline mr-1" /> Import
+               </button>
+             </div>
+           </div>
+
+           {/* JSON FILE VIEWER */}
+           <div className="mt-3 pt-3 border-t border-zinc-800">
+             <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">JSON Viewer</div>
+             <div className="flex items-center gap-1">
+               <button 
+                 onClick={() => document.getElementById('generic-json-import')?.click()}
+                 className="flex-1 p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200 text-[10px]" 
+                 title="Open Any JSON File"
+               >
+                 <Upload size={12} className="inline mr-1" /> Open
+               </button>
+               {showJsonViewer && jsonViewerData && (
+                 <button 
+                   onClick={handleGenericJsonExport}
+                   className="flex-1 p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-zinc-200 text-[10px]" 
+                   title="Download JSON"
+                 >
+                   <Download size={12} className="inline mr-1" /> Save
+                 </button>
+               )}
+             </div>
+           </div>
+           <input 
+             type="file" 
+             id="generic-json-import" 
+             accept=".json" 
+             className="hidden" 
+             onChange={handleGenericJsonImport} 
+           />
         </div>
 
         {/* List */}
@@ -335,10 +408,47 @@ export const DataNode: React.FC = () => {
             <UniversalDataGrid 
               data={tempQueryResults || (tableData?.rows as Record<string, unknown>[]) || []} 
             />
+          ) : showJsonViewer && jsonViewerData ? (
+            <div className="h-full overflow-auto p-4 bg-zinc-950">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-zinc-400 font-bold">JSON Viewer</h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      const tableName = prompt('Enter table name to import this JSON as:');
+                      if (tableName) {
+                        importTableFromJsonMutation.mutate({ 
+                          tableName, 
+                          jsonString: JSON.stringify(jsonViewerData) 
+                        });
+                      }
+                    }}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-xs font-bold"
+                  >
+                    Import to Table
+                  </button>
+                  <button 
+                    onClick={handleGenericJsonExport}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold"
+                  >
+                    Export JSON
+                  </button>
+                  <button 
+                    onClick={() => { setShowJsonViewer(false); setJsonViewerData(null); }}
+                    className="text-zinc-500 hover:text-zinc-300 text-xs"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <pre className="text-[10px] text-zinc-300 bg-black p-4 rounded border border-zinc-800 overflow-auto">
+                {JSON.stringify(jsonViewerData, null, 2)}
+              </pre>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-zinc-700">
               <Database size={64} className="opacity-10 mb-4" />
-              <p>Select a table from the sidebar to browse data</p>
+              <p>Select a table or open a JSON file</p>
             </div>
           )}
         </div>

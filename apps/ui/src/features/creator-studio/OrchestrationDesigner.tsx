@@ -12,6 +12,7 @@ import type {
   OnSelectionChangeParams 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { FileJson, Download } from 'lucide-react';
 
 import { nodeTypes } from './CustomNodes.js';
 import { InspectorPanel } from './InspectorPanel.js';
@@ -74,6 +75,38 @@ export const OrchestrationDesigner: React.FC = () => {
       setSelectedStepId(null);
     }
   }, []);
+
+  // Handle JSON import
+  const handleImportJson = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result;
+        if (typeof content !== 'string') {
+          throw new Error('File content is not a string');
+        }
+        const data = JSON.parse(content);
+        // Just load it - no validation
+        if (data.nodes && data.edges) {
+          setNodes(data.nodes);
+          setEdges(data.edges);
+          if (data.orchestrationId) {
+            setOrchestrationId(data.orchestrationId);
+          }
+          alert('JSON imported successfully!');
+        } else {
+          alert('JSON loaded. Structure: ' + Object.keys(data).join(', '));
+        }
+      } catch (error) {
+        alert(`Error reading or parsing file: ${(error as Error).message}`);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  };
 
   // Update a step's data (and sync to Node data)
   const handleUpdateStep = (stepId: string, updates: Partial<OrchestrationStep>) => {
@@ -162,6 +195,24 @@ export const OrchestrationDesigner: React.FC = () => {
     alert('Saved!');
   };
 
+  // Export current state as JSON file
+  const handleExportJson = () => {
+    const exportData = {
+      nodes,
+      edges,
+      orchestrationId,
+      exportedAt: new Date().toISOString()
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `orchestration-${orchestrationId || 'draft'}-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Find the currently selected step object from the nodes
   const selectedNode = nodes.find(n => n.id === selectedStepId);
   const selectedStep = selectedNode ? selectedNode.data.step as OrchestrationStep : null;
@@ -214,6 +265,27 @@ export const OrchestrationDesigner: React.FC = () => {
               className="px-3 py-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all"
             >
               + Add Node
+            </button>
+            <button
+              onClick={() => document.getElementById('orchestration-json-import')?.click()}
+              className="px-3 py-1 bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all flex items-center gap-1"
+              title="Import JSON"
+            >
+              <FileJson size={14} />
+            </button>
+            <input
+              type="file"
+              id="orchestration-json-import"
+              accept=".json"
+              className="hidden"
+              onChange={handleImportJson}
+            />
+            <button
+              onClick={handleExportJson}
+              className="px-3 py-1 bg-[var(--color-info)] hover:bg-[var(--color-info)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all flex items-center gap-1"
+              title="Export as JSON"
+            >
+              <Download size={14} />
             </button>
             <button
               onClick={() => void handleSave()}

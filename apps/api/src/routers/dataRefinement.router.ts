@@ -352,8 +352,30 @@ export const dataRefinementRouter = createTRPCRouter({
           providerId = p.id;
         }
 
-        // 2) Replace strategy: delete existing for provider, then insert fresh from source
+        // 2) Dynamically detect column names in the source table
+        const columnsRaw = await ctx.prisma.$queryRawUnsafe<{ column_name: string }[]>(
+          `SELECT column_name FROM information_schema.columns 
+           WHERE table_name = '${input.sourceTable}' 
+           AND table_schema = 'public'`
+        );
+        const columns = columnsRaw.map(c => c.column_name);
+
+        // Find the correct column names using common conventions
+        const modelIdCol = ['model_id', 'modelId', 'id', 'model_name', 'name'].find(c => columns.includes(c));
+        const nameCol = ['name', 'model_name', 'modelName', 'model_id', 'id'].find(c => columns.includes(c));
+        const providerIdCol = ['provider_id', 'providerId', 'provider', 'data_source'].find(c => columns.includes(c));
+
+        if (!modelIdCol) {
+          throw new Error(`Could not find model ID column in table '${input.sourceTable}'. Available columns: ${columns.join(', ')}`);
+        }
+
+        // 3) Replace strategy: delete existing for provider, then insert fresh from source
         await ctx.prisma.$executeRawUnsafe(`DELETE FROM "Model" WHERE "providerId" = '${providerId}'`);
+
+        // 4) Build dynamic SQL query
+        const providerFilter = providerIdCol 
+          ? `AND m."${providerIdCol}" = '${providerId}'`
+          : ''; // If no provider column, import all rows
 
         const sql = `
           INSERT INTO "Model" (
@@ -362,17 +384,17 @@ export const dataRefinementRouter = createTRPCRouter({
           SELECT 
             gen_random_uuid()::text as id,
             '${providerId}' as "providerId",
-            m.model_id as "modelId",
-            COALESCE(m.name, m.model_id) as "name",
+            m."${modelIdCol}" as "modelId",
+            COALESCE(${nameCol ? `m."${nameCol}"` : `m."${modelIdCol}"`}, m."${modelIdCol}") as "name",
             to_jsonb(m) as "providerData"
           FROM "${input.sourceTable}" m
-          WHERE m.model_id IS NOT NULL
-            AND m.provider_id = '${providerId}'
+          WHERE m."${modelIdCol}" IS NOT NULL
+            ${providerFilter}
         `;
 
         const insertedCount = await ctx.prisma.$executeRawUnsafe(sql);
 
-        // 3) Return counts for visibility
+        // 5) Return counts for visibility
         const [{ count }] = await ctx.prisma.$queryRawUnsafe<[{ count: bigint }]>(
           `SELECT COUNT(*) as count FROM "Model" WHERE "providerId" = '${providerId}'`
         );

@@ -1,8 +1,8 @@
+@import './theme/global.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './theme/global.css';
 
 /* Removed all centering and padding constraints */
 /* App now uses full viewport */

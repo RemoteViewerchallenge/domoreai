@@ -205,9 +205,15 @@ export class ProviderManager {
         console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
 
         for (const m of uniqueModels.values()) {
+          // Defensive: Extract model ID from various possible fields
+          const modelId = m.id || m.model || m.name;
+          if (!modelId) {
+            console.warn(`[Registry Sync] Skipping model with no ID:`, m);
+            continue;
+          }
+
           const cost = m.costPer1k as number | undefined;
           const isFree = m.isFree === true || (typeof cost === 'number' && cost === 0);
-          const now = new Date();
 
           const specs = {
             contextWindow: m.contextWindow,
@@ -216,25 +222,28 @@ export class ProviderManager {
             hasCoding: m.hasCoding || false
           };
 
-          await db.insert(modelRegistry).values({
-            id: uuidv4(),
-            modelId: m.id,
-            providerId: providerId,
-            modelName: (m.name as string) || m.id,
-            isFree: isFree,
-            costPer1k: cost || 0,
-            updatedAt: now,
-            providerData: m, // Store full raw model object
-            specs: specs as any,
-            aiData: {} as any
-          }).onConflictDoUpdate({
-            target: [modelRegistry.modelId, modelRegistry.providerId],
-            set: {
-              modelName: (m.name as string) || m.id,
+          await prisma.model.upsert({
+            where: {
+              providerId_modelId: {
+                providerId: providerId,
+                modelId: modelId
+              }
+            },
+            create: {
+              providerId: providerId,
+              modelId: modelId,
+              name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
-              updatedAt: now,
-              providerData: m, // Store full raw model object
+              providerData: m as any, // Store full raw model object
+              specs: specs as any,
+              aiData: {} as any
+            },
+            update: {
+              name: (m.name as string) || modelId,
+              isFree: isFree,
+              costPer1k: cost || 0,
+              providerData: m as any, // Store full raw model object
               specs: specs as any
             }
           });
