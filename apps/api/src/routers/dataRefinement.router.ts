@@ -82,7 +82,7 @@ export const dataRefinementRouter = createTRPCRouter({
       
       try {
         // 1. Drop old table to start fresh (if it exists)
-        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}" CASCADE`);
 
         // 2. Run the Magic SQL to extract rows
         // DYNAMICALLY EXTRACT ALL KEYS WITHOUT GUESSING
@@ -210,7 +210,7 @@ export const dataRefinementRouter = createTRPCRouter({
         // Clean the query - remove trailing semicolons
         const cleanQuery = input.query.trim().replace(/;+$/, '');
         
-        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${input.newTableName}" CASCADE`);
         await ctx.prisma.$executeRawUnsafe(`CREATE TABLE "${input.newTableName}" AS (${cleanQuery})`);
         return { success: true, newTableName: input.newTableName };
       } catch (error: any) {
@@ -235,7 +235,7 @@ export const dataRefinementRouter = createTRPCRouter({
 
       // 2. Dynamic Extraction (Same logic as addProviderAndIngest)
       try {
-        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}" CASCADE`);
 
         const keysResult = await ctx.prisma.$queryRawUnsafe<{key: string}[]>(`
           SELECT DISTINCT jsonb_object_keys(elem) as key
@@ -313,7 +313,7 @@ export const dataRefinementRouter = createTRPCRouter({
           const targetTable = 'core_models';
           
           // Drop and recreate core_models with the same structure as source
-          await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${targetTable}"`);
+          await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${targetTable}" CASCADE`);
           await ctx.prisma.$executeRawUnsafe(`CREATE TABLE "${targetTable}" AS SELECT * FROM "${input.sourceTable}"`);
           
           // Count the models
@@ -441,7 +441,7 @@ export const dataRefinementRouter = createTRPCRouter({
 
       try {
         // Drop old table to start fresh
-        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}"`);
+        await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${newTableName}" CASCADE`);
 
         // Dynamic Extraction Logic (Reused)
         const keysResult = await ctx.prisma.$queryRawUnsafe<{key: string}[]>(`
@@ -581,7 +581,7 @@ export const dataRefinementRouter = createTRPCRouter({
         try {
             // Drop existing table
             console.log(`[Import] Dropping table if exists: ${safeTableName}`);
-            await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}"`);
+            await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}" CASCADE`);
 
             // Extract all unique keys from all objects
             const keysSet = new Set<string>();
