@@ -1,0 +1,14 @@
+[
+  {
+    "id": "arm_freeA",
+    "modelName": "free-model-A",
+    "wins": 1,
+    "plays": 1
+  },
+  {
+    "id": "arm_freeB",
+    "modelName": "free-model-B",
+    "wins": 0,
+    "plays": 0
+  }
+]
