@@ -10,7 +10,11 @@ export class Bandit {
   constructor(filepath: string) {
     this.filepath = filepath;
     if (fs.existsSync(filepath)) {
-      try { this.arms = JSON.parse(fs.readFileSync(filepath,'utf8')); } catch {}
+      try { 
+        this.arms = JSON.parse(fs.readFileSync(filepath,'utf8')); 
+      } catch (e) {
+        console.warn(`Failed to load bandit state from ${filepath}:`, e);
+      }
     }
     if (this.arms.length === 0) {
       this.arms = [

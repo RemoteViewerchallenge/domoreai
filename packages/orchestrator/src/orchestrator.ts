@@ -118,11 +118,13 @@ function renderPrompt(templateId: string | null | undefined, ctx: any) {
   return tpl;
 }
 
-function sleep(ms:number){ return new Promise(r=>setTimeout(r, ms)); }
+function sleep(ms: number) { 
+  return new Promise(r => setTimeout(r, ms)); 
+}
 
 // Allow CLI run for quick smoke
 if (require.main === module) {
-  (async ()=>{
+  (async () => {
     console.log('Starting local orchestrator smoke run...');
     await runDirective('Create a minimal sample feature that demonstrates dynamic handoffs', {});
     console.log('Run complete (or ended).');
