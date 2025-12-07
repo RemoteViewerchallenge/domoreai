@@ -1,0 +1,24 @@
+{
+  "epsilon": 0.1,
+  "seed": 42,
+  "arms": {
+    "mock-model-1": {
+      "name": "mock-model-1",
+      "pulls": 2,
+      "totalReward": 1.6,
+      "averageReward": 0.8
+    },
+    "mock-model-2": {
+      "name": "mock-model-2",
+      "pulls": 1,
+      "totalReward": 0.712,
+      "averageReward": 0.712
+    },
+    "mock-model-3": {
+      "name": "mock-model-3",
+      "pulls": 1,
+      "totalReward": 0.647,
+      "averageReward": 0.647
+    }
+  }
+}

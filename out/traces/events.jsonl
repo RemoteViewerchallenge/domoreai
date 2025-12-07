@@ -1,0 +1,20 @@
+{"type":"directive.started","timestamp":"2025-12-07T23:04:23.625Z","directiveId":"sample-happy-path","mode":"mock","taskCount":3}
+{"type":"task.queued","timestamp":"2025-12-07T23:04:23.625Z","taskId":"analyze-requirements","role":"worker"}
+{"type":"task.queued","timestamp":"2025-12-07T23:04:23.625Z","taskId":"design-architecture","role":"worker"}
+{"type":"task.queued","timestamp":"2025-12-07T23:04:23.626Z","taskId":"review-design","role":"reviewer"}
+{"type":"task.started","timestamp":"2025-12-07T23:04:23.626Z","taskId":"analyze-requirements"}
+{"type":"evaluation.complete","timestamp":"2025-12-07T23:04:23.626Z","taskId":"analyze-requirements","score":0.953,"passed":true}
+{"type":"artifact.indexed","timestamp":"2025-12-07T23:04:23.627Z","taskId":"analyze-requirements","artifactId":"artifact-analyze-requirements"}
+{"type":"task.completed","timestamp":"2025-12-07T23:04:23.627Z","taskId":"analyze-requirements"}
+{"type":"task.started","timestamp":"2025-12-07T23:04:23.627Z","taskId":"design-architecture"}
+{"type":"evaluation.complete","timestamp":"2025-12-07T23:04:23.628Z","taskId":"design-architecture","score":0.712,"passed":true}
+{"type":"artifact.indexed","timestamp":"2025-12-07T23:04:23.628Z","taskId":"design-architecture","artifactId":"artifact-design-architecture"}
+{"type":"task.completed","timestamp":"2025-12-07T23:04:23.628Z","taskId":"design-architecture"}
+{"type":"task.started","timestamp":"2025-12-07T23:04:23.628Z","taskId":"review-design"}
+{"type":"evaluation.complete","timestamp":"2025-12-07T23:04:23.628Z","taskId":"review-design","score":0.647,"passed":false}
+{"type":"task.failed","timestamp":"2025-12-07T23:04:23.629Z","taskId":"review-design","error":"MOCK EVALUATION [seed=42]: Task review-design scored 0.65","retries":0}
+{"type":"task.retried","timestamp":"2025-12-07T23:04:24.630Z","taskId":"review-design","attempt":1}
+{"type":"task.started","timestamp":"2025-12-07T23:04:24.631Z","taskId":"review-design"}
+{"type":"evaluation.complete","timestamp":"2025-12-07T23:04:24.631Z","taskId":"review-design","score":0.647,"passed":false}
+{"type":"task.failed","timestamp":"2025-12-07T23:04:24.631Z","taskId":"review-design","error":"MOCK EVALUATION [seed=42]: Task review-design scored 0.65","retries":1}
+{"type":"directive.completed","timestamp":"2025-12-07T23:04:24.631Z","directiveId":"sample-happy-path"}

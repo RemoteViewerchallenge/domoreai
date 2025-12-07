@@ -1,0 +1,41 @@
+{
+  "id": "sample-happy-path",
+  "description": "Happy path scenario for COC orchestrator smoke test - all tasks should succeed",
+  "tasks": [
+    {
+      "id": "analyze-requirements",
+      "role": "worker",
+      "prompt": "Analyze the system requirements and identify key components.",
+      "maxRetries": 2,
+      "metadata": {
+        "priority": "high",
+        "tags": ["analysis", "requirements"]
+      }
+    },
+    {
+      "id": "design-architecture",
+      "role": "worker",
+      "prompt": "Design a high-level architecture based on the requirements.",
+      "maxRetries": 2,
+      "metadata": {
+        "priority": "high",
+        "tags": ["design", "architecture"]
+      }
+    },
+    {
+      "id": "review-design",
+      "role": "reviewer",
+      "prompt": "Review the architecture design and provide feedback.",
+      "maxRetries": 1,
+      "metadata": {
+        "priority": "medium",
+        "tags": ["review", "quality"]
+      }
+    }
+  ],
+  "policies": {
+    "maxRetries": 3,
+    "retryDelayMs": 1000,
+    "escalationThreshold": 0.5
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "Example configuration for COC orchestrator mock mode",
+  "environment": {
+    "COC_MODE": "mock",
+    "MOCK_SEED": "42",
+    "MOCK_INJECT_FAILURE_RATE": "0.0",
+    "MOCK_LATENCY_MS": "0",
+    "TRACE_DIR": "out/traces",
+    "BANDIT_PATH": "out/bandit_state.json"
+  },
+  "examples": {
+    "test_with_failures": {
+      "COC_MODE": "mock",
+      "MOCK_SEED": "42",
+      "MOCK_INJECT_FAILURE_RATE": "0.3",
+      "MOCK_LATENCY_MS": "100"
+    },
+    "different_seed": {
+      "COC_MODE": "mock",
+      "MOCK_SEED": "12345",
+      "MOCK_INJECT_FAILURE_RATE": "0.0",
+      "MOCK_LATENCY_MS": "0"
+    },
+    "real_mode": {
+      "COC_MODE": "real",
+      "TRACE_DIR": "out/traces",
+      "BANDIT_PATH": "out/bandit_state.json"
+    }
+  }
+}

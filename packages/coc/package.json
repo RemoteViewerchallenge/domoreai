@@ -1,0 +1,25 @@
+{
+  "name": "@domoreai/coc",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Chain-Of-Command (COC) orchestrator with mock/real mode toggle",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "pnpm build && node dist/coc.js",
+    "dev": "tsx src/coc.ts",
+    "replay": "tsx scripts/replay.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
