@@ -1,0 +1,36 @@
+metadata:
+  directive_id: "dir-{{timestamp}}"
+  title: "Implement OAuth2 login with tests"
+  owner: "CEO"
+  repo: "yourorg/yourrepo"
+  priority: high
+planner:
+  model_hint: "planner-large-free"
+  template_version: "planner-v1"
+spec:
+  - id: task-001
+    title: "Design auth API (OpenAPI)"
+    role: "architect"
+    model_hint: "mid-context-free"
+    output: "openapi/auth.yaml"
+    acceptance:
+      - "OpenAPI includes /login /callback /refresh endpoints"
+      - "No secrets in responses"
+  - id: task-002
+    title: "Implement login endpoint"
+    deps: ["task-001"]
+    role: "backend-worker"
+    model_hint: "short-context-free"
+    output: "src/auth/login.ts"
+    tests:
+      - "unit: should return 200 for valid creds"
+      - "unit: should return 401 for invalid creds"
+policies:
+  retry_on_failure: 2
+  escalate_after: 2
+  approval_threshold: 0.85
+evaluators:
+  - name: unit-test-runner
+    executor: ci-runner
+  - name: static-analysis
+    executor: static-linter
