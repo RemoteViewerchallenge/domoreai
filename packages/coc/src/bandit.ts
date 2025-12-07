@@ -46,14 +46,25 @@ export class Bandit {
     }
 
     // Exploitation: select arm with highest win rate
+    // Prioritize untested arms first
     let bestArm: string | null = null;
     let bestRate = -1;
+    let hasUntestedArms = false;
 
     for (const [id, arm] of this.arms) {
-      const rate = arm.trials === 0 ? 0 : arm.wins / arm.trials;
-      if (rate > bestRate || (rate === bestRate && arm.trials === 0)) {
-        bestRate = rate;
-        bestArm = id;
+      // Always try untested arms first in exploitation
+      if (arm.trials === 0) {
+        hasUntestedArms = true;
+        if (!bestArm) {
+          bestArm = id;
+        }
+      } else if (!hasUntestedArms) {
+        // Only compare tested arms if no untested arms remain
+        const rate = arm.wins / arm.trials;
+        if (rate > bestRate) {
+          bestRate = rate;
+          bestArm = id;
+        }
       }
     }
 
