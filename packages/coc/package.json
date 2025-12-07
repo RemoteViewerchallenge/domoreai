@@ -1,0 +1,19 @@
+{
+  "name": "@domoreai/coc",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "ts-node src/coc.ts",
+    "test": "node --eval \"console.log('no tests')\""
+  },
+  "dependencies": {
+    "yaml": "^2.2.1",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "COC_MODE": "mock",
+  "MOCK_SEED": "42",
+  "MOCK_INJECT_FAILURE_RATE": 0.15,
+  "MOCK_LATENCY_MS": 50
+}
