@@ -74,9 +74,10 @@ async function startServer() {
 
   // Initialize Provider Manager
   await ProviderManager.initialize();
-  await ProviderManager.syncModelsToRegistry();
-
-  // Load raw JSON files
+  
+  // SIMPLIFIED: Only load raw JSON files into raw_* tables
+  // Skip syncModelsToRegistry() - we don't need model_registry table yet
+  // Load raw JSON files into raw_* tables
   await autoLoadRawJsonFiles();
 
   // Mount RESTful API routers

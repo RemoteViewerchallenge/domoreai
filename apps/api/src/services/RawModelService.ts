@@ -94,16 +94,18 @@ export class RawModelService {
       }
 
       // 5. Save to DB (Exact dump)
-      const snapshot = await prisma.rawDataLake.create({
-        data: {
-          provider: config.type,
-          rawData: allModels, // Save the complete, accumulated list
-          ingestedAt: new Date()
-        }
-      });
-
-      console.log(`[RawModelService] Saved snapshot ${snapshot.id}`);
-      return snapshot;
+      // NOTE: RawDataLake table has been replaced by provider-specific tables
+      // (raw_google_models, raw_groq_models, etc.) which are created by RawJsonLoader
+      // from the JSON files in latest_models/ directory.
+      console.log(`[RawModelService] Successfully fetched ${allModels.length} models from ${config.type}`);
+      
+      // Return a mock snapshot object for backward compatibility
+      return {
+        id: `${config.type}-${Date.now()}`,
+        provider: config.type,
+        rawData: allModels,
+        ingestedAt: new Date()
+      };
 
     } catch (error: any) {
       clearTimeout(timeoutId);

@@ -118,6 +118,10 @@ model Role {
   // Personality and knowledge fencing (Chris-June additions)
   tone           String?   // Optional tone/personality enforcement for the role
   domainKnowledge String[] @default([]) // Array of domain knowledge keys the role may use
+
+  // Hardcoded Model Override (bypasses dynamic selection for this role only)
+  hardcodedModelId     String? // e.g., "gpt-4", "claude-3-opus"
+  hardcodedProviderId  String? // e.g., provider config ID
 }
 
 // -----------------------------------------------------------------
