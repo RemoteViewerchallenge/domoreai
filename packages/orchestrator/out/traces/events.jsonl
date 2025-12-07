@@ -1,7 +1,0 @@
-{"ts":"2025-12-07T21:33:39.613Z","event":"task.enqueued","taskId":"task-1","role":"worker"}
-{"ts":"2025-12-07T21:33:39.613Z","event":"task.picked","taskId":"task-1","role":"worker"}
-{"ts":"2025-12-07T21:33:39.613Z","event":"strategy.selected","taskId":"task-1","arm":{"id":"arm_freeA","modelName":"free-model-A","wins":0,"plays":0}}
-{"ts":"2025-12-07T21:33:39.614Z","event":"model.call.start","taskId":"task-1","model":"free-model-A"}
-{"ts":"2025-12-07T21:33:39.614Z","event":"model.call.end","taskId":"task-1","model":"free-model-A"}
-{"ts":"2025-12-07T21:33:39.614Z","event":"evaluation","taskId":"task-1","eval":{"score":1,"passed":true,"details":[]}}
-{"ts":"2025-12-07T21:33:39.614Z","event":"task.done","taskId":"task-1","score":1}
