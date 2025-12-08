@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "directive_id": "test-tools-demo",
+    "title": "Force tool usage test for Ollama granite4:micro"
+  },
+  "spec": [
+    {
+      "id": "tool1-read-readme",
+      "title": "Use read_file tool to read README.md and output the first line",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "tool2-list-apps",
+      "title": "Use list_files tool to list contents of apps/ directory",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "tool3-terminal-pwd",
+      "title": "Use terminal_execute tool to run 'pwd' command",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "tool4-combined",
+      "title": "Use list_files to find package.json, then read_file to read it",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    }
+  ]
+}

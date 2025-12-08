@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "directive_id": "short-tasks-demo",
+    "title": "Short tasks demo with tool calls"
+  },
+  "spec": [
+    {
+      "id": "t1-readme-summary",
+      "title": "Read the main README.md and summarize it in 3 sentences or less",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "t2-list-packages",
+      "title": "List all directories in packages/ and count them",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "t3-check-api-structure",
+      "title": "Check the apps/api directory structure and identify main entry point",
+      "role": "worker",
+      "promptTemplateId": "worker-short-code.tpl"
+    },
+    {
+      "id": "t4-plan-followup",
+      "title": "Plan 2 followup tasks to explore the codebase",
+      "role": "planner",
+      "promptTemplateId": "planner-code.tpl"
+    }
+  ]
+}

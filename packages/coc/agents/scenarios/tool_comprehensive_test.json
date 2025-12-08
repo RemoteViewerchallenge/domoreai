@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "directive_id": "tool-comprehensive-test",
+    "title": "Comprehensive Tool Testing with Ollama"
+  },
+  "spec": [
+    {
+      "id": "tool-test-1",
+      "title": "Read and analyze the README.md file",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use read_file tool to read README.md, then use analyze_code tool to get code statistics. Return both results."
+      }
+    },
+    {
+      "id": "tool-test-2",
+      "title": "List all TypeScript files in packages/coc/src",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use list_files tool to list the packages/coc/src directory. Count how many .ts files exist."
+      }
+    },
+    {
+      "id": "tool-test-3",
+      "title": "Create a new AI role called 'code-reviewer'",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use create_role tool to create a new role named 'code-reviewer' with category 'engineering', basePrompt 'You review code for bugs and improvements', needsCoding true, needsTools true, temperature 0.3."
+      }
+    },
+    {
+      "id": "tool-test-4",
+      "title": "Search for all uses of 'registerTool' in the codebase",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use search_files tool to find all occurrences of 'registerTool' pattern in packages/coc/src directory."
+      }
+    },
+    {
+      "id": "tool-test-5",
+      "title": "Execute terminal command to check Git status",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use terminal_execute tool to run 'git status --short' command and return the output."
+      }
+    },
+    {
+      "id": "tool-test-6",
+      "title": "Create a new role and then list all roles",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "First use create_role to create a role named 'data-analyst' with category 'analytics', basePrompt 'You analyze data and create insights', needsJson true. Then use list_roles to list all created roles."
+      }
+    },
+    {
+      "id": "tool-test-7",
+      "title": "Check if a file exists and read it if it does",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use file_exists to check if packages/coc/package.json exists. If it exists, use read_json to read and parse it."
+      }
+    },
+    {
+      "id": "tool-test-8",
+      "title": "Strategic analysis of project dependencies",
+      "role": "planner",
+      "mode": "text",
+      "promptTemplateId": "planner-code.tpl",
+      "meta": {
+        "directive": "Analyze the project structure and plan a strategy for managing dependencies and tool integration."
+      }
+    },
+    {
+      "id": "tool-test-9",
+      "title": "Test quality evaluation",
+      "role": "judge",
+      "mode": "text",
+      "promptTemplateId": "planner-code.tpl",
+      "meta": {
+        "directive": "Evaluate the quality of the tool execution from previous tasks. Score them on accuracy and completeness."
+      }
+    },
+    {
+      "id": "tool-test-10",
+      "title": "Multi-tool orchestration: analyze project structure",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Combine multiple tools: list_files on packages/coc/src, analyze_code on packages/coc/src/coc.ts, search_files for 'ModelBandit', then write_json to save all results to out/project-analysis.json."
+      }
+    },
+    {
+      "id": "tool-test-11",
+      "title": "Create comprehensive test report as JSON",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use terminal_execute to run 'pnpm list --depth=0 --json', then write_json to save the output to out/test-report.json with proper formatting."
+      }
+    },
+    {
+      "id": "tool-test-12",
+      "title": "Verify role creation and retrieval",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "meta": {
+        "directive": "Use get_role tool with name 'code-reviewer' to retrieve the role details we created earlier. Then list all roles with list_roles."
+      }
+    }
+  ],
+  "policies": {
+    "approval_threshold": 0.5,
+    "retry_on_failure": 0,
+    "max_iterations": 10
+  }
+}

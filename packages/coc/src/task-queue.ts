@@ -2,6 +2,7 @@ export type Task = {
   id: string;
   title: string;
   role: string;
+  mode?: 'text' | 'code';  // execution mode: text (default) or code (tool execution)
   payloadId?: string | null;
   promptTemplateId?: string | null;
   acceptanceSchema?: any;
