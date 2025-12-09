@@ -1,0 +1,95 @@
+{
+  "directive": "Comprehensive Tool Testing with Sandbox Security",
+  "spec": [
+    {
+      "id": "security-test-1",
+      "title": "Test Filesystem Sandbox - Try to escape sandbox",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test filesystem security by:\n1. Create a file in the allowed sandbox directory 'out/sandbox/test.txt'\n2. Try to read /etc/passwd (should fail or be blocked)\n3. Try to write to /tmp/escape.txt (should fail or be blocked)\n4. List files in the sandbox directory to confirm creation"
+      }
+    },
+    {
+      "id": "role-creation-test",
+      "title": "Test Role Creation Tool",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Create a new role using the create_role tool:\n- Name: 'Security Auditor'\n- Category: 'security'\n- Base prompt: 'You are a security expert who reviews code for vulnerabilities'\n- Needs: reasoning=true, coding=true, tools=true\n- Temperature: 0.3\nThen use list_roles to verify creation"
+      }
+    },
+    {
+      "id": "file-operations-test",
+      "title": "Test File Operations Suite",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Perform complete file operations test:\n1. Create directory out/test_data\n2. Write JSON file out/test_data/config.json with {\"version\": \"1.0\", \"enabled\": true}\n3. Read the JSON file back\n4. List files in out/test_data\n5. Check if out/test_data/config.json exists"
+      }
+    },
+    {
+      "id": "terminal-test",
+      "title": "Test Terminal Execution",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Execute safe terminal commands:\n1. Run 'pwd' to get current directory\n2. Run 'echo Hello from COC' to test output capture\n3. Run 'ls -la out' to list the out directory\n4. Capture and return all outputs"
+      }
+    },
+    {
+      "id": "code-analysis-test",
+      "title": "Test Code Analysis Tool",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Analyze a TypeScript file:\n1. Use analyze_code on 'src/tool-registry.ts'\n2. Search for all files containing 'registerTool' pattern\n3. Return analysis results"
+      }
+    },
+    {
+      "id": "role-retrieval-test",
+      "title": "Test Role Retrieval",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test role retrieval:\n1. List all roles (use list_roles)\n2. Get details of the 'Security Auditor' role created earlier (use get_role with name filter)\n3. Return role information"
+      }
+    },
+    {
+      "id": "json-persistence-test",
+      "title": "Test JSON Read/Write",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test JSON persistence:\n1. Write complex JSON to out/test_data/complex.json: {\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"meta\": {\"created\": \"2025-12-08\", \"version\": 2}}\n2. Read it back using read_json\n3. Verify data integrity"
+      }
+    },
+    {
+      "id": "search-test",
+      "title": "Test File Search",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test search functionality:\n1. Search for files with pattern 'tool' in src directory\n2. Search for files with pattern 'registerTool' in src directory\n3. Return all matches"
+      }
+    },
+    {
+      "id": "comprehensive-summary",
+      "title": "Summarize All Test Results",
+      "role": "planner",
+      "mode": "text",
+      "promptTemplateId": "default.tpl",
+      "context": {
+        "task": "Review all previous test results and create a summary report of:\n- Which tools passed/failed\n- Security sandbox effectiveness\n- Role creation success\n- Any errors or issues encountered"
+      }
+    }
+  ]
+}

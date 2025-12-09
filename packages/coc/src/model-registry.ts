@@ -18,9 +18,26 @@ export class ModelRegistry {
         return spec;
       },
       async run(prompt: string) {
-        // simple deterministic response
+        // Parse the prompt to understand what tools to call
+        let text = 'mock response - completed';
+        
+        // If the prompt mentions tool calls or is from orchestrator role, generate tool call code
+        if (prompt.includes('callTool') || prompt.includes('list_roles') || prompt.includes('get_role') || prompt.includes('create_role')) {
+          // Extract task objective from prompt
+          if (prompt.includes('List all available roles')) {
+            text = '```ts\ncallTool(\'list_roles\', {});\n```';
+          } else if (prompt.includes('Create a new test role')) {
+            text = '```ts\ncallTool(\'create_role\', { name: \'test_engineer\', category: \'engineering\', basePrompt: \'You are a test engineer responsible for QA tasks\' });\n```';
+          } else if (prompt.includes('test_engineer role')) {
+            text = '```ts\ncallTool(\'get_role\', { name: \'test_engineer\' });\n```';
+          } else {
+            // Default tool call for code mode
+            text = '```ts\ncallTool(\'list_files\', { path: \'.\' });\n```';
+          }
+        }
+        
         return {
-          text: 'mock response - completed',
+          text,
           nextRoles: [],
           artifacts: [],
           artifactUri: null

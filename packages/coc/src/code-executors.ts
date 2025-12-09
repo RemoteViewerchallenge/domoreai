@@ -69,12 +69,20 @@ export async function executeCodeAndRunTools(sourceCode: string) {
 
   walk(src);
 
+  console.log(`[CodeExecutor] Found ${toolCalls.length} tool call(s) in code`);
+  for (const c of toolCalls) {
+    console.log(`  - callTool('${c.tool}', ${JSON.stringify(c.args, null, 2)})`);
+  }
+
   const results: any[] = [];
   for (const c of toolCalls) {
     try {
+      console.log(`[CodeExecutor] Executing tool '${c.tool}'...`);
       const res = await runTool(c.tool, c.args);
       results.push({ tool: c.tool, args: c.args, result: res });
+      console.log(`[CodeExecutor] ✅ Tool '${c.tool}' completed`);
     } catch (e) {
+      console.log(`[CodeExecutor] ❌ Tool '${c.tool}' failed:`, e);
       results.push({ tool: c.tool, args: c.args, error: String(e) });
     }
   }

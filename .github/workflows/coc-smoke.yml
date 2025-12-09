@@ -1,0 +1,32 @@
+name: COC mock smoke-run
+
+# Manual dispatch workflow that runs the mock smoke-run in a safe environment.
+# It does NOT run in real mode. Use this to verify the scaffold doesn't regress.
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install pnpm
+        run: npm i -g pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run COC smoke-run (mock mode)
+        env:
+          COC_MODE: mock
+        run: pnpm --filter @domoreai/coc start
+      - name: Assert traces exist
+        run: |
+          if [ ! -f out/traces/events.jsonl ]; then
+            echo "events.jsonl missing" >&2; exit 1;
+          fi
+          echo "Traces present:"
+          tail -n 20 out/traces/events.jsonl || true

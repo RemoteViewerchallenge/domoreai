@@ -1,0 +1,25 @@
+{
+  "spec": [
+    {
+      "id": "tool-test-1",
+      "objective": "List all available roles in the system",
+      "context": "We need to retrieve and display all registered roles",
+      "role": "orchestrator",
+      "mode": "code"
+    },
+    {
+      "id": "tool-test-2",
+      "objective": "Create a new test role called 'test_engineer' with basic capabilities",
+      "context": "Create a role for testing purposes with name 'test_engineer', category 'engineering', and a simple base prompt",
+      "role": "orchestrator",
+      "mode": "code"
+    },
+    {
+      "id": "tool-test-3",
+      "objective": "Retrieve the newly created test_engineer role",
+      "context": "Fetch the role we just created to verify it exists",
+      "role": "orchestrator",
+      "mode": "code"
+    }
+  ]
+}

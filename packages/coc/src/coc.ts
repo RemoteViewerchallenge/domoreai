@@ -100,43 +100,68 @@ export async function runDirective(specInput: any, meta: any = {}) {
 
   // Load real roles from agents/roles.json
   const rolesPath = path.resolve(process.cwd(), 'agents', 'roles.json');
-  let roles: string[] = [];
+  let roleObjects: any[] = [];
   if (fs.existsSync(rolesPath)) {
     try {
-      const obj = JSON.parse(fs.readFileSync(rolesPath, 'utf8'));
-      roles = Array.isArray(obj.roles) ? obj.roles : [];
-    } catch (e) { roles = []; }
+      const rolesData = JSON.parse(fs.readFileSync(rolesPath, 'utf8'));
+      roleObjects = Array.isArray(rolesData) ? rolesData : [];
+      console.log(`[COC] Loaded ${roleObjects.length} roles from roles.json`);
+    } catch (e) { 
+      console.warn('[COC] Failed to load roles.json:', e);
+      roleObjects = []; 
+    }
   }
-  if (roles.length === 0) roles = ['worker', 'department-lead', 'test-writer', 'librarian', 'judge'];
+  
+  if (roleObjects.length === 0) {
+    console.warn('[COC] No roles loaded, using fallback roles');
+    roleObjects = [
+      { name: 'worker', minContext: 4000, maxContext: 32000 },
+      { name: 'department-lead', minContext: 32000, maxContext: 128000 }
+    ];
+  }
 
   // Seed role bandit from real roles file
   roleBandit.seedFromRolesFile(rolesPath);
 
   // Seed model bandit with real free models from models.json
-  // Use role requirements to intelligently select appropriate models
+  // Dynamically assign models to roles based on context window requirements
   const freeModels = realModels.filter(m => m.is_free);
   console.log(`[COC] Found ${freeModels.length} free models to seed bandits`);
   
-  for (const r of roles) {
-    const requirements = getRoleRequirements(r);
+  for (const roleObj of roleObjects) {
+    const roleName = roleObj.name;
+    const minContext = roleObj.minContext || 4000;
+    const maxContext = roleObj.maxContext || 128000;
     
-    // Score and filter models based on role requirements
-    const scoredModels = freeModels
-      .map(m => ({
-        model: m,
-        score: scoreModelForRole(
-          m.context_window || 4096,
-          {
-            supportsCoding: true, // Most modern models support coding
-            supportsTools: true,  // Most support function calling
-            supportsVision: m.model_id.includes('vision') || m.model_id.includes('gpt-4'),
-            supportsTTS: m.model_id.includes('tts') || m.model_id.includes('playai')
-          },
-          requirements
-        )
-      }))
-      .filter(sm => sm.score > 0) // Only include compatible models
-      .sort((a, b) => b.score - a.score); // Best matches first
+    // Filter models by context window - must meet minimum requirement
+    const compatibleModels = freeModels.filter(m => {
+      const modelContext = m.context_window || 4096;
+      return modelContext >= minContext;
+    });
+    
+    // Score models - prefer those closest to the role's context range
+    const scoredModels = compatibleModels
+      .map(m => {
+        const modelContext = m.context_window || 4096;
+        let score = 100;
+        
+        // Prefer models close to maxContext (not too large, not too small)
+        const contextRatio = modelContext / maxContext;
+        if (contextRatio < 0.5) {
+          score -= 20; // Too small
+        } else if (contextRatio > 2) {
+          score -= 10; // Unnecessarily large (slower, more expensive)
+        }
+        
+        // Bonus for models that match capabilities
+        if (roleObj.needsCoding && m.model_id.includes('code')) score += 10;
+        if (roleObj.needsTools) score += 10; // Most models support tools
+        if (roleObj.needsVision && m.model_id.includes('vision')) score += 15;
+        
+        return { model: m, score };
+      })
+      .filter(sm => sm.score > 0)
+      .sort((a, b) => b.score - a.score);
     
     // Take top 10 models, with some randomization to avoid bias
     const topModels = scoredModels.slice(0, 15);
@@ -144,29 +169,27 @@ export async function runDirective(specInput: any, meta: any = {}) {
     const selectedModels = shuffled.slice(0, 10);
     
     const arms = selectedModels.map(sm => ({
-      id: `${r}-model-${sm.model.provider}-${sm.model.model_id}`,
+      id: `${roleName}-model-${sm.model.provider}-${sm.model.model_id}`,
       modelName: sm.model.model_id,
-      promptTemplate: `${r}.tpl`,
+      promptTemplate: `${roleName}.tpl`,
       topK: 5,
       meta: { 
         provider: sm.model.provider, 
         contextWindow: sm.model.context_window, 
         isFree: sm.model.is_free,
         requirementScore: sm.score,
-        roleRequirements: {
-          minContext: requirements.minContext,
-          maxContext: requirements.maxContext,
-          needsCoding: requirements.needsCoding,
-          needsTools: requirements.needsTools
-        }
+        roleMinContext: minContext,
+        roleMaxContext: maxContext,
+        needsCoding: roleObj.needsCoding,
+        needsTools: roleObj.needsTools
       }
     }));
     
     if (arms.length > 0) {
-      console.log(`[COC] Seeding ${r} (${requirements.minContext}-${requirements.maxContext} ctx, tools:${requirements.needsTools}) with ${arms.length} models:`, arms.map(a => `${a.modelName}(${a.meta.requirementScore})`).join(', '));
-      modelBandit.ensureRoleArms(r, arms);
+      console.log(`[COC] Seeding ${roleName} (${minContext}-${maxContext} ctx) with ${arms.length} models:`, arms.map(a => `${a.modelName}(${a.meta.requirementScore})`).join(', '));
+      modelBandit.ensureRoleArms(roleName, arms);
     } else {
-      console.warn(`[COC] No compatible models found for role ${r}!`);
+      console.warn(`[COC] No compatible models found for role ${roleName}!`);
     }
   }
 
@@ -227,6 +250,7 @@ export async function runDirective(specInput: any, meta: any = {}) {
     let toolResults: any[] = [];
     if (task.mode === 'code' && response.text) {
       trace({ event: 'tool.execution.start', taskId: task.id, mode: 'code', responsePreview: response.text.substring(0, 500) });
+      console.log(`[COC] 🔧 Executing tool calls from response for task ${task.id}...`);
       try {
         toolResults = await executeCodeAndRunTools(response.text);
         for (const tr of toolResults) {
@@ -238,10 +262,18 @@ export async function runDirective(specInput: any, meta: any = {}) {
             result: tr.result,
             error: tr.error 
           });
+          // Log tool results to console for visibility
+          if (tr.error) {
+            console.log(`  ❌ Tool '${tr.tool}' error:`, tr.error);
+          } else {
+            console.log(`  ✅ Tool '${tr.tool}' result:`, JSON.stringify(tr.result, null, 2));
+          }
         }
         trace({ event: 'tool.execution.end', taskId: task.id, toolCount: toolResults.length, hadToolCalls: toolResults.length > 0 });
+        console.log(`[COC] 🔧 Executed ${toolResults.length} tool call(s)`);
       } catch (e) {
         trace({ event: 'tool.execution.error', taskId: task.id, error: String(e) });
+        console.error(`[COC] ❌ Tool execution error:`, e);
       }
     }
 

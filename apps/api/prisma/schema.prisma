@@ -39,20 +39,17 @@ model Model {
   // Strict Identity
   modelId      String  @map("model_id")
   name         String  @map("model_name")
-
-  // THE TRIPLE LAYER SYSTEM
-  // 1. Raw Data: Exactly what the API sent us. Never touched by us.
-  providerData Json    @default("{}") @map("provider_data")
   
-  // 2. AI Knowledge: Data inferred or researched by our Agents.
+  // Explicit fields from models.json
+  contextWindow Int?    @map("context_window")
+  type          String? @map("type")
+  isFree        Boolean @default(false) @map("is_free")
+  costPer1k     Float?  @map("cost_per_1k")
+
+  // THE TRIPLE LAYER SYSTEM (kept for additional metadata)
+  providerData Json    @default("{}") @map("provider_data")
   aiData       Json    @default("{}") @map("ai_data")
-
-  // 3. Specs: The computed view (Provider + AI Overrides) used by the app.
   specs        Json    @default("{}") @map("specs")
-
-  // Kept for backward compatibility with Drizzle/Router until fully migrated
-  isFree       Boolean @default(false) @map("is_free")
-  costPer1k    Float?  @map("cost_per_1k")
 
   updatedAt    DateTime @updatedAt @map("updated_at")
 

@@ -1,0 +1,41 @@
+{
+  "roles": {
+    "department-lead": [
+      {
+        "id": "department-lead-route-0",
+        "nextRole": "test-writer",
+        "weight": 1,
+        "wins": 6356,
+        "plays": 6356,
+        "meta": {}
+      },
+      {
+        "id": "department-lead-route-1",
+        "nextRole": "test-writer",
+        "weight": 1,
+        "wins": 730,
+        "plays": 730,
+        "meta": {}
+      }
+    ],
+    "test-writer": [
+      {
+        "id": "test-writer-route-0",
+        "nextRole": "department-lead",
+        "weight": 1,
+        "wins": 7047,
+        "plays": 7047,
+        "meta": {}
+      },
+      {
+        "id": "test-writer-route-1",
+        "nextRole": "test-writer",
+        "weight": 1,
+        "wins": 833,
+        "plays": 833,
+        "meta": {}
+      }
+    ]
+  },
+  "epsilon": 0.2
+}

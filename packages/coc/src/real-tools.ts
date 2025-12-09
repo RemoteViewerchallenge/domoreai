@@ -5,31 +5,93 @@ import path from 'path';
 import { registerTool } from './tool-registry';
 
 // ========================================
-// FILESYSTEM TOOLS
+// FILESYSTEM SANDBOX SECURITY
+// ========================================
+
+const SANDBOX_ROOT = path.resolve(process.cwd(), 'out');
+const ALLOWED_READ_PATHS = [
+  path.resolve(process.cwd(), 'src'),
+  path.resolve(process.cwd(), 'packages'),
+  path.resolve(process.cwd(), 'agents'),
+  SANDBOX_ROOT
+];
+
+function isSafePath(targetPath: string, operation: 'read' | 'write'): { safe: boolean; reason?: string } {
+  const resolved = path.resolve(process.cwd(), targetPath);
+  
+  // Writes are only allowed in sandbox
+  if (operation === 'write') {
+    if (!resolved.startsWith(SANDBOX_ROOT)) {
+      return { safe: false, reason: `Write operations only allowed in sandbox directory: ${SANDBOX_ROOT}` };
+    }
+    return { safe: true };
+  }
+  
+  // Reads allowed in sandbox + specific directories
+  if (operation === 'read') {
+    const isAllowed = ALLOWED_READ_PATHS.some(allowed => resolved.startsWith(allowed));
+    if (!isAllowed) {
+      return { safe: false, reason: `Read operations only allowed in: ${ALLOWED_READ_PATHS.join(', ')}` };
+    }
+    return { safe: true };
+  }
+  
+  return { safe: false, reason: 'Unknown operation' };
+}
+
+// ========================================
+// FILESYSTEM TOOLS (WITH SANDBOX)
 // ========================================
 
 registerTool('read_file', async (args: { path: string }) => {
+  const safety = isSafePath(args.path, 'read');
+  if (!safety.safe) {
+    return { path: args.path, error: safety.reason, blocked: true };
+  }
+  
   const filePath = path.resolve(process.cwd(), args.path);
-  const content = await fs.readFile(filePath, 'utf-8');
-  return { path: args.path, content, size: content.length };
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { path: args.path, content, size: content.length };
+  } catch (error: any) {
+    return { path: args.path, error: error.message, failed: true };
+  }
 });
 
 registerTool('write_file', async (args: { path: string; content: string }) => {
+  const safety = isSafePath(args.path, 'write');
+  if (!safety.safe) {
+    return { path: args.path, error: safety.reason, blocked: true };
+  }
+  
   const filePath = path.resolve(process.cwd(), args.path);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, args.content, 'utf-8');
-  return { path: args.path, size: args.content.length, success: true };
+  try {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, args.content, 'utf-8');
+    return { path: args.path, size: args.content.length, success: true };
+  } catch (error: any) {
+    return { path: args.path, error: error.message, failed: true };
+  }
 });
 
 registerTool('list_files', async (args: { path: string }) => {
+  const safety = isSafePath(args.path, 'read');
+  if (!safety.safe) {
+    return { path: args.path, error: safety.reason, blocked: true };
+  }
+  
   const dirPath = path.resolve(process.cwd(), args.path);
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
-  return {
-    path: args.path,
-    files: entries.filter(e => e.isFile()).map(e => e.name),
-    directories: entries.filter(e => e.isDirectory()).map(e => e.name),
-    total: entries.length
-  };
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    return {
+      path: args.path,
+      files: entries.filter(e => e.isFile()).map(e => e.name),
+      directories: entries.filter(e => e.isDirectory()).map(e => e.name),
+      total: entries.length
+    };
+  } catch (error: any) {
+    return { path: args.path, error: error.message, failed: true };
+  }
 });
 
 registerTool('file_exists', async (args: { path: string }) => {

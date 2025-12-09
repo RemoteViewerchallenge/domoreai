@@ -1,6 +1,7 @@
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import MyWorkspacePage from './pages/workspace/[id].js';
+import SmartSwitchPage from './pages/workspace/SmartSwitch.js';
 import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
 import ModelsPage from './pages/admin/models.js';
 import DataLake from './pages/DataLake.js';
@@ -115,6 +116,7 @@ function App() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<WorkSpace />} />
+              <Route path="/smartswitch" element={<SmartSwitchPage />} />
               <Route path="/projects" element={<ProjectsDashboard />} />
               <Route path="/providers" element={<UnifiedProviderPage />} />
               <Route path="/admin/models" element={<ModelsPage />} />

@@ -1,0 +1,55 @@
+{
+  "directive": "Comprehensive Tool Testing - Valid Paths Edition",
+  "spec": [
+    {
+      "id": "sandbox-escape-test",
+      "title": "Test Sandbox Security - Attempt to escape sandbox boundaries",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test filesystem security:\n1. Try to write to /tmp/escape.txt (should be blocked)\n2. Try to read /etc/passwd (should be blocked)\n3. Write to allowed path: out/sandbox/safe.txt with content 'This is allowed'\n4. Read back the safe.txt file\n5. List files in out/sandbox"
+      }
+    },
+    {
+      "id": "role-creation-test",
+      "title": "Create and verify custom role",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Test role creation:\n1. Use create_role tool to make 'Security Auditor' with category='security', basePrompt='Expert in code security', needsReasoning=true, needsCoding=true, needsTools=true, temperature=0.3, maxTokens=4000\n2. Use list_roles to see all roles\n3. Use get_role with name='Security Auditor' to verify creation"
+      }
+    },
+    {
+      "id": "file-ops-test",
+      "title": "Complete file operations suite",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "File operations:\n1. Write JSON to out/test/config.json: {\"version\": \"2.0\", \"features\": [\"auth\", \"logging\"]}\n2. Read it back with read_json\n3. Use file_exists to check out/test/config.json\n4. List files in out/test directory"
+      }
+    },
+    {
+      "id": "terminal-test",
+      "title": "Execute safe terminal commands",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Terminal test:\n1. Run 'echo Testing COC tools' and capture output\n2. Run 'pwd' to show current directory\n3. Run 'ls -la out' to list output directory"
+      }
+    },
+    {
+      "id": "code-search-test",
+      "title": "Search and analyze actual codebase",
+      "role": "worker",
+      "mode": "code",
+      "promptTemplateId": "worker-short-code.tpl",
+      "context": {
+        "task": "Code analysis:\n1. Use search_files to find all files with 'ModelBandit' in src directory\n2. Use search_files to find 'registerTool' patterns in src\n3. Use analyze_code on src/tool-registry.ts"
+      }
+    }
+  ]
+}
