@@ -1,0 +1,146 @@
+[
+  {
+    "providerId": "google-ai",
+    "providerLabel": "Google AI Studio (Env)",
+    "providerType": "google",
+    "timestamp": "2025-12-09T09:40:28.466Z",
+    "success": true,
+    "modelCount": 0,
+    "requestHeaders": {
+      "content-type": "application/json",
+      "user-agent": "google-genai-sdk/1.30.0 gl-node/v22.20.0",
+      "x-goog-api-client": "google-genai-sdk/1.30.0 gl-node/v22.20.0",
+      "x-goog-api-key": "[REDACTED]"
+    },
+    "responseHeaders": {
+      "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+      "content-encoding": "gzip",
+      "content-type": "application/json; charset=UTF-8",
+      "date": "Tue, 09 Dec 2025 09:40:29 GMT",
+      "server": "scaffolding on HTTPServer2",
+      "server-timing": "gfet4t7; dur=57",
+      "transfer-encoding": "chunked",
+      "vary": "Origin, X-Origin, Referer",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-xss-protection": "0"
+    },
+    "statusCode": 200
+  },
+  {
+    "providerId": "mistral-api",
+    "providerLabel": "Mistral API (Env)",
+    "providerType": "mistral",
+    "timestamp": "2025-12-09T09:40:29.952Z",
+    "success": true,
+    "modelCount": 62,
+    "requestHeaders": {
+      "authorization": "[REDACTED]",
+      "content-type": "application/json"
+    },
+    "responseHeaders": {
+      "access-control-allow-origin": "*",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "9ab38a989fccdece-SEA",
+      "connection": "keep-alive",
+      "content-encoding": "br",
+      "content-type": "application/json",
+      "date": "Tue, 09 Dec 2025 09:40:30 GMT",
+      "mistral-correlation-id": "019b027b-dbc0-7c27-aff1-50ef0f29a7d6",
+      "server": "cloudflare",
+      "set-cookie": "_cfuvid=Whf7iEFeXl8SGwX7mjtk4e0g0BosnMgsZaWtREybMzI-1765273230496-0.0.1.1-604800000; path=/; domain=.mistral.ai; HttpOnly; Secure; SameSite=None",
+      "strict-transport-security": "max-age=15552000; includeSubDomains; preload",
+      "transfer-encoding": "chunked",
+      "x-content-type-options": "nosniff",
+      "x-envoy-upstream-service-time": "139",
+      "x-kong-proxy-latency": "8",
+      "x-kong-request-id": "019b027b-dbc0-7c27-aff1-50ef0f29a7d6",
+      "x-kong-upstream-latency": "141"
+    },
+    "statusCode": 200
+  },
+  {
+    "providerId": "openrouter-env",
+    "providerLabel": "OpenRouter (Env)",
+    "providerType": "openrouter",
+    "timestamp": "2025-12-09T09:40:31.014Z",
+    "success": true,
+    "modelCount": 339,
+    "requestHeaders": {
+      "accept": "application/json",
+      "authorization": "[REDACTED]",
+      "user-agent": "OpenAI/JS 6.9.1",
+      "x-stainless-arch": "x64",
+      "x-stainless-lang": "js",
+      "x-stainless-os": "Linux",
+      "x-stainless-package-version": "6.9.1",
+      "x-stainless-retry-count": "0",
+      "x-stainless-runtime": "node",
+      "x-stainless-runtime-version": "v22.20.0"
+    },
+    "responseHeaders": {
+      "access-control-allow-origin": "*",
+      "cache-control": "private, no-store",
+      "cf-ray": "9ab38aa7997c76a5-SEA",
+      "connection": "keep-alive",
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+      "date": "Tue, 09 Dec 2025 09:40:32 GMT",
+      "permissions-policy": "payment=(self \"https://checkout.stripe.com\" \"https://connect-js.stripe.com\" \"https://js.stripe.com\" \"https://*.js.stripe.com\" \"https://hooks.stripe.com\")",
+      "referrer-policy": "no-referrer, strict-origin-when-cross-origin",
+      "server": "cloudflare",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-content-type-options": "nosniff"
+    },
+    "statusCode": 200
+  },
+  {
+    "providerId": "groq-env",
+    "providerLabel": "Groq (Env)",
+    "providerType": "groq",
+    "timestamp": "2025-12-09T09:40:33.569Z",
+    "success": true,
+    "modelCount": 20,
+    "requestHeaders": {
+      "accept": "application/json",
+      "authorization": "[REDACTED]",
+      "user-agent": "OpenAI/JS 6.9.1",
+      "x-stainless-arch": "x64",
+      "x-stainless-lang": "js",
+      "x-stainless-os": "Linux",
+      "x-stainless-package-version": "6.9.1",
+      "x-stainless-retry-count": "0",
+      "x-stainless-runtime": "node",
+      "x-stainless-runtime-version": "v22.20.0"
+    },
+    "responseHeaders": {
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "9ab38aaecc0cb1ca-SEA",
+      "connection": "keep-alive",
+      "content-encoding": "br",
+      "content-type": "application/json",
+      "date": "Tue, 09 Dec 2025 09:40:33 GMT",
+      "server": "cloudflare",
+      "set-cookie": "__cf_bm=IyHK3SHR_L41FeoSndbMluquplKNj2H3jllSJYN1mHs-1765273233.7249093-1.0.1.1-fi7y4dG7aWDakfeHnKYLQf49Mo6uhZOmtGjJ9gJC8WqBZsPTJLQcOhkffO1gnhf9377lwchcT40zAnrmI_C1s5pGgqt694uzmiStTtNs8proe26UTglPMBQCxfY4NtAK; HttpOnly; Secure; Path=/; Domain=groq.com; Expires=Tue, 09 Dec 2025 10:10:33 GMT",
+      "strict-transport-security": "max-age=2592000",
+      "transfer-encoding": "chunked",
+      "vary": "Origin",
+      "via": "1.1 google",
+      "x-groq-region": "dls",
+      "x-request-id": "req_01kc17qta8fvxsqwrvc8eq07ga"
+    },
+    "statusCode": 200
+  },
+  {
+    "providerId": "ollama-local",
+    "providerLabel": "Ollama (Local)",
+    "providerType": "ollama",
+    "timestamp": "2025-12-09T09:40:34.362Z",
+    "success": true,
+    "modelCount": 3
+  }
+]

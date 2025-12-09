@@ -1,3 +1,5 @@
+import { promises as fs } from 'fs';
+import path from 'path';
 import { db } from '../db.js';
 import { getRedisClient } from '../redis.js';
 import { modelUsage } from '../db/schema.js';
@@ -140,6 +142,34 @@ export class UsageCollector {
       if (rpmRem) await client.set(`${base}:rpm:current`, rpmRem, { EX: ttl }); 
       if (tpmMax) await client.set(`${base}:tpm:max`, tpmMax, { EX: ttl });
       if (tpmRem) await client.set(`${base}:tpm:current`, tpmRem, { EX: ttl });
+
+      // Optional debug logging of rate-limit headers for verification.
+      // Enable with PROVIDER_HEADER_DEBUG=1 to capture the last few snapshots.
+      if (process.env.PROVIDER_HEADER_DEBUG === '1') {
+        const logPath = process.env.PROVIDER_HEADER_DEBUG_PATH || path.resolve(process.cwd(), 'apps/api/provider_header_results.json');
+        const snapshot = {
+          providerConfigId,
+          timestamp: new Date().toISOString(),
+          ttl,
+          headers: {
+            'x-ratelimit-limit-requests': rpmMax ?? null,
+            'x-ratelimit-remaining-requests': rpmRem ?? null,
+            'x-ratelimit-limit-tokens': tpmMax ?? null,
+            'x-ratelimit-remaining-tokens': tpmRem ?? null,
+            'x-ratelimit-reset': resetTime ?? null,
+          },
+        };
+
+        try {
+          const existingRaw = await fs.readFile(logPath, 'utf-8').catch(() => '[]');
+          const existing = JSON.parse(existingRaw) as Array<unknown>;
+          const next = [...existing, snapshot].slice(-50); // keep last 50 snapshots
+          await fs.mkdir(path.dirname(logPath), { recursive: true });
+          await fs.writeFile(logPath, JSON.stringify(next, null, 2), 'utf-8');
+        } catch (logErr) {
+          console.warn('Failed to write provider header debug log:', logErr);
+        }
+      }
 
       // Also keep the JSON for internal logic if needed, or migrate internal logic to use these new keys.
       // For now, I'll keep the old key too to avoid breaking modelSelector if it relies on it (though I should check that).

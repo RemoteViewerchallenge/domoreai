@@ -1,0 +1,609 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import { FileJson, Download, Settings, Users, Workflow, Bot, Scale, AlertCircle, CheckCircle2 } from 'lucide-react';
+
+// --- TYPES (Consolidated from types.js) ---
+/**
+ * Unified Creator Studio Types
+ * * This schema separates 'Orchestration' (Flow) from 'Role' (Identity)
+ * while keeping them in a single portable Blueprint.
+ */
+
+export type RoleConfig = {
+  id: string; // UUID or temporary UI ID
+  name: string;
+  description: string;
+  modelProvider: 'openai' | 'anthropic' | 'mistral' | 'llama' | 'vertex';
+  model: string;
+  systemPrompt: string;
+  temperature: number;
+  tools: string[]; // List of tool names (e.g., "web_search", "git_commit")
+};
+
+export type FlowControlConfig = {
+  conditionExpression?: string; // e.g. "output.includes('INVALID')"
+  trueTargetId?: string; // Step ID to go to if condition is true
+  falseTargetId?: string; // Step ID to go to if condition is false (e.g., loop back)
+};
+
+export type OrchestrationStep = {
+  id: string; // Unique Node ID
+  label: string; // Display name on canvas
+  type: 'agent' | 'judge' | 'start' | 'end';
+  assignedRoleId?: string; // Manually re-added for the mock inspector to work
+  
+  // Data Flow (Inputs)
+  inputMapping: Record<string, string>; // e.g. { "code": "{{context.step1.output}}" }
+  
+  // Flow Logic
+  flowControl: FlowControlConfig;
+
+  // Visuals (Mock position)
+  position: { x: number; y: number };
+};
+
+// --- MOCK DATA ---
+const initialRoles: RoleConfig[] = [
+  {
+    id: 'r_1',
+    name: 'Code Reviewer',
+    description: 'A role specialized in reviewing Python code quality.',
+    modelProvider: 'openai',
+    model: 'gpt-4',
+    systemPrompt: 'You are an expert Python code reviewer...',
+    temperature: 0.7,
+    tools: ['git_commit']
+  },
+  {
+    id: 'r_2',
+    name: 'Product Manager',
+    description: 'A role specialized in defining acceptance criteria.',
+    modelProvider: 'anthropic',
+    model: 'claude-3-sonnet',
+    systemPrompt: 'You are a meticulous product manager...',
+    temperature: 0.5,
+    tools: ['web_search']
+  },
+];
+
+const initialSteps: OrchestrationStep[] = [
+  {
+    id: 'step_1',
+    label: 'Generate Initial Draft',
+    type: 'agent',
+    assignedRoleId: 'r_1',
+    inputMapping: { "topic": "{{input.topic}}" },
+    flowControl: {},
+    position: { x: 50, y: 50 },
+  },
+  {
+    id: 'step_2',
+    label: 'Review Code Quality',
+    type: 'judge',
+    assignedRoleId: 'r_2',
+    inputMapping: { "code": "{{step_1.output}}" },
+    flowControl: {
+      conditionExpression: "output.includes('PASS')",
+      trueTargetId: 'step_3',
+      falseTargetId: 'step_1', // Loop back for correction
+    },
+    position: { x: 300, y: 50 },
+  },
+  {
+    id: 'step_3',
+    label: 'Finalize and Deploy',
+    type: 'end',
+    assignedRoleId: undefined,
+    inputMapping: { "final_output": "{{step_2.output}}" },
+    flowControl: {},
+    position: { x: 550, y: 50 },
+  },
+];
+
+
+// --- CUSTOM NODES (Mocked for visualization) ---
+interface NodeProps {
+  data: { 
+    step: OrchestrationStep, 
+    roles: RoleConfig[], 
+    selected: boolean,
+    onSelect: (id: string) => void
+  };
+}
+
+const getRoleName = (roleId: string | undefined, roles: RoleConfig[]) => {
+  if (!roleId) return 'No Role Assigned';
+  const role = roles.find(r => r.id === roleId);
+  return role ? role.name : 'Unknown Role';
+};
+
+const AgentNode: React.FC<NodeProps> = ({ data }) => {
+  const { step, roles, selected, onSelect } = data;
+  return (
+    <div 
+      className={`w-48 shadow-lg rounded-lg border-2 cursor-pointer bg-white transition-colors hover:border-blue-500 ${selected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-200'}`}
+      onClick={() => onSelect(step.id)}
+      style={{ boxShadow: selected ? '0 4px 12px rgba(96, 165, 250, 0.3)' : '0 1px 3px rgba(0,0,0,0.1)' }}
+    >
+      <div className="flex items-center px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+        <Bot className="w-4 h-4 text-blue-500 mr-2" />
+        <span className="font-semibold text-gray-800 text-sm truncate">{step.label}</span>
+      </div>
+      <div className="p-3">
+        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Role</div>
+        <div className="text-sm text-gray-900 font-medium truncate">
+           {getRoleName(step.assignedRoleId, roles)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const JudgeNode: React.FC<NodeProps> = ({ data }) => {
+  const { step, roles, selected, onSelect } = data;
+  return (
+    <div 
+      className={`w-48 shadow-lg rounded-lg border-2 cursor-pointer bg-white transition-colors hover:border-green-500 ${selected ? 'border-green-500 ring-2 ring-green-500/50' : 'border-gray-200'}`}
+      onClick={() => onSelect(step.id)}
+      style={{ boxShadow: selected ? '0 4px 12px rgba(52, 211, 153, 0.3)' : '0 1px 3px rgba(0,0,0,0.1)' }}
+    >
+      <div className="flex items-center px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+        <Scale className="w-4 h-4 text-green-500 mr-2" />
+        <span className="font-semibold text-gray-800 text-sm truncate">{step.label}</span>
+      </div>
+      <div className="p-3">
+        <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Evaluator</div>
+        <div className="text-sm text-gray-900 font-medium truncate">
+           {getRoleName(step.assignedRoleId, roles)}
+        </div>
+        <div className="flex justify-between items-center mt-3 text-[10px] font-mono">
+          <span className="text-red-500 flex items-center"><AlertCircle className="w-3 h-3 mr-1"/> FALSE</span>
+          <span className="text-green-500 flex items-center">TRUE <CheckCircle2 className="w-3 h-3 ml-1"/></span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StartEndNode: React.FC<NodeProps & { isStart: boolean }> = ({ data, isStart }) => {
+    const { step, selected, onSelect } = data;
+    const color = isStart ? 'text-purple-500 bg-purple-100' : 'text-gray-600 bg-gray-100';
+    const borderColor = isStart ? 'border-purple-500' : 'border-gray-400';
+    const shadowColor = isStart ? '0 4px 12px rgba(167, 139, 250, 0.3)' : '0 1px 3px rgba(0,0,0,0.1)';
+
+    return (
+        <div
+            className={`w-32 py-2 px-4 rounded-full border-2 text-center text-sm font-bold shadow-md cursor-pointer transition-colors ${color} ${borderColor} ${selected ? 'ring-2 ring-opacity-50 ring-purple-500' : ''}`}
+            onClick={() => onSelect(step.id)}
+            style={{ boxShadow: selected ? shadowColor : '0 1px 3px rgba(0,0,0,0.1)' }}
+        >
+            {isStart ? 'START' : 'END'}
+        </div>
+    );
+};
+
+// Map step types to components for rendering
+const nodeTypes = {
+  agent: AgentNode,
+  judge: JudgeNode,
+  start: (props) => <StartEndNode {...props} isStart={true} />,
+  end: (props) => <StartEndNode {...props} isStart={false} />,
+};
+
+// --- INSPECTOR PANEL (Consolidated from InspectorPanel.js) ---
+
+interface InspectorPanelProps {
+  selectedStep: OrchestrationStep | null;
+  availableRoles: RoleConfig[];
+  onUpdateStep: (stepId: string, updates: Partial<OrchestrationStep>) => void;
+  // NOTE: Role CRUD functions are mocked out for this environment
+  // onCreateRole: (role: RoleConfig) => void;
+  // onUpdateRole: (role: RoleConfig) => void;
+}
+
+const InspectorPanel: React.FC<InspectorPanelProps> = ({
+  selectedStep,
+  availableRoles,
+  onUpdateStep,
+}) => {
+  const [activeTab, setActiveTab] = useState<'flow' | 'role'>('flow');
+  
+  if (!selectedStep) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500 p-8 text-center bg-gray-50 border-l border-gray-200">
+        <div>
+          <Workflow className="w-12 h-12 mx-auto mb-4 opacity-20" />
+          <p className="text-sm">Select a node to configure its Logic and Assigned Role.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const assignedRole = availableRoles.find(r => r.id === selectedStep.assignedRoleId);
+
+  // Mocked role updates (will not persist outside this component)
+  const handleUpdateStep = (updates: Partial<OrchestrationStep>) => {
+    onUpdateStep(selectedStep.id, updates);
+  };
+  
+  // Mock handler for role assignment
+  const handleRoleChange = (roleId: string) => {
+    // This is a simple mock, in a real app you'd validate the roleId
+    handleUpdateStep({ assignedRoleId: roleId });
+  };
+  
+  return (
+    <div className="w-96 flex-none bg-gray-50 border-l border-gray-200 flex flex-col overflow-y-auto">
+      {/* Inspector Tabs */}
+      <div className="flex-none flex border-b border-gray-200 bg-white">
+        <button
+          onClick={() => setActiveTab('flow')}
+          className={`flex-1 py-2 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+            activeTab === 'flow'
+              ? 'border-b-2 border-blue-500 text-blue-500'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Settings size={14} /> Flow Config
+        </button>
+        <button
+          onClick={() => setActiveTab('role')}
+          className={`flex-1 py-2 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+            activeTab === 'role'
+              ? 'border-b-2 border-green-500 text-green-500'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Users size={14} /> Role
+        </button>
+      </div>
+
+      {/* Panel Content */}
+      <div className="flex-1 p-4 space-y-6">
+        
+        {/* Step Configuration (Always visible) */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+          <h3 className="text-lg font-bold text-gray-800 border-b pb-2 mb-3">
+            {selectedStep.label}
+            <span className={`ml-2 text-xs font-medium uppercase rounded-full px-2 py-0.5 ${
+              selectedStep.type === 'judge' ? 'bg-green-100 text-green-700' : 
+              selectedStep.type === 'agent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+            }`}>
+              {selectedStep.type}
+            </span>
+          </h3>
+
+          {/* Label Editor */}
+          <div className="space-y-1">
+            <label htmlFor="step-label" className="text-xs uppercase text-gray-500 font-semibold">Step Label</label>
+            <input
+              id="step-label"
+              type="text"
+              value={selectedStep.label}
+              onChange={(e) => handleUpdateStep({ label: e.target.value })}
+              className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          {/* Role Assignment */}
+          <div className="space-y-1">
+            <label htmlFor="assigned-role" className="text-xs uppercase text-gray-500 font-semibold">Assigned Role</label>
+            <select
+              id="assigned-role"
+              value={selectedStep.assignedRoleId || ''}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              className="w-full p-2 border border-gray-300 bg-white rounded text-sm focus:ring-green-500 focus:border-green-500"
+            >
+              <option value="">-- Select or Assign Role --</option>
+              {availableRoles.map(role => (
+                <option key={role.id} value={role.id}>{role.name} ({role.model})</option>
+              ))}
+              {/* <option value="new">-- Create New Role --</option> */}
+            </select>
+          </div>
+        </div>
+
+
+        {/* Flow Control Tab Content */}
+        {activeTab === 'flow' && selectedStep.type === 'judge' && (
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-4">
+            <h4 className="text-md font-bold text-gray-800">Conditional Logic</h4>
+            
+            <div className="space-y-1">
+              <label className="text-xs uppercase text-gray-500 font-semibold">Condition Expression (JS)</label>
+              <textarea 
+                value={selectedStep.flowControl.conditionExpression || ''}
+                onChange={(e) => handleUpdateStep({ flowControl: { ...selectedStep.flowControl, conditionExpression: e.target.value } })}
+                rows={3}
+                className="w-full p-2 border border-gray-300 rounded text-sm font-mono focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., output.includes('REJECT')"
+              />
+              <p className="text-[10px] text-gray-400">Variable 'output' refers to the LLM's raw response.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs uppercase text-green-500 font-semibold">TRUE (Next Step ID)</label>
+                <input
+                  type="text"
+                  value={selectedStep.flowControl.trueTargetId || ''}
+                  onChange={(e) => handleUpdateStep({ flowControl: { ...selectedStep.flowControl, trueTargetId: e.target.value } })}
+                  className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-green-500 focus:border-green-500"
+                  placeholder="step_3"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs uppercase text-red-500 font-semibold">FALSE (Next Step ID)</label>
+                <input
+                  type="text"
+                  value={selectedStep.flowControl.falseTargetId || ''}
+                  onChange={(e) => handleUpdateStep({ flowControl: { ...selectedStep.flowControl, falseTargetId: e.target.value } })}
+                  className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-red-500 focus:border-red-500"
+                  placeholder="step_1 (Loop back)"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Role Configuration Tab Content */}
+        {activeTab === 'role' && assignedRole && (
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-4">
+            <h4 className="text-md font-bold text-gray-800 border-b pb-2 mb-3">{assignedRole.name} Role</h4>
+            
+            <div className="space-y-1">
+              <label className="text-xs uppercase text-gray-500 font-semibold">System Prompt</label>
+              <textarea 
+                value={assignedRole.systemPrompt}
+                // NOTE: Mocked. In a real app, this would call onUpdateRole
+                onChange={() => alert("Mock: Role system prompt updated. This change is local.")}
+                rows={5}
+                className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-green-500 focus:border-green-500"
+                placeholder="The core instructions for the AI agent..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-1">
+                 <label className="text-xs uppercase text-gray-500 font-semibold">Model</label>
+                 <select
+                   value={assignedRole.model}
+                   // NOTE: Mocked. In a real app, this would call onUpdateRole
+                   onChange={() => alert("Mock: Role model updated. This change is local.")}
+                   className="w-full p-2 border border-gray-300 bg-white rounded text-sm focus:ring-green-500 focus:border-green-500"
+                 >
+                   <option value="gpt-4">GPT-4</option>
+                   <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                 </select>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-xs uppercase text-gray-500 font-semibold">Temp: {assignedRole.temperature}</label>
+                 <input 
+                   type="range" min="0" max="1" step="0.1"
+                   value={assignedRole.temperature}
+                   // NOTE: Mocked. In a real app, this would call onUpdateRole
+                   onChange={() => alert("Mock: Role temperature updated. This change is local.")}
+                   className="w-full mt-2 accent-green-500"
+                 />
+              </div>
+            </div>
+            
+            <div className="p-3 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+              <Users className="w-3 h-3 inline mr-1" />
+              This is a global role. Changes here would typically update all steps using this role.
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'role' && !assignedRole && (
+          <div className="text-center text-gray-500 py-8">
+            <p className="text-sm">No role is currently assigned to this step.</p>
+            <button 
+              onClick={() => alert("Mock: Action to assign a new role")}
+              className="mt-2 text-green-500 hover:underline text-sm"
+            >
+              Assign or Create Role
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+
+// --- MAIN COMPONENT (Consolidated from OrchestrationDesigner.js) ---
+
+export const OrchestrationDesigner: React.FC = () => {
+  const [steps, setSteps] = useState<OrchestrationStep[]>(initialSteps);
+  const [roles] = useState<RoleConfig[]>(initialRoles);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(initialSteps[0].id);
+
+  // Mocks for TRPC and Persistence
+  // const { data: rolesData, refetch: refetchRoles } = trpc.role.list.useQuery();
+  // const roles: RoleConfig[] = (rolesData || []).map(...)
+  
+  // Handlers for Step (Node) updates
+  const handleUpdateStep = useCallback((stepId: string, updates: Partial<OrchestrationStep>) => {
+    setSteps(prevSteps => 
+      prevSteps.map(step => 
+        step.id === stepId ? { ...step, ...updates } : step
+      )
+    );
+  }, []);
+  
+  // Mock Handlers for Role updates (no persistence)
+  // const handleCreateRole = useCallback(async (role: RoleConfig) => { /* ... */ }, []);
+  // const handleUpdateRole = useCallback(async (role: RoleConfig) => { /* ... */ }, []);
+  
+  const selectedStep = useMemo(() => 
+    steps.find(step => step.id === selectedStepId) || null,
+    [steps, selectedStepId]
+  );
+  
+  // Mock canvas dimensions
+  const canvasWidth = 700;
+  const canvasHeight = 300;
+
+  // Function to render a mock connection (line/arrow)
+  const renderMockConnection = (sourceId: string, targetId: string, type: 'true' | 'false' | 'default') => {
+    const sourceStep = steps.find(s => s.id === sourceId);
+    const targetStep = steps.find(s => s.id === targetId);
+
+    if (!sourceStep || !targetStep) return null;
+
+    const startX = sourceStep.position.x + (sourceStep.type === 'agent' || sourceStep.type === 'judge' ? 48 * 2 : 32 * 2); // Center of a mock node
+    const startY = sourceStep.position.y + 100; // Bottom of a mock node
+    const endX = targetStep.position.x + (targetStep.type === 'agent' || targetStep.type === 'judge' ? 48 * 2 : 32 * 2);
+    const endY = targetStep.position.y;
+    
+    // Simple line connections for the mockup
+    const color = type === 'true' ? '#34d399' : type === 'false' ? '#ef4444' : '#60a5fa';
+    const text = type === 'true' ? 'PASS' : type === 'false' ? 'FAIL/REDO' : null;
+    
+    // Draw horizontal line from startX/startY to endX/endY
+    // This is a simplified straight line visualization for the mockup, as complex routing is hard without React Flow
+
+    return (
+        <svg key={`${sourceId}-${targetId}-${type}`} className="absolute pointer-events-none" style={{ overflow: 'visible', top: 0, left: 0, width: canvasWidth, height: canvasHeight }}>
+            {/* Draw a basic line between mock positions */}
+            <path
+                d={`M ${startX} ${startY + (type === 'false' ? 20 : 0)} L ${endX - (type === 'false' ? 100 : 0)} ${endY - 20 + (type === 'false' ? 20 : 0)} L ${endX} ${endY}`}
+                stroke={color}
+                strokeWidth="2"
+                fill="none"
+                markerEnd={`url(#arrowhead-${type})`}
+            />
+            {text && (
+                <text x={startX + (endX - startX) / 2} y={startY + (endY - startY) / 2 - 10} fontSize="10" fill={color} textAnchor="middle">
+                    {text}
+                </text>
+            )}
+        </svg>
+    );
+  };
+  
+  // Render function for the mock canvas
+  const renderFlowCanvas = () => {
+    return (
+      <div 
+        className="flex-1 relative bg-gray-100 overflow-auto p-12"
+        style={{ minHeight: '100%' }} // Ensure the background takes full height
+      >
+        <div className="relative" style={{ width: canvasWidth, height: canvasHeight }}>
+            {/* SVG Definitions for Arrows */}
+            <svg className="absolute" style={{ overflow: 'visible', top: 0, left: 0, width: 0, height: 0 }}>
+                <defs>
+                    <marker id="arrowhead-true" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399" />
+                    </marker>
+                    <marker id="arrowhead-false" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                    </marker>
+                    <marker id="arrowhead-default" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#60a5fa" />
+                    </marker>
+                </defs>
+            </svg>
+
+            {/* Render Nodes */}
+            {steps.map(step => {
+              const NodeComponent = nodeTypes[step.type];
+              if (!NodeComponent) return null;
+
+              return (
+                <div 
+                  key={step.id} 
+                  className="absolute" 
+                  style={{ left: step.position.x, top: step.position.y }}
+                >
+                  <NodeComponent 
+                    data={{ 
+                      step, 
+                      roles, 
+                      selected: step.id === selectedStepId,
+                      onSelect: setSelectedStepId
+                    }} 
+                  />
+                </div>
+              );
+            })}
+            
+            {/* Render Mock Connections (Edges) */}
+            {/* Start -> Agent */}
+            {renderMockConnection('step_1', 'step_2', 'default')}
+            
+            {/* Judge -> End (TRUE) */}
+            {steps.find(s => s.id === 'step_2')?.flowControl.trueTargetId === 'step_3' && renderMockConnection('step_2', 'step_3', 'true')}
+
+            {/* Judge -> Agent (FALSE - Loop back) */}
+            {steps.find(s => s.id === 'step_2')?.flowControl.falseTargetId === 'step_1' && renderMockConnection('step_2', 'step_1', 'false')}
+
+        </div>
+        
+        {/* Mock background for flow visualization */}
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+            {/* Grid background placeholder */}
+            <div className="w-full h-full bg-grid-pattern" style={{ 
+              backgroundImage: 'linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)',
+              backgroundSize: '20px 20px',
+              opacity: 0.5
+            }}></div>
+        </div>
+      </div>
+    );
+  };
+  
+  // UI Actions (Mocked)
+  const handleSave = () => {
+    console.log("Saving Orchestration:", { steps, roles });
+    alert("Mock Save: Orchestration flow configuration saved locally.");
+  };
+
+  return (
+    <div className="h-full w-full bg-gray-100 text-gray-900 flex flex-row overflow-hidden font-sans">
+      
+      {/* Flow Designer (Left Side) */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header/Controls */}
+        <div className="flex-none h-12 border-b border-gray-200 bg-white flex items-center justify-between px-4 shadow-md">
+          <h2 className="text-lg font-semibold text-gray-800">Agent Orchestration Flow</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => alert("Mock: Import JSON")}
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-bold transition-all flex items-center gap-1"
+              title="Import JSON"
+            >
+              <FileJson size={14} /> Import
+            </button>
+            <button
+              onClick={() => alert("Mock: Export JSON")}
+              className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-xs font-bold transition-all flex items-center gap-1"
+              title="Export as JSON"
+            >
+              <Download size={14} /> Export
+            </button>
+            <button
+              onClick={() => handleSave()}
+              className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-bold transition-all"
+            >
+              Save Configuration
+            </button>
+          </div>
+        </div>
+
+        {/* The Mock Flow Canvas Area */}
+        {renderFlowCanvas()}
+      </div>
+
+      {/* Right Inspector Panel */}
+      <InspectorPanel
+        selectedStep={selectedStep}
+        availableRoles={roles}
+        onUpdateStep={handleUpdateStep}
+        // onCreateRole={(role) => void handleCreateRole(role)}
+        // onUpdateRole={(role) => void handleUpdateRole(role)}
+      />
+    </div>
+  );
+};

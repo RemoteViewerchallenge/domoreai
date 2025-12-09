@@ -1,0 +1,43 @@
+[
+  {
+    "provider": "Google (Gemini)",
+    "success": false,
+    "requestHeaders": {},
+    "responseHeaders": {},
+    "error": "No API key"
+  },
+  {
+    "provider": "Groq",
+    "success": false,
+    "requestHeaders": {},
+    "responseHeaders": {},
+    "error": "No API key"
+  },
+  {
+    "provider": "Mistral",
+    "success": false,
+    "requestHeaders": {},
+    "responseHeaders": {},
+    "error": "No API key"
+  },
+  {
+    "provider": "OpenRouter",
+    "success": false,
+    "requestHeaders": {},
+    "responseHeaders": {},
+    "error": "No API key"
+  },
+  {
+    "provider": "Ollama (Local)",
+    "success": true,
+    "requestHeaders": {
+      "Content-Type": "application/json"
+    },
+    "responseHeaders": {
+      "content-length": "1061",
+      "content-type": "application/json; charset=utf-8",
+      "date": "Tue, 09 Dec 2025 09:43:53 GMT"
+    },
+    "statusCode": 200
+  }
+]

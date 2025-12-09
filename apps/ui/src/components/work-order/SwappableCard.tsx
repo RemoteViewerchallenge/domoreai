@@ -235,7 +235,9 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         // Ensure we have a valid path to work with, defaulting to currentPath from store
         const basePath = currentPath === '.' ? 'workspace' : currentPath;
         const agentsDir = `${basePath}/agents`;
-        const autoFileName = `${agentsDir}/card-${id}.md`;
+        // Card IDs are already in the form "card-1", "card-2", etc.
+        // Use the ID directly to avoid generating paths like "card-card-1.md".
+        const autoFileName = `${agentsDir}/${id}.md`;
         
         try {
             // Try to create directory structure first
