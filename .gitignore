@@ -6,6 +6,8 @@
 # Build artifacts
 dist
 .turbo
+**/.turbo/
+**/.turbo/**/*
 
 # Logs
 *.log

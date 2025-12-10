@@ -1,5 +1,5 @@
 import { lazy, Suspense, forwardRef } from 'react';
-import type { FC } from 'react';
+import type { FC, ComponentType } from 'react';
 import type { LucideProps } from 'lucide-react';
 import type { IconProps as PhosphorIconProps } from '@phosphor-icons/react';
 
@@ -32,33 +32,39 @@ const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, source = 'lucide', we
 
   // Load Phosphor icons
   if (source === 'phosphor') {
-    const PhosphorIcon = lazy(() =>
+    const PhosphorIcon = lazy<ComponentType<PhosphorIconProps>>(() =>
       import('@phosphor-icons/react').then(module => {
         const iconName = name as keyof typeof module;
-        if (iconName in module) {
-          return { default: module[iconName] as FC<PhosphorIconProps> };
+        // Check if icon exists in module
+        if (iconName in module && typeof module[iconName] === 'function') {
+          const IconComponent = module[iconName];
+          return { default: IconComponent as ComponentType<PhosphorIconProps> };
         }
-        // Return a fallback component if the icon is not found
-        return { default: () => null };
+        // Return a fallback empty component if icon not found
+        console.warn(`Phosphor icon "${name}" not found`);
+        return { default: (() => null) as ComponentType<PhosphorIconProps> };
       })
     );
 
     return (
       <Suspense fallback={<div style={{ width: 24, height: 24 }} />}>
-        <PhosphorIcon ref={ref} weight={weight} {...(props as PhosphorIconProps)} />
+        <PhosphorIcon ref={ref} weight={weight} {...(props as unknown as PhosphorIconProps)} />
       </Suspense>
     );
   }
 
   // Load Lucide icons (default)
-  const LucideIcon = lazy(() =>
+  const LucideIcon = lazy<ComponentType<LucideProps>>(() =>
     import('lucide-react').then(module => {
       const iconName = name as keyof typeof module;
-      if (iconName in module) {
-        return { default: module[iconName] as FC<LucideProps> };
+      // Check if icon exists in module
+      if (iconName in module && typeof module[iconName] === 'function') {
+        const IconComponent = module[iconName];
+        return { default: IconComponent as ComponentType<LucideProps> };
       }
-      // Return a fallback component if the icon is not found
-      return { default: () => null };
+      // Return a fallback empty component if icon not found
+      console.warn(`Lucide icon "${name}" not found`);
+      return { default: (() => null) as ComponentType<LucideProps> };
     })
   );
 
