@@ -1,26 +1,27 @@
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import MyWorkspacePage from './pages/workspace/[id].js';
-import SmartSwitchPage from './pages/workspace/SmartSwitch.js';
-import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
-import ModelsPage from './pages/admin/models.js';
-import DataLake from './pages/DataLake.js';
-import RoleCreator from './pages/RoleCreator.js';
-import ProjectCreator from './pages/ProjectCreator.js';
-import ProjectsDashboard from './pages/ProjectsDashboard.js';
-import ProjectPage from './pages/ProjectPage.js';
-import WorkSpace from './pages/WorkSpace.js';
-import ProviderRecovery from './pages/ProviderRecovery.js';
-import CreatorStudio from './pages/CreatorStudio.js';
-import SettingsPage from './pages/SettingsPage.js';
-import FileLocationPage from './pages/FileLocationPage.js';
+import MyWorkspacePage from './pages/workspace/[id]';
+import SmartSwitchPage from './pages/workspace/SmartSwitch';
+import UnifiedProviderPage from './pages/UnifiedProviderPage';
+import ModelsPage from './pages/admin/models';
+import DataLake from './pages/DataLake';
+import RoleCreator from './pages/RoleCreator';
+import ProjectCreator from './pages/ProjectCreator';
+import ProjectsDashboard from './pages/ProjectsDashboard';
+import ProjectPage from './pages/ProjectPage';
+import WorkSpace from './pages/WorkSpace';
+import ProviderRecovery from './pages/ProviderRecovery';
+import CreatorStudio from './pages/CreatorStudio';
+import SettingsPage from './pages/SettingsPage';
+import FileLocationPage from './pages/FileLocationPage';
+import DesignSystemSettingsPage from './pages/DesignSystemSettingsPage';
 import './App.css';
 
-import { FileSystemProvider } from './stores/FileSystemStore.js';
-import { UnifiedMenuBar } from './components/UnifiedMenuBar.js';
-import { ThemeProvider } from './theme/ThemeProvider.js';
-import { useHotkeys } from './hooks/useHotkeys.js';
-import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { FileSystemProvider } from './stores/FileSystemStore';
+import { UnifiedMenuBar } from './components/UnifiedMenuBar';
+import { ThemeProvider } from './theme/ThemeProvider';
+import { useHotkeys } from './hooks/useHotkeys';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 interface Hotkey {
   id: string;
@@ -130,6 +131,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
               <Route path="/provider-recovery" element={<ProviderRecovery />} />
+              <Route path="/design-system" element={<DesignSystemSettingsPage />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
                   <div className="text-center">
