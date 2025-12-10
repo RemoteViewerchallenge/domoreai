@@ -564,8 +564,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 <div className="flex gap-2 ml-4">
                   {selectedRoleId && (
                     <AiButton 
-                      source={{ type: 'role', roleId: selectedRoleId }} 
-                      defaultRoleId={selectedRoleId}
+                      source={{ type: 'role', roleId: selectedRoleId }}
                     />
                   )}
                   {selectedRoleId && (
