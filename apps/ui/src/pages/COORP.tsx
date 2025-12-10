@@ -31,7 +31,7 @@ export default function COORP() {
     setNodes((prev) => prev.filter((n) => n.id !== id));
   };
 
-  const handleAiResult = (result: any) => {
+  const handleAiResult = (result: { success: boolean; message: string; data?: Record<string, unknown> }) => {
     console.log('AI Result:', result);
     // TODO: Handle AI result - could update node, create new nodes, etc.
   };
@@ -109,7 +109,7 @@ export default function COORP() {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-[var(--color-text-muted)]">
                 <Robot size={48} weight="duotone" className="mx-auto mb-4 opacity-50" />
-                <p className="text-sm">No nodes yet. Click "Add Node" to get started.</p>
+                <p className="text-sm">No nodes yet. Click &quot;Add Node&quot; to get started.</p>
               </div>
             </div>
           )}

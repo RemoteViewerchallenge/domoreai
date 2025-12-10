@@ -8,12 +8,12 @@ export type AiSource =
   | { type: 'role'; roleId?: string }
   | { type: 'coorp-node'; nodeId?: string }
   | { type: 'vfs'; paths?: string[] }
-  | { type: 'custom'; payload?: any };
+  | { type: 'custom'; payload?: Record<string, unknown> };
 
 interface AiButtonProps {
   source: AiSource;
   defaultRoleId?: string;
-  onResult?: (res: any) => void;
+  onResult?: (res: { success: boolean; message: string; data?: Record<string, unknown> }) => void;
 }
 
 /**
@@ -77,7 +77,7 @@ export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
               Cancel
             </button>
             <button
-              onClick={handleRun}
+              onClick={() => void handleRun()}
               disabled={isLoading || !prompt.trim()}
               className="px-3 py-1 text-xs rounded bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
