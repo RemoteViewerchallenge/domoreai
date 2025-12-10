@@ -15,6 +15,8 @@ import { browserRouter } from './browser.router.js';
 import { projectRouter } from './project.router.js';
 import { contextRouter } from './context.router.js';
 import { workspaceRouter } from './workspace.router.js';
+import { aiRouter } from './ai.router.js';
+import { coorpRouter } from './coorp.router.js';
 
 export const appRouter = createTRPCRouter({
   project: projectRouter,
@@ -33,6 +35,8 @@ export const appRouter = createTRPCRouter({
   usage: usageRouter,
   browser: browserRouter,
   workspace: workspaceRouter,
+  ai: aiRouter,
+  coorp: coorpRouter,
 });
 
 export type AppRouter = typeof appRouter;

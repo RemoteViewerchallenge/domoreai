@@ -15,6 +15,7 @@ import CreatorStudio from './pages/CreatorStudio';
 import SettingsPage from './pages/SettingsPage';
 import FileLocationPage from './pages/FileLocationPage';
 import DesignSystemSettingsPage from './pages/DesignSystemSettingsPage';
+import FeatureFlagWrapper from './components/FeatureFlagWrapper';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore';
@@ -116,7 +117,7 @@ function App() {
           <UnifiedMenuBar />
           <ErrorBoundary>
             <Routes>
-              <Route path="/" element={<WorkSpace />} />
+              <Route path="/" element={<FeatureFlagWrapper />} />
               <Route path="/smartswitch" element={<SmartSwitchPage />} />
               <Route path="/projects" element={<ProjectsDashboard />} />
               <Route path="/providers" element={<UnifiedProviderPage />} />
@@ -127,7 +128,8 @@ function App() {
               <Route path="/creator" element={<CreatorStudio />} />
               <Route path="/project-creator" element={<ProjectCreator />} />
               <Route path="/project/:id" element={<ProjectPage />} />
-              <Route path="/workspace" element={<WorkSpace />} />
+              <Route path="/workspace" element={<FeatureFlagWrapper />} />
+              <Route path="/workspace/legacy" element={<WorkSpace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
               <Route path="/provider-recovery" element={<ProviderRecovery />} />
