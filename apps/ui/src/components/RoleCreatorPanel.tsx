@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { trpc } from '../utils/trpc.js';
 import DualRangeSlider from './DualRangeSlider.js';
 import { RoleModelOverride } from './RoleModelOverride.js';
+import { RoleVfsContextSelector } from './RoleVfsContextSelector.js';
 import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -32,6 +33,7 @@ interface Role {
   criteria?: unknown;
   orchestrationConfig?: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number } | unknown;
   memoryConfig?: { useProjectMemory: boolean; readOnly: boolean } | unknown;
+  vfsConfig?: { selectedPaths: string[]; maxFileSize?: number; excludePatterns?: string[] } | unknown;
 }
 
 interface RoleCreatorPanelProps {
@@ -100,10 +102,11 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     criteria: {} as Record<string, any>,
     orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined as string | undefined, minPassScore: 80 },
     memoryConfig: { useProjectMemory: false, readOnly: false },
+    vfsConfig: undefined as { selectedPaths: string[]; maxFileSize?: number; excludePatterns?: string[] } | undefined,
   });
 
   const [leftTab, setLeftTab] = useState<'params' | 'toolPrompts'>('params');
-  const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments'>('capabilities');
+  const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments' | 'vfsContext'>('capabilities');
   
   const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
@@ -281,6 +284,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         criteria: formData.criteria,
         orchestrationConfig: formData.orchestrationConfig,
         memoryConfig: formData.memoryConfig,
+        vfsConfig: formData.vfsConfig,
       });
     } else {
       createRoleMutation.mutate({
@@ -358,6 +362,11 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         useProjectMemory: (role.memoryConfig as any).useProjectMemory || false,
         readOnly: (role.memoryConfig as any).readOnly || false
       } : { useProjectMemory: false, readOnly: false },
+      vfsConfig: (role.vfsConfig && typeof role.vfsConfig === 'object') ? {
+        selectedPaths: (role.vfsConfig as any).selectedPaths || [],
+        maxFileSize: (role.vfsConfig as any).maxFileSize,
+        excludePatterns: (role.vfsConfig as any).excludePatterns || []
+      } : undefined,
     });
 
     // Fetch prompts for all tools
@@ -710,10 +719,30 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
             >
               Assignments
             </button>
+            <button
+              onClick={() => setRightTab('vfsContext')}
+              className={`flex-1 py-2 text-xs font-bold uppercase ${rightTab === 'vfsContext' ? 'text-green-500 border-b-2 border-green-500' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+            >
+              VFS Context
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {rightTab === 'assignments' ? (
+            {rightTab === 'vfsContext' ? (
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2">
+                  VFS Context Configuration
+                </h3>
+                <p className="text-[10px] text-[var(--color-text-muted)] mb-4">
+                  Configure which files and directories should be included in this role&apos;s context when executing tasks.
+                </p>
+                <RoleVfsContextSelector
+                  roleId={selectedRoleId || undefined}
+                  initialConfig={formData.vfsConfig}
+                  onChange={(config) => setFormData({ ...formData, vfsConfig: config })}
+                />
+              </div>
+            ) : rightTab === 'assignments' ? (
               <div className="space-y-4">
                 <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2">
                   Assign Role to Card Components
@@ -961,7 +990,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                    </div>
                 </div>
               </>
-            ) : (
+            ) : rightTab === 'orchestration' ? (
               <div className="space-y-6">
                 {/* TASK 3: Orchestration Config */}
                 <div>
@@ -1054,7 +1083,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
