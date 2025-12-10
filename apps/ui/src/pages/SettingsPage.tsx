@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor } from 'lucide-react';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { AnimationToggle } from '../components/AnimationToggle.js';
 
 interface Hotkey {
   id: string;
@@ -526,6 +527,21 @@ export default function SettingsPage() {
                     <p className="text-[10px] text-[var(--color-text-secondary)] mt-1">
                       Scales secondary and small text elements.
                     </p>
+                  </div>
+
+                  {/* Animation Toggle */}
+                  <div className="md:col-span-2">
+                    <div className="flex flex-col gap-2 p-3 bg-[var(--color-background)] border border-[var(--color-border)] rounded">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-xs font-bold text-[var(--color-primary)] uppercase">Animation Control</h3>
+                          <p className="text-[10px] text-[var(--color-text-secondary)] mt-1">
+                            Toggle animations on/off globally for accessibility or performance
+                          </p>
+                        </div>
+                        <AnimationToggle />
+                      </div>
+                    </div>
                   </div>
                   
                   <div>

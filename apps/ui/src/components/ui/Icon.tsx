@@ -1,23 +1,63 @@
 import { lazy, Suspense, forwardRef } from 'react';
 import type { FC } from 'react';
 import type { LucideProps } from 'lucide-react';
+import type { IconProps as PhosphorIconProps } from '@phosphor-icons/react';
 
-interface IconProps extends LucideProps {
-  name: string;
+export type IconSource = 'lucide' | 'phosphor';
+export type IconName = string;
+
+interface IconProps extends Omit<LucideProps, 'ref'> {
+  name: IconName;
+  source?: IconSource;
+  weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'; // Phosphor weights
 }
 
-const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, ...props }, ref) => {
+/**
+ * Unified Icon component supporting both Lucide (line icons) and Phosphor (filled/duotone) icons
+ * 
+ * @example
+ * // Lucide icon (default)
+ * <Icon name="Settings" />
+ * <Icon name="Home" source="lucide" />
+ * 
+ * // Phosphor icon with weight
+ * <Icon name="Robot" source="phosphor" weight="duotone" />
+ * <Icon name="Heart" source="phosphor" weight="fill" />
+ */
+const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, source = 'lucide', weight, ...props }, ref) => {
+  // Handle codicon icons (existing VSCode icons)
   if (name.startsWith('codicon-')) {
     return <span className={`codicon ${name}`} />;
   }
 
+  // Load Phosphor icons
+  if (source === 'phosphor') {
+    const PhosphorIcon = lazy(() =>
+      import('@phosphor-icons/react').then(module => {
+        const iconName = name as keyof typeof module;
+        if (iconName in module) {
+          return { default: module[iconName] as FC<PhosphorIconProps> };
+        }
+        // Return a fallback component if the icon is not found
+        return { default: () => null };
+      })
+    );
+
+    return (
+      <Suspense fallback={<div style={{ width: 24, height: 24 }} />}>
+        <PhosphorIcon ref={ref} weight={weight} {...(props as PhosphorIconProps)} />
+      </Suspense>
+    );
+  }
+
+  // Load Lucide icons (default)
   const LucideIcon = lazy(() =>
     import('lucide-react').then(module => {
       const iconName = name as keyof typeof module;
       if (iconName in module) {
         return { default: module[iconName] as FC<LucideProps> };
       }
-      // Return a fallback component or null if the icon is not found
+      // Return a fallback component if the icon is not found
       return { default: () => null };
     })
   );
@@ -27,7 +67,7 @@ const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, ...props }, ref) => {
       <LucideIcon ref={ref} {...props} />
     </Suspense>
   );
-}); // Closing parenthesis for forwardRef
+});
 
 Icon.displayName = 'Icon';
 

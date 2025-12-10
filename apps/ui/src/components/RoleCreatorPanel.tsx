@@ -5,6 +5,7 @@ import { RoleModelOverride } from './RoleModelOverride.js';
 import { RoleVfsContextSelector } from './RoleVfsContextSelector.js';
 import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import { useEffect } from 'react';
+import { AiButton } from './ui/AiButton.js';
 
 interface Role {
   id: string;
@@ -561,6 +562,12 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                   </select>
                 )}
                 <div className="flex gap-2 ml-4">
+                  {selectedRoleId && (
+                    <AiButton 
+                      source={{ type: 'role', roleId: selectedRoleId }} 
+                      defaultRoleId={selectedRoleId}
+                    />
+                  )}
                   {selectedRoleId && (
                     <button 
                       onClick={() => deleteRoleMutation.mutate({ id: selectedRoleId })}
