@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary } from "../services/RoleIngestionService.js";
+import { snapshotService } from "../services/SnapshotService.js";
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -239,6 +240,21 @@ export const roleRouter = createTRPCRouter({
           vfsConfig: input.vfsConfig,
         } as any,
       });
+      
+      // Create snapshot for role creation
+      try {
+        await snapshotService.createSnapshot(
+          'role',
+          role.id,
+          role.name,
+          'create',
+          role
+        );
+      } catch (error) {
+        console.error('[Role Router] Failed to create snapshot:', error);
+        // Don't fail the request if snapshot creation fails
+      }
+      
       return role;
     }),
 
@@ -283,6 +299,21 @@ export const roleRouter = createTRPCRouter({
         where: { id },
         data: updateData,
       });
+      
+      // Create snapshot for role update
+      try {
+        await snapshotService.createSnapshot(
+          'role',
+          role.id,
+          role.name,
+          'update',
+          role
+        );
+      } catch (error) {
+        console.error('[Role Router] Failed to create snapshot:', error);
+        // Don't fail the request if snapshot creation fails
+      }
+      
       return role;
     }),
 

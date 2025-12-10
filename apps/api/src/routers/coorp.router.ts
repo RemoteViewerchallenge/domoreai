@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { snapshotService } from '../services/SnapshotService.js';
 
 /**
  * COORP Router - handles CRUD operations for COORP nodes and edges
@@ -38,7 +39,7 @@ export const coorpRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.coorpNode.create({
+      const node = await ctx.prisma.coorpNode.create({
         data: {
           label: input.label,
           x: input.x,
@@ -46,6 +47,21 @@ export const coorpRouter = createTRPCRouter({
           data: input.data || {},
         },
       });
+      
+      // Create snapshot for node creation
+      try {
+        await snapshotService.createSnapshot(
+          'coorp-graph',
+          node.id,
+          node.label,
+          'create',
+          node
+        );
+      } catch (error) {
+        console.error('[COORP Router] Failed to create snapshot:', error);
+      }
+      
+      return node;
     }),
 
   updateNode: publicProcedure
@@ -60,10 +76,25 @@ export const coorpRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.prisma.coorpNode.update({
+      const node = await ctx.prisma.coorpNode.update({
         where: { id },
         data,
       });
+      
+      // Create snapshot for node update
+      try {
+        await snapshotService.createSnapshot(
+          'coorp-graph',
+          node.id,
+          node.label,
+          'update',
+          node
+        );
+      } catch (error) {
+        console.error('[COORP Router] Failed to create snapshot:', error);
+      }
+      
+      return node;
     }),
 
   deleteNode: publicProcedure
