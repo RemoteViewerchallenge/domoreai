@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary } from "../services/RoleIngestionService.js";
+import { snapshotService } from "../services/SnapshotService.js";
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -89,6 +90,13 @@ const createRoleSchema = z.object({
       readOnly: z.boolean(),
     })
     .optional(),
+  vfsConfig: z
+    .object({
+      selectedPaths: z.array(z.string()),
+      maxFileSize: z.number().optional(),
+      excludePatterns: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 const updateRoleSchema = z.object({
@@ -139,6 +147,17 @@ const updateRoleSchema = z.object({
   // To clear an override, send null for both fields.
   hardcodedModelId: z.string().nullable().optional(),
   hardcodedProviderId: z.string().nullable().optional(),
+
+  // --- VFS CONTEXT CONFIGURATION ---
+  // VFS Context Configuration for C.O.R.E. context building
+  vfsConfig: z
+    .object({
+      selectedPaths: z.array(z.string()),
+      maxFileSize: z.number().optional(),
+      excludePatterns: z.array(z.string()).optional(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const roleRouter = createTRPCRouter({
@@ -218,8 +237,24 @@ export const roleRouter = createTRPCRouter({
           criteria: input.criteria,
           orchestrationConfig: input.orchestrationConfig,
           memoryConfig: input.memoryConfig,
+          vfsConfig: input.vfsConfig,
         } as any,
       });
+      
+      // Create snapshot for role creation
+      try {
+        await snapshotService.createSnapshot(
+          'role',
+          role.id,
+          role.name,
+          'create',
+          role
+        );
+      } catch (error) {
+        console.error('[Role Router] Failed to create snapshot:', error);
+        // Don't fail the request if snapshot creation fails
+      }
+      
       return role;
     }),
 
@@ -241,16 +276,44 @@ export const roleRouter = createTRPCRouter({
 
       // Note: The original code filtered out several fields. We'll keep that behavior
       // while ensuring our new fields are passed through.
-      const { orchestrationConfig: _o, memoryConfig: _m, terminalRestrictions: _t, criteria: _c, defaultStop: _ds, defaultSeed: _dseed, defaultResponseFormat: _drf, ...data } = dataToUpdate;
+      const { orchestrationConfig: _o, memoryConfig: _m, terminalRestrictions: _t, criteria: _c, defaultStop: _ds, defaultSeed: _dseed, defaultResponseFormat: _drf, vfsConfig: _vfs, ...data } = dataToUpdate;
 
-      // The `data` object now contains all valid fields for the Prisma update,
-      // including the hardcodedModelId and hardcodedProviderId.
+      // Reconstruct the data object with JSON fields explicitly included
+      const updateData: any = {
+        ...data,
+        ...(dataToUpdate.orchestrationConfig !== undefined && { orchestrationConfig: dataToUpdate.orchestrationConfig }),
+        ...(dataToUpdate.memoryConfig !== undefined && { memoryConfig: dataToUpdate.memoryConfig }),
+        ...(dataToUpdate.terminalRestrictions !== undefined && { terminalRestrictions: dataToUpdate.terminalRestrictions }),
+        ...(dataToUpdate.criteria !== undefined && { criteria: dataToUpdate.criteria }),
+        ...(dataToUpdate.defaultStop !== undefined && { defaultStop: dataToUpdate.defaultStop }),
+        ...(dataToUpdate.defaultSeed !== undefined && { defaultSeed: dataToUpdate.defaultSeed }),
+        ...(dataToUpdate.defaultResponseFormat !== undefined && { defaultResponseFormat: dataToUpdate.defaultResponseFormat }),
+        ...(dataToUpdate.vfsConfig !== undefined && { vfsConfig: dataToUpdate.vfsConfig }),
+      };
+
+      // The `updateData` object now contains all valid fields for the Prisma update,
+      // including the hardcodedModelId, hardcodedProviderId, and vfsConfig.
 
       // Update the role in the database
       const role = await prisma.role.update({
         where: { id },
-        data,
+        data: updateData,
       });
+      
+      // Create snapshot for role update
+      try {
+        await snapshotService.createSnapshot(
+          'role',
+          role.id,
+          role.name,
+          'update',
+          role
+        );
+      } catch (error) {
+        console.error('[Role Router] Failed to create snapshot:', error);
+        // Don't fail the request if snapshot creation fails
+      }
+      
       return role;
     }),
 
