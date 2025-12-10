@@ -4,6 +4,9 @@ import { contextService } from '../services/ContextService.js';
 import { selectModelFromRegistry } from '../services/modelManager.service.js';
 import { TRPCError } from '@trpc/server';
 
+// Configuration constants
+const MAX_VFS_PATHS_IN_RESPONSE = 10;
+
 const aiSourceSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('role'), roleId: z.string().optional() }),
   z.object({ type: z.literal('coorp-node'), nodeId: z.string().optional() }),
@@ -83,7 +86,7 @@ export const aiRouter = createTRPCRouter({
               fileCount: context.sizeEstimate.fileCount,
               totalTokens: context.sizeEstimate.totalTokens,
               totalBytes: context.sizeEstimate.totalBytes,
-              vfsPaths: context.vfsList.slice(0, 10), // Limit for response size
+              vfsPaths: context.vfsList.slice(0, MAX_VFS_PATHS_IN_RESPONSE), // Limit for response size
             },
             model: selectedModel ? {
               modelId: selectedModel.model_id || selectedModel.id,

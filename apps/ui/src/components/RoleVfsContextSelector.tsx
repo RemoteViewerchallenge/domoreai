@@ -59,10 +59,11 @@ export const RoleVfsContextSelector: React.FC<RoleVfsContextSelectorProps> = ({
     }
   );
 
-  // Build estimated context size
+  // Build estimated context size (rough approximation)
   const estimatedSize = useMemo(() => {
     const selectedCount = config.selectedPaths.length;
-    // Rough estimate: 1KB per file average, divided by 4 for token count
+    // Very rough estimate: assuming 1KB per file average
+    // Real size will be calculated by backend ContextService
     const estimatedBytes = selectedCount * 1024;
     const estimatedTokens = Math.ceil(estimatedBytes / 4);
     return {

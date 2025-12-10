@@ -59,7 +59,7 @@ async function ensureBackupDir() {
 /**
  * Parse DATABASE_URL to extract connection parameters
  */
-function parseDatabaseUrl(url) {
+function parseDatabaseUrl(url: string) {
   if (!url) {
     throw new Error('DATABASE_URL is required');
   }
