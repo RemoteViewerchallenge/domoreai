@@ -525,3 +525,38 @@ model ComponentRole {
 
   @@unique([cardId, component])
 }
+
+// -----------------------------------------------------------------
+// COORP (Cognitive Orchestration & Routing Platform) Models
+// -----------------------------------------------------------------
+
+model CoorpNode {
+  id          String   @id @default(cuid())
+  label       String
+  x           Float    @default(0)
+  y           Float    @default(0)
+  data        Json     @default("{}")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  sourceEdges CoorpEdge[] @relation("EdgeSource")
+  targetEdges CoorpEdge[] @relation("EdgeTarget")
+}
+
+model CoorpEdge {
+  id          String   @id @default(cuid())
+  sourceId    String
+  targetId    String
+  label       String?
+  data        Json     @default("{}")
+  
+  source      CoorpNode @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target      CoorpNode @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([sourceId, targetId])
+}
+
