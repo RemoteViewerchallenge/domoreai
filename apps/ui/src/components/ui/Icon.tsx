@@ -41,7 +41,9 @@ const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, source = 'lucide', we
           return { default: IconComponent as ComponentType<PhosphorIconProps> };
         }
         // Return a fallback empty component if icon not found
-        console.warn(`Phosphor icon "${name}" not found`);
+        if (import.meta.env.DEV) {
+          console.warn(`Phosphor icon "${name}" not found`);
+        }
         return { default: (() => null) as ComponentType<PhosphorIconProps> };
       })
     );
@@ -63,7 +65,9 @@ const Icon = forwardRef<SVGSVGElement, IconProps>(({ name, source = 'lucide', we
         return { default: IconComponent as ComponentType<LucideProps> };
       }
       // Return a fallback empty component if icon not found
-      console.warn(`Lucide icon "${name}" not found`);
+      if (import.meta.env.DEV) {
+        console.warn(`Lucide icon "${name}" not found`);
+      }
       return { default: (() => null) as ComponentType<LucideProps> };
     })
   );
