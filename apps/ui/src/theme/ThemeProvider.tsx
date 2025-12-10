@@ -64,6 +64,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     root.style.setProperty('--transition-duration', `${theme.animations.transitionDuration}ms`);
     root.style.setProperty('--hover-intensity', `${theme.animations.hoverEffectsIntensity}%`);
     
+    // Set data attribute for motion library to read
+    root.dataset.animations = theme.animations.enabled ? 'on' : 'off';
+    
     // Layout settings
     root.style.setProperty('--spacing-multiplier', `${theme.layout.spacingMultiplier}`);
     root.style.setProperty('--gap-size', `${theme.layout.gapSize}px`);
@@ -106,4 +109,17 @@ export const useThemeContext = () => {
     throw new Error('useThemeContext must be used within ThemeProvider');
   }
   return context;
+};
+
+/**
+ * Convenience hook to access animation enabled state
+ */
+export const useAnimations = () => {
+  const { theme, setTheme } = useThemeContext();
+  return {
+    enabled: theme.animations.enabled,
+    setEnabled: (enabled: boolean) => {
+      setTheme({ animations: { ...theme.animations, enabled } });
+    },
+  };
 };
