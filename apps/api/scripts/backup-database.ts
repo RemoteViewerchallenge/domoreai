@@ -74,7 +74,7 @@ function parseDatabaseUrl(url: string) {
       password: urlObj.password,
     };
   } catch (error) {
-    throw new Error(`Invalid DATABASE_URL: ${error.message}`);
+    throw new Error(`Invalid DATABASE_URL: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -144,7 +144,7 @@ async function createBackup() {
 /**
  * Upload backup to S3 (optional)
  */
-async function uploadToS3(backupPath, filename) {
+async function uploadToS3(backupPath: string, filename: string) {
   if (!useS3 || localOnly) {
     console.log('[Backup] Skipping S3 upload (not requested)');
     return;

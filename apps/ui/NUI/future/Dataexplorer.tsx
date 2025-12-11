@@ -622,3 +622,8 @@ Example prompts:
           Drag nodes • Click headers to connect • {activeTab === 'data' ? 'Drawing connections...' : activeTab === 'assets' ? 'Browse & organize files' : 'Build relationships'}
         </div>
       </div>
+    </div>
+  );
+}
+
+export default AdaptiveDataExplorer;

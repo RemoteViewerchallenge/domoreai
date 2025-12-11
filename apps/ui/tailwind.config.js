@@ -6,7 +6,6 @@ export default {
     darkMode: ['class'],
     content: [
       './src/**/*.{ts,tsx}',
-      './node_modules/flyonui/dist/js/*.js',
     ],
   safelist: [
     'border-t-2',
@@ -68,7 +67,6 @@ export default {
         }
   },
   plugins: [
-    require("tailwindcss-animate"),
-    require("flyonui")
+    require("tailwindcss-animate")
   ],
 }
