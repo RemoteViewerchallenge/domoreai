@@ -154,7 +154,7 @@ export async function runDirective(specInput: any, meta: any = {}) {
   }
 }
 
-function renderPrompt(templateId: string | undefined, ctx: any) {
+function renderPrompt(templateId: string | null | undefined, ctx: any) {
   const templatePath = path.resolve(process.cwd(), 'agents', 'templates', templateId || '');
   if (!templateId || !fs.existsSync(templatePath)) return JSON.stringify({ ctx }); // safe fallback for mocks
   let tpl = fs.readFileSync(templatePath, 'utf8');
@@ -177,7 +177,7 @@ if (require.main === module) {
       await runDirective(spec);
       console.log('COC run finished. Check out/traces/events.jsonl for the event log.');
     } catch (e) {
-      console.error('COC run error:', e?.message || e);
+      console.error('COC run error:', (e as Error)?.message || e);
     }
   })();
 }
