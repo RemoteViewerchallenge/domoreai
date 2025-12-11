@@ -4,6 +4,15 @@ import { motion } from 'framer-motion';
 import { trpc } from '../../utils/trpc.js';
 import { useAnimations } from '../../theme/ThemeProvider.js';
 
+/**
+ * AiSource - Context source types for AI operations
+ * 
+ * Defines where the AI should pull context from:
+ * - role: Use a specific role's configuration and VFS context
+ * - coorp-node: Use context from a COORP graph node
+ * - vfs: Use specific file paths from virtual file system
+ * - custom: Provide custom context payload
+ */
 export type AiSource =
   | { type: 'role'; roleId?: string }
   | { type: 'coorp-node'; nodeId?: string }
@@ -17,8 +26,24 @@ interface AiButtonProps {
 }
 
 /**
- * AiButton component that opens a popover and calls ai.runWithContext
- * Uses framer-motion for animations that respect theme preferences
+ * AiButton component for Group B - AI Integration
+ * 
+ * Opens a popover for AI prompts and calls ai.runWithContext tRPC endpoint.
+ * Integrates with ContextService and model broker for intelligent context building.
+ * 
+ * Features:
+ * - Respects animation preferences via useAnimations hook
+ * - Multiple source types (role, coorp-node, vfs, custom)
+ * - Loading states and error handling
+ * - Keyboard-accessible popover UI
+ * 
+ * @example
+ * ```tsx
+ * <AiButton
+ *   source={{ type: 'coorp-node', nodeId: 'node-123' }}
+ *   onResult={(result) => console.log(result)}
+ * />
+ * ```
  */
 export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
   const [open, setOpen] = useState(false);
