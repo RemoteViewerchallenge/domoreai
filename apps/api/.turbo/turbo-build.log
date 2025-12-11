@@ -1,56 +1,5 @@
 
-> api@1.0.0 build /home/runner/work/domoreai/domoreai/apps/api
+
+> api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
-inspect_data.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/db.ts(4,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/db/seed.ts(1,30): error TS7016: Could not find a declaration file for module 'uuid'. '/home/runner/work/domoreai/domoreai/node_modules/.pnpm/uuid@9.0.1/node_modules/uuid/wrapper.mjs' implicitly has an 'any' type.
-  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
-src/routers/agent.router.ts(185,79): error TS7006: Parameter 'r' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(15,25): error TS7006: Parameter 't' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(109,37): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(109,56): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(115,39): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(121,35): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(255,37): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(255,56): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(259,39): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(265,35): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(361,40): error TS7006: Parameter 'c' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(484,37): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(484,56): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(487,39): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(493,35): error TS7006: Parameter 'k' implicitly has an 'any' type.
-src/routers/dataRefinement.router.ts(546,26): error TS7006: Parameter 'q' implicitly has an 'any' type.
-src/routers/llm.router.ts(3,30): error TS7016: Could not find a declaration file for module 'uuid'. '/home/runner/work/domoreai/domoreai/node_modules/.pnpm/uuid@9.0.1/node_modules/uuid/wrapper.mjs' implicitly has an 'any' type.
-  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
-src/routers/model.router.ts(6,15): error TS2305: Module '"@prisma/client"' has no exported member 'Prisma'.
-src/routers/model.router.ts(208,44): error TS7006: Parameter 'c' implicitly has an 'any' type.
-src/routers/providers.router.ts(3,30): error TS7016: Could not find a declaration file for module 'uuid'. '/home/runner/work/domoreai/domoreai/node_modules/.pnpm/uuid@9.0.1/node_modules/uuid/wrapper.mjs' implicitly has an 'any' type.
-  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
-src/scripts/categorize-roles.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/scripts/check-roles.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/scripts/fix-roles.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/scripts/manage_providers.ts(19,23): error TS7006: Parameter 'p' implicitly has an 'any' type.
-src/scripts/restore_raw_table.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/scripts/seed_org_chart.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/services/DynamicModelAdapter.ts(2,15): error TS2305: Module '"@prisma/client"' has no exported member 'Model'.
-src/services/DynamicModelAdapter.ts(55,26): error TS7006: Parameter 'row' implicitly has an 'any' type.
-src/services/ModelConfigurator.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'Model'.
-src/services/ModelConfigurator.ts(2,17): error TS2305: Module '"@prisma/client"' has no exported member 'ModelConfig'.
-src/services/ModelConfigurator.ts(2,30): error TS2305: Module '"@prisma/client"' has no exported member 'Role'.
-src/services/ModelConfigurator.ts(2,36): error TS2305: Module '"@prisma/client"' has no exported member 'Prisma'.
-src/services/PrismaLessonProvider.ts(24,26): error TS7006: Parameter 'l' implicitly has an 'any' type.
-src/services/ProviderManager.ts(2,30): error TS7016: Could not find a declaration file for module 'uuid'. '/home/runner/work/domoreai/domoreai/node_modules/.pnpm/uuid@9.0.1/node_modules/uuid/wrapper.mjs' implicitly has an 'any' type.
-  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
-src/services/ProviderManager.ts(73,41): error TS7016: Could not find a declaration file for module 'uuid'. '/home/runner/work/domoreai/domoreai/node_modules/.pnpm/uuid@9.0.1/node_modules/uuid/wrapper.mjs' implicitly has an 'any' type.
-  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
-src/services/RawModelService.ts(70,15): error TS7022: 'response' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
-src/services/RawModelService.ts(80,15): error TS7022: 'pageJson' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
-src/services/RoleIngestionService.ts(3,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/services/model.service.ts(4,15): error TS2305: Module '"@prisma/client"' has no exported member 'Prisma'.
-src/services/modelManager.service.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'PrismaClient'.
-src/services/orchestration.service.ts(3,15): error TS2305: Module '"@prisma/client"' has no exported member 'Orchestration'.
-src/services/orchestration.service.ts(3,30): error TS2305: Module '"@prisma/client"' has no exported member 'OrchestrationStep'.
-src/services/orchestration.service.ts(3,49): error TS2305: Module '"@prisma/client"' has no exported member 'OrchestrationExecution'.
- ELIFECYCLE  Command failed with exit code 1.
