@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { FileSystemProviderType } from './FileSystemTypes.js';
 import { trpc } from '../utils/trpc.js';
-import type { SshConfig } from '../components/SshConnectionModal.js';
+import type { SshConfig } from '../legacy/unused/components/SshConnectionModal.js';
 import { FileSystemContext } from './FileSystemContext.js';
 
 export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

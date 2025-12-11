@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { trpc } from '../../utils/trpc.js';
-import { UniversalDataGrid } from '../UniversalDataGrid.js';
-import { VisualQueryBuilder } from '../VisualQueryBuilder.js'; // Ensure this file exists from previous steps
+import { UniversalDataGrid } from '../data/UniversalDataGrid.js';
+import { VisualQueryBuilder } from '../data/VisualQueryBuilder.js'; // Ensure this file exists from previous steps
 import { Database, Trash2, Play, Table } from 'lucide-react';
 
 export const DatabaseManagerNode: React.FC = () => {

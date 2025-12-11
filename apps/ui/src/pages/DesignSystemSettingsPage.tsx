@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Trash2, Plus, RotateCcw, Copy, Palette, Type, SlidersHorizontal, Eye } from 'lucide-react';
-import { defaultDesignThemePresets } from '../design-system/presets';
-import type { DesignTheme, DesignThemePreset, DesignThemeColors, DesignThemeGradients } from '../design-system/types';
-import { gradientOptions } from '../design-system/gradients';
-import { StyleGuidePreview } from '../design-system/StyleGuidePreview';
-import { buildCssVariablesFromTheme } from '../design-system/cssVariables';
+import { defaultDesignThemePresets } from '../../NUI/design-system/presets.js';
+import { callVoid } from '../lib/callVoid.js';
+import type { DesignTheme, DesignThemePreset, DesignThemeColors, DesignThemeGradients } from '../../NUI/design-system/types.js';
+import { gradientOptions } from '../../NUI/design-system/gradients.js';
+import { StyleGuidePreview } from '../../NUI/design-system/StyleGuidePreview.js';
+import { buildCssVariablesFromTheme } from '../../NUI/design-system/cssVariables.js';
 
 const PRESETS_STORAGE_KEY = 'design-system-theme-presets';
 const SELECTED_PRESET_STORAGE_KEY = 'design-system-selected-preset';
@@ -420,7 +421,7 @@ const DesignSystemSettingsPage: React.FC = () => {
                   <span>Theme JSON</span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(themeJson)}
+                    onClick={() => callVoid(handleCopy, themeJson)}
                     className="flex items-center gap-1 px-1 py-0.5 rounded border border-slate-700 text-[9px] text-slate-200 hover:border-cyan-400"
                   >
                     <Copy size={10} />
@@ -454,7 +455,7 @@ interface CssExportPanelProps {
 }
 
 const CssExportPanel: React.FC<CssExportPanelProps> = ({ theme, onCopy }) => {
-  const vars = buildCssVariablesFromTheme(theme) as Record<string, string>;
+  const vars = buildCssVariablesFromTheme(theme);
   const cssBlock = useMemo(
     () =>
       [

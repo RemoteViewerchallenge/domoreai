@@ -67,7 +67,7 @@ export class RawModelService {
       // --- PAGINATION LOOP ---
       while (nextUrl) {
         console.log(`[RawModelService] Fetching page: ${nextUrl}`);
-        const response = await fetch(nextUrl, {
+        const response: Response = await fetch(nextUrl, {
           headers,
           signal: controller.signal
         });
@@ -77,7 +77,7 @@ export class RawModelService {
             throw new Error(`Provider API Error: ${response.status} ${txt}`);
         }
         
-        const pageJson = await response.json();
+        const pageJson: any = await response.json();
         
         // Extract models from the current page
         const pageModels = pageJson.models || [];

@@ -57,7 +57,7 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
       socket.onmessage = (event) => {
         try {
-          const data: unknown = JSON.parse(event.data as string) as any;
+          const data: unknown = JSON.parse(event.data as string);
 
           // Pass through terminal-style messages
           if (isTerminalMessage(data)) {

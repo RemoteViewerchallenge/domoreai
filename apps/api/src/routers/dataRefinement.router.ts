@@ -665,4 +665,17 @@ export const dataRefinementRouter = createTRPCRouter({
             throw new Error(`Failed to import JSON: ${errMsg}`);
         }
     }),
+
+  exportTableToJson: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const rows = await ctx.prisma.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "${input.tableName}"`
+        );
+        return { jsonString: JSON.stringify(rows, null, 2) };
+      } catch (error) {
+        throw new Error(`Failed to export table: ${(error as Error).message}`);
+      }
+    }),
 });

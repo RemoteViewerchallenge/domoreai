@@ -1,0 +1,2821 @@
+.
+├── agents
+│   ├── card-1.md
+│   ├── card-2.md
+│   ├── card-3.md
+│   ├── card-4.md
+│   ├── card-5.md
+│   ├── card-6.md
+│   ├── scenarios
+│   │   └── sample_happy.json
+│   └── templates
+│       ├── README.md
+│       └── worker.tpl
+├── AGENTS.md
+├── apps
+│   ├── api
+│   │   ├── build_errors.log
+│   │   ├── build.log
+│   │   ├── data
+│   │   │   ├── agents
+│   │   │   │   └── en
+│   │   │   │       ├── accountant.md
+│   │   │   │       ├──100 more
+│   │   │   │       ├── ux-researcher.md
+│   │   │   │       └── video-producer.md
+│   │   │   ├── context_store.json
+│   │   │   └── db.json
+│   │   ├── dist
+│   │   │   ├── backup_providers.d.ts
+│   │   │   ├── backup_providers.d.ts.map
+│   │   │   ├── backup_providers.js
+│   │   │   ├── check_count.d.ts
+│   │   │   ├── check_count.d.ts.map
+│   │   │   ├── check_count.js
+│   │   │   ├── check_db.d.ts
+│   │   │   ├── check_db.d.ts.map
+│   │   │   ├── check_db.js
+│   │   │   ├── check_providers.d.ts
+│   │   │   ├── check_providers.d.ts.map
+│   │   │   ├── check_providers.js
+│   │   │   ├── check_registry.d.ts
+│   │   │   ├── check_registry.d.ts.map
+│   │   │   ├── check_registry.js
+│   │   │   ├── check_resource.d.ts
+│   │   │   ├── check_resource.d.ts.map
+│   │   │   ├── check_resource.js
+│   │   │   ├── check_saved_queries.d.ts
+│   │   │   ├── check_saved_queries.d.ts.map
+│   │   │   ├── check_saved_queries.js
+│   │   │   ├── check_sdk.d.ts
+│   │   │   ├── check_sdk.d.ts.map
+│   │   │   ├── check_sdk.js
+│   │   │   ├── check_type.d.ts
+│   │   │   ├── check_type.d.ts.map
+│   │   │   ├── check_type.js
+│   │   │   ├── db
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.d.ts.map
+│   │   │   │   └── index.js
+│   │   │   ├── db.d.ts
+│   │   │   ├── db.d.ts.map
+│   │   │   ├── db.js
+│   │   │   ├── debug_agent_start.d.ts
+│   │   │   ├── debug_agent_start.d.ts.map
+│   │   │   ├── debug_agent_start.js
+│   │   │   ├── debug_simple.d.ts
+│   │   │   ├── debug_simple.d.ts.map
+│   │   │   ├── debug_simple.js
+│   │   │   ├── drizzle.config.d.ts
+│   │   │   ├── drizzle.config.d.ts.map
+│   │   │   ├── drizzle.config.js
+│   │   │   ├── drop_view.d.ts
+│   │   │   ├── drop_view.d.ts.map
+│   │   │   ├── drop_view.js
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── ingest-agents.d.ts
+│   │   │   ├── ingest-agents.d.ts.map
+│   │   │   ├── ingest-agents.js
+│   │   │   ├── inspect_data.d.ts
+│   │   │   ├── inspect_data.d.ts.map
+│   │   │   ├── inspect_data.js
+│   │   │   ├── instrumentation.d.ts
+│   │   │   ├── instrumentation.d.ts.map
+│   │   │   ├── instrumentation.js
+│   │   │   ├── lib
+│   │   │   │   ├── modelSelector.d.ts
+│   │   │   │   ├── modelSelector.d.ts.map
+│   │   │   │   └── modelSelector.js
+│   │   │   ├── list_tables.d.ts
+│   │   │   ├── list_tables.d.ts.map
+│   │   │   ├── list_tables.js
+│   │   │   ├── llm-adapters.d.ts
+│   │   │   ├── llm-adapters.d.ts.map
+│   │   │   ├── llm-adapters.js
+│   │   │   ├── manage_providers.d.ts
+│   │   │   ├── manage_providers.d.ts.map
+│   │   │   ├── manage_providers.js
+│   │   │   ├── mcp-adapters.d.ts
+│   │   │   ├── mcp-adapters.d.ts.map
+│   │   │   ├── mcp-adapters.js
+│   │   │   ├── orchestrator
+│   │   │   │   ├── modelSelector.d.ts
+│   │   │   │   ├── modelSelector.d.ts.map
+│   │   │   │   ├── modelSelector.js
+│   │   │   │   ├── modelSelector.test.d.ts
+│   │   │   │   ├── modelSelector.test.d.ts.map
+│   │   │   │   └── modelSelector.test.js
+│   │   │   ├── rateLimiter.d.ts
+│   │   │   ├── rateLimiter.d.ts.map
+│   │   │   ├── rateLimiter.js
+│   │   │   ├── redis.d.ts
+│   │   │   ├── redis.d.ts.map
+│   │   │   ├── redis.js
+│   │   │   ├── repositories
+│   │   │   │   ├── AgentConfigRepository.d.ts
+│   │   │   │   ├── AgentConfigRepository.d.ts.map
+│   │   │   │   └── AgentConfigRepository.js
+│   │   │   ├── restore_raw_table.d.ts
+│   │   │   ├── restore_raw_table.d.ts.map
+│   │   │   ├── restore_raw_table.js
+│   │   │   ├── routers
+│   │   │   │   ├── agent.router.d.ts
+│   │   │   │   ├── agent.router.d.ts.map
+│   │   │   │   ├── agent.router.js
+│   │   │   │   ├── apiExplorer.router.d.ts
+│   │   │   │   ├── apiExplorer.router.d.ts.map
+│   │   │   │   ├── apiExplorer.router.js
+│   │   │   │   ├── browser.router.d.ts
+│   │   │   │   ├── browser.router.d.ts.map
+│   │   │   │   ├── browser.router.js
+│   │   │   │   ├── dataRefinement.router.d.ts
+│   │   │   │   ├── dataRefinement.router.d.ts.map
+│   │   │   │   ├── dataRefinement.router.js
+│   │   │   │   ├── external.router.d.ts
+│   │   │   │   ├── external.router.d.ts.map
+│   │   │   │   ├── external.router.js
+│   │   │   │   ├── git.router.d.ts
+│   │   │   │   ├── git.router.d.ts.map
+│   │   │   │   ├── git.router.js
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.d.ts.map
+│   │   │   │   ├── index.js
+│   │   │   │   ├── llm.router.d.ts
+│   │   │   │   ├── llm.router.d.ts.map
+│   │   │   │   ├── llm.router.js
+│   │   │   │   ├── lootbox.router.d.ts
+│   │   │   │   ├── lootbox.router.d.ts.map
+│   │   │   │   ├── lootbox.router.js
+│   │   │   │   ├── model.router.d.ts
+│   │   │   │   ├── model.router.d.ts.map
+│   │   │   │   ├── model.router.js
+│   │   │   │   ├── orchestrationManagement.router.d.ts
+│   │   │   │   ├── orchestrationManagement.router.d.ts.map
+│   │   │   │   ├── orchestrationManagement.router.js
+│   │   │   │   ├── orchestrator.router.d.ts
+│   │   │   │   ├── orchestrator.router.d.ts.map
+│   │   │   │   ├── orchestrator.router.js
+│   │   │   │   ├── project.router.d.ts
+│   │   │   │   ├── project.router.d.ts.map
+│   │   │   │   ├── project.router.js
+│   │   │   │   ├── providers.router.d.ts
+│   │   │   │   ├── providers.router.d.ts.map
+│   │   │   │   ├── providers.router.js
+│   │   │   │   ├── role.router.d.ts
+│   │   │   │   ├── role.router.d.ts.map
+│   │   │   │   ├── role.router.js
+│   │   │   │   ├── types.d.ts
+│   │   │   │   ├── types.d.ts.map
+│   │   │   │   ├── types.js
+│   │   │   │   ├── usage.router.d.ts
+│   │   │   │   ├── usage.router.d.ts.map
+│   │   │   │   ├── usage.router.js
+│   │   │   │   ├── vfs.router.d.ts
+│   │   │   │   ├── vfs.router.d.ts.map
+│   │   │   │   └── vfs.router.js
+│   │   │   ├── scripts
+│   │   │   │   ├── smoke-context.d.ts
+│   │   │   │   ├── smoke-context.d.ts.map
+│   │   │   │   └── smoke-context.js
+│   │   │   ├── services
+│   │   │   │   ├── AgentFactory.d.ts
+│   │   │   │   ├── AgentFactory.d.ts.map
+│   │   │   │   ├── AgentFactory.js
+│   │   │   │   ├── AgentFactory.test.d.ts
+│   │   │   │   ├── AgentFactory.test.d.ts.map
+│   │   │   │   ├── AgentFactory.test.js
+│   │   │   │   ├── AgentRuntime.d.ts
+│   │   │   │   ├── AgentRuntime.d.ts.map
+│   │   │   │   ├── AgentRuntime.js
+│   │   │   │   ├── AssessmentService.d.ts
+│   │   │   │   ├── AssessmentService.d.ts.map
+│   │   │   │   ├── AssessmentService.js
+│   │   │   │   ├── browser.service.d.ts
+│   │   │   │   ├── browser.service.d.ts.map
+│   │   │   │   ├── browser.service.js
+│   │   │   │   ├── CreditGuard.d.ts
+│   │   │   │   ├── CreditGuard.d.ts.map
+│   │   │   │   ├── CreditGuard.js
+│   │   │   │   ├── dataRefinement.service.d.ts
+│   │   │   │   ├── dataRefinement.service.d.ts.map
+│   │   │   │   ├── dataRefinement.service.js
+│   │   │   │   ├── DynamicModelAdapter.d.ts
+│   │   │   │   ├── DynamicModelAdapter.d.ts.map
+│   │   │   │   ├── DynamicModelAdapter.js
+│   │   │   │   ├── git.service.d.ts
+│   │   │   │   ├── git.service.d.ts.map
+│   │   │   │   ├── git.service.js
+│   │   │   │   ├── ingestion.service.d.ts
+│   │   │   │   ├── ingestion.service.d.ts.map
+│   │   │   │   ├── ingestion.service.js
+│   │   │   │   ├── languageServer.service.d.ts
+│   │   │   │   ├── languageServer.service.d.ts.map
+│   │   │   │   ├── languageServer.service.js
+│   │   │   │   ├── lootbox.service.d.ts
+│   │   │   │   ├── lootbox.service.d.ts.map
+│   │   │   │   ├── lootbox.service.js
+│   │   │   │   ├── McpOrchestrator.d.ts
+│   │   │   │   ├── McpOrchestrator.d.ts.map
+│   │   │   │   ├── McpOrchestrator.js
+│   │   │   │   ├── mcp-registry-client.d.ts
+│   │   │   │   ├── mcp-registry-client.d.ts.map
+│   │   │   │   ├── mcp-registry-client.js
+│   │   │   │   ├── ModelConfigurator.d.ts
+│   │   │   │   ├── ModelConfigurator.d.ts.map
+│   │   │   │   ├── ModelConfigurator.js
+│   │   │   │   ├── modelManager.mocks.d.ts
+│   │   │   │   ├── modelManager.mocks.d.ts.map
+│   │   │   │   ├── modelManager.mocks.js
+│   │   │   │   ├── modelManager.service.d.ts
+│   │   │   │   ├── modelManager.service.d.ts.map
+│   │   │   │   ├── modelManager.service.js
+│   │   │   │   ├── model.service.d.ts
+│   │   │   │   ├── model.service.d.ts.map
+│   │   │   │   ├── model.service.js
+│   │   │   │   ├── orchestration.service.d.ts
+│   │   │   │   ├── orchestration.service.d.ts.map
+│   │   │   │   ├── orchestration.service.js
+│   │   │   │   ├── ProviderManager.d.ts
+│   │   │   │   ├── ProviderManager.d.ts.map
+│   │   │   │   ├── ProviderManager.js
+│   │   │   │   ├── ProviderProbeService.d.ts
+│   │   │   │   ├── ProviderProbeService.d.ts.map
+│   │   │   │   ├── ProviderProbeService.js
+│   │   │   │   ├── RawModelService.d.ts
+│   │   │   │   ├── RawModelService.d.ts.map
+│   │   │   │   ├── RawModelService.js
+│   │   │   │   ├── UsageCollector.d.ts
+│   │   │   │   ├── UsageCollector.d.ts.map
+│   │   │   │   ├── UsageCollector.js
+│   │   │   │   ├── vfs
+│   │   │   │   │   ├── IVfsProvider.d.ts
+│   │   │   │   │   ├── IVfsProvider.d.ts.map
+│   │   │   │   │   ├── IVfsProvider.js
+│   │   │   │   │   ├── LocalProvider.d.ts
+│   │   │   │   │   ├── LocalProvider.d.ts.map
+│   │   │   │   │   ├── LocalProvider.js
+│   │   │   │   │   ├── SshProvider.d.ts
+│   │   │   │   │   ├── SshProvider.d.ts.map
+│   │   │   │   │   └── SshProvider.js
+│   │   │   │   ├── vfsSession.service.d.ts
+│   │   │   │   ├── vfsSession.service.d.ts.map
+│   │   │   │   ├── vfsSession.service.js
+│   │   │   │   ├── websocket.service.d.ts
+│   │   │   │   ├── websocket.service.d.ts.map
+│   │   │   │   └── websocket.service.js
+│   │   │   ├── src
+│   │   │   │   ├── check_resource.d.ts
+│   │   │   │   ├── check_resource.d.ts.map
+│   │   │   │   ├── check_resource.js
+│   │   │   │   ├── check_saved_queries.d.ts
+│   │   │   │   ├── check_saved_queries.d.ts.map
+│   │   │   │   ├── check_saved_queries.js
+│   │   │   │   ├── db
+│   │   │   │   │   ├── schema.d.ts
+│   │   │   │   │   ├── schema.d.ts.map
+│   │   │   │   │   ├── schema.js
+│   │   │   │   │   ├── seed.d.ts
+│   │   │   │   │   ├── seed.d.ts.map
+│   │   │   │   │   └── seed.js
+│   │   │   │   ├── db.d.ts
+│   │   │   │   ├── db.d.ts.map
+│   │   │   │   ├── db.js
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.d.ts.map
+│   │   │   │   ├── index.js
+│   │   │   │   ├── instrumentation.d.ts
+│   │   │   │   ├── instrumentation.d.ts.map
+│   │   │   │   ├── instrumentation.js
+│   │   │   │   ├── lib
+│   │   │   │   │   ├── modelSelector.d.ts
+│   │   │   │   │   ├── modelSelector.d.ts.map
+│   │   │   │   │   └── modelSelector.js
+│   │   │   │   ├── mcp-adapters.d.ts
+│   │   │   │   ├── mcp-adapters.d.ts.map
+│   │   │   │   ├── mcp-adapters.js
+│   │   │   │   ├── orchestrator
+│   │   │   │   │   ├── modelSelector.d.ts
+│   │   │   │   │   ├── modelSelector.d.ts.map
+│   │   │   │   │   ├── modelSelector.js
+│   │   │   │   │   ├── modelSelector.test.d.ts
+│   │   │   │   │   ├── modelSelector.test.d.ts.map
+│   │   │   │   │   └── modelSelector.test.js
+│   │   │   │   ├── rateLimiter.d.ts
+│   │   │   │   ├── rateLimiter.d.ts.map
+│   │   │   │   ├── rateLimiter.js
+│   │   │   │   ├── redis.d.ts
+│   │   │   │   ├── redis.d.ts.map
+│   │   │   │   ├── redis.js
+│   │   │   │   ├── repositories
+│   │   │   │   │   ├── AgentConfigRepository.d.ts
+│   │   │   │   │   ├── AgentConfigRepository.d.ts.map
+│   │   │   │   │   └── AgentConfigRepository.js
+│   │   │   │   ├── routers
+│   │   │   │   │   ├── agent.router.d.ts
+│   │   │   │   │   ├── agent.router.d.ts.map
+│   │   │   │   │   ├── agent.router.js
+│   │   │   │   │   ├── apiExplorer.router.d.ts
+│   │   │   │   │   ├── apiExplorer.router.d.ts.map
+│   │   │   │   │   ├── apiExplorer.router.js
+│   │   │   │   │   ├── browser.router.d.ts
+│   │   │   │   │   ├── browser.router.d.ts.map
+│   │   │   │   │   ├── browser.router.js
+│   │   │   │   │   ├── card.router.d.ts
+│   │   │   │   │   ├── card.router.d.ts.map
+│   │   │   │   │   ├── card.router.js
+│   │   │   │   │   ├── context.router.d.ts
+│   │   │   │   │   ├── context.router.d.ts.map
+│   │   │   │   │   ├── context.router.js
+│   │   │   │   │   ├── dataRefinement.router.d.ts
+│   │   │   │   │   ├── dataRefinement.router.d.ts.map
+│   │   │   │   │   ├── dataRefinement.router.js
+│   │   │   │   │   ├── external.router.d.ts
+│   │   │   │   │   ├── external.router.d.ts.map
+│   │   │   │   │   ├── external.router.js
+│   │   │   │   │   ├── git.router.d.ts
+│   │   │   │   │   ├── git.router.d.ts.map
+│   │   │   │   │   ├── git.router.js
+│   │   │   │   │   ├── index.d.ts
+│   │   │   │   │   ├── index.d.ts.map
+│   │   │   │   │   ├── index.js
+│   │   │   │   │   ├── llm.router.d.ts
+│   │   │   │   │   ├── llm.router.d.ts.map
+│   │   │   │   │   ├── llm.router.js
+│   │   │   │   │   ├── model.router.d.ts
+│   │   │   │   │   ├── model.router.d.ts.map
+│   │   │   │   │   ├── model.router.js
+│   │   │   │   │   ├── orchestrationManagement.router.d.ts
+│   │   │   │   │   ├── orchestrationManagement.router.d.ts.map
+│   │   │   │   │   ├── orchestrationManagement.router.js
+│   │   │   │   │   ├── orchestrator.router.d.ts
+│   │   │   │   │   ├── orchestrator.router.d.ts.map
+│   │   │   │   │   ├── orchestrator.router.js
+│   │   │   │   │   ├── project.router.d.ts
+│   │   │   │   │   ├── project.router.d.ts.map
+│   │   │   │   │   ├── project.router.js
+│   │   │   │   │   ├── providers.router.d.ts
+│   │   │   │   │   ├── providers.router.d.ts.map
+│   │   │   │   │   ├── providers.router.js
+│   │   │   │   │   ├── role.router.d.ts
+│   │   │   │   │   ├── role.router.d.ts.map
+│   │   │   │   │   ├── role.router.js
+│   │   │   │   │   ├── types.d.ts
+│   │   │   │   │   ├── types.d.ts.map
+│   │   │   │   │   ├── types.js
+│   │   │   │   │   ├── usage.router.d.ts
+│   │   │   │   │   ├── usage.router.d.ts.map
+│   │   │   │   │   ├── usage.router.js
+│   │   │   │   │   ├── vfs.router.d.ts
+│   │   │   │   │   ├── vfs.router.d.ts.map
+│   │   │   │   │   ├── vfs.router.js
+│   │   │   │   │   ├── workspace.router.d.ts
+│   │   │   │   │   ├── workspace.router.d.ts.map
+│   │   │   │   │   └── workspace.router.js
+│   │   │   │   ├── scripts
+│   │   │   │   │   ├── add-search-codebase-to-roles.d.ts
+│   │   │   │   │   ├── add-search-codebase-to-roles.d.ts.map
+│   │   │   │   │   ├── add-search-codebase-to-roles.js
+│   │   │   │   │   ├── antigravity.d.ts
+│   │   │   │   │   ├── antigravity.d.ts.map
+│   │   │   │   │   ├── antigravity.js
+│   │   │   │   │   ├── backup_providers.d.ts
+│   │   │   │   │   ├── backup_providers.d.ts.map
+│   │   │   │   │   ├── backup_providers.js
+│   │   │   │   │   ├── categorize-roles.d.ts
+│   │   │   │   │   ├── categorize-roles.d.ts.map
+│   │   │   │   │   ├── categorize-roles.js
+│   │   │   │   │   ├── check-roles.d.ts
+│   │   │   │   │   ├── check-roles.d.ts.map
+│   │   │   │   │   ├── check-roles.js
+│   │   │   │   │   ├── drop_view.d.ts
+│   │   │   │   │   ├── drop_view.d.ts.map
+│   │   │   │   │   ├── drop_view.js
+│   │   │   │   │   ├── fix-roles.d.ts
+│   │   │   │   │   ├── fix-roles.d.ts.map
+│   │   │   │   │   ├── fix-roles.js
+│   │   │   │   │   ├── ingest-agents.d.ts
+│   │   │   │   │   ├── ingest-agents.d.ts.map
+│   │   │   │   │   ├── ingest-agents.js
+│   │   │   │   │   ├── ingest-codebase.d.ts
+│   │   │   │   │   ├── ingest-codebase.d.ts.map
+│   │   │   │   │   ├── ingest-codebase.js
+│   │   │   │   │   ├── manage_providers.d.ts
+│   │   │   │   │   ├── manage_providers.d.ts.map
+│   │   │   │   │   ├── manage_providers.js
+│   │   │   │   │   ├── restore_raw_table.d.ts
+│   │   │   │   │   ├── restore_raw_table.d.ts.map
+│   │   │   │   │   ├── restore_raw_table.js
+│   │   │   │   │   ├── seed_org_chart.d.ts
+│   │   │   │   │   ├── seed_org_chart.d.ts.map
+│   │   │   │   │   ├── seed_org_chart.js
+│   │   │   │   │   ├── setup-vector-db.d.ts
+│   │   │   │   │   ├── setup-vector-db.d.ts.map
+│   │   │   │   │   └── setup-vector-db.js
+│   │   │   │   ├── services
+│   │   │   │   │   ├── ActionHandler.d.ts
+│   │   │   │   │   ├── ActionHandler.d.ts.map
+│   │   │   │   │   ├── ActionHandler.js
+│   │   │   │   │   ├── AgentFactory.d.ts
+│   │   │   │   │   ├── AgentFactory.d.ts.map
+│   │   │   │   │   ├── AgentFactory.js
+│   │   │   │   │   ├── AgentFactory.test.d.ts
+│   │   │   │   │   ├── AgentFactory.test.d.ts.map
+│   │   │   │   │   ├── AgentFactory.test.js
+│   │   │   │   │   ├── AgentRuntime.d.ts
+│   │   │   │   │   ├── AgentRuntime.d.ts.map
+│   │   │   │   │   ├── AgentRuntime.js
+│   │   │   │   │   ├── AssessmentService.d.ts
+│   │   │   │   │   ├── AssessmentService.d.ts.map
+│   │   │   │   │   ├── AssessmentService.js
+│   │   │   │   │   ├── browser.service.d.ts
+│   │   │   │   │   ├── browser.service.d.ts.map
+│   │   │   │   │   ├── browser.service.js
+│   │   │   │   │   ├── ComplexityRouter.d.ts
+│   │   │   │   │   ├── ComplexityRouter.d.ts.map
+│   │   │   │   │   ├── ComplexityRouter.js
+│   │   │   │   │   ├── ContextManager.d.ts
+│   │   │   │   │   ├── ContextManager.d.ts.map
+│   │   │   │   │   ├── ContextManager.js
+│   │   │   │   │   ├── CreditGuard.d.ts
+│   │   │   │   │   ├── CreditGuard.d.ts.map
+│   │   │   │   │   ├── CreditGuard.js
+│   │   │   │   │   ├── dataRefinement.service.d.ts
+│   │   │   │   │   ├── dataRefinement.service.d.ts.map
+│   │   │   │   │   ├── dataRefinement.service.js
+│   │   │   │   │   ├── DynamicModelAdapter.d.ts
+│   │   │   │   │   ├── DynamicModelAdapter.d.ts.map
+│   │   │   │   │   ├── DynamicModelAdapter.js
+│   │   │   │   │   ├── git.service.d.ts
+│   │   │   │   │   ├── git.service.d.ts.map
+│   │   │   │   │   ├── git.service.js
+│   │   │   │   │   ├── IngestionAgent.d.ts
+│   │   │   │   │   ├── IngestionAgent.d.ts.map
+│   │   │   │   │   ├── IngestionAgent.js
+│   │   │   │   │   ├── JobScheduler.d.ts
+│   │   │   │   │   ├── JobScheduler.d.ts.map
+│   │   │   │   │   ├── JobScheduler.js
+│   │   │   │   │   ├── languageServer.service.d.ts
+│   │   │   │   │   ├── languageServer.service.d.ts.map
+│   │   │   │   │   ├── languageServer.service.js
+│   │   │   │   │   ├── McpOrchestrator.d.ts
+│   │   │   │   │   ├── McpOrchestrator.d.ts.map
+│   │   │   │   │   ├── McpOrchestrator.js
+│   │   │   │   │   ├── mcp-registry-client.d.ts
+│   │   │   │   │   ├── mcp-registry-client.d.ts.map
+│   │   │   │   │   ├── mcp-registry-client.js
+│   │   │   │   │   ├── ModelConfigurator.d.ts
+│   │   │   │   │   ├── ModelConfigurator.d.ts.map
+│   │   │   │   │   ├── ModelConfigurator.js
+│   │   │   │   │   ├── ModelDoctor.d.ts
+│   │   │   │   │   ├── ModelDoctor.d.ts.map
+│   │   │   │   │   ├── ModelDoctor.js
+│   │   │   │   │   ├── modelManager.mocks.d.ts
+│   │   │   │   │   ├── modelManager.mocks.d.ts.map
+│   │   │   │   │   ├── modelManager.mocks.js
+│   │   │   │   │   ├── modelManager.service.d.ts
+│   │   │   │   │   ├── modelManager.service.d.ts.map
+│   │   │   │   │   ├── modelManager.service.js
+│   │   │   │   │   ├── model.service.d.ts
+│   │   │   │   │   ├── model.service.d.ts.map
+│   │   │   │   │   ├── model.service.js
+│   │   │   │   │   ├── orchestration.service.d.ts
+│   │   │   │   │   ├── orchestration.service.d.ts.map
+│   │   │   │   │   ├── orchestration.service.js
+│   │   │   │   │   ├── PrismaLessonProvider.d.ts
+│   │   │   │   │   ├── PrismaLessonProvider.d.ts.map
+│   │   │   │   │   ├── PrismaLessonProvider.js
+│   │   │   │   │   ├── ProjectArchitect.d.ts
+│   │   │   │   │   ├── ProjectArchitect.d.ts.map
+│   │   │   │   │   ├── ProjectArchitect.js
+│   │   │   │   │   ├── PromptFactory.d.ts
+│   │   │   │   │   ├── PromptFactory.d.ts.map
+│   │   │   │   │   ├── PromptFactory.js
+│   │   │   │   │   ├── ProviderManager.d.ts
+│   │   │   │   │   ├── ProviderManager.d.ts.map
+│   │   │   │   │   ├── ProviderManager.js
+│   │   │   │   │   ├── ProviderManager.ollama.test.d.ts
+│   │   │   │   │   ├── ProviderManager.ollama.test.d.ts.map
+│   │   │   │   │   ├── ProviderManager.ollama.test.js
+│   │   │   │   │   ├── ProviderProbeService.d.ts
+│   │   │   │   │   ├── ProviderProbeService.d.ts.map
+│   │   │   │   │   ├── ProviderProbeService.js
+│   │   │   │   │   ├── RawJsonLoader.d.ts
+│   │   │   │   │   ├── RawJsonLoader.d.ts.map
+│   │   │   │   │   ├── RawJsonLoader.js
+│   │   │   │   │   ├── RawModelService.d.ts
+│   │   │   │   │   ├── RawModelService.d.ts.map
+│   │   │   │   │   ├── RawModelService.js
+│   │   │   │   │   ├── RoleIngestionService.d.ts
+│   │   │   │   │   ├── RoleIngestionService.d.ts.map
+│   │   │   │   │   ├── RoleIngestionService.js
+│   │   │   │   │   ├── ToolDocumenter.d.ts
+│   │   │   │   │   ├── ToolDocumenter.d.ts.map
+│   │   │   │   │   ├── ToolDocumenter.js
+│   │   │   │   │   ├── UsageCollector.d.ts
+│   │   │   │   │   ├── UsageCollector.d.ts.map
+│   │   │   │   │   ├── UsageCollector.js
+│   │   │   │   │   ├── vector.service.d.ts
+│   │   │   │   │   ├── vector.service.d.ts.map
+│   │   │   │   │   ├── vector.service.js
+│   │   │   │   │   ├── vfs
+│   │   │   │   │   │   ├── events.d.ts
+│   │   │   │   │   │   ├── events.d.ts.map
+│   │   │   │   │   │   ├── events.js
+│   │   │   │   │   │   ├── IVfsProvider.d.ts
+│   │   │   │   │   │   ├── IVfsProvider.d.ts.map
+│   │   │   │   │   │   ├── IVfsProvider.js
+│   │   │   │   │   │   ├── LocalProvider.d.ts
+│   │   │   │   │   │   ├── LocalProvider.d.ts.map
+│   │   │   │   │   │   ├── LocalProvider.js
+│   │   │   │   │   │   ├── SshProvider.d.ts
+│   │   │   │   │   │   ├── SshProvider.d.ts.map
+│   │   │   │   │   │   └── SshProvider.js
+│   │   │   │   │   ├── vfsSession.service.d.ts
+│   │   │   │   │   ├── vfsSession.service.d.ts.map
+│   │   │   │   │   ├── vfsSession.service.js
+│   │   │   │   │   ├── websocket.service.d.ts
+│   │   │   │   │   ├── websocket.service.d.ts.map
+│   │   │   │   │   ├── websocket.service.js
+│   │   │   │   │   ├── websocket.singleton.d.ts
+│   │   │   │   │   ├── websocket.singleton.d.ts.map
+│   │   │   │   │   └── websocket.singleton.js
+│   │   │   │   ├── testing
+│   │   │   │   │   ├── seed-test-db.d.ts
+│   │   │   │   │   ├── seed-test-db.d.ts.map
+│   │   │   │   │   └── seed-test-db.js
+│   │   │   │   ├── tokenizer.d.ts
+│   │   │   │   ├── tokenizer.d.ts.map
+│   │   │   │   ├── tokenizer.js
+│   │   │   │   ├── tools
+│   │   │   │   │   ├── browser.d.ts
+│   │   │   │   │   ├── browser.d.ts.map
+│   │   │   │   │   ├── browser.js
+│   │   │   │   │   ├── complexityTool.d.ts
+│   │   │   │   │   ├── complexityTool.d.ts.map
+│   │   │   │   │   ├── complexityTool.js
+│   │   │   │   │   ├── filesystem.d.ts
+│   │   │   │   │   ├── filesystem.d.ts.map
+│   │   │   │   │   ├── filesystem.js
+│   │   │   │   │   ├── meta.d.ts
+│   │   │   │   │   ├── meta.d.ts.map
+│   │   │   │   │   ├── meta.js
+│   │   │   │   │   ├── terminal.d.ts
+│   │   │   │   │   ├── terminal.d.ts.map
+│   │   │   │   │   ├── terminal.js
+│   │   │   │   │   ├── webScraper.d.ts
+│   │   │   │   │   ├── webScraper.d.ts.map
+│   │   │   │   │   └── webScraper.js
+│   │   │   │   ├── trpc.d.ts
+│   │   │   │   ├── trpc.d.ts.map
+│   │   │   │   ├── trpc.js
+│   │   │   │   ├── types.d.ts
+│   │   │   │   ├── types.d.ts.map
+│   │   │   │   ├── types.js
+│   │   │   │   └── utils
+│   │   │   │       ├── AnthropicProvider.d.ts
+│   │   │   │       ├── AnthropicProvider.d.ts.map
+│   │   │   │       ├── AnthropicProvider.js
+│   │   │   │       ├── BaseLLMProvider.d.ts
+│   │   │   │       ├── BaseLLMProvider.d.ts.map
+│   │   │   │       ├── BaseLLMProvider.js
+│   │   │   │       ├── encryption.d.ts
+│   │   │   │       ├── encryption.d.ts.map
+│   │   │   │       ├── encryption.js
+│   │   │   │       ├── encryption.test-manual.d.ts
+│   │   │   │       ├── encryption.test-manual.d.ts.map
+│   │   │   │       ├── encryption.test-manual.js
+│   │   │   │       ├── GoogleGenAIProvider.d.ts
+│   │   │   │       ├── GoogleGenAIProvider.d.ts.map
+│   │   │   │       ├── GoogleGenAIProvider.js
+│   │   │   │       ├── healthCheck.d.ts
+│   │   │   │       ├── healthCheck.d.ts.map
+│   │   │   │       ├── healthCheck.js
+│   │   │   │       ├── MistralProvider.d.ts
+│   │   │   │       ├── MistralProvider.d.ts.map
+│   │   │   │       ├── MistralProvider.js
+│   │   │   │       ├── OllamaProvider.d.ts
+│   │   │   │       ├── OllamaProvider.d.ts.map
+│   │   │   │       ├── OllamaProvider.js
+│   │   │   │       ├── OpenAIProvider.d.ts
+│   │   │   │       ├── OpenAIProvider.d.ts.map
+│   │   │   │       ├── OpenAIProvider.js
+│   │   │   │       ├── ProviderFactory.d.ts
+│   │   │   │       ├── ProviderFactory.d.ts.map
+│   │   │   │       └── ProviderFactory.js
+│   │   │   ├── sync_registry.d.ts
+│   │   │   ├── sync_registry.d.ts.map
+│   │   │   ├── sync_registry.js
+│   │   │   ├── test_bash_i.d.ts
+│   │   │   ├── test_bash_i.d.ts.map
+│   │   │   ├── test_bash_i.js
+│   │   │   ├── testing
+│   │   │   │   ├── seed-test-db.d.ts
+│   │   │   │   ├── seed-test-db.d.ts.map
+│   │   │   │   └── seed-test-db.js
+│   │   │   ├── test_orchestration.d.ts
+│   │   │   ├── test_orchestration.d.ts.map
+│   │   │   ├── test_orchestration.js
+│   │   │   ├── test_pty.d.ts
+│   │   │   ├── test_pty.d.ts.map
+│   │   │   ├── test_pty.js
+│   │   │   ├── test_script_pty.d.ts
+│   │   │   ├── test_script_pty.d.ts.map
+│   │   │   ├── test_script_pty.js
+│   │   │   ├── tokenizer.d.ts
+│   │   │   ├── tokenizer.d.ts.map
+│   │   │   ├── tokenizer.js
+│   │   │   ├── tools
+│   │   │   │   ├── browser.d.ts
+│   │   │   │   ├── browser.d.ts.map
+│   │   │   │   ├── browser.js
+│   │   │   │   ├── filesystem.d.ts
+│   │   │   │   ├── filesystem.d.ts.map
+│   │   │   │   ├── filesystem.js
+│   │   │   │   ├── meta.d.ts
+│   │   │   │   ├── meta.d.ts.map
+│   │   │   │   ├── meta.js
+│   │   │   │   ├── terminal.d.ts
+│   │   │   │   ├── terminal.d.ts.map
+│   │   │   │   └── terminal.js
+│   │   │   ├── trpc.d.ts
+│   │   │   ├── trpc.d.ts.map
+│   │   │   ├── trpc.js
+│   │   │   ├── tsconfig.tsbuildinfo
+│   │   │   ├── types.d.ts
+│   │   │   ├── types.d.ts.map
+│   │   │   ├── types.js
+│   │   │   ├── utils
+│   │   │   │   ├── AnthropicProvider.d.ts
+│   │   │   │   ├── AnthropicProvider.d.ts.map
+│   │   │   │   ├── AnthropicProvider.js
+│   │   │   │   ├── BaseLLMProvider.d.ts
+│   │   │   │   ├── BaseLLMProvider.d.ts.map
+│   │   │   │   ├── BaseLLMProvider.js
+│   │   │   │   ├── encryption.d.ts
+│   │   │   │   ├── encryption.d.ts.map
+│   │   │   │   ├── encryption.js
+│   │   │   │   ├── encryption.test-manual.d.ts
+│   │   │   │   ├── encryption.test-manual.d.ts.map
+│   │   │   │   ├── encryption.test-manual.js
+│   │   │   │   ├── GoogleGenAIProvider.d.ts
+│   │   │   │   ├── GoogleGenAIProvider.d.ts.map
+│   │   │   │   ├── GoogleGenAIProvider.js
+│   │   │   │   ├── healthCheck.d.ts
+│   │   │   │   ├── healthCheck.d.ts.map
+│   │   │   │   ├── healthCheck.js
+│   │   │   │   ├── MistralProvider.d.ts
+│   │   │   │   ├── MistralProvider.d.ts.map
+│   │   │   │   ├── MistralProvider.js
+│   │   │   │   ├── OllamaProvider.d.ts
+│   │   │   │   ├── OllamaProvider.d.ts.map
+│   │   │   │   ├── OllamaProvider.js
+│   │   │   │   ├── OpenAIProvider.d.ts
+│   │   │   │   ├── OpenAIProvider.d.ts.map
+│   │   │   │   ├── OpenAIProvider.js
+│   │   │   │   ├── ProviderFactory.d.ts
+│   │   │   │   ├── ProviderFactory.d.ts.map
+│   │   │   │   └── ProviderFactory.js
+│   │   │   ├── vitest.config.d.ts
+│   │   │   ├── vitest.config.d.ts.map
+│   │   │   └── vitest.config.js
+│   │   ├── Dockerfile
+│   │   ├── drizzle.config.d.ts
+│   │   ├── drizzle.config.d.ts.map
+│   │   ├── drizzle.config.js
+│   │   ├── drizzle.config.js.map
+│   │   ├── drizzle.config.ts
+│   │   ├── eslint.config.mjs
+│   │   ├── inspect_data.d.ts
+│   │   ├── inspect_data.d.ts.map
+│   │   ├── inspect_data.js
+│   │   ├── inspect_data.js.map
+│   │   ├── inspect_data.ts
+│   │   ├── latest_models
+│   │   │   ├── google_models_2025-12-06T07-15-03.json
+│   │   │   ├── google_models_2025-12-07T03-06-32.json
+│   │   │   ├── groq_models_2025-12-06T07-15-05.json
+│   │   │   ├── groq_models_2025-12-07T03-06-33.json
+│   │   │   ├── mistral_models_2025-12-06T07-15-04.json
+│   │   │   ├── mistral_models_2025-12-07T03-06-33.json
+│   │   │   ├── models
+│   │   │   ├── models.json
+│   │   │   ├── ollama_models_2025-12-06T07-15-05.json
+│   │   │   ├── ollama_models_2025-12-07T03-06-33.json
+│   │   │   ├── openrouter_models_2025-12-06T07-15-05.json
+│   │   │   └── openrouter_models_2025-12-07T03-06-33.json
+│   │   ├── node_modules
+│   │   │   ├── axios -> ../../../node_modules/.pnpm/axios@1.13.2/node_modules/axios
+│   │   │   ├── cheerio -> ../../../node_modules/.pnpm/cheerio@1.1.2/node_modules/cheerio
+│   │   │   ├── cors -> ../../../node_modules/.pnpm/cors@2.8.5/node_modules/cors
+│   │   │   ├── dotenv -> ../../../node_modules/.pnpm/dotenv@16.6.1/node_modules/dotenv
+│   │   │   ├── dotenv-cli -> ../../../node_modules/.pnpm/dotenv-cli@11.0.0/node_modules/dotenv-cli
+│   │   │   ├── drizzle-kit -> ../../../node_modules/.pnpm/drizzle-kit@0.31.7/node_modules/drizzle-kit
+│   │   │   ├── drizzle-orm -> ../../../node_modules/.pnpm/drizzle-orm@0.44.7_@electric-sql+pglite@0.3.2_@opentelemetry+api@1.9.0_@prisma+client@5_46c178baf76f4586af2aeb8f9d7d3533/node_modules/drizzle-orm
+│   │   │   ├── @eslint
+│   │   │   │   └── js -> ../../../../node_modules/.pnpm/@eslint+js@9.39.1/node_modules/@eslint/js
+│   │   │   ├── express -> ../../../node_modules/.pnpm/express@4.21.2/node_modules/express
+│   │   │   ├── globals -> ../../../node_modules/.pnpm/globals@15.15.0/node_modules/globals
+│   │   │   ├── @google
+│   │   │   │   └── genai -> ../../../../node_modules/.pnpm/@google+genai@1.30.0_@modelcontextprotocol+sdk@1.22.0/node_modules/@google/genai
+│   │   │   ├── google-auth-library -> ../../../node_modules/.pnpm/google-auth-library@10.5.0/node_modules/google-auth-library
+│   │   │   ├── https-proxy-agent -> ../../../node_modules/.pnpm/https-proxy-agent@7.0.6/node_modules/https-proxy-agent
+│   │   │   ├── ignore -> ../../../node_modules/.pnpm/ignore@7.0.5/node_modules/ignore
+│   │   │   ├── jsdom -> ../../../node_modules/.pnpm/jsdom@27.2.0/node_modules/jsdom
+│   │   │   ├── memfs -> ../../../node_modules/.pnpm/memfs@4.51.0/node_modules/memfs
+│   │   │   ├── @modelcontextprotocol
+│   │   │   │   └── sdk -> ../../../../node_modules/.pnpm/@modelcontextprotocol+sdk@1.22.0/node_modules/@modelcontextprotocol/sdk
+│   │   │   ├── morgan -> ../../../node_modules/.pnpm/morgan@1.10.1/node_modules/morgan
+│   │   │   ├── @mozilla
+│   │   │   │   └── readability -> ../../../../node_modules/.pnpm/@mozilla+readability@0.6.0/node_modules/@mozilla/readability
+│   │   │   ├── node-pty -> ../../../node_modules/.pnpm/node-pty@1.0.0/node_modules/node-pty
+│   │   │   ├── openai -> ../../../node_modules/.pnpm/openai@6.9.1_ws@8.18.3_zod@3.25.76/node_modules/openai
+│   │   │   ├── @opentelemetry
+│   │   │   │   ├── api -> ../../../../node_modules/.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api
+│   │   │   │   ├── exporter-metrics-otlp-http -> ../../../../node_modules/.pnpm/@opentelemetry+exporter-metrics-otlp-http@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-metrics-otlp-http
+│   │   │   │   ├── exporter-trace-otlp-http -> ../../../../node_modules/.pnpm/@opentelemetry+exporter-trace-otlp-http@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-trace-otlp-http
+│   │   │   │   ├── resources -> ../../../../node_modules/.pnpm/@opentelemetry+resources@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/resources
+│   │   │   │   ├── sdk-node -> ../../../../node_modules/.pnpm/@opentelemetry+sdk-node@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-node
+│   │   │   │   └── semantic-conventions -> ../../../../node_modules/.pnpm/@opentelemetry+semantic-conventions@1.38.0/node_modules/@opentelemetry/semantic-conventions
+│   │   │   ├── pdf-parse -> ../../../node_modules/.pnpm/pdf-parse@2.4.5/node_modules/pdf-parse
+│   │   │   ├── pg -> ../../../node_modules/.pnpm/pg@8.16.3/node_modules/pg
+│   │   │   ├── postgres -> ../../../node_modules/.pnpm/postgres@3.4.7/node_modules/postgres
+│   │   │   ├── @prisma
+│   │   │   │   └── client -> ../../../../node_modules/.pnpm/@prisma+client@5.19.1_prisma@5.19.1/node_modules/@prisma/client
+│   │   │   ├── prisma -> ../../../node_modules/.pnpm/prisma@5.19.1/node_modules/prisma
+│   │   │   ├── puppeteer -> ../../../node_modules/.pnpm/puppeteer@24.31.0_typescript@5.9.3/node_modules/puppeteer
+│   │   │   ├── redis -> ../../../node_modules/.pnpm/redis@4.7.1/node_modules/redis
+│   │   │   ├── @repo
+│   │   │   │   ├── agents -> ../../../../packages/agents
+│   │   │   │   ├── api-contract -> ../../../../packages/api-contract
+│   │   │   │   ├── common -> ../../../../packages/common
+│   │   │   │   └── mcp-server-vfs -> ../../../../packages/mcp-server-vfs
+│   │   │   ├── simple-git -> ../../../node_modules/.pnpm/simple-git@3.30.0/node_modules/simple-git
+│   │   │   ├── ssh2-sftp-client -> ../../../node_modules/.pnpm/ssh2-sftp-client@12.0.1/node_modules/ssh2-sftp-client
+│   │   │   ├── superjson -> ../../../node_modules/.pnpm/superjson@2.2.5/node_modules/superjson
+│   │   │   ├── @trpc
+│   │   │   │   └── server -> ../../../../node_modules/.pnpm/@trpc+server@10.45.2/node_modules/@trpc/server
+│   │   │   ├── tsx -> ../../../node_modules/.pnpm/tsx@4.20.6/node_modules/tsx
+│   │   │   ├── turndown -> ../../../node_modules/.pnpm/turndown@7.2.2/node_modules/turndown
+│   │   │   ├── @types
+│   │   │   │   ├── express -> ../../../../node_modules/.pnpm/@types+express@4.17.25/node_modules/@types/express
+│   │   │   │   ├── jsdom -> ../../../../node_modules/.pnpm/@types+jsdom@27.0.0/node_modules/@types/jsdom
+│   │   │   │   ├── morgan -> ../../../../node_modules/.pnpm/@types+morgan@1.9.10/node_modules/@types/morgan
+│   │   │   │   ├── node -> ../../../../node_modules/.pnpm/@types+node@20.19.25/node_modules/@types/node
+│   │   │   │   ├── pdf-parse -> ../../../../node_modules/.pnpm/@types+pdf-parse@1.1.5/node_modules/@types/pdf-parse
+│   │   │   │   ├── pg -> ../../../../node_modules/.pnpm/@types+pg@8.15.6/node_modules/@types/pg
+│   │   │   │   ├── ssh2-sftp-client -> ../../../../node_modules/.pnpm/@types+ssh2-sftp-client@9.0.5/node_modules/@types/ssh2-sftp-client
+│   │   │   │   └── ws -> ../../../../node_modules/.pnpm/@types+ws@8.18.1/node_modules/@types/ws
+│   │   │   ├── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   │   ├── typescript-eslint -> ../../../node_modules/.pnpm/typescript-eslint@8.47.0_eslint@8.57.1_typescript@5.9.3/node_modules/typescript-eslint
+│   │   │   ├── @utcp
+│   │   │   │   ├── code-mode -> ../../../../node_modules/.pnpm/@utcp+code-mode@1.0.5/node_modules/@utcp/code-mode
+│   │   │   │   └── sdk -> ../../../../node_modules/.pnpm/@utcp+sdk@1.0.17/node_modules/@utcp/sdk
+│   │   │   ├── uuid -> ../../../node_modules/.pnpm/uuid@9.0.1/node_modules/uuid
+│   │   │   ├── vitest -> ../../../node_modules/.pnpm/vitest@2.1.9_@types+node@20.19.25_jsdom@27.2.0/node_modules/vitest
+│   │   │   ├── volcano-sdk -> ../../../node_modules/.pnpm/volcano-sdk@1.1.0_@opentelemetry+api@1.9.0_ws@8.18.3_zod@3.25.76/node_modules/volcano-sdk
+│   │   │   ├── ws -> ../../../node_modules/.pnpm/ws@8.18.3/node_modules/ws
+│   │   │   └── zod -> ../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod
+│   │   ├── package.json
+│   │   ├── prisma
+│   │   │   ├── migrations
+│   │   │   │   ├── 20251203083851_enhance_orchestration_schema
+│   │   │   │   │   └── migration.sql
+│   │   │   │   └── 20251210124656_add_vfsconfig_to_role
+│   │   │   │       └── migration.sql
+│   │   │   └── schema.prisma
+│   │   ├── provider_header_results.json
+│   │   ├── reproduce_ws.js
+│   │   ├── requests.http
+│   │   ├── scripts
+│   │   │   ├── backup-database.ts
+│   │   │   ├── BACKUP_README.md
+│   │   │   ├── check_prompt_engineer.ts
+│   │   │   ├── check_resource.d.ts
+│   │   │   ├── check_resource.d.ts.map
+│   │   │   ├── check_resource.js
+│   │   │   ├── check_resource.js.map
+│   │   │   ├── check_resource.ts
+│   │   │   ├── check_saved_queries.d.ts
+│   │   │   ├── check_saved_queries.d.ts.map
+│   │   │   ├── check_saved_queries.js
+│   │   │   ├── check_saved_queries.js.map
+│   │   │   ├── check_saved_queries.ts
+│   │   │   ├── demo_role_decoupling.ts
+│   │   │   ├── seed_prompt_engineer.ts
+│   │   │   ├── smoke-context.d.ts
+│   │   │   ├── smoke-context.d.ts.map
+│   │   │   ├── smoke-context.js
+│   │   │   ├── smoke-context.js.map
+│   │   │   ├── smoke-context.ts
+│   │   │   └── test_prompt_gen.ts
+│   │   ├── server.log
+│   │   ├── src
+│   │   │   ├── db
+│   │   │   │   ├── providers_backup.json
+│   │   │   │   ├── schema.ts
+│   │   │   │   └── seed.ts
+│   │   │   ├── db.d.ts
+│   │   │   ├── db.d.ts.map
+│   │   │   ├── db.js
+│   │   │   ├── db.js.map
+│   │   │   ├── db.ts
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   ├── index.ts
+│   │   │   ├── instrumentation.d.ts
+│   │   │   ├── instrumentation.d.ts.map
+│   │   │   ├── instrumentation.js
+│   │   │   ├── instrumentation.js.map
+│   │   │   ├── instrumentation.ts
+│   │   │   ├── lib
+│   │   │   ├── llm-adapters.d.ts
+│   │   │   ├── llm-adapters.js
+│   │   │   ├── mcp-adapters.d.ts
+│   │   │   ├── mcp-adapters.d.ts.map
+│   │   │   ├── mcp-adapters.js
+│   │   │   ├── mcp-adapters.js.map
+│   │   │   ├── mcp-adapters.ts
+│   │   │   ├── orchestrator
+│   │   │   │   ├── modelSelector.test.ts
+│   │   │   │   └── modelSelector.ts
+│   │   │   ├── rateLimiter.d.ts
+│   │   │   ├── rateLimiter.d.ts.map
+│   │   │   ├── rateLimiter.js
+│   │   │   ├── rateLimiter.js.map
+│   │   │   ├── rateLimiter.ts
+│   │   │   ├── redis.d.ts
+│   │   │   ├── redis.d.ts.map
+│   │   │   ├── redis.js
+│   │   │   ├── redis.js.map
+│   │   │   ├── redis.ts
+│   │   │   ├── repositories
+│   │   │   │   └── AgentConfigRepository.ts
+│   │   │   ├── routers
+│   │   │   │   ├── agent.router.ts
+│   │   │   │   ├── ai.router.ts
+│   │   │   │   ├── apiExplorer.router.ts
+│   │   │   │   ├── browser.router.ts
+│   │   │   │   ├── card.router.ts
+│   │   │   │   ├── coc.router.ts
+│   │   │   │   ├── context.router.ts
+│   │   │   │   ├── coorp.router.ts
+│   │   │   │   ├── dataRefinement.router.ts
+│   │   │   │   ├── external.router.ts
+│   │   │   │   ├── git.router.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── llm.router.ts
+│   │   │   │   ├── model.router.ts
+│   │   │   │   ├── orchestrationManagement.router.ts
+│   │   │   │   ├── orchestrator.router.ts
+│   │   │   │   ├── project.router.ts
+│   │   │   │   ├── providers.router.ts
+│   │   │   │   ├── role.router.ts
+│   │   │   │   ├── types.ts
+│   │   │   │   ├── usage.router.ts
+│   │   │   │   ├── vfs.router.ts
+│   │   │   │   └── workspace.router.ts
+│   │   │   ├── scripts
+│   │   │   │   ├── add-search-codebase-to-roles.ts
+│   │   │   │   ├── antigravity.ts
+│   │   │   │   ├── backup_providers.ts
+│   │   │   │   ├── categorize-roles.ts
+│   │   │   │   ├── check-roles.ts
+│   │   │   │   ├── drop_view.ts
+│   │   │   │   ├── fix-roles.ts
+│   │   │   │   ├── import-roles-json.ts
+│   │   │   │   ├── ingest-agents.ts
+│   │   │   │   ├── ingest-codebase.ts
+│   │   │   │   ├── manage_providers.ts
+│   │   │   │   ├── restore_raw_table.ts
+│   │   │   │   ├── seed_org_chart.ts
+│   │   │   │   └── setup-vector-db.ts
+│   │   │   ├── services
+│   │   │   │   ├── ActionHandler.ts
+│   │   │   │   ├── AgentFactory.test.ts
+│   │   │   │   ├── AgentFactory.ts
+│   │   │   │   ├── AgentRuntime.ts
+│   │   │   │   ├── AssessmentService.ts
+│   │   │   │   ├── browser.service.ts
+│   │   │   │   ├── ComplexityRouter.ts
+│   │   │   │   ├── ContextManager.ts
+│   │   │   │   ├── ContextService.ts
+│   │   │   │   ├── CreditGuard.ts
+│   │   │   │   ├── dataRefinement.service.ts
+│   │   │   │   ├── DynamicModelAdapter.ts
+│   │   │   │   ├── git.service.ts
+│   │   │   │   ├── IngestionAgent.ts
+│   │   │   │   ├── JobScheduler.ts
+│   │   │   │   ├── languageServer.service.ts
+│   │   │   │   ├── McpOrchestrator.ts
+│   │   │   │   ├── mcp-registry-client.ts
+│   │   │   │   ├── ModelConfigurator.ts
+│   │   │   │   ├── ModelDoctor.ts
+│   │   │   │   ├── modelManager.mocks.ts
+│   │   │   │   ├── modelManager.service.ts
+│   │   │   │   ├── model.service.ts
+│   │   │   │   ├── orchestration.service.ts
+│   │   │   │   ├── PrismaLessonProvider.ts
+│   │   │   │   ├── ProjectArchitect.ts
+│   │   │   │   ├── PromptFactory.ts
+│   │   │   │   ├── ProviderManager.ts
+│   │   │   │   ├── ProviderProbeService.ts
+│   │   │   │   ├── RawJsonLoader.ts
+│   │   │   │   ├── RawModelService.ts
+│   │   │   │   ├── RoleIngestionService.ts
+│   │   │   │   ├── SnapshotService.ts
+│   │   │   │   ├── ToolDocumenter.ts
+│   │   │   │   ├── UsageCollector.ts
+│   │   │   │   ├── vector.service.ts
+│   │   │   │   ├── vfs
+│   │   │   │   │   ├── events.d.ts
+│   │   │   │   │   ├── events.d.ts.map
+│   │   │   │   │   ├── events.js
+│   │   │   │   │   ├── events.js.map
+│   │   │   │   │   ├── events.ts
+│   │   │   │   │   ├── IVfsProvider.d.ts
+│   │   │   │   │   ├── IVfsProvider.d.ts.map
+│   │   │   │   │   ├── IVfsProvider.js
+│   │   │   │   │   ├── IVfsProvider.js.map
+│   │   │   │   │   ├── IVfsProvider.ts
+│   │   │   │   │   ├── LocalProvider.d.ts
+│   │   │   │   │   ├── LocalProvider.d.ts.map
+│   │   │   │   │   ├── LocalProvider.js
+│   │   │   │   │   ├── LocalProvider.js.map
+│   │   │   │   │   ├── LocalProvider.ts
+│   │   │   │   │   ├── SshProvider.d.ts
+│   │   │   │   │   ├── SshProvider.d.ts.map
+│   │   │   │   │   ├── SshProvider.js
+│   │   │   │   │   ├── SshProvider.js.map
+│   │   │   │   │   └── SshProvider.ts
+│   │   │   │   ├── vfsSession.service.ts
+│   │   │   │   ├── websocket.service.ts
+│   │   │   │   ├── websocket.singleton.ts
+│   │   │   │   └── ws-broadcaster.ts
+│   │   │   ├── testing
+│   │   │   │   └── seed-test-db.ts
+│   │   │   ├── tokenizer.d.ts
+│   │   │   ├── tokenizer.d.ts.map
+│   │   │   ├── tokenizer.js
+│   │   │   ├── tokenizer.js.map
+│   │   │   ├── tokenizer.ts
+│   │   │   ├── tools
+│   │   │   │   ├── browser.ts
+│   │   │   │   ├── complexityTool.ts
+│   │   │   │   ├── filesystem.ts
+│   │   │   │   ├── meta.ts
+│   │   │   │   ├── terminal.ts
+│   │   │   │   └── webScraper.ts
+│   │   │   ├── trpc.d.ts
+│   │   │   ├── trpc.d.ts.map
+│   │   │   ├── trpc.js
+│   │   │   ├── trpc.js.map
+│   │   │   ├── trpc.ts
+│   │   │   ├── types.d.ts
+│   │   │   ├── types.d.ts.map
+│   │   │   ├── types.js
+│   │   │   ├── types.js.map
+│   │   │   ├── types.ts
+│   │   │   ├── utils
+│   │   │   │   ├── AnthropicProvider.ts
+│   │   │   │   ├── BaseLLMProvider.ts
+│   │   │   │   ├── encryption.ts
+│   │   │   │   ├── GoogleGenAIProvider.ts
+│   │   │   │   ├── healthCheck.ts
+│   │   │   │   ├── MistralProvider.ts
+│   │   │   │   ├── OllamaProvider.ts
+│   │   │   │   ├── OpenAIProvider.ts
+│   │   │   │   └── ProviderFactory.ts
+│   │   │   └── uuid.d.ts
+│   │   ├── sync.log
+│   │   ├── sync_registry.d.ts
+│   │   ├── sync_registry.d.ts.map
+│   │   ├── sync_registry.js
+│   │   ├── sync_registry.js.map
+│   │   ├── sync_registry.ts
+│   │   ├── test_headers.ts
+│   │   ├── test_provider_headers.ts
+│   │   ├── token.json
+│   │   ├── tsconfig.json
+│   │   ├── tsc_output_2.txt
+│   │   ├── vitest.config.d.ts
+│   │   ├── vitest.config.d.ts.map
+│   │   ├── vitest.config.js
+│   │   ├── vitest.config.js.map
+│   │   └── vitest.config.ts
+│   ├── ui
+│   │   ├── agents
+│   │   │   └── card-3.md
+│   │   ├── components.json
+│   │   ├── dist
+│   │   │   ├── assets
+│   │   │   │   ├── index-Cn9Nkxtw.js
+│   │   │   │   ├── index-DaY5XdZ2.css
+│   │   │   │   └── lucide-react-Br6GRBuO.js
+│   │   │   ├── index.html
+│   │   │   └── vite.svg
+│   │   ├── Dockerfile
+│   │   ├── eslint.config.mjs
+│   │   ├── index.html
+│   │   ├── nginx.conf
+│   │   ├── node_modules
+│   │   │   ├── ag-grid-community -> ../../../node_modules/.pnpm/ag-grid-community@34.3.1/node_modules/ag-grid-community
+│   │   │   ├── ag-grid-react -> ../../../node_modules/.pnpm/ag-grid-react@34.3.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/ag-grid-react
+│   │   │   ├── api -> ../../api
+│   │   │   ├── autoprefixer -> ../../../node_modules/.pnpm/autoprefixer@10.4.22_postcss@8.5.6/node_modules/autoprefixer
+│   │   │   ├── axios -> ../../../node_modules/.pnpm/axios@1.13.2/node_modules/axios
+│   │   │   ├── class-variance-authority -> ../../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+│   │   │   ├── clsx -> ../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+│   │   │   ├── @codingame
+│   │   │   │   └── monaco-vscode-api -> ../../../../node_modules/.pnpm/@codingame+monaco-vscode-api@22.1.9/node_modules/@codingame/monaco-vscode-api
+│   │   │   ├── @eslint
+│   │   │   │   └── js -> ../../../../node_modules/.pnpm/@eslint+js@9.39.1/node_modules/@eslint/js
+│   │   │   ├── eslint -> ../../../node_modules/.pnpm/eslint@8.57.1/node_modules/eslint
+│   │   │   ├── eslint-plugin-react -> ../../../node_modules/.pnpm/eslint-plugin-react@7.37.5_eslint@8.57.1/node_modules/eslint-plugin-react
+│   │   │   ├── eslint-plugin-react-hooks -> ../../../node_modules/.pnpm/eslint-plugin-react-hooks@4.6.2_eslint@8.57.1/node_modules/eslint-plugin-react-hooks
+│   │   │   ├── eslint-plugin-react-refresh -> ../../../node_modules/.pnpm/eslint-plugin-react-refresh@0.4.24_eslint@8.57.1/node_modules/eslint-plugin-react-refresh
+│   │   │   ├── flyonui -> ../../../node_modules/.pnpm/flyonui@1.3.1_postcss@8.5.6/node_modules/flyonui
+│   │   │   ├── framer-motion -> ../../../node_modules/.pnpm/framer-motion@12.23.26_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/framer-motion
+│   │   │   ├── globals -> ../../../node_modules/.pnpm/globals@16.5.0/node_modules/globals
+│   │   │   ├── jspreadsheet-ce -> ../../../node_modules/.pnpm/jspreadsheet-ce@5.0.4/node_modules/jspreadsheet-ce
+│   │   │   ├── lucide-react -> ../../../node_modules/.pnpm/lucide-react@0.553.0_react@18.3.1/node_modules/lucide-react
+│   │   │   ├── @monaco-editor
+│   │   │   │   └── react -> ../../../../node_modules/.pnpm/@monaco-editor+react@4.7.0_monaco-editor@0.54.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@monaco-editor/react
+│   │   │   ├── monaco-editor -> ../../../node_modules/.pnpm/monaco-editor@0.54.0/node_modules/monaco-editor
+│   │   │   ├── monaco-languageclient -> ../../../node_modules/.pnpm/monaco-languageclient@10.3.0/node_modules/monaco-languageclient
+│   │   │   ├── @phosphor-icons
+│   │   │   │   └── react -> ../../../../node_modules/.pnpm/@phosphor-icons+react@2.1.10_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@phosphor-icons/react
+│   │   │   ├── postcss -> ../../../node_modules/.pnpm/postcss@8.5.6/node_modules/postcss
+│   │   │   ├── @radix-ui
+│   │   │   │   └── react-slot -> ../../../../node_modules/.pnpm/@radix-ui+react-slot@1.2.4_@types+react@18.3.26_react@18.3.1/node_modules/@radix-ui/react-slot
+│   │   │   ├── react -> ../../../node_modules/.pnpm/react@18.3.1/node_modules/react
+│   │   │   ├── react-dom -> ../../../node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom
+│   │   │   ├── reactflow -> ../../../node_modules/.pnpm/reactflow@11.11.4_@types+react@18.3.26_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/reactflow
+│   │   │   ├── react-grid-layout -> ../../../node_modules/.pnpm/react-grid-layout@1.5.2_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-grid-layout
+│   │   │   ├── react-router-dom -> ../../../node_modules/.pnpm/react-router-dom@6.30.2_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-router-dom
+│   │   │   ├── react-table -> ../../../node_modules/.pnpm/react-table@7.8.0_react@18.3.1/node_modules/react-table
+│   │   │   ├── @repo
+│   │   │   │   ├── api-contract -> ../../../../packages/api-contract
+│   │   │   │   └── common -> ../../../../packages/common
+│   │   │   ├── superjson -> ../../../node_modules/.pnpm/superjson@2.2.5/node_modules/superjson
+│   │   │   ├── tailwindcss -> ../../../node_modules/.pnpm/tailwindcss@3.4.18_tsx@4.20.6_yaml@2.8.2/node_modules/tailwindcss
+│   │   │   ├── tailwindcss-animate -> ../../../node_modules/.pnpm/tailwindcss-animate@1.0.7_tailwindcss@3.4.18_tsx@4.20.6_yaml@2.8.2_/node_modules/tailwindcss-animate
+│   │   │   ├── tailwind-merge -> ../../../node_modules/.pnpm/tailwind-merge@3.4.0/node_modules/tailwind-merge
+│   │   │   ├── @tanstack
+│   │   │   │   └── react-query -> ../../../../node_modules/.pnpm/@tanstack+react-query@4.42.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@tanstack/react-query
+│   │   │   ├── @tiptap
+│   │   │   │   ├── extension-placeholder -> ../../../../node_modules/.pnpm/@tiptap+extension-placeholder@3.11.0_@tiptap+extensions@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-placeholder
+│   │   │   │   ├── react -> ../../../../node_modules/.pnpm/@tiptap+react@3.11.0_@floating-ui+dom@1.7.4_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tip_be1658d958e06a0284209cf39284f639/node_modules/@tiptap/react
+│   │   │   │   └── starter-kit -> ../../../../node_modules/.pnpm/@tiptap+starter-kit@3.11.0/node_modules/@tiptap/starter-kit
+│   │   │   ├── @trpc
+│   │   │   │   ├── client -> ../../../../node_modules/.pnpm/@trpc+client@10.45.2_@trpc+server@10.45.2/node_modules/@trpc/client
+│   │   │   │   └── react-query -> ../../../../node_modules/.pnpm/@trpc+react-query@10.45.2_@tanstack+react-query@4.42.0_react-dom@18.3.1_react@18.3.1__r_9976a6b5a9c8ca507396716c4823530d/node_modules/@trpc/react-query
+│   │   │   ├── @types
+│   │   │   │   ├── node -> ../../../../node_modules/.pnpm/@types+node@20.19.25/node_modules/@types/node
+│   │   │   │   ├── react -> ../../../../node_modules/.pnpm/@types+react@18.3.26/node_modules/@types/react
+│   │   │   │   ├── react-dom -> ../../../../node_modules/.pnpm/@types+react-dom@18.3.7_@types+react@18.3.26/node_modules/@types/react-dom
+│   │   │   │   ├── react-grid-layout -> ../../../../node_modules/.pnpm/@types+react-grid-layout@1.3.6/node_modules/@types/react-grid-layout
+│   │   │   │   └── react-table -> ../../../../node_modules/.pnpm/@types+react-table@7.7.20/node_modules/@types/react-table
+│   │   │   ├── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   │   ├── @typescript-eslint
+│   │   │   │   ├── eslint-plugin -> ../../../../node_modules/.pnpm/@typescript-eslint+eslint-plugin@7.18.0_@typescript-eslint+parser@7.18.0_eslint@8.57.1__8913d4bf05924a02a609c10a2088d6a4/node_modules/@typescript-eslint/eslint-plugin
+│   │   │   │   └── parser -> ../../../../node_modules/.pnpm/@typescript-eslint+parser@7.18.0_eslint@8.57.1_typescript@5.9.3/node_modules/@typescript-eslint/parser
+│   │   │   ├── typescript-eslint -> ../../../node_modules/.pnpm/typescript-eslint@8.47.0_eslint@8.57.1_typescript@5.9.3/node_modules/typescript-eslint
+│   │   │   ├── vite -> ../../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.25/node_modules/vite
+│   │   │   ├── @vitejs
+│   │   │   │   └── plugin-react -> ../../../../node_modules/.pnpm/@vitejs+plugin-react@4.7.0_vite@5.4.21_@types+node@20.19.25_/node_modules/@vitejs/plugin-react
+│   │   │   ├── vite-plugin-monaco-editor -> ../../../node_modules/.pnpm/vite-plugin-monaco-editor@1.1.0_monaco-editor@0.54.0/node_modules/vite-plugin-monaco-editor
+│   │   │   ├── xterm -> ../../../node_modules/.pnpm/xterm@5.3.0/node_modules/xterm
+│   │   │   ├── xterm-addon-fit -> ../../../node_modules/.pnpm/xterm-addon-fit@0.8.0_xterm@5.3.0/node_modules/xterm-addon-fit
+│   │   │   └── zustand -> ../../../node_modules/.pnpm/zustand@5.0.8_@types+react@18.3.26_react@18.3.1_use-sync-external-store@1.6.0_react@18.3.1_/node_modules/zustand
+│   │   ├── package.json
+│   │   ├── postcss.config.js
+│   │   ├── public
+│   │   │   └── vite.svg
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── agents
+│   │   │   ├── App.css
+│   │   │   ├── App.tsx
+│   │   │   ├── assets
+│   │   │   │   └── react.svg
+│   │   │   ├── components
+│   │   │   │   ├── AddProviderForm.tsx
+│   │   │   │   ├── AnimationToggle.tsx
+│   │   │   │   ├── BottomSummaryBar.tsx
+│   │   │   │   ├── CoCOrchestrationPanel.tsx
+│   │   │   │   ├── DataLakeTable.tsx
+│   │   │   │   ├── DataNode.tsx
+│   │   │   │   ├── DualRangeSlider.tsx
+│   │   │   │   ├── ErrorBoundary.tsx
+│   │   │   │   ├── ErrorStreamPanel.tsx
+│   │   │   │   ├── FeatureFlagWrapper.tsx
+│   │   │   │   ├── FileExplorer.tsx
+│   │   │   │   ├── GitControls.tsx
+│   │   │   │   ├── InteractiveTerminal.tsx
+│   │   │   │   ├── JsonImportModal.tsx
+│   │   │   │   ├── LiveTaskMonitor.tsx
+│   │   │   │   ├── MonacoEditor.tsx
+│   │   │   │   ├── nodes
+│   │   │   │   │   ├── ApiExplorerNode.tsx
+│   │   │   │   │   └── DatabaseManagerNode.tsx
+│   │   │   │   ├── OrchestrationCreatorPanel.tsx
+│   │   │   │   ├── OrchestrationExecutor.tsx
+│   │   │   │   ├── ProviderList.tsx
+│   │   │   │   ├── RateLimitDashboard.tsx
+│   │   │   │   ├── ResearchBrowser.tsx
+│   │   │   │   ├── RoleCreatorPanel.tsx
+│   │   │   │   ├── RoleModelOverride.tsx
+│   │   │   │   ├── RoleVfsContextSelector.tsx
+│   │   │   │   ├── settings
+│   │   │   │   │   ├── AgentSettings.tsx
+│   │   │   │   │   ├── OrchestratorSettings.tsx
+│   │   │   │   │   ├── ThemeCustomization.tsx
+│   │   │   │   │   └── WorkspaceSettings.tsx
+│   │   │   │   ├── SimpleErrorModal.tsx
+│   │   │   │   ├── SimpleTableView.tsx
+│   │   │   │   ├── SmartEditor.tsx
+│   │   │   │   ├── SshConnectionModal.tsx
+│   │   │   │   ├── TerminalLogViewer.tsx
+│   │   │   │   ├── ToolSelector.tsx
+│   │   │   │   ├── TopSummaryBar.tsx
+│   │   │   │   ├── ui
+│   │   │   │   │   ├── Accordion.tsx
+│   │   │   │   │   ├── AiButton.tsx
+│   │   │   │   │   ├── Button.tsx
+│   │   │   │   │   ├── Icon.tsx
+│   │   │   │   │   └── Panel.tsx
+│   │   │   │   ├── UnifiedMenuBar.tsx
+│   │   │   │   ├── UniversalDataGrid.tsx
+│   │   │   │   ├── VfsViewer.tsx
+│   │   │   │   ├── VisualQueryBuilder.tsx
+│   │   │   │   ├── work-order
+│   │   │   │   │   ├── CardAgentPrompt.tsx
+│   │   │   │   │   ├── CardCustomButtons.tsx
+│   │   │   │   │   ├── SwappableCard.tsx
+│   │   │   │   │   ├── WorkOrderCard.tsx
+│   │   │   │   │   └── WorkOrderColumn.tsx
+│   │   │   │   └── XtermTerminal.tsx
+│   │   │   ├── constants
+│   │   │   │   └── savedQueries.ts
+│   │   │   ├── design-system
+│   │   │   │   ├── cssVariables.ts
+│   │   │   │   ├── fontRegistry.ts
+│   │   │   │   ├── gradients.ts
+│   │   │   │   ├── Icon.tsx
+│   │   │   │   ├── presets.ts
+│   │   │   │   ├── StyleGuidePreview.tsx
+│   │   │   │   └── types.ts
+│   │   │   ├── features
+│   │   │   │   └── creator-studio
+│   │   │   │       ├── CustomNodes.tsx
+│   │   │   │       ├── InspectorPanel.tsx
+│   │   │   │       ├── OrchestrationDesigner.tsx
+│   │   │   │       └── types.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── useCardVFS.ts
+│   │   │   │   ├── useColumnFocus.ts
+│   │   │   │   ├── useHotkeys.ts
+│   │   │   │   ├── useTheme.ts
+│   │   │   │   ├── useVFS.ts
+│   │   │   │   └── useWebSocket.ts
+│   │   │   ├── index.css
+│   │   │   ├── lib
+│   │   │   │   └── utils.ts
+│   │   │   ├── main.tsx
+│   │   │   ├── pages
+│   │   │   │   ├── adaptive_workspace_ui.tsx
+│   │   │   │   ├── admin
+│   │   │   │   │   └── models.tsx
+│   │   │   │   ├── agents
+│   │   │   │   │   └── card-3.md
+│   │   │   │   ├── COORP.tsx
+│   │   │   │   ├── CreatorStudio.tsx
+│   │   │   │   ├── dataexplorer.tsx
+│   │   │   │   ├── DataLake.tsx
+│   │   │   │   ├── DesignSystemSettingsPage.tsx
+│   │   │   │   ├── FileLocationPage.tsx
+│   │   │   │   ├── IconDemo.tsx
+│   │   │   │   ├── ProjectCreator.tsx
+│   │   │   │   ├── ProjectPage.tsx
+│   │   │   │   ├── ProjectsDashboard.tsx
+│   │   │   │   ├── ProviderManager.tsx
+│   │   │   │   ├── ProviderRecovery.tsx
+│   │   │   │   ├── RoleCreator.tsx
+│   │   │   │   ├── SettingsPage.tsx
+│   │   │   │   ├── UnifiedProviderPage.tsx
+│   │   │   │   ├── workspace
+│   │   │   │   │   ├── [id].tsx
+│   │   │   │   │   └── SmartSwitch.tsx
+│   │   │   │   ├── WorkspaceList.tsx
+│   │   │   │   └── WorkSpace.tsx
+│   │   │   ├── stores
+│   │   │   │   ├── FileSystemContext.tsx
+│   │   │   │   ├── FileSystemStore.tsx
+│   │   │   │   ├── FileSystemTypes.ts
+│   │   │   │   ├── ingest.store.ts
+│   │   │   │   └── websocket.store.ts
+│   │   │   ├── theme
+│   │   │   │   ├── global.css
+│   │   │   │   ├── presets.ts
+│   │   │   │   ├── ThemeProvider.tsx
+│   │   │   │   └── types.ts
+│   │   │   ├── types.ts
+│   │   │   ├── utils
+│   │   │   │   ├── neonTheme.ts
+│   │   │   │   └── trpc.ts
+│   │   │   └── vite-env.d.ts
+│   │   ├── tailwind.config.js
+│   │   ├── tsconfig.app.json
+│   │   ├── tsconfig.app.tsbuildinfo
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.node.json
+│   │   ├── vite.config.d.ts
+│   │   ├── vite.config.d.ts.map
+│   │   ├── vite.config.js
+│   │   ├── vite.config.js.map
+│   │   └── vite.config.ts
+│   └── voice-input
+│       ├── dist
+│       │   ├── main.d.ts
+│       │   ├── main.d.ts.map
+│       │   ├── main.js
+│       │   └── main.js.map
+│       ├── INSTALL_COMPLETE.md
+│       ├── install-standalone.sh
+│       ├── MONOREPO_NOTE.md
+│       ├── node_modules
+│       │   ├── electron -> ../../../node_modules/.pnpm/electron@28.3.3/node_modules/electron
+│       │   ├── electron-builder -> ../../../node_modules/.pnpm/electron-builder@24.13.3_electron-builder-squirrel-windows@24.13.3/node_modules/electron-builder
+│       │   ├── robotjs -> ../../../node_modules/.pnpm/robotjs@0.6.0/node_modules/robotjs
+│       │   ├── @types
+│       │   │   └── node -> ../../../../node_modules/.pnpm/@types+node@20.19.25/node_modules/@types/node
+│       │   └── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│       ├── package.json
+│       ├── QUICKSTART.md
+│       ├── README.md
+│       ├── renderer
+│       │   ├── index.html
+│       │   ├── preload.js
+│       │   └── renderer.js
+│       ├── SETUP_COMPLETE.md
+│       ├── src
+│       │   ├── main.d.ts
+│       │   ├── main.d.ts.map
+│       │   ├── main.js
+│       │   ├── main.js.map
+│       │   └── main.ts
+│       ├── TESTING.md
+│       ├── tsconfig.json
+│       └── voice_input.py
+├── coc_output.log
+├── count.log
+├── dev_restart.log
+├── docker-compose.db.yml
+├── docker-compose.yml
+├── docs
+│   ├── AI_POWERED_PROMPT_GENERATION.md
+│   ├── COC_INTEGRATION.md
+│   ├── code_rules.md
+│   ├── creatorstudionew.tsx
+│   ├── CREATOR_STUDIO_README.md
+│   ├── DOLT_EVALUATION.md
+│   ├── examplecodefiles.zip
+│   ├── FILESYSTEM_CLEANUP.md
+│   ├── foundation_architecture.md
+│   ├── GROUP_B_IMPLEMENTATION.md
+│   ├── GROUP_C_D_IMPLEMENTATION.md
+│   ├── ICON_WRAPPER_IMPLEMENTATION.md
+│   ├── IMPLEMENTATION_NOTES.md
+│   ├── IMPLEMENTATION_ROLE_DECOUPLING.md
+│   ├── MODEL_REGISTRY_ARCHITECTURE.md
+│   ├── new.sh
+│   ├── OBSERVABILITY.md
+│   ├── ORCHESTRATION_ARCHITECTURE_DIAGRAMS.md
+│   ├── ORCHESTRATION_GUIDE.md
+│   ├── ORCHESTRATION_IMPLEMENTATION.md
+│   ├── ORCHESTRATION_ROLE_DECOUPLING.md
+│   ├── ORCHESTRATIONS_QUICK_START.md
+│   ├── ORCHESTRATION_STATUS.md
+│   ├── orchestrator studio
+│   ├── plan-coorpPage.prompt.md
+│   ├── PROJECT_MANAGEMENT_AI_GUIDE.md
+│   ├── PROJECT_MANAGEMENT_HUMAN_GUIDE.md
+│   ├── QUICK_REFERENCE_ORCHESTRATION.md
+│   ├── REAL_TIME_MONITORING.md
+│   └── VOICE_INPUT.md
+├── filesystem_tree.txt
+├── fix_git.sh
+├── GEMINI.md
+├── header_test_results.json
+├── node_modules
+│   ├── accepts -> .pnpm/accepts@1.3.8/node_modules/accepts
+│   ├── @acemir
+│   │   └── cssom -> ../.pnpm/@acemir+cssom@0.9.24/node_modules/@acemir/cssom
+│   ├── acorn -> .pnpm/acorn@8.15.0/node_modules/acorn
+│   ├── acorn-import-attributes -> .pnpm/acorn-import-attributes@1.9.5_acorn@8.15.0/node_modules/acorn-import-attributes
+│   ├── acorn-jsx -> .pnpm/acorn-jsx@5.3.2_acorn@8.15.0/node_modules/acorn-jsx
+│   ├── ag-charts-types -> .pnpm/ag-charts-types@12.3.1/node_modules/ag-charts-types
+│   ├── agent-base -> .pnpm/agent-base@7.1.4/node_modules/agent-base
+│   ├── ag-grid-community -> .pnpm/ag-grid-community@34.3.1/node_modules/ag-grid-community
+│   ├── ag-grid-react -> .pnpm/ag-grid-react@34.3.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/ag-grid-react
+│   ├── ajv -> .pnpm/ajv@8.17.1/node_modules/ajv
+│   ├── ajv-formats -> .pnpm/ajv-formats@3.0.1_ajv@8.17.1/node_modules/ajv-formats
+│   ├── @alloc
+│   │   └── quick-lru -> ../.pnpm/@alloc+quick-lru@5.2.0/node_modules/@alloc/quick-lru
+│   ├── ansi-escapes -> .pnpm/ansi-escapes@7.2.0/node_modules/ansi-escapes
+│   ├── ansi-regex -> .pnpm/ansi-regex@5.0.1/node_modules/ansi-regex
+│   ├── ansi-styles -> .pnpm/ansi-styles@4.3.0/node_modules/ansi-styles
+│   ├── anymatch -> .pnpm/anymatch@3.1.3/node_modules/anymatch
+│   ├── any-promise -> .pnpm/any-promise@1.3.0/node_modules/any-promise
+│   ├── api -> ../apps/api
+│   ├── arg -> .pnpm/arg@5.0.2/node_modules/arg
+│   ├── argparse -> .pnpm/argparse@2.0.1/node_modules/argparse
+│   ├── array-buffer-byte-length -> .pnpm/array-buffer-byte-length@1.0.2/node_modules/array-buffer-byte-length
+│   ├── arraybuffer.prototype.slice -> .pnpm/arraybuffer.prototype.slice@1.0.4/node_modules/arraybuffer.prototype.slice
+│   ├── array-flatten -> .pnpm/array-flatten@1.1.1/node_modules/array-flatten
+│   ├── array-includes -> .pnpm/array-includes@3.1.9/node_modules/array-includes
+│   ├── array.prototype.findlast -> .pnpm/array.prototype.findlast@1.2.5/node_modules/array.prototype.findlast
+│   ├── array.prototype.flat -> .pnpm/array.prototype.flat@1.3.3/node_modules/array.prototype.flat
+│   ├── array.prototype.flatmap -> .pnpm/array.prototype.flatmap@1.3.3/node_modules/array.prototype.flatmap
+│   ├── array.prototype.tosorted -> .pnpm/array.prototype.tosorted@1.1.4/node_modules/array.prototype.tosorted
+│   ├── array-union -> .pnpm/array-union@2.1.0/node_modules/array-union
+│   ├── @asamuzakjp
+│   │   ├── css-color -> ../.pnpm/@asamuzakjp+css-color@4.1.0/node_modules/@asamuzakjp/css-color
+│   │   ├── dom-selector -> ../.pnpm/@asamuzakjp+dom-selector@6.7.4/node_modules/@asamuzakjp/dom-selector
+│   │   └── nwsapi -> ../.pnpm/@asamuzakjp+nwsapi@2.3.9/node_modules/@asamuzakjp/nwsapi
+│   ├── asn1 -> .pnpm/asn1@0.2.6/node_modules/asn1
+│   ├── assertion-error -> .pnpm/assertion-error@2.0.1/node_modules/assertion-error
+│   ├── assert-plus -> .pnpm/assert-plus@1.0.0/node_modules/assert-plus
+│   ├── astral-regex -> .pnpm/astral-regex@2.0.0/node_modules/astral-regex
+│   ├── ast-types -> .pnpm/ast-types@0.13.4/node_modules/ast-types
+│   ├── async-function -> .pnpm/async-function@1.0.0/node_modules/async-function
+│   ├── asynckit -> .pnpm/asynckit@0.4.0/node_modules/asynckit
+│   ├── autoprefixer -> .pnpm/autoprefixer@10.4.22_postcss@8.5.6/node_modules/autoprefixer
+│   ├── available-typed-arrays -> .pnpm/available-typed-arrays@1.0.7/node_modules/available-typed-arrays
+│   ├── axios -> .pnpm/axios@1.13.2/node_modules/axios
+│   ├── b4a -> .pnpm/b4a@1.7.3/node_modules/b4a
+│   ├── @babel
+│   │   ├── code-frame -> ../.pnpm/@babel+code-frame@7.27.1/node_modules/@babel/code-frame
+│   │   ├── compat-data -> ../.pnpm/@babel+compat-data@7.28.5/node_modules/@babel/compat-data
+│   │   ├── core -> ../.pnpm/@babel+core@7.28.5/node_modules/@babel/core
+│   │   ├── generator -> ../.pnpm/@babel+generator@7.28.5/node_modules/@babel/generator
+│   │   ├── helper-compilation-targets -> ../.pnpm/@babel+helper-compilation-targets@7.27.2/node_modules/@babel/helper-compilation-targets
+│   │   ├── helper-globals -> ../.pnpm/@babel+helper-globals@7.28.0/node_modules/@babel/helper-globals
+│   │   ├── helper-module-imports -> ../.pnpm/@babel+helper-module-imports@7.27.1/node_modules/@babel/helper-module-imports
+│   │   ├── helper-module-transforms -> ../.pnpm/@babel+helper-module-transforms@7.28.3_@babel+core@7.28.5/node_modules/@babel/helper-module-transforms
+│   │   ├── helper-plugin-utils -> ../.pnpm/@babel+helper-plugin-utils@7.27.1/node_modules/@babel/helper-plugin-utils
+│   │   ├── helpers -> ../.pnpm/@babel+helpers@7.28.4/node_modules/@babel/helpers
+│   │   ├── helper-string-parser -> ../.pnpm/@babel+helper-string-parser@7.27.1/node_modules/@babel/helper-string-parser
+│   │   ├── helper-validator-identifier -> ../.pnpm/@babel+helper-validator-identifier@7.28.5/node_modules/@babel/helper-validator-identifier
+│   │   ├── helper-validator-option -> ../.pnpm/@babel+helper-validator-option@7.27.1/node_modules/@babel/helper-validator-option
+│   │   ├── parser -> ../.pnpm/@babel+parser@7.28.5/node_modules/@babel/parser
+│   │   ├── plugin-transform-react-jsx-self -> ../.pnpm/@babel+plugin-transform-react-jsx-self@7.27.1_@babel+core@7.28.5/node_modules/@babel/plugin-transform-react-jsx-self
+│   │   ├── plugin-transform-react-jsx-source -> ../.pnpm/@babel+plugin-transform-react-jsx-source@7.27.1_@babel+core@7.28.5/node_modules/@babel/plugin-transform-react-jsx-source
+│   │   ├── template -> ../.pnpm/@babel+template@7.27.2/node_modules/@babel/template
+│   │   ├── traverse -> ../.pnpm/@babel+traverse@7.28.5/node_modules/@babel/traverse
+│   │   └── types -> ../.pnpm/@babel+types@7.28.5/node_modules/@babel/types
+│   ├── balanced-match -> .pnpm/balanced-match@1.0.2/node_modules/balanced-match
+│   ├── bare-events -> .pnpm/bare-events@2.8.2/node_modules/bare-events
+│   ├── bare-fs -> .pnpm/bare-fs@4.5.2/node_modules/bare-fs
+│   ├── bare-os -> .pnpm/bare-os@3.6.2/node_modules/bare-os
+│   ├── bare-path -> .pnpm/bare-path@3.0.0/node_modules/bare-path
+│   ├── bare-stream -> .pnpm/bare-stream@2.7.0_bare-events@2.8.2/node_modules/bare-stream
+│   ├── bare-url -> .pnpm/bare-url@2.3.2/node_modules/bare-url
+│   ├── base64-js -> .pnpm/base64-js@1.5.1/node_modules/base64-js
+│   ├── baseline-browser-mapping -> .pnpm/baseline-browser-mapping@2.8.28/node_modules/baseline-browser-mapping
+│   ├── basic-auth -> .pnpm/basic-auth@2.0.1/node_modules/basic-auth
+│   ├── basic-ftp -> .pnpm/basic-ftp@5.0.5/node_modules/basic-ftp
+│   ├── bcrypt-pbkdf -> .pnpm/bcrypt-pbkdf@1.0.2/node_modules/bcrypt-pbkdf
+│   ├── bidi-js -> .pnpm/bidi-js@1.0.3/node_modules/bidi-js
+│   ├── bignumber.js -> .pnpm/bignumber.js@9.3.1/node_modules/bignumber.js
+│   ├── binary-extensions -> .pnpm/binary-extensions@2.3.0/node_modules/binary-extensions
+│   ├── body-parser -> .pnpm/body-parser@1.20.3/node_modules/body-parser
+│   ├── brace-expansion -> .pnpm/brace-expansion@1.1.12/node_modules/brace-expansion
+│   ├── braces -> .pnpm/braces@3.0.3/node_modules/braces
+│   ├── browserslist -> .pnpm/browserslist@4.28.0/node_modules/browserslist
+│   ├── buffer-crc32 -> .pnpm/buffer-crc32@0.2.13/node_modules/buffer-crc32
+│   ├── buffer-equal-constant-time -> .pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time
+│   ├── buffer-from -> .pnpm/buffer-from@1.1.2/node_modules/buffer-from
+│   ├── buildcheck -> .pnpm/buildcheck@0.0.7/node_modules/buildcheck
+│   ├── bytes -> .pnpm/bytes@3.1.2/node_modules/bytes
+│   ├── cac -> .pnpm/cac@6.7.14/node_modules/cac
+│   ├── call-bind -> .pnpm/call-bind@1.0.8/node_modules/call-bind
+│   ├── call-bind-apply-helpers -> .pnpm/call-bind-apply-helpers@1.0.2/node_modules/call-bind-apply-helpers
+│   ├── call-bound -> .pnpm/call-bound@1.0.4/node_modules/call-bound
+│   ├── callsites -> .pnpm/callsites@3.1.0/node_modules/callsites
+│   ├── camelcase-css -> .pnpm/camelcase-css@2.0.1/node_modules/camelcase-css
+│   ├── caniuse-lite -> .pnpm/caniuse-lite@1.0.30001754/node_modules/caniuse-lite
+│   ├── chai -> .pnpm/chai@5.3.3/node_modules/chai
+│   ├── chalk -> .pnpm/chalk@4.1.2/node_modules/chalk
+│   ├── check-error -> .pnpm/check-error@2.1.1/node_modules/check-error
+│   ├── chokidar -> .pnpm/chokidar@3.6.0/node_modules/chokidar
+│   ├── chromium-bidi -> .pnpm/chromium-bidi@11.0.0_devtools-protocol@0.0.1521046/node_modules/chromium-bidi
+│   ├── cjs-module-lexer -> .pnpm/cjs-module-lexer@1.4.3/node_modules/cjs-module-lexer
+│   ├── class-variance-authority -> .pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+│   ├── cli-cursor -> .pnpm/cli-cursor@5.0.0/node_modules/cli-cursor
+│   ├── cli-truncate -> .pnpm/cli-truncate@5.1.1/node_modules/cli-truncate
+│   ├── cliui -> .pnpm/cliui@8.0.1/node_modules/cliui
+│   ├── clsx -> .pnpm/clsx@2.1.1/node_modules/clsx
+│   ├── cluster-key-slot -> .pnpm/cluster-key-slot@1.1.2/node_modules/cluster-key-slot
+│   ├── @codingame
+│   │   ├── monaco-vscode-02fe61a6-05e4-5021-8c27-16e910b9182c-common -> ../.pnpm/@codingame+monaco-vscode-02fe61a6-05e4-5021-8c27-16e910b9182c-common@23.0.0/node_modules/@codingame/monaco-vscode-02fe61a6-05e4-5021-8c27-16e910b9182c-common
+│   │   ├── monaco-vscode-05a2a821-e4de-5941-b7f9-bbf01c09f229-common -> ../.pnpm/@codingame+monaco-vscode-05a2a821-e4de-5941-b7f9-bbf01c09f229-common@22.1.9/node_modules/@codingame/monaco-vscode-05a2a821-e4de-5941-b7f9-bbf01c09f229-common
+│   │   ├── monaco-vscode-05c09f77-cd1d-5960-b387-e7023df3160b-common -> ../.pnpm/@codingame+monaco-vscode-05c09f77-cd1d-5960-b387-e7023df3160b-common@23.0.0/node_modules/@codingame/monaco-vscode-05c09f77-cd1d-5960-b387-e7023df3160b-common
+│   │   ├── monaco-vscode-09f99a3e-bf90-51d4-ab34-acea412359d2-common -> ../.pnpm/@codingame+monaco-vscode-09f99a3e-bf90-51d4-ab34-acea412359d2-common@23.0.0/node_modules/@codingame/monaco-vscode-09f99a3e-bf90-51d4-ab34-acea412359d2-common
+│   │   ├── monaco-vscode-0c06bfba-d24d-5c4d-90cd-b40cefb7f811-common -> ../.pnpm/@codingame+monaco-vscode-0c06bfba-d24d-5c4d-90cd-b40cefb7f811-common@22.1.9/node_modules/@codingame/monaco-vscode-0c06bfba-d24d-5c4d-90cd-b40cefb7f811-common
+│   │   ├── monaco-vscode-0cc5da60-f921-59b9-bd8c-a018e93c0a6f-common -> ../.pnpm/@codingame+monaco-vscode-0cc5da60-f921-59b9-bd8c-a018e93c0a6f-common@23.0.0/node_modules/@codingame/monaco-vscode-0cc5da60-f921-59b9-bd8c-a018e93c0a6f-common
+│   │   ├── monaco-vscode-1021b67c-93e5-5c78-a270-cbdb2574d980-common -> ../.pnpm/@codingame+monaco-vscode-1021b67c-93e5-5c78-a270-cbdb2574d980-common@23.0.0/node_modules/@codingame/monaco-vscode-1021b67c-93e5-5c78-a270-cbdb2574d980-common
+│   │   ├── monaco-vscode-10416640-ca84-5eff-95ce-dea977ccba7a-common -> ../.pnpm/@codingame+monaco-vscode-10416640-ca84-5eff-95ce-dea977ccba7a-common@23.0.0/node_modules/@codingame/monaco-vscode-10416640-ca84-5eff-95ce-dea977ccba7a-common
+│   │   ├── monaco-vscode-10af0e5d-64cb-56de-b584-29ab4a355d15-common -> ../.pnpm/@codingame+monaco-vscode-10af0e5d-64cb-56de-b584-29ab4a355d15-common@23.0.0/node_modules/@codingame/monaco-vscode-10af0e5d-64cb-56de-b584-29ab4a355d15-common
+│   │   ├── monaco-vscode-15626ec7-b165-51e1-8caf-7bcc2ae9b95a-common -> ../.pnpm/@codingame+monaco-vscode-15626ec7-b165-51e1-8caf-7bcc2ae9b95a-common@22.1.9/node_modules/@codingame/monaco-vscode-15626ec7-b165-51e1-8caf-7bcc2ae9b95a-common
+│   │   ├── monaco-vscode-158b9837-fc78-5d9c-86f5-9134e4358643-common -> ../.pnpm/@codingame+monaco-vscode-158b9837-fc78-5d9c-86f5-9134e4358643-common@22.1.9/node_modules/@codingame/monaco-vscode-158b9837-fc78-5d9c-86f5-9134e4358643-common
+│   │   ├── monaco-vscode-16b9b017-9377-5198-9904-c344b3b2ad14-common -> ../.pnpm/@codingame+monaco-vscode-16b9b017-9377-5198-9904-c344b3b2ad14-common@23.0.0/node_modules/@codingame/monaco-vscode-16b9b017-9377-5198-9904-c344b3b2ad14-common
+│   │   ├── monaco-vscode-18b21911-2b39-5976-87a4-ea863f4c4e0e-common -> ../.pnpm/@codingame+monaco-vscode-18b21911-2b39-5976-87a4-ea863f4c4e0e-common@23.0.0/node_modules/@codingame/monaco-vscode-18b21911-2b39-5976-87a4-ea863f4c4e0e-common
+│   │   ├── monaco-vscode-1b4486de-4fe4-59c4-9e6d-34f265ff6625-common -> ../.pnpm/@codingame+monaco-vscode-1b4486de-4fe4-59c4-9e6d-34f265ff6625-common@23.0.0/node_modules/@codingame/monaco-vscode-1b4486de-4fe4-59c4-9e6d-34f265ff6625-common
+│   │   ├── monaco-vscode-23aade48-f094-5c08-9555-97fc9cca96c9-common -> ../.pnpm/@codingame+monaco-vscode-23aade48-f094-5c08-9555-97fc9cca96c9-common@22.1.9/node_modules/@codingame/monaco-vscode-23aade48-f094-5c08-9555-97fc9cca96c9-common
+│   │   ├── monaco-vscode-249dc928-1da3-51c1-82d0-45e0ba9d08a1-common -> ../.pnpm/@codingame+monaco-vscode-249dc928-1da3-51c1-82d0-45e0ba9d08a1-common@22.1.9/node_modules/@codingame/monaco-vscode-249dc928-1da3-51c1-82d0-45e0ba9d08a1-common
+│   │   ├── monaco-vscode-256d5b78-0649-50e9-8354-2807f95f68f4-common -> ../.pnpm/@codingame+monaco-vscode-256d5b78-0649-50e9-8354-2807f95f68f4-common@22.1.9/node_modules/@codingame/monaco-vscode-256d5b78-0649-50e9-8354-2807f95f68f4-common
+│   │   ├── monaco-vscode-262ed59d-4f76-57cd-9e9f-1877f26ae049-common -> ../.pnpm/@codingame+monaco-vscode-262ed59d-4f76-57cd-9e9f-1877f26ae049-common@23.0.0/node_modules/@codingame/monaco-vscode-262ed59d-4f76-57cd-9e9f-1877f26ae049-common
+│   │   ├── monaco-vscode-2808e692-5fb9-54bf-bc21-1d3bff81e651-common -> ../.pnpm/@codingame+monaco-vscode-2808e692-5fb9-54bf-bc21-1d3bff81e651-common@23.0.0/node_modules/@codingame/monaco-vscode-2808e692-5fb9-54bf-bc21-1d3bff81e651-common
+│   │   ├── monaco-vscode-2a04f0cd-b806-5886-909e-418183d32279-common -> ../.pnpm/@codingame+monaco-vscode-2a04f0cd-b806-5886-909e-418183d32279-common@23.0.0/node_modules/@codingame/monaco-vscode-2a04f0cd-b806-5886-909e-418183d32279-common
+│   │   ├── monaco-vscode-2a22c7b4-b906-5914-8cd1-3ed912fb738f-common -> ../.pnpm/@codingame+monaco-vscode-2a22c7b4-b906-5914-8cd1-3ed912fb738f-common@23.0.0/node_modules/@codingame/monaco-vscode-2a22c7b4-b906-5914-8cd1-3ed912fb738f-common
+│   │   ├── monaco-vscode-2a94c04a-b85b-5669-b06b-89c1bfa11cb9-common -> ../.pnpm/@codingame+monaco-vscode-2a94c04a-b85b-5669-b06b-89c1bfa11cb9-common@22.1.9/node_modules/@codingame/monaco-vscode-2a94c04a-b85b-5669-b06b-89c1bfa11cb9-common
+│   │   ├── monaco-vscode-2f06fe84-148e-5e6b-a7ca-c7989c5f128a-common -> ../.pnpm/@codingame+monaco-vscode-2f06fe84-148e-5e6b-a7ca-c7989c5f128a-common@22.1.9/node_modules/@codingame/monaco-vscode-2f06fe84-148e-5e6b-a7ca-c7989c5f128a-common
+│   │   ├── monaco-vscode-3109a756-1f83-5d09-945b-9f0fcad928f0-common -> ../.pnpm/@codingame+monaco-vscode-3109a756-1f83-5d09-945b-9f0fcad928f0-common@23.0.0/node_modules/@codingame/monaco-vscode-3109a756-1f83-5d09-945b-9f0fcad928f0-common
+│   │   ├── monaco-vscode-33833ac7-3af3-5e9d-8fb9-11838d852c59-common -> ../.pnpm/@codingame+monaco-vscode-33833ac7-3af3-5e9d-8fb9-11838d852c59-common@23.0.0/node_modules/@codingame/monaco-vscode-33833ac7-3af3-5e9d-8fb9-11838d852c59-common
+│   │   ├── monaco-vscode-3b5a5cd1-d4ff-500a-b609-57e0cd4afa0a-common -> ../.pnpm/@codingame+monaco-vscode-3b5a5cd1-d4ff-500a-b609-57e0cd4afa0a-common@23.0.0/node_modules/@codingame/monaco-vscode-3b5a5cd1-d4ff-500a-b609-57e0cd4afa0a-common
+│   │   ├── monaco-vscode-40cada32-7e9c-528a-81fc-766e4da54147-common -> ../.pnpm/@codingame+monaco-vscode-40cada32-7e9c-528a-81fc-766e4da54147-common@22.1.9/node_modules/@codingame/monaco-vscode-40cada32-7e9c-528a-81fc-766e4da54147-common
+│   │   ├── monaco-vscode-422642f2-7e3a-5c1c-9e1e-1d3ef1817346-common -> ../.pnpm/@codingame+monaco-vscode-422642f2-7e3a-5c1c-9e1e-1d3ef1817346-common@23.0.0/node_modules/@codingame/monaco-vscode-422642f2-7e3a-5c1c-9e1e-1d3ef1817346-common
+│   │   ├── monaco-vscode-494be54c-bd37-5b3c-af70-02f086e28768-common -> ../.pnpm/@codingame+monaco-vscode-494be54c-bd37-5b3c-af70-02f086e28768-common@23.0.0/node_modules/@codingame/monaco-vscode-494be54c-bd37-5b3c-af70-02f086e28768-common
+│   │   ├── monaco-vscode-4a316137-39d1-5d77-8b53-112db3547c1e-common -> ../.pnpm/@codingame+monaco-vscode-4a316137-39d1-5d77-8b53-112db3547c1e-common@23.0.0/node_modules/@codingame/monaco-vscode-4a316137-39d1-5d77-8b53-112db3547c1e-common
+│   │   ├── monaco-vscode-4a3ac544-9a61-534c-88df-756262793ef7-common -> ../.pnpm/@codingame+monaco-vscode-4a3ac544-9a61-534c-88df-756262793ef7-common@23.0.0/node_modules/@codingame/monaco-vscode-4a3ac544-9a61-534c-88df-756262793ef7-common
+│   │   ├── monaco-vscode-4bf376c2-03c7-58cb-8303-c67aeefa3d3d-common -> ../.pnpm/@codingame+monaco-vscode-4bf376c2-03c7-58cb-8303-c67aeefa3d3d-common@22.1.9/node_modules/@codingame/monaco-vscode-4bf376c2-03c7-58cb-8303-c67aeefa3d3d-common
+│   │   ├── monaco-vscode-4db3f2fb-d745-58fe-9e0e-eb67152ab711-common -> ../.pnpm/@codingame+monaco-vscode-4db3f2fb-d745-58fe-9e0e-eb67152ab711-common@23.0.0/node_modules/@codingame/monaco-vscode-4db3f2fb-d745-58fe-9e0e-eb67152ab711-common
+│   │   ├── monaco-vscode-501b06ab-3f58-516b-8a1a-c29d375d3da4-common -> ../.pnpm/@codingame+monaco-vscode-501b06ab-3f58-516b-8a1a-c29d375d3da4-common@23.0.0/node_modules/@codingame/monaco-vscode-501b06ab-3f58-516b-8a1a-c29d375d3da4-common
+│   │   ├── monaco-vscode-5084de40-f866-5cb5-9d9b-33a10f6f235d-common -> ../.pnpm/@codingame+monaco-vscode-5084de40-f866-5cb5-9d9b-33a10f6f235d-common@22.1.9/node_modules/@codingame/monaco-vscode-5084de40-f866-5cb5-9d9b-33a10f6f235d-common
+│   │   ├── monaco-vscode-51e7513d-a395-525d-b226-639aa8c6cc2d-common -> ../.pnpm/@codingame+monaco-vscode-51e7513d-a395-525d-b226-639aa8c6cc2d-common@22.1.9/node_modules/@codingame/monaco-vscode-51e7513d-a395-525d-b226-639aa8c6cc2d-common
+│   │   ├── monaco-vscode-523730aa-81e6-55d7-9916-87ad537fe087-common -> ../.pnpm/@codingame+monaco-vscode-523730aa-81e6-55d7-9916-87ad537fe087-common@23.0.0/node_modules/@codingame/monaco-vscode-523730aa-81e6-55d7-9916-87ad537fe087-common
+│   │   ├── monaco-vscode-5452e2b7-9081-5f95-839b-4ab3544ce28f-common -> ../.pnpm/@codingame+monaco-vscode-5452e2b7-9081-5f95-839b-4ab3544ce28f-common@23.0.0/node_modules/@codingame/monaco-vscode-5452e2b7-9081-5f95-839b-4ab3544ce28f-common
+│   │   ├── monaco-vscode-571c8352-7953-5038-9f09-e03bb6219a0e-common -> ../.pnpm/@codingame+monaco-vscode-571c8352-7953-5038-9f09-e03bb6219a0e-common@22.1.9/node_modules/@codingame/monaco-vscode-571c8352-7953-5038-9f09-e03bb6219a0e-common
+│   │   ├── monaco-vscode-5b8cf422-a92f-53bb-aa8a-d9c56494b1e6-common -> ../.pnpm/@codingame+monaco-vscode-5b8cf422-a92f-53bb-aa8a-d9c56494b1e6-common@23.0.0/node_modules/@codingame/monaco-vscode-5b8cf422-a92f-53bb-aa8a-d9c56494b1e6-common
+│   │   ├── monaco-vscode-5ca67a37-98cf-58a6-90cb-0999f3ec6b71-common -> ../.pnpm/@codingame+monaco-vscode-5ca67a37-98cf-58a6-90cb-0999f3ec6b71-common@23.0.0/node_modules/@codingame/monaco-vscode-5ca67a37-98cf-58a6-90cb-0999f3ec6b71-common
+│   │   ├── monaco-vscode-60014c9d-b815-501d-83a9-4b08725c2ec2-common -> ../.pnpm/@codingame+monaco-vscode-60014c9d-b815-501d-83a9-4b08725c2ec2-common@22.1.9/node_modules/@codingame/monaco-vscode-60014c9d-b815-501d-83a9-4b08725c2ec2-common
+│   │   ├── monaco-vscode-622c0cca-d5fa-59b6-b730-0715afcf93ee-common -> ../.pnpm/@codingame+monaco-vscode-622c0cca-d5fa-59b6-b730-0715afcf93ee-common@22.1.9/node_modules/@codingame/monaco-vscode-622c0cca-d5fa-59b6-b730-0715afcf93ee-common
+│   │   ├── monaco-vscode-670aae94-7f88-54d7-90ea-6fcbef423557-common -> ../.pnpm/@codingame+monaco-vscode-670aae94-7f88-54d7-90ea-6fcbef423557-common@22.1.9/node_modules/@codingame/monaco-vscode-670aae94-7f88-54d7-90ea-6fcbef423557-common
+│   │   ├── monaco-vscode-6845754f-e617-5ed9-8aaa-6ca3653a9532-common -> ../.pnpm/@codingame+monaco-vscode-6845754f-e617-5ed9-8aaa-6ca3653a9532-common@22.1.9/node_modules/@codingame/monaco-vscode-6845754f-e617-5ed9-8aaa-6ca3653a9532-common
+│   │   ├── monaco-vscode-6980eeab-47bb-5a48-8e15-32caf0785565-common -> ../.pnpm/@codingame+monaco-vscode-6980eeab-47bb-5a48-8e15-32caf0785565-common@23.0.0/node_modules/@codingame/monaco-vscode-6980eeab-47bb-5a48-8e15-32caf0785565-common
+│   │   ├── monaco-vscode-6bf85d7b-e6e3-54e9-9bc1-7e08d663f0f6-common -> ../.pnpm/@codingame+monaco-vscode-6bf85d7b-e6e3-54e9-9bc1-7e08d663f0f6-common@22.1.9/node_modules/@codingame/monaco-vscode-6bf85d7b-e6e3-54e9-9bc1-7e08d663f0f6-common
+│   │   ├── monaco-vscode-6db1b967-5327-5c5c-8c17-bd92774c0fb2-common -> ../.pnpm/@codingame+monaco-vscode-6db1b967-5327-5c5c-8c17-bd92774c0fb2-common@22.1.9/node_modules/@codingame/monaco-vscode-6db1b967-5327-5c5c-8c17-bd92774c0fb2-common
+│   │   ├── monaco-vscode-6f931a91-88ea-5232-897f-a17ec3929ba5-common -> ../.pnpm/@codingame+monaco-vscode-6f931a91-88ea-5232-897f-a17ec3929ba5-common@23.0.0/node_modules/@codingame/monaco-vscode-6f931a91-88ea-5232-897f-a17ec3929ba5-common
+│   │   ├── monaco-vscode-7869cfe8-f42c-5721-9f2b-7d04a6a41f16-common -> ../.pnpm/@codingame+monaco-vscode-7869cfe8-f42c-5721-9f2b-7d04a6a41f16-common@23.0.0/node_modules/@codingame/monaco-vscode-7869cfe8-f42c-5721-9f2b-7d04a6a41f16-common
+│   │   ├── monaco-vscode-7969284a-1a12-5148-9750-fcf9656a693f-common -> ../.pnpm/@codingame+monaco-vscode-7969284a-1a12-5148-9750-fcf9656a693f-common@22.1.9/node_modules/@codingame/monaco-vscode-7969284a-1a12-5148-9750-fcf9656a693f-common
+│   │   ├── monaco-vscode-7aa7b0aa-41af-57b3-860a-86d2f987a6c8-common -> ../.pnpm/@codingame+monaco-vscode-7aa7b0aa-41af-57b3-860a-86d2f987a6c8-common@23.0.0/node_modules/@codingame/monaco-vscode-7aa7b0aa-41af-57b3-860a-86d2f987a6c8-common
+│   │   ├── monaco-vscode-7f39b6f1-3542-5430-8760-0f404d7a7cee-common -> ../.pnpm/@codingame+monaco-vscode-7f39b6f1-3542-5430-8760-0f404d7a7cee-common@22.1.9/node_modules/@codingame/monaco-vscode-7f39b6f1-3542-5430-8760-0f404d7a7cee-common
+│   │   ├── monaco-vscode-85886bdb-61c5-52f1-8eb7-d1d32f6f8cbd-common -> ../.pnpm/@codingame+monaco-vscode-85886bdb-61c5-52f1-8eb7-d1d32f6f8cbd-common@22.1.9/node_modules/@codingame/monaco-vscode-85886bdb-61c5-52f1-8eb7-d1d32f6f8cbd-common
+│   │   ├── monaco-vscode-897bebad-39df-57cb-8a57-36a271d038be-common -> ../.pnpm/@codingame+monaco-vscode-897bebad-39df-57cb-8a57-36a271d038be-common@22.1.9/node_modules/@codingame/monaco-vscode-897bebad-39df-57cb-8a57-36a271d038be-common
+│   │   ├── monaco-vscode-89a82baf-8ded-5b2f-b8af-e5fbd72dc5ad-common -> ../.pnpm/@codingame+monaco-vscode-89a82baf-8ded-5b2f-b8af-e5fbd72dc5ad-common@23.0.0/node_modules/@codingame/monaco-vscode-89a82baf-8ded-5b2f-b8af-e5fbd72dc5ad-common
+│   │   ├── monaco-vscode-8ccb7637-50ea-5359-97bf-00015d7fe567-common -> ../.pnpm/@codingame+monaco-vscode-8ccb7637-50ea-5359-97bf-00015d7fe567-common@22.1.9/node_modules/@codingame/monaco-vscode-8ccb7637-50ea-5359-97bf-00015d7fe567-common
+│   │   ├── monaco-vscode-96e83782-7f38-572e-8787-02e981f1c54f-common -> ../.pnpm/@codingame+monaco-vscode-96e83782-7f38-572e-8787-02e981f1c54f-common@22.1.9/node_modules/@codingame/monaco-vscode-96e83782-7f38-572e-8787-02e981f1c54f-common
+│   │   ├── monaco-vscode-9a1a5840-af83-5d07-a156-ba32a36c5c4b-common -> ../.pnpm/@codingame+monaco-vscode-9a1a5840-af83-5d07-a156-ba32a36c5c4b-common@22.1.9/node_modules/@codingame/monaco-vscode-9a1a5840-af83-5d07-a156-ba32a36c5c4b-common
+│   │   ├── monaco-vscode-9c84f943-bcb5-5bcf-92a6-91f66a732f26-common -> ../.pnpm/@codingame+monaco-vscode-9c84f943-bcb5-5bcf-92a6-91f66a732f26-common@23.0.0/node_modules/@codingame/monaco-vscode-9c84f943-bcb5-5bcf-92a6-91f66a732f26-common
+│   │   ├── monaco-vscode-9d0168a3-519b-57f3-9bcc-89efc41f951a-common -> ../.pnpm/@codingame+monaco-vscode-9d0168a3-519b-57f3-9bcc-89efc41f951a-common@23.0.0/node_modules/@codingame/monaco-vscode-9d0168a3-519b-57f3-9bcc-89efc41f951a-common
+│   │   ├── monaco-vscode-9d2c06d1-1f89-51a5-9964-aa01fe50c198-common -> ../.pnpm/@codingame+monaco-vscode-9d2c06d1-1f89-51a5-9964-aa01fe50c198-common@23.0.0/node_modules/@codingame/monaco-vscode-9d2c06d1-1f89-51a5-9964-aa01fe50c198-common
+│   │   ├── monaco-vscode-9ee79c1a-3f03-568b-8eac-b02513a98b68-common -> ../.pnpm/@codingame+monaco-vscode-9ee79c1a-3f03-568b-8eac-b02513a98b68-common@22.1.9/node_modules/@codingame/monaco-vscode-9ee79c1a-3f03-568b-8eac-b02513a98b68-common
+│   │   ├── monaco-vscode-9efc1f50-c7de-55d6-8b28-bcc88bd49b5a-common -> ../.pnpm/@codingame+monaco-vscode-9efc1f50-c7de-55d6-8b28-bcc88bd49b5a-common@23.0.0/node_modules/@codingame/monaco-vscode-9efc1f50-c7de-55d6-8b28-bcc88bd49b5a-common
+│   │   ├── monaco-vscode-a175bd1a-4858-5944-9ae5-fb73305dcb13-common -> ../.pnpm/@codingame+monaco-vscode-a175bd1a-4858-5944-9ae5-fb73305dcb13-common@22.1.9/node_modules/@codingame/monaco-vscode-a175bd1a-4858-5944-9ae5-fb73305dcb13-common
+│   │   ├── monaco-vscode-a17e9d37-b6c1-5556-8402-5db73960fae3-common -> ../.pnpm/@codingame+monaco-vscode-a17e9d37-b6c1-5556-8402-5db73960fae3-common@22.1.9/node_modules/@codingame/monaco-vscode-a17e9d37-b6c1-5556-8402-5db73960fae3-common
+│   │   ├── monaco-vscode-a3eaa464-944c-5b8f-8886-213068ba4897-common -> ../.pnpm/@codingame+monaco-vscode-a3eaa464-944c-5b8f-8886-213068ba4897-common@23.0.0/node_modules/@codingame/monaco-vscode-a3eaa464-944c-5b8f-8886-213068ba4897-common
+│   │   ├── monaco-vscode-a654b07e-8806-5425-b124-18f03ba8e11a-common -> ../.pnpm/@codingame+monaco-vscode-a654b07e-8806-5425-b124-18f03ba8e11a-common@22.1.9/node_modules/@codingame/monaco-vscode-a654b07e-8806-5425-b124-18f03ba8e11a-common
+│   │   ├── monaco-vscode-a6a3e03d-2b1a-5e17-b904-ed5d40c14550-common -> ../.pnpm/@codingame+monaco-vscode-a6a3e03d-2b1a-5e17-b904-ed5d40c14550-common@23.0.0/node_modules/@codingame/monaco-vscode-a6a3e03d-2b1a-5e17-b904-ed5d40c14550-common
+│   │   ├── monaco-vscode-a8d3bd74-e63e-5327-96e8-4f931661e329-common -> ../.pnpm/@codingame+monaco-vscode-a8d3bd74-e63e-5327-96e8-4f931661e329-common@22.1.9/node_modules/@codingame/monaco-vscode-a8d3bd74-e63e-5327-96e8-4f931661e329-common
+│   │   ├── monaco-vscode-a9da9abe-278d-5ce6-9418-99c7c07c5c37-common -> ../.pnpm/@codingame+monaco-vscode-a9da9abe-278d-5ce6-9418-99c7c07c5c37-common@22.1.9/node_modules/@codingame/monaco-vscode-a9da9abe-278d-5ce6-9418-99c7c07c5c37-common
+│   │   ├── monaco-vscode-aac7027b-326c-513a-95a9-e4eedd151b38-common -> ../.pnpm/@codingame+monaco-vscode-aac7027b-326c-513a-95a9-e4eedd151b38-common@23.0.0/node_modules/@codingame/monaco-vscode-aac7027b-326c-513a-95a9-e4eedd151b38-common
+│   │   ├── monaco-vscode-abed5a84-8a82-5f84-9412-88a736235bae-common -> ../.pnpm/@codingame+monaco-vscode-abed5a84-8a82-5f84-9412-88a736235bae-common@22.1.9/node_modules/@codingame/monaco-vscode-abed5a84-8a82-5f84-9412-88a736235bae-common
+│   │   ├── monaco-vscode-api -> ../.pnpm/@codingame+monaco-vscode-api@22.1.9/node_modules/@codingame/monaco-vscode-api
+│   │   ├── monaco-vscode-b1e8558d-1726-5299-bc75-e43ee6d1a124-common -> ../.pnpm/@codingame+monaco-vscode-b1e8558d-1726-5299-bc75-e43ee6d1a124-common@23.0.0/node_modules/@codingame/monaco-vscode-b1e8558d-1726-5299-bc75-e43ee6d1a124-common
+│   │   ├── monaco-vscode-b6d52a6d-8c8e-51f5-bcd2-1722295e31d9-common -> ../.pnpm/@codingame+monaco-vscode-b6d52a6d-8c8e-51f5-bcd2-1722295e31d9-common@22.1.9/node_modules/@codingame/monaco-vscode-b6d52a6d-8c8e-51f5-bcd2-1722295e31d9-common
+│   │   ├── monaco-vscode-b994942c-360d-5b68-8a33-77d4bde6b714-common -> ../.pnpm/@codingame+monaco-vscode-b994942c-360d-5b68-8a33-77d4bde6b714-common@22.1.9/node_modules/@codingame/monaco-vscode-b994942c-360d-5b68-8a33-77d4bde6b714-common
+│   │   ├── monaco-vscode-base-service-override -> ../.pnpm/@codingame+monaco-vscode-base-service-override@22.1.9/node_modules/@codingame/monaco-vscode-base-service-override
+│   │   ├── monaco-vscode-bba55be6-41a2-50cd-a3cc-8bafa35bfa89-common -> ../.pnpm/@codingame+monaco-vscode-bba55be6-41a2-50cd-a3cc-8bafa35bfa89-common@22.1.9/node_modules/@codingame/monaco-vscode-bba55be6-41a2-50cd-a3cc-8bafa35bfa89-common
+│   │   ├── monaco-vscode-bc6f260d-ec63-5c95-9446-1ca7d0872719-common -> ../.pnpm/@codingame+monaco-vscode-bc6f260d-ec63-5c95-9446-1ca7d0872719-common@23.0.0/node_modules/@codingame/monaco-vscode-bc6f260d-ec63-5c95-9446-1ca7d0872719-common
+│   │   ├── monaco-vscode-be8ddbb5-094a-5657-b1cc-fe106c94c632-common -> ../.pnpm/@codingame+monaco-vscode-be8ddbb5-094a-5657-b1cc-fe106c94c632-common@23.0.0/node_modules/@codingame/monaco-vscode-be8ddbb5-094a-5657-b1cc-fe106c94c632-common
+│   │   ├── monaco-vscode-bf94ddb5-e436-506a-9763-5ab86b642508-common -> ../.pnpm/@codingame+monaco-vscode-bf94ddb5-e436-506a-9763-5ab86b642508-common@22.1.9/node_modules/@codingame/monaco-vscode-bf94ddb5-e436-506a-9763-5ab86b642508-common
+│   │   ├── monaco-vscode-bulk-edit-service-override -> ../.pnpm/@codingame+monaco-vscode-bulk-edit-service-override@23.0.0/node_modules/@codingame/monaco-vscode-bulk-edit-service-override
+│   │   ├── monaco-vscode-caeb744c-8e3f-5c11-80fb-0f057d24d544-common -> ../.pnpm/@codingame+monaco-vscode-caeb744c-8e3f-5c11-80fb-0f057d24d544-common@22.1.9/node_modules/@codingame/monaco-vscode-caeb744c-8e3f-5c11-80fb-0f057d24d544-common
+│   │   ├── monaco-vscode-ce7c734f-7712-563c-9335-d7acb43306af-common -> ../.pnpm/@codingame+monaco-vscode-ce7c734f-7712-563c-9335-d7acb43306af-common@23.0.0/node_modules/@codingame/monaco-vscode-ce7c734f-7712-563c-9335-d7acb43306af-common
+│   │   ├── monaco-vscode-cea4d01f-6526-5c2f-8b09-b168fead499f-common -> ../.pnpm/@codingame+monaco-vscode-cea4d01f-6526-5c2f-8b09-b168fead499f-common@22.1.9/node_modules/@codingame/monaco-vscode-cea4d01f-6526-5c2f-8b09-b168fead499f-common
+│   │   ├── monaco-vscode-configuration-service-override -> ../.pnpm/@codingame+monaco-vscode-configuration-service-override@23.0.0/node_modules/@codingame/monaco-vscode-configuration-service-override
+│   │   ├── monaco-vscode-d26a96d3-122c-5a3d-a04d-deb5ff0f19c0-common -> ../.pnpm/@codingame+monaco-vscode-d26a96d3-122c-5a3d-a04d-deb5ff0f19c0-common@23.0.0/node_modules/@codingame/monaco-vscode-d26a96d3-122c-5a3d-a04d-deb5ff0f19c0-common
+│   │   ├── monaco-vscode-d392702e-4ad7-5904-a915-f6063284cf14-common -> ../.pnpm/@codingame+monaco-vscode-d392702e-4ad7-5904-a915-f6063284cf14-common@23.0.0/node_modules/@codingame/monaco-vscode-d392702e-4ad7-5904-a915-f6063284cf14-common
+│   │   ├── monaco-vscode-d481a59e-259c-524e-bee1-76483d75d3a1-common -> ../.pnpm/@codingame+monaco-vscode-d481a59e-259c-524e-bee1-76483d75d3a1-common@23.0.0/node_modules/@codingame/monaco-vscode-d481a59e-259c-524e-bee1-76483d75d3a1-common
+│   │   ├── monaco-vscode-d609a7d3-bf87-551a-884f-550a8b327ec5-common -> ../.pnpm/@codingame+monaco-vscode-d609a7d3-bf87-551a-884f-550a8b327ec5-common@22.1.9/node_modules/@codingame/monaco-vscode-d609a7d3-bf87-551a-884f-550a8b327ec5-common
+│   │   ├── monaco-vscode-d941ac7b-412f-57e3-b1bf-f6b0eb253b21-common -> ../.pnpm/@codingame+monaco-vscode-d941ac7b-412f-57e3-b1bf-f6b0eb253b21-common@22.1.9/node_modules/@codingame/monaco-vscode-d941ac7b-412f-57e3-b1bf-f6b0eb253b21-common
+│   │   ├── monaco-vscode-d987325e-3e05-53aa-b9ff-6f97476f64db-common -> ../.pnpm/@codingame+monaco-vscode-d987325e-3e05-53aa-b9ff-6f97476f64db-common@22.1.9/node_modules/@codingame/monaco-vscode-d987325e-3e05-53aa-b9ff-6f97476f64db-common
+│   │   ├── monaco-vscode-de235d7f-e72a-5adb-9256-acf6c64eb6f2-common -> ../.pnpm/@codingame+monaco-vscode-de235d7f-e72a-5adb-9256-acf6c64eb6f2-common@23.0.0/node_modules/@codingame/monaco-vscode-de235d7f-e72a-5adb-9256-acf6c64eb6f2-common
+│   │   ├── monaco-vscode-e39a1c8f-7892-5d9b-9987-7b10b79e1a0a-common -> ../.pnpm/@codingame+monaco-vscode-e39a1c8f-7892-5d9b-9987-7b10b79e1a0a-common@22.1.9/node_modules/@codingame/monaco-vscode-e39a1c8f-7892-5d9b-9987-7b10b79e1a0a-common
+│   │   ├── monaco-vscode-e59ecb8c-db32-5324-8fe4-cf9921fd92b8-common -> ../.pnpm/@codingame+monaco-vscode-e59ecb8c-db32-5324-8fe4-cf9921fd92b8-common@23.0.0/node_modules/@codingame/monaco-vscode-e59ecb8c-db32-5324-8fe4-cf9921fd92b8-common
+│   │   ├── monaco-vscode-e7e3c399-ecb3-58fd-82d6-1d2f4e38813e-common -> ../.pnpm/@codingame+monaco-vscode-e7e3c399-ecb3-58fd-82d6-1d2f4e38813e-common@23.0.0/node_modules/@codingame/monaco-vscode-e7e3c399-ecb3-58fd-82d6-1d2f4e38813e-common
+│   │   ├── monaco-vscode-eb7d5efd-2e60-59f8-9ba4-9a8ae8cb2957-common -> ../.pnpm/@codingame+monaco-vscode-eb7d5efd-2e60-59f8-9ba4-9a8ae8cb2957-common@22.1.9/node_modules/@codingame/monaco-vscode-eb7d5efd-2e60-59f8-9ba4-9a8ae8cb2957-common
+│   │   ├── monaco-vscode-eba0b9b3-174c-5dae-9867-a37810ca1808-common -> ../.pnpm/@codingame+monaco-vscode-eba0b9b3-174c-5dae-9867-a37810ca1808-common@22.1.9/node_modules/@codingame/monaco-vscode-eba0b9b3-174c-5dae-9867-a37810ca1808-common
+│   │   ├── monaco-vscode-eda30bac-0984-5b42-9362-c68996b85232-common -> ../.pnpm/@codingame+monaco-vscode-eda30bac-0984-5b42-9362-c68996b85232-common@22.1.9/node_modules/@codingame/monaco-vscode-eda30bac-0984-5b42-9362-c68996b85232-common
+│   │   ├── monaco-vscode-editor-api -> ../.pnpm/@codingame+monaco-vscode-editor-api@23.0.0/node_modules/@codingame/monaco-vscode-editor-api
+│   │   ├── monaco-vscode-editor-service-override -> ../.pnpm/@codingame+monaco-vscode-editor-service-override@23.0.0/node_modules/@codingame/monaco-vscode-editor-service-override
+│   │   ├── monaco-vscode-ef156ae1-7926-5925-b78f-228b206ed123-common -> ../.pnpm/@codingame+monaco-vscode-ef156ae1-7926-5925-b78f-228b206ed123-common@23.0.0/node_modules/@codingame/monaco-vscode-ef156ae1-7926-5925-b78f-228b206ed123-common
+│   │   ├── monaco-vscode-environment-service-override -> ../.pnpm/@codingame+monaco-vscode-environment-service-override@22.1.9/node_modules/@codingame/monaco-vscode-environment-service-override
+│   │   ├── monaco-vscode-extension-api -> ../.pnpm/@codingame+monaco-vscode-extension-api@23.0.0/node_modules/@codingame/monaco-vscode-extension-api
+│   │   ├── monaco-vscode-extensions-service-override -> ../.pnpm/@codingame+monaco-vscode-extensions-service-override@22.1.9/node_modules/@codingame/monaco-vscode-extensions-service-override
+│   │   ├── monaco-vscode-f1bbc6d3-6129-583c-a2ba-c80b832993d2-common -> ../.pnpm/@codingame+monaco-vscode-f1bbc6d3-6129-583c-a2ba-c80b832993d2-common@23.0.0/node_modules/@codingame/monaco-vscode-f1bbc6d3-6129-583c-a2ba-c80b832993d2-common
+│   │   ├── monaco-vscode-f22e7e55-aee8-5b52-a6bc-950efd9f5890-common -> ../.pnpm/@codingame+monaco-vscode-f22e7e55-aee8-5b52-a6bc-950efd9f5890-common@22.1.9/node_modules/@codingame/monaco-vscode-f22e7e55-aee8-5b52-a6bc-950efd9f5890-common
+│   │   ├── monaco-vscode-f24e325c-2ce0-5bba-8236-bfc4f53180ab-common -> ../.pnpm/@codingame+monaco-vscode-f24e325c-2ce0-5bba-8236-bfc4f53180ab-common@23.0.0/node_modules/@codingame/monaco-vscode-f24e325c-2ce0-5bba-8236-bfc4f53180ab-common
+│   │   ├── monaco-vscode-files-service-override -> ../.pnpm/@codingame+monaco-vscode-files-service-override@22.1.9/node_modules/@codingame/monaco-vscode-files-service-override
+│   │   ├── monaco-vscode-host-service-override -> ../.pnpm/@codingame+monaco-vscode-host-service-override@22.1.9/node_modules/@codingame/monaco-vscode-host-service-override
+│   │   ├── monaco-vscode-keybindings-service-override -> ../.pnpm/@codingame+monaco-vscode-keybindings-service-override@23.0.0/node_modules/@codingame/monaco-vscode-keybindings-service-override
+│   │   ├── monaco-vscode-language-pack-cs -> ../.pnpm/@codingame+monaco-vscode-language-pack-cs@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-cs
+│   │   ├── monaco-vscode-language-pack-de -> ../.pnpm/@codingame+monaco-vscode-language-pack-de@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-de
+│   │   ├── monaco-vscode-language-pack-es -> ../.pnpm/@codingame+monaco-vscode-language-pack-es@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-es
+│   │   ├── monaco-vscode-language-pack-fr -> ../.pnpm/@codingame+monaco-vscode-language-pack-fr@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-fr
+│   │   ├── monaco-vscode-language-pack-it -> ../.pnpm/@codingame+monaco-vscode-language-pack-it@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-it
+│   │   ├── monaco-vscode-language-pack-ja -> ../.pnpm/@codingame+monaco-vscode-language-pack-ja@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-ja
+│   │   ├── monaco-vscode-language-pack-ko -> ../.pnpm/@codingame+monaco-vscode-language-pack-ko@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-ko
+│   │   ├── monaco-vscode-language-pack-pl -> ../.pnpm/@codingame+monaco-vscode-language-pack-pl@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-pl
+│   │   ├── monaco-vscode-language-pack-pt-br -> ../.pnpm/@codingame+monaco-vscode-language-pack-pt-br@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-pt-br
+│   │   ├── monaco-vscode-language-pack-qps-ploc -> ../.pnpm/@codingame+monaco-vscode-language-pack-qps-ploc@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-qps-ploc
+│   │   ├── monaco-vscode-language-pack-ru -> ../.pnpm/@codingame+monaco-vscode-language-pack-ru@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-ru
+│   │   ├── monaco-vscode-language-pack-tr -> ../.pnpm/@codingame+monaco-vscode-language-pack-tr@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-tr
+│   │   ├── monaco-vscode-language-pack-zh-hans -> ../.pnpm/@codingame+monaco-vscode-language-pack-zh-hans@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-zh-hans
+│   │   ├── monaco-vscode-language-pack-zh-hant -> ../.pnpm/@codingame+monaco-vscode-language-pack-zh-hant@23.0.0/node_modules/@codingame/monaco-vscode-language-pack-zh-hant
+│   │   ├── monaco-vscode-languages-service-override -> ../.pnpm/@codingame+monaco-vscode-languages-service-override@23.0.0/node_modules/@codingame/monaco-vscode-languages-service-override
+│   │   ├── monaco-vscode-layout-service-override -> ../.pnpm/@codingame+monaco-vscode-layout-service-override@22.1.9/node_modules/@codingame/monaco-vscode-layout-service-override
+│   │   ├── monaco-vscode-localization-service-override -> ../.pnpm/@codingame+monaco-vscode-localization-service-override@23.0.0/node_modules/@codingame/monaco-vscode-localization-service-override
+│   │   ├── monaco-vscode-log-service-override -> ../.pnpm/@codingame+monaco-vscode-log-service-override@23.0.0/node_modules/@codingame/monaco-vscode-log-service-override
+│   │   ├── monaco-vscode-model-service-override -> ../.pnpm/@codingame+monaco-vscode-model-service-override@23.0.0/node_modules/@codingame/monaco-vscode-model-service-override
+│   │   ├── monaco-vscode-monarch-service-override -> ../.pnpm/@codingame+monaco-vscode-monarch-service-override@23.0.0/node_modules/@codingame/monaco-vscode-monarch-service-override
+│   │   ├── monaco-vscode-quickaccess-service-override -> ../.pnpm/@codingame+monaco-vscode-quickaccess-service-override@22.1.9/node_modules/@codingame/monaco-vscode-quickaccess-service-override
+│   │   ├── monaco-vscode-textmate-service-override -> ../.pnpm/@codingame+monaco-vscode-textmate-service-override@23.0.0/node_modules/@codingame/monaco-vscode-textmate-service-override
+│   │   ├── monaco-vscode-theme-defaults-default-extension -> ../.pnpm/@codingame+monaco-vscode-theme-defaults-default-extension@23.0.0/node_modules/@codingame/monaco-vscode-theme-defaults-default-extension
+│   │   ├── monaco-vscode-theme-service-override -> ../.pnpm/@codingame+monaco-vscode-theme-service-override@23.0.0/node_modules/@codingame/monaco-vscode-theme-service-override
+│   │   ├── monaco-vscode-view-banner-service-override -> ../.pnpm/@codingame+monaco-vscode-view-banner-service-override@23.0.0/node_modules/@codingame/monaco-vscode-view-banner-service-override
+│   │   ├── monaco-vscode-view-common-service-override -> ../.pnpm/@codingame+monaco-vscode-view-common-service-override@23.0.0/node_modules/@codingame/monaco-vscode-view-common-service-override
+│   │   ├── monaco-vscode-views-service-override -> ../.pnpm/@codingame+monaco-vscode-views-service-override@23.0.0/node_modules/@codingame/monaco-vscode-views-service-override
+│   │   ├── monaco-vscode-view-status-bar-service-override -> ../.pnpm/@codingame+monaco-vscode-view-status-bar-service-override@23.0.0/node_modules/@codingame/monaco-vscode-view-status-bar-service-override
+│   │   ├── monaco-vscode-view-title-bar-service-override -> ../.pnpm/@codingame+monaco-vscode-view-title-bar-service-override@23.0.0/node_modules/@codingame/monaco-vscode-view-title-bar-service-override
+│   │   └── monaco-vscode-workbench-service-override -> ../.pnpm/@codingame+monaco-vscode-workbench-service-override@23.0.0/node_modules/@codingame/monaco-vscode-workbench-service-override
+│   ├── color-convert -> .pnpm/color-convert@2.0.1/node_modules/color-convert
+│   ├── colorette -> .pnpm/colorette@2.0.20/node_modules/colorette
+│   ├── color-name -> .pnpm/color-name@1.1.4/node_modules/color-name
+│   ├── combined-stream -> .pnpm/combined-stream@1.0.8/node_modules/combined-stream
+│   ├── commander -> .pnpm/commander@14.0.2/node_modules/commander
+│   ├── concat-map -> .pnpm/concat-map@0.0.1/node_modules/concat-map
+│   ├── concat-stream -> .pnpm/concat-stream@2.0.0/node_modules/concat-stream
+│   ├── content-disposition -> .pnpm/content-disposition@0.5.4/node_modules/content-disposition
+│   ├── content-type -> .pnpm/content-type@1.0.5/node_modules/content-type
+│   ├── convert-source-map -> .pnpm/convert-source-map@2.0.0/node_modules/convert-source-map
+│   ├── cookie -> .pnpm/cookie@0.7.1/node_modules/cookie
+│   ├── cookie-signature -> .pnpm/cookie-signature@1.0.6/node_modules/cookie-signature
+│   ├── copy-anything -> .pnpm/copy-anything@4.0.5/node_modules/copy-anything
+│   ├── core-util-is -> .pnpm/core-util-is@1.0.2/node_modules/core-util-is
+│   ├── cors -> .pnpm/cors@2.8.5/node_modules/cors
+│   ├── cosmiconfig -> .pnpm/cosmiconfig@9.0.0_typescript@5.9.3/node_modules/cosmiconfig
+│   ├── cpu-features -> .pnpm/cpu-features@0.0.10/node_modules/cpu-features
+│   ├── crc -> .pnpm/crc@3.8.0/node_modules/crc
+│   ├── crelt -> .pnpm/crelt@1.0.6/node_modules/crelt
+│   ├── cross-env -> .pnpm/cross-env@7.0.3/node_modules/cross-env
+│   ├── cross-spawn -> .pnpm/cross-spawn@7.0.6/node_modules/cross-spawn
+│   ├── cssesc -> .pnpm/cssesc@3.0.0/node_modules/cssesc
+│   ├── css-selector-tokenizer -> .pnpm/css-selector-tokenizer@0.8.0/node_modules/css-selector-tokenizer
+│   ├── cssstyle -> .pnpm/cssstyle@5.3.3/node_modules/cssstyle
+│   ├── @csstools
+│   │   ├── color-helpers -> ../.pnpm/@csstools+color-helpers@5.1.0/node_modules/@csstools/color-helpers
+│   │   ├── css-calc -> ../.pnpm/@csstools+css-calc@2.1.4_@csstools+css-parser-algorithms@3.0.5_@csstools+css-tokenizer@_e8d5cb57048a11d39451107410ea18b6/node_modules/@csstools/css-calc
+│   │   ├── css-color-parser -> ../.pnpm/@csstools+css-color-parser@3.1.0_@csstools+css-parser-algorithms@3.0.5_@csstools+css-to_ac3eaa9e6357e2e6fe2577d663b974a1/node_modules/@csstools/css-color-parser
+│   │   ├── css-parser-algorithms -> ../.pnpm/@csstools+css-parser-algorithms@3.0.5_@csstools+css-tokenizer@3.0.4/node_modules/@csstools/css-parser-algorithms
+│   │   ├── css-syntax-patches-for-csstree -> ../.pnpm/@csstools+css-syntax-patches-for-csstree@1.0.17/node_modules/@csstools/css-syntax-patches-for-csstree
+│   │   └── css-tokenizer -> ../.pnpm/@csstools+css-tokenizer@3.0.4/node_modules/@csstools/css-tokenizer
+│   ├── css-tree -> .pnpm/css-tree@3.1.0/node_modules/css-tree
+│   ├── csstype -> .pnpm/csstype@3.2.1/node_modules/csstype
+│   ├── culori -> .pnpm/culori@4.0.2/node_modules/culori
+│   ├── data-uri-to-buffer -> .pnpm/data-uri-to-buffer@4.0.1/node_modules/data-uri-to-buffer
+│   ├── data-urls -> .pnpm/data-urls@6.0.0/node_modules/data-urls
+│   ├── data-view-buffer -> .pnpm/data-view-buffer@1.0.2/node_modules/data-view-buffer
+│   ├── data-view-byte-length -> .pnpm/data-view-byte-length@1.0.2/node_modules/data-view-byte-length
+│   ├── data-view-byte-offset -> .pnpm/data-view-byte-offset@1.0.1/node_modules/data-view-byte-offset
+│   ├── debug -> .pnpm/debug@4.4.3/node_modules/debug
+│   ├── decimal.js -> .pnpm/decimal.js@10.6.0/node_modules/decimal.js
+│   ├── deep-eql -> .pnpm/deep-eql@5.0.2/node_modules/deep-eql
+│   ├── deep-is -> .pnpm/deep-is@0.1.4/node_modules/deep-is
+│   ├── define-data-property -> .pnpm/define-data-property@1.1.4/node_modules/define-data-property
+│   ├── define-properties -> .pnpm/define-properties@1.2.1/node_modules/define-properties
+│   ├── degenerator -> .pnpm/degenerator@5.0.1/node_modules/degenerator
+│   ├── delayed-stream -> .pnpm/delayed-stream@1.0.0/node_modules/delayed-stream
+│   ├── depd -> .pnpm/depd@2.0.0/node_modules/depd
+│   ├── destroy -> .pnpm/destroy@1.2.0/node_modules/destroy
+│   ├── @develar
+│   ├── devtools-protocol -> .pnpm/devtools-protocol@0.0.1521046/node_modules/devtools-protocol
+│   ├── didyoumean -> .pnpm/didyoumean@1.2.2/node_modules/didyoumean
+│   ├── dir-glob -> .pnpm/dir-glob@3.0.1/node_modules/dir-glob
+│   ├── dlv -> .pnpm/dlv@1.1.3/node_modules/dlv
+│   ├── dmg-license -> .pnpm/dmg-license@1.0.11/node_modules/dmg-license
+│   ├── doctrine -> .pnpm/doctrine@2.1.0/node_modules/doctrine
+│   ├── dompurify -> .pnpm/dompurify@3.2.7/node_modules/dompurify
+│   ├── dotenv -> .pnpm/dotenv@16.6.1/node_modules/dotenv
+│   ├── dotenv-cli -> .pnpm/dotenv-cli@11.0.0/node_modules/dotenv-cli
+│   ├── dotenv-expand -> .pnpm/dotenv-expand@12.0.3/node_modules/dotenv-expand
+│   ├── dunder-proto -> .pnpm/dunder-proto@1.0.1/node_modules/dunder-proto
+│   ├── eastasianwidth -> .pnpm/eastasianwidth@0.2.0/node_modules/eastasianwidth
+│   ├── ecdsa-sig-formatter -> .pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter
+│   ├── ee-first -> .pnpm/ee-first@1.1.1/node_modules/ee-first
+│   ├── @electron
+│   ├── electron-to-chromium -> .pnpm/electron-to-chromium@1.5.254/node_modules/electron-to-chromium
+│   ├── emoji-regex -> .pnpm/emoji-regex@10.6.0/node_modules/emoji-regex
+│   ├── encodeurl -> .pnpm/encodeurl@2.0.0/node_modules/encodeurl
+│   ├── end-of-stream -> .pnpm/end-of-stream@1.4.5/node_modules/end-of-stream
+│   ├── entities -> .pnpm/entities@6.0.1/node_modules/entities
+│   ├── environment -> .pnpm/environment@1.1.0/node_modules/environment
+│   ├── env-paths -> .pnpm/env-paths@2.2.1/node_modules/env-paths
+│   ├── error-ex -> .pnpm/error-ex@1.3.4/node_modules/error-ex
+│   ├── es-abstract -> .pnpm/es-abstract@1.24.0/node_modules/es-abstract
+│   ├── @esbuild
+│   │   ├── aix-ppc64 -> ../.pnpm/@esbuild+aix-ppc64@0.21.5/node_modules/@esbuild/aix-ppc64
+│   │   ├── android-arm -> ../.pnpm/@esbuild+android-arm@0.21.5/node_modules/@esbuild/android-arm
+│   │   ├── android-arm64 -> ../.pnpm/@esbuild+android-arm64@0.21.5/node_modules/@esbuild/android-arm64
+│   │   ├── android-x64 -> ../.pnpm/@esbuild+android-x64@0.21.5/node_modules/@esbuild/android-x64
+│   │   ├── darwin-arm64 -> ../.pnpm/@esbuild+darwin-arm64@0.21.5/node_modules/@esbuild/darwin-arm64
+│   │   ├── darwin-x64 -> ../.pnpm/@esbuild+darwin-x64@0.21.5/node_modules/@esbuild/darwin-x64
+│   │   ├── freebsd-arm64 -> ../.pnpm/@esbuild+freebsd-arm64@0.21.5/node_modules/@esbuild/freebsd-arm64
+│   │   ├── freebsd-x64 -> ../.pnpm/@esbuild+freebsd-x64@0.21.5/node_modules/@esbuild/freebsd-x64
+│   │   ├── linux-arm -> ../.pnpm/@esbuild+linux-arm@0.21.5/node_modules/@esbuild/linux-arm
+│   │   ├── linux-arm64 -> ../.pnpm/@esbuild+linux-arm64@0.21.5/node_modules/@esbuild/linux-arm64
+│   │   ├── linux-ia32 -> ../.pnpm/@esbuild+linux-ia32@0.21.5/node_modules/@esbuild/linux-ia32
+│   │   ├── linux-loong64 -> ../.pnpm/@esbuild+linux-loong64@0.21.5/node_modules/@esbuild/linux-loong64
+│   │   ├── linux-mips64el -> ../.pnpm/@esbuild+linux-mips64el@0.21.5/node_modules/@esbuild/linux-mips64el
+│   │   ├── linux-ppc64 -> ../.pnpm/@esbuild+linux-ppc64@0.21.5/node_modules/@esbuild/linux-ppc64
+│   │   ├── linux-riscv64 -> ../.pnpm/@esbuild+linux-riscv64@0.21.5/node_modules/@esbuild/linux-riscv64
+│   │   ├── linux-s390x -> ../.pnpm/@esbuild+linux-s390x@0.21.5/node_modules/@esbuild/linux-s390x
+│   │   ├── linux-x64 -> ../.pnpm/@esbuild+linux-x64@0.21.5/node_modules/@esbuild/linux-x64
+│   │   ├── netbsd-arm64 -> ../.pnpm/@esbuild+netbsd-arm64@0.25.12/node_modules/@esbuild/netbsd-arm64
+│   │   ├── netbsd-x64 -> ../.pnpm/@esbuild+netbsd-x64@0.21.5/node_modules/@esbuild/netbsd-x64
+│   │   ├── openbsd-arm64 -> ../.pnpm/@esbuild+openbsd-arm64@0.25.12/node_modules/@esbuild/openbsd-arm64
+│   │   ├── openbsd-x64 -> ../.pnpm/@esbuild+openbsd-x64@0.21.5/node_modules/@esbuild/openbsd-x64
+│   │   ├── openharmony-arm64 -> ../.pnpm/@esbuild+openharmony-arm64@0.25.12/node_modules/@esbuild/openharmony-arm64
+│   │   ├── sunos-x64 -> ../.pnpm/@esbuild+sunos-x64@0.21.5/node_modules/@esbuild/sunos-x64
+│   │   ├── win32-arm64 -> ../.pnpm/@esbuild+win32-arm64@0.21.5/node_modules/@esbuild/win32-arm64
+│   │   ├── win32-ia32 -> ../.pnpm/@esbuild+win32-ia32@0.21.5/node_modules/@esbuild/win32-ia32
+│   │   └── win32-x64 -> ../.pnpm/@esbuild+win32-x64@0.21.5/node_modules/@esbuild/win32-x64
+│   ├── esbuild -> .pnpm/esbuild@0.25.12/node_modules/esbuild
+│   ├── escalade -> .pnpm/escalade@3.2.0/node_modules/escalade
+│   ├── escape-html -> .pnpm/escape-html@1.0.3/node_modules/escape-html
+│   ├── escape-string-regexp -> .pnpm/escape-string-regexp@4.0.0/node_modules/escape-string-regexp
+│   ├── escodegen -> .pnpm/escodegen@2.1.0/node_modules/escodegen
+│   ├── es-define-property -> .pnpm/es-define-property@1.0.1/node_modules/es-define-property
+│   ├── es-errors -> .pnpm/es-errors@1.3.0/node_modules/es-errors
+│   ├── es-iterator-helpers -> .pnpm/es-iterator-helpers@1.2.1/node_modules/es-iterator-helpers
+│   ├── @eslint
+│   │   ├── eslintrc -> ../.pnpm/@eslint+eslintrc@2.1.4/node_modules/@eslint/eslintrc
+│   │   └── js -> ../.pnpm/@eslint+js@9.39.1/node_modules/@eslint/js
+│   ├── eslint -> .pnpm/eslint@8.57.1/node_modules/eslint
+│   ├── @eslint-community
+│   │   ├── eslint-utils -> ../.pnpm/@eslint-community+eslint-utils@4.9.0_eslint@8.57.1/node_modules/@eslint-community/eslint-utils
+│   │   └── regexpp -> ../.pnpm/@eslint-community+regexpp@4.12.2/node_modules/@eslint-community/regexpp
+│   ├── eslint-config-turbo -> .pnpm/eslint-config-turbo@2.6.1_eslint@8.57.1_turbo@2.6.1/node_modules/eslint-config-turbo
+│   ├── eslint-plugin-react -> .pnpm/eslint-plugin-react@7.37.5_eslint@8.57.1/node_modules/eslint-plugin-react
+│   ├── eslint-plugin-react-hooks -> .pnpm/eslint-plugin-react-hooks@4.6.2_eslint@8.57.1/node_modules/eslint-plugin-react-hooks
+│   ├── eslint-plugin-react-refresh -> .pnpm/eslint-plugin-react-refresh@0.4.24_eslint@8.57.1/node_modules/eslint-plugin-react-refresh
+│   ├── eslint-plugin-turbo -> .pnpm/eslint-plugin-turbo@2.6.1_eslint@8.57.1_turbo@2.6.1/node_modules/eslint-plugin-turbo
+│   ├── eslint-scope -> .pnpm/eslint-scope@7.2.2/node_modules/eslint-scope
+│   ├── eslint-visitor-keys -> .pnpm/eslint-visitor-keys@3.4.3/node_modules/eslint-visitor-keys
+│   ├── es-module-lexer -> .pnpm/es-module-lexer@1.7.0/node_modules/es-module-lexer
+│   ├── es-object-atoms -> .pnpm/es-object-atoms@1.1.1/node_modules/es-object-atoms
+│   ├── espree -> .pnpm/espree@9.6.1/node_modules/espree
+│   ├── esprima -> .pnpm/esprima@4.0.1/node_modules/esprima
+│   ├── esquery -> .pnpm/esquery@1.6.0/node_modules/esquery
+│   ├── esrecurse -> .pnpm/esrecurse@4.3.0/node_modules/esrecurse
+│   ├── es-set-tostringtag -> .pnpm/es-set-tostringtag@2.1.0/node_modules/es-set-tostringtag
+│   ├── es-shim-unscopables -> .pnpm/es-shim-unscopables@1.1.0/node_modules/es-shim-unscopables
+│   ├── es-to-primitive -> .pnpm/es-to-primitive@1.3.0/node_modules/es-to-primitive
+│   ├── estraverse -> .pnpm/estraverse@5.3.0/node_modules/estraverse
+│   ├── estree-walker -> .pnpm/estree-walker@3.0.3/node_modules/estree-walker
+│   ├── esutils -> .pnpm/esutils@2.0.3/node_modules/esutils
+│   ├── etag -> .pnpm/etag@1.8.1/node_modules/etag
+│   ├── eventemitter3 -> .pnpm/eventemitter3@5.0.1/node_modules/eventemitter3
+│   ├── eventsource -> .pnpm/eventsource@3.0.7/node_modules/eventsource
+│   ├── eventsource-parser -> .pnpm/eventsource-parser@3.0.6/node_modules/eventsource-parser
+│   ├── events-universal -> .pnpm/events-universal@1.0.1/node_modules/events-universal
+│   ├── expect-type -> .pnpm/expect-type@1.2.2/node_modules/expect-type
+│   ├── express -> .pnpm/express@4.21.2/node_modules/express
+│   ├── express-rate-limit -> .pnpm/express-rate-limit@7.5.1_express@5.1.0/node_modules/express-rate-limit
+│   ├── extend -> .pnpm/extend@3.0.2/node_modules/extend
+│   ├── extract-zip -> .pnpm/extract-zip@2.0.1/node_modules/extract-zip
+│   ├── extsprintf -> .pnpm/extsprintf@1.4.1/node_modules/extsprintf
+│   ├── fast-deep-equal -> .pnpm/fast-deep-equal@3.1.3/node_modules/fast-deep-equal
+│   ├── fast-equals -> .pnpm/fast-equals@4.0.3/node_modules/fast-equals
+│   ├── fast-fifo -> .pnpm/fast-fifo@1.3.2/node_modules/fast-fifo
+│   ├── fast-glob -> .pnpm/fast-glob@3.3.3/node_modules/fast-glob
+│   ├── fast-json-stable-stringify -> .pnpm/fast-json-stable-stringify@2.1.0/node_modules/fast-json-stable-stringify
+│   ├── fast-levenshtein -> .pnpm/fast-levenshtein@2.0.6/node_modules/fast-levenshtein
+│   ├── fastparse -> .pnpm/fastparse@1.1.2/node_modules/fastparse
+│   ├── fastq -> .pnpm/fastq@1.19.1/node_modules/fastq
+│   ├── fast-uri -> .pnpm/fast-uri@3.1.0/node_modules/fast-uri
+│   ├── fd-slicer -> .pnpm/fd-slicer@1.1.0/node_modules/fd-slicer
+│   ├── fetch-blob -> .pnpm/fetch-blob@3.2.0/node_modules/fetch-blob
+│   ├── file-entry-cache -> .pnpm/file-entry-cache@6.0.1/node_modules/file-entry-cache
+│   ├── fill-range -> .pnpm/fill-range@7.1.1/node_modules/fill-range
+│   ├── finalhandler -> .pnpm/finalhandler@1.3.1/node_modules/finalhandler
+│   ├── find-up -> .pnpm/find-up@5.0.0/node_modules/find-up
+│   ├── flat-cache -> .pnpm/flat-cache@3.2.0/node_modules/flat-cache
+│   ├── flatted -> .pnpm/flatted@3.3.3/node_modules/flatted
+│   ├── @floating-ui
+│   │   ├── core -> ../.pnpm/@floating-ui+core@1.7.3/node_modules/@floating-ui/core
+│   │   ├── dom -> ../.pnpm/@floating-ui+dom@1.7.4/node_modules/@floating-ui/dom
+│   │   └── utils -> ../.pnpm/@floating-ui+utils@0.2.10/node_modules/@floating-ui/utils
+│   ├── flyonui -> .pnpm/flyonui@1.3.1_postcss@8.5.6/node_modules/flyonui
+│   ├── follow-redirects -> .pnpm/follow-redirects@1.15.11/node_modules/follow-redirects
+│   ├── for-each -> .pnpm/for-each@0.3.5/node_modules/for-each
+│   ├── foreground-child -> .pnpm/foreground-child@3.3.1/node_modules/foreground-child
+│   ├── form-data -> .pnpm/form-data@4.0.4/node_modules/form-data
+│   ├── formdata-polyfill -> .pnpm/formdata-polyfill@4.0.10/node_modules/formdata-polyfill
+│   ├── forwarded -> .pnpm/forwarded@0.2.0/node_modules/forwarded
+│   ├── fraction.js -> .pnpm/fraction.js@5.3.4/node_modules/fraction.js
+│   ├── fresh -> .pnpm/fresh@0.5.2/node_modules/fresh
+│   ├── fsevents -> .pnpm/fsevents@2.3.3/node_modules/fsevents
+│   ├── fs.realpath -> .pnpm/fs.realpath@1.0.0/node_modules/fs.realpath
+│   ├── function-bind -> .pnpm/function-bind@1.1.2/node_modules/function-bind
+│   ├── function.prototype.name -> .pnpm/function.prototype.name@1.1.8/node_modules/function.prototype.name
+│   ├── functions-have-names -> .pnpm/functions-have-names@1.2.3/node_modules/functions-have-names
+│   ├── gaxios -> .pnpm/gaxios@7.1.3/node_modules/gaxios
+│   ├── gcp-metadata -> .pnpm/gcp-metadata@8.1.2/node_modules/gcp-metadata
+│   ├── generator-function -> .pnpm/generator-function@2.0.1/node_modules/generator-function
+│   ├── generic-pool -> .pnpm/generic-pool@3.9.0/node_modules/generic-pool
+│   ├── gensync -> .pnpm/gensync@1.0.0-beta.2/node_modules/gensync
+│   ├── get-caller-file -> .pnpm/get-caller-file@2.0.5/node_modules/get-caller-file
+│   ├── get-east-asian-width -> .pnpm/get-east-asian-width@1.4.0/node_modules/get-east-asian-width
+│   ├── get-intrinsic -> .pnpm/get-intrinsic@1.3.0/node_modules/get-intrinsic
+│   ├── get-proto -> .pnpm/get-proto@1.0.1/node_modules/get-proto
+│   ├── get-stream -> .pnpm/get-stream@5.2.0/node_modules/get-stream
+│   ├── get-symbol-description -> .pnpm/get-symbol-description@1.1.0/node_modules/get-symbol-description
+│   ├── get-tsconfig -> .pnpm/get-tsconfig@4.13.0/node_modules/get-tsconfig
+│   ├── get-uri -> .pnpm/get-uri@6.0.5/node_modules/get-uri
+│   ├── glob -> .pnpm/glob@10.4.5/node_modules/glob
+│   ├── globals -> .pnpm/globals@15.15.0/node_modules/globals
+│   ├── globalthis -> .pnpm/globalthis@1.0.4/node_modules/globalthis
+│   ├── globby -> .pnpm/globby@11.1.0/node_modules/globby
+│   ├── glob-parent -> .pnpm/glob-parent@6.0.2/node_modules/glob-parent
+│   ├── glob-to-regex.js -> .pnpm/glob-to-regex.js@1.2.0_tslib@2.8.1/node_modules/glob-to-regex.js
+│   ├── @google
+│   │   └── genai -> ../.pnpm/@google+genai@1.30.0_@modelcontextprotocol+sdk@1.22.0/node_modules/@google/genai
+│   ├── google-auth-library -> .pnpm/google-auth-library@10.5.0/node_modules/google-auth-library
+│   ├── google-logging-utils -> .pnpm/google-logging-utils@1.1.3/node_modules/google-logging-utils
+│   ├── gopd -> .pnpm/gopd@1.2.0/node_modules/gopd
+│   ├── graphemer -> .pnpm/graphemer@1.4.0/node_modules/graphemer
+│   ├── @grpc
+│   │   ├── grpc-js -> ../.pnpm/@grpc+grpc-js@1.14.1/node_modules/@grpc/grpc-js
+│   │   └── proto-loader -> ../.pnpm/@grpc+proto-loader@0.8.0/node_modules/@grpc/proto-loader
+│   ├── gtoken -> .pnpm/gtoken@8.0.0/node_modules/gtoken
+│   ├── has-bigints -> .pnpm/has-bigints@1.1.0/node_modules/has-bigints
+│   ├── has-flag -> .pnpm/has-flag@4.0.0/node_modules/has-flag
+│   ├── hasown -> .pnpm/hasown@2.0.2/node_modules/hasown
+│   ├── has-property-descriptors -> .pnpm/has-property-descriptors@1.0.2/node_modules/has-property-descriptors
+│   ├── has-proto -> .pnpm/has-proto@1.2.0/node_modules/has-proto
+│   ├── has-symbols -> .pnpm/has-symbols@1.1.0/node_modules/has-symbols
+│   ├── has-tostringtag -> .pnpm/has-tostringtag@1.0.2/node_modules/has-tostringtag
+│   ├── html-encoding-sniffer -> .pnpm/html-encoding-sniffer@4.0.0/node_modules/html-encoding-sniffer
+│   ├── http-errors -> .pnpm/http-errors@2.0.0/node_modules/http-errors
+│   ├── http-proxy-agent -> .pnpm/http-proxy-agent@7.0.2/node_modules/http-proxy-agent
+│   ├── https-proxy-agent -> .pnpm/https-proxy-agent@7.0.6/node_modules/https-proxy-agent
+│   ├── @humanwhocodes
+│   │   ├── config-array -> ../.pnpm/@humanwhocodes+config-array@0.13.0/node_modules/@humanwhocodes/config-array
+│   │   ├── module-importer -> ../.pnpm/@humanwhocodes+module-importer@1.0.1/node_modules/@humanwhocodes/module-importer
+│   │   └── object-schema -> ../.pnpm/@humanwhocodes+object-schema@2.0.3/node_modules/@humanwhocodes/object-schema
+│   ├── husky -> .pnpm/husky@9.1.7/node_modules/husky
+│   ├── hyperdyperid -> .pnpm/hyperdyperid@1.2.0/node_modules/hyperdyperid
+│   ├── iconv-corefoundation -> .pnpm/iconv-corefoundation@1.1.7/node_modules/iconv-corefoundation
+│   ├── iconv-lite -> .pnpm/iconv-lite@0.4.24/node_modules/iconv-lite
+│   ├── ignore -> .pnpm/ignore@7.0.5/node_modules/ignore
+│   ├── import-fresh -> .pnpm/import-fresh@3.3.1/node_modules/import-fresh
+│   ├── import-in-the-middle -> .pnpm/import-in-the-middle@1.15.0/node_modules/import-in-the-middle
+│   ├── imurmurhash -> .pnpm/imurmurhash@0.1.4/node_modules/imurmurhash
+│   ├── inflight -> .pnpm/inflight@1.0.6/node_modules/inflight
+│   ├── inherits -> .pnpm/inherits@2.0.4/node_modules/inherits
+│   ├── internal-slot -> .pnpm/internal-slot@1.1.0/node_modules/internal-slot
+│   ├── ip-address -> .pnpm/ip-address@10.1.0/node_modules/ip-address
+│   ├── ipaddr.js -> .pnpm/ipaddr.js@1.9.1/node_modules/ipaddr.js
+│   ├── @isaacs
+│   │   └── cliui -> ../.pnpm/@isaacs+cliui@8.0.2/node_modules/@isaacs/cliui
+│   ├── isarray -> .pnpm/isarray@2.0.5/node_modules/isarray
+│   ├── is-array-buffer -> .pnpm/is-array-buffer@3.0.5/node_modules/is-array-buffer
+│   ├── is-arrayish -> .pnpm/is-arrayish@0.2.1/node_modules/is-arrayish
+│   ├── is-async-function -> .pnpm/is-async-function@2.1.1/node_modules/is-async-function
+│   ├── is-bigint -> .pnpm/is-bigint@1.1.0/node_modules/is-bigint
+│   ├── is-binary-path -> .pnpm/is-binary-path@2.1.0/node_modules/is-binary-path
+│   ├── is-boolean-object -> .pnpm/is-boolean-object@1.2.2/node_modules/is-boolean-object
+│   ├── is-callable -> .pnpm/is-callable@1.2.7/node_modules/is-callable
+│   ├── is-core-module -> .pnpm/is-core-module@2.16.1/node_modules/is-core-module
+│   ├── is-data-view -> .pnpm/is-data-view@1.0.2/node_modules/is-data-view
+│   ├── is-date-object -> .pnpm/is-date-object@1.1.0/node_modules/is-date-object
+│   ├── isexe -> .pnpm/isexe@2.0.0/node_modules/isexe
+│   ├── is-extglob -> .pnpm/is-extglob@2.1.1/node_modules/is-extglob
+│   ├── is-finalizationregistry -> .pnpm/is-finalizationregistry@1.1.1/node_modules/is-finalizationregistry
+│   ├── is-fullwidth-code-point -> .pnpm/is-fullwidth-code-point@5.1.0/node_modules/is-fullwidth-code-point
+│   ├── is-generator-function -> .pnpm/is-generator-function@1.1.2/node_modules/is-generator-function
+│   ├── is-glob -> .pnpm/is-glob@4.0.3/node_modules/is-glob
+│   ├── is-map -> .pnpm/is-map@2.0.3/node_modules/is-map
+│   ├── is-negative-zero -> .pnpm/is-negative-zero@2.0.3/node_modules/is-negative-zero
+│   ├── is-number -> .pnpm/is-number@7.0.0/node_modules/is-number
+│   ├── is-number-object -> .pnpm/is-number-object@1.1.1/node_modules/is-number-object
+│   ├── is-path-inside -> .pnpm/is-path-inside@3.0.3/node_modules/is-path-inside
+│   ├── is-potential-custom-element-name -> .pnpm/is-potential-custom-element-name@1.0.1/node_modules/is-potential-custom-element-name
+│   ├── is-promise -> .pnpm/is-promise@4.0.0/node_modules/is-promise
+│   ├── is-regex -> .pnpm/is-regex@1.2.1/node_modules/is-regex
+│   ├── is-set -> .pnpm/is-set@2.0.3/node_modules/is-set
+│   ├── is-shared-array-buffer -> .pnpm/is-shared-array-buffer@1.0.4/node_modules/is-shared-array-buffer
+│   ├── is-string -> .pnpm/is-string@1.1.1/node_modules/is-string
+│   ├── is-symbol -> .pnpm/is-symbol@1.1.1/node_modules/is-symbol
+│   ├── is-typed-array -> .pnpm/is-typed-array@1.1.15/node_modules/is-typed-array
+│   ├── is-weakmap -> .pnpm/is-weakmap@2.0.2/node_modules/is-weakmap
+│   ├── is-weakref -> .pnpm/is-weakref@1.1.1/node_modules/is-weakref
+│   ├── is-weakset -> .pnpm/is-weakset@2.0.4/node_modules/is-weakset
+│   ├── is-what -> .pnpm/is-what@5.5.0/node_modules/is-what
+│   ├── iterator.prototype -> .pnpm/iterator.prototype@1.1.5/node_modules/iterator.prototype
+│   ├── jackspeak -> .pnpm/jackspeak@3.4.3/node_modules/jackspeak
+│   ├── jiti -> .pnpm/jiti@1.21.7/node_modules/jiti
+│   ├── @jridgewell
+│   │   ├── gen-mapping -> ../.pnpm/@jridgewell+gen-mapping@0.3.13/node_modules/@jridgewell/gen-mapping
+│   │   ├── remapping -> ../.pnpm/@jridgewell+remapping@2.3.5/node_modules/@jridgewell/remapping
+│   │   ├── resolve-uri -> ../.pnpm/@jridgewell+resolve-uri@3.1.2/node_modules/@jridgewell/resolve-uri
+│   │   ├── sourcemap-codec -> ../.pnpm/@jridgewell+sourcemap-codec@1.5.5/node_modules/@jridgewell/sourcemap-codec
+│   │   └── trace-mapping -> ../.pnpm/@jridgewell+trace-mapping@0.3.31/node_modules/@jridgewell/trace-mapping
+│   ├── jschardet -> .pnpm/jschardet@3.1.4/node_modules/jschardet
+│   ├── jsdom -> .pnpm/jsdom@27.2.0/node_modules/jsdom
+│   ├── jsesc -> .pnpm/jsesc@3.1.0/node_modules/jsesc
+│   ├── json5 -> .pnpm/json5@2.2.3/node_modules/json5
+│   ├── json-bigint -> .pnpm/json-bigint@1.0.0/node_modules/json-bigint
+│   ├── json-buffer -> .pnpm/json-buffer@3.0.1/node_modules/json-buffer
+│   ├── @jsonjoy.com
+│   │   ├── base64 -> ../.pnpm/@jsonjoy.com+base64@1.1.2_tslib@2.8.1/node_modules/@jsonjoy.com/base64
+│   │   ├── buffers -> ../.pnpm/@jsonjoy.com+buffers@1.2.1_tslib@2.8.1/node_modules/@jsonjoy.com/buffers
+│   │   ├── codegen -> ../.pnpm/@jsonjoy.com+codegen@1.0.0_tslib@2.8.1/node_modules/@jsonjoy.com/codegen
+│   │   ├── json-pack -> ../.pnpm/@jsonjoy.com+json-pack@1.21.0_tslib@2.8.1/node_modules/@jsonjoy.com/json-pack
+│   │   ├── json-pointer -> ../.pnpm/@jsonjoy.com+json-pointer@1.0.2_tslib@2.8.1/node_modules/@jsonjoy.com/json-pointer
+│   │   └── util -> ../.pnpm/@jsonjoy.com+util@1.9.0_tslib@2.8.1/node_modules/@jsonjoy.com/util
+│   ├── json-parse-even-better-errors -> .pnpm/json-parse-even-better-errors@2.3.1/node_modules/json-parse-even-better-errors
+│   ├── json-schema-traverse -> .pnpm/json-schema-traverse@0.4.1/node_modules/json-schema-traverse
+│   ├── json-stable-stringify-without-jsonify -> .pnpm/json-stable-stringify-without-jsonify@1.0.1/node_modules/json-stable-stringify-without-jsonify
+│   ├── @jspreadsheet
+│   │   └── formula -> ../.pnpm/@jspreadsheet+formula@2.0.2/node_modules/@jspreadsheet/formula
+│   ├── jspreadsheet-ce -> .pnpm/jspreadsheet-ce@5.0.4/node_modules/jspreadsheet-ce
+│   ├── @js-sdsl
+│   │   └── ordered-map -> ../.pnpm/@js-sdsl+ordered-map@4.4.2/node_modules/@js-sdsl/ordered-map
+│   ├── js-tokens -> .pnpm/js-tokens@4.0.0/node_modules/js-tokens
+│   ├── jsuites -> .pnpm/jsuites@5.13.4/node_modules/jsuites
+│   ├── jsx-ast-utils -> .pnpm/jsx-ast-utils@3.3.5/node_modules/jsx-ast-utils
+│   ├── js-yaml -> .pnpm/js-yaml@4.1.1/node_modules/js-yaml
+│   ├── jwa -> .pnpm/jwa@2.0.1/node_modules/jwa
+│   ├── jws -> .pnpm/jws@4.0.0/node_modules/jws
+│   ├── keyv -> .pnpm/keyv@4.5.4/node_modules/keyv
+│   ├── @kwsites
+│   │   ├── file-exists -> ../.pnpm/@kwsites+file-exists@1.1.1/node_modules/@kwsites/file-exists
+│   │   └── promise-deferred -> ../.pnpm/@kwsites+promise-deferred@1.1.1/node_modules/@kwsites/promise-deferred
+│   ├── levn -> .pnpm/levn@0.4.1/node_modules/levn
+│   ├── lilconfig -> .pnpm/lilconfig@3.1.3/node_modules/lilconfig
+│   ├── lines-and-columns -> .pnpm/lines-and-columns@1.2.4/node_modules/lines-and-columns
+│   ├── linkify-it -> .pnpm/linkify-it@5.0.0/node_modules/linkify-it
+│   ├── linkifyjs -> .pnpm/linkifyjs@4.3.2/node_modules/linkifyjs
+│   ├── lint-staged -> .pnpm/lint-staged@16.2.7/node_modules/lint-staged
+│   ├── listr2 -> .pnpm/listr2@9.0.5/node_modules/listr2
+│   ├── locate-path -> .pnpm/locate-path@6.0.0/node_modules/locate-path
+│   ├── lodash.camelcase -> .pnpm/lodash.camelcase@4.3.0/node_modules/lodash.camelcase
+│   ├── lodash.merge -> .pnpm/lodash.merge@4.6.2/node_modules/lodash.merge
+│   ├── log-update -> .pnpm/log-update@6.1.0/node_modules/log-update
+│   ├── long -> .pnpm/long@5.3.2/node_modules/long
+│   ├── loose-envify -> .pnpm/loose-envify@1.4.0/node_modules/loose-envify
+│   ├── loupe -> .pnpm/loupe@3.2.1/node_modules/loupe
+│   ├── lru-cache -> .pnpm/lru-cache@11.2.2/node_modules/lru-cache
+│   ├── lucide-react -> .pnpm/lucide-react@0.553.0_react@18.3.1/node_modules/lucide-react
+│   ├── magic-string -> .pnpm/magic-string@0.30.21/node_modules/magic-string
+│   ├── @malept
+│   ├── markdown-it -> .pnpm/markdown-it@14.1.0/node_modules/markdown-it
+│   ├── marked -> .pnpm/marked@14.0.0/node_modules/marked
+│   ├── math-intrinsics -> .pnpm/math-intrinsics@1.1.0/node_modules/math-intrinsics
+│   ├── mdn-data -> .pnpm/mdn-data@2.12.2/node_modules/mdn-data
+│   ├── mdurl -> .pnpm/mdurl@2.0.0/node_modules/mdurl
+│   ├── media-typer -> .pnpm/media-typer@0.3.0/node_modules/media-typer
+│   ├── memfs -> .pnpm/memfs@4.51.0/node_modules/memfs
+│   ├── merge2 -> .pnpm/merge2@1.4.1/node_modules/merge2
+│   ├── merge-descriptors -> .pnpm/merge-descriptors@1.0.3/node_modules/merge-descriptors
+│   ├── methods -> .pnpm/methods@1.1.2/node_modules/methods
+│   ├── micromatch -> .pnpm/micromatch@4.0.8/node_modules/micromatch
+│   ├── mime -> .pnpm/mime@1.6.0/node_modules/mime
+│   ├── mime-db -> .pnpm/mime-db@1.52.0/node_modules/mime-db
+│   ├── mime-types -> .pnpm/mime-types@2.1.35/node_modules/mime-types
+│   ├── mimic-function -> .pnpm/mimic-function@5.0.1/node_modules/mimic-function
+│   ├── minimatch -> .pnpm/minimatch@3.1.2/node_modules/minimatch
+│   ├── minimist -> .pnpm/minimist@1.2.8/node_modules/minimist
+│   ├── mitt -> .pnpm/mitt@3.0.1/node_modules/mitt
+│   ├── @modelcontextprotocol
+│   │   └── sdk -> ../.pnpm/@modelcontextprotocol+sdk@1.22.0/node_modules/@modelcontextprotocol/sdk
+│   ├── module-details-from-path -> .pnpm/module-details-from-path@1.0.4/node_modules/module-details-from-path
+│   ├── @monaco-editor
+│   │   ├── loader -> ../.pnpm/@monaco-editor+loader@1.6.1/node_modules/@monaco-editor/loader
+│   │   └── react -> ../.pnpm/@monaco-editor+react@4.7.0_monaco-editor@0.54.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@monaco-editor/react
+│   ├── monaco-editor -> .pnpm/monaco-editor@0.54.0/node_modules/monaco-editor
+│   ├── monaco-languageclient -> .pnpm/monaco-languageclient@10.3.0/node_modules/monaco-languageclient
+│   ├── morgan -> .pnpm/morgan@1.10.1/node_modules/morgan
+│   ├── @mozilla
+│   │   └── readability -> ../.pnpm/@mozilla+readability@0.6.0/node_modules/@mozilla/readability
+│   ├── ms -> .pnpm/ms@2.0.0/node_modules/ms
+│   ├── mz -> .pnpm/mz@2.7.0/node_modules/mz
+│   ├── nan -> .pnpm/nan@2.23.1/node_modules/nan
+│   ├── nanoid -> .pnpm/nanoid@3.3.11/node_modules/nanoid
+│   ├── nano-spawn -> .pnpm/nano-spawn@2.0.0/node_modules/nano-spawn
+│   ├── @napi-rs
+│   │   ├── canvas -> ../.pnpm/@napi-rs+canvas@0.1.80/node_modules/@napi-rs/canvas
+│   │   ├── canvas-android-arm64 -> ../.pnpm/@napi-rs+canvas-android-arm64@0.1.80/node_modules/@napi-rs/canvas-android-arm64
+│   │   ├── canvas-darwin-arm64 -> ../.pnpm/@napi-rs+canvas-darwin-arm64@0.1.80/node_modules/@napi-rs/canvas-darwin-arm64
+│   │   ├── canvas-darwin-x64 -> ../.pnpm/@napi-rs+canvas-darwin-x64@0.1.80/node_modules/@napi-rs/canvas-darwin-x64
+│   │   ├── canvas-linux-arm64-gnu -> ../.pnpm/@napi-rs+canvas-linux-arm64-gnu@0.1.80/node_modules/@napi-rs/canvas-linux-arm64-gnu
+│   │   ├── canvas-linux-arm64-musl -> ../.pnpm/@napi-rs+canvas-linux-arm64-musl@0.1.80/node_modules/@napi-rs/canvas-linux-arm64-musl
+│   │   ├── canvas-linux-arm-gnueabihf -> ../.pnpm/@napi-rs+canvas-linux-arm-gnueabihf@0.1.80/node_modules/@napi-rs/canvas-linux-arm-gnueabihf
+│   │   ├── canvas-linux-riscv64-gnu -> ../.pnpm/@napi-rs+canvas-linux-riscv64-gnu@0.1.80/node_modules/@napi-rs/canvas-linux-riscv64-gnu
+│   │   ├── canvas-linux-x64-gnu -> ../.pnpm/@napi-rs+canvas-linux-x64-gnu@0.1.80/node_modules/@napi-rs/canvas-linux-x64-gnu
+│   │   ├── canvas-linux-x64-musl -> ../.pnpm/@napi-rs+canvas-linux-x64-musl@0.1.80/node_modules/@napi-rs/canvas-linux-x64-musl
+│   │   └── canvas-win32-x64-msvc -> ../.pnpm/@napi-rs+canvas-win32-x64-msvc@0.1.80/node_modules/@napi-rs/canvas-win32-x64-msvc
+│   ├── natural-compare -> .pnpm/natural-compare@1.4.0/node_modules/natural-compare
+│   ├── negotiator -> .pnpm/negotiator@0.6.3/node_modules/negotiator
+│   ├── netmask -> .pnpm/netmask@2.0.2/node_modules/netmask
+│   ├── node-addon-api -> .pnpm/node-addon-api@1.7.2/node_modules/node-addon-api
+│   ├── node-domexception -> .pnpm/node-domexception@1.0.0/node_modules/node-domexception
+│   ├── node-fetch -> .pnpm/node-fetch@3.3.2/node_modules/node-fetch
+│   ├── @nodelib
+│   │   ├── fs.scandir -> ../.pnpm/@nodelib+fs.scandir@2.1.5/node_modules/@nodelib/fs.scandir
+│   │   ├── fs.stat -> ../.pnpm/@nodelib+fs.stat@2.0.5/node_modules/@nodelib/fs.stat
+│   │   └── fs.walk -> ../.pnpm/@nodelib+fs.walk@1.2.8/node_modules/@nodelib/fs.walk
+│   ├── node-pty -> .pnpm/node-pty@1.0.0/node_modules/node-pty
+│   ├── node-releases -> .pnpm/node-releases@2.0.27/node_modules/node-releases
+│   ├── normalize-path -> .pnpm/normalize-path@3.0.0/node_modules/normalize-path
+│   ├── normalize-range -> .pnpm/normalize-range@0.1.2/node_modules/normalize-range
+│   ├── object-assign -> .pnpm/object-assign@4.1.1/node_modules/object-assign
+│   ├── object.assign -> .pnpm/object.assign@4.1.7/node_modules/object.assign
+│   ├── object.entries -> .pnpm/object.entries@1.1.9/node_modules/object.entries
+│   ├── object.fromentries -> .pnpm/object.fromentries@2.0.8/node_modules/object.fromentries
+│   ├── object-hash -> .pnpm/object-hash@3.0.0/node_modules/object-hash
+│   ├── object-inspect -> .pnpm/object-inspect@1.13.4/node_modules/object-inspect
+│   ├── object-keys -> .pnpm/object-keys@1.1.1/node_modules/object-keys
+│   ├── object.values -> .pnpm/object.values@1.2.1/node_modules/object.values
+│   ├── once -> .pnpm/once@1.4.0/node_modules/once
+│   ├── onetime -> .pnpm/onetime@7.0.0/node_modules/onetime
+│   ├── on-finished -> .pnpm/on-finished@2.4.1/node_modules/on-finished
+│   ├── on-headers -> .pnpm/on-headers@1.1.0/node_modules/on-headers
+│   ├── openai -> .pnpm/openai@6.9.1_ws@8.18.3_zod@3.25.76/node_modules/openai
+│   ├── @opentelemetry
+│   │   ├── api -> ../.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api
+│   │   ├── api-logs -> ../.pnpm/@opentelemetry+api-logs@0.56.0/node_modules/@opentelemetry/api-logs
+│   │   ├── context-async-hooks -> ../.pnpm/@opentelemetry+context-async-hooks@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/context-async-hooks
+│   │   ├── core -> ../.pnpm/@opentelemetry+core@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/core
+│   │   ├── exporter-logs-otlp-grpc -> ../.pnpm/@opentelemetry+exporter-logs-otlp-grpc@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-logs-otlp-grpc
+│   │   ├── exporter-logs-otlp-http -> ../.pnpm/@opentelemetry+exporter-logs-otlp-http@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-logs-otlp-http
+│   │   ├── exporter-logs-otlp-proto -> ../.pnpm/@opentelemetry+exporter-logs-otlp-proto@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-logs-otlp-proto
+│   │   ├── exporter-metrics-otlp-http -> ../.pnpm/@opentelemetry+exporter-metrics-otlp-http@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-metrics-otlp-http
+│   │   ├── exporter-trace-otlp-grpc -> ../.pnpm/@opentelemetry+exporter-trace-otlp-grpc@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-trace-otlp-grpc
+│   │   ├── exporter-trace-otlp-http -> ../.pnpm/@opentelemetry+exporter-trace-otlp-http@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-trace-otlp-http
+│   │   ├── exporter-trace-otlp-proto -> ../.pnpm/@opentelemetry+exporter-trace-otlp-proto@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-trace-otlp-proto
+│   │   ├── exporter-zipkin -> ../.pnpm/@opentelemetry+exporter-zipkin@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/exporter-zipkin
+│   │   ├── instrumentation -> ../.pnpm/@opentelemetry+instrumentation@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/instrumentation
+│   │   ├── otlp-exporter-base -> ../.pnpm/@opentelemetry+otlp-exporter-base@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/otlp-exporter-base
+│   │   ├── otlp-grpc-exporter-base -> ../.pnpm/@opentelemetry+otlp-grpc-exporter-base@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/otlp-grpc-exporter-base
+│   │   ├── otlp-transformer -> ../.pnpm/@opentelemetry+otlp-transformer@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/otlp-transformer
+│   │   ├── propagator-b3 -> ../.pnpm/@opentelemetry+propagator-b3@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/propagator-b3
+│   │   ├── propagator-jaeger -> ../.pnpm/@opentelemetry+propagator-jaeger@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/propagator-jaeger
+│   │   ├── resources -> ../.pnpm/@opentelemetry+resources@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/resources
+│   │   ├── sdk-logs -> ../.pnpm/@opentelemetry+sdk-logs@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-logs
+│   │   ├── sdk-metrics -> ../.pnpm/@opentelemetry+sdk-metrics@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-metrics
+│   │   ├── sdk-node -> ../.pnpm/@opentelemetry+sdk-node@0.56.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-node
+│   │   ├── sdk-trace-base -> ../.pnpm/@opentelemetry+sdk-trace-base@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-trace-base
+│   │   ├── sdk-trace-node -> ../.pnpm/@opentelemetry+sdk-trace-node@1.29.0_@opentelemetry+api@1.9.0/node_modules/@opentelemetry/sdk-trace-node
+│   │   └── semantic-conventions -> ../.pnpm/@opentelemetry+semantic-conventions@1.38.0/node_modules/@opentelemetry/semantic-conventions
+│   ├── optionator -> .pnpm/optionator@0.9.4/node_modules/optionator
+│   ├── orderedmap -> .pnpm/orderedmap@2.1.1/node_modules/orderedmap
+│   ├── own-keys -> .pnpm/own-keys@1.0.1/node_modules/own-keys
+│   ├── package-json-from-dist -> .pnpm/package-json-from-dist@1.0.1/node_modules/package-json-from-dist
+│   ├── pac-proxy-agent -> .pnpm/pac-proxy-agent@7.2.0/node_modules/pac-proxy-agent
+│   ├── pac-resolver -> .pnpm/pac-resolver@7.0.1/node_modules/pac-resolver
+│   ├── parent-module -> .pnpm/parent-module@1.0.1/node_modules/parent-module
+│   ├── parse5 -> .pnpm/parse5@7.3.0/node_modules/parse5
+│   ├── parse-json -> .pnpm/parse-json@5.2.0/node_modules/parse-json
+│   ├── parseurl -> .pnpm/parseurl@1.3.3/node_modules/parseurl
+│   ├── pathe -> .pnpm/pathe@1.1.2/node_modules/pathe
+│   ├── path-exists -> .pnpm/path-exists@4.0.0/node_modules/path-exists
+│   ├── path-is-absolute -> .pnpm/path-is-absolute@1.0.1/node_modules/path-is-absolute
+│   ├── path-key -> .pnpm/path-key@3.1.1/node_modules/path-key
+│   ├── path-parse -> .pnpm/path-parse@1.0.7/node_modules/path-parse
+│   ├── path-scurry -> .pnpm/path-scurry@1.11.1/node_modules/path-scurry
+│   ├── path-to-regexp -> .pnpm/path-to-regexp@0.1.12/node_modules/path-to-regexp
+│   ├── path-type -> .pnpm/path-type@4.0.0/node_modules/path-type
+│   ├── pathval -> .pnpm/pathval@2.0.1/node_modules/pathval
+│   ├── pdfjs-dist -> .pnpm/pdfjs-dist@5.4.296/node_modules/pdfjs-dist
+│   ├── pdf-parse -> .pnpm/pdf-parse@2.4.5/node_modules/pdf-parse
+│   ├── pend -> .pnpm/pend@1.2.0/node_modules/pend
+│   ├── pg -> .pnpm/pg@8.16.3/node_modules/pg
+│   ├── pg-cloudflare -> .pnpm/pg-cloudflare@1.2.7/node_modules/pg-cloudflare
+│   ├── pg-connection-string -> .pnpm/pg-connection-string@2.9.1/node_modules/pg-connection-string
+│   ├── pg-int8 -> .pnpm/pg-int8@1.0.1/node_modules/pg-int8
+│   ├── pgpass -> .pnpm/pgpass@1.0.5/node_modules/pgpass
+│   ├── pg-pool -> .pnpm/pg-pool@3.10.1_pg@8.16.3/node_modules/pg-pool
+│   ├── pg-protocol -> .pnpm/pg-protocol@1.10.3/node_modules/pg-protocol
+│   ├── pg-types -> .pnpm/pg-types@2.2.0/node_modules/pg-types
+│   ├── picocolors -> .pnpm/picocolors@1.1.1/node_modules/picocolors
+│   ├── picomatch -> .pnpm/picomatch@2.3.1/node_modules/picomatch
+│   ├── pidtree -> .pnpm/pidtree@0.6.0/node_modules/pidtree
+│   ├── pify -> .pnpm/pify@2.3.0/node_modules/pify
+│   ├── pirates -> .pnpm/pirates@4.0.7/node_modules/pirates
+│   ├── pkce-challenge -> .pnpm/pkce-challenge@5.0.0/node_modules/pkce-challenge
+│   ├── @pkgjs
+│   │   └── parseargs -> ../.pnpm/@pkgjs+parseargs@0.11.0/node_modules/@pkgjs/parseargs
+│   ├── p-limit -> .pnpm/p-limit@3.1.0/node_modules/p-limit
+│   ├── p-locate -> .pnpm/p-locate@5.0.0/node_modules/p-locate
+│   ├── @popperjs
+│   │   └── core -> ../.pnpm/@popperjs+core@2.11.8/node_modules/@popperjs/core
+│   ├── possible-typed-array-names -> .pnpm/possible-typed-array-names@1.1.0/node_modules/possible-typed-array-names
+│   ├── postcss -> .pnpm/postcss@8.5.6/node_modules/postcss
+│   ├── postcss-import -> .pnpm/postcss-import@15.1.0_postcss@8.5.6/node_modules/postcss-import
+│   ├── postcss-js -> .pnpm/postcss-js@4.1.0_postcss@8.5.6/node_modules/postcss-js
+│   ├── postcss-load-config -> .pnpm/postcss-load-config@6.0.1_jiti@1.21.7_postcss@8.5.6_tsx@4.20.6_yaml@2.8.2/node_modules/postcss-load-config
+│   ├── postcss-nested -> .pnpm/postcss-nested@6.2.0_postcss@8.5.6/node_modules/postcss-nested
+│   ├── postcss-selector-parser -> .pnpm/postcss-selector-parser@6.1.2/node_modules/postcss-selector-parser
+│   ├── postcss-value-parser -> .pnpm/postcss-value-parser@4.2.0/node_modules/postcss-value-parser
+│   ├── postgres-bytea -> .pnpm/postgres-bytea@1.0.0/node_modules/postgres-bytea
+│   ├── postgres-date -> .pnpm/postgres-date@1.0.7/node_modules/postgres-date
+│   ├── postgres-interval -> .pnpm/postgres-interval@1.2.0/node_modules/postgres-interval
+│   ├── prelude-ls -> .pnpm/prelude-ls@1.2.1/node_modules/prelude-ls
+│   ├── prettier -> .pnpm/prettier@2.8.8/node_modules/prettier
+│   ├── @prisma
+│   │   └── client -> ../.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client
+│   ├── prisma -> .pnpm/prisma@5.22.0/node_modules/prisma
+│   ├── progress -> .pnpm/progress@2.0.3/node_modules/progress
+│   ├── prop-types -> .pnpm/prop-types@15.8.1/node_modules/prop-types
+│   ├── prosemirror-changeset -> .pnpm/prosemirror-changeset@2.3.1/node_modules/prosemirror-changeset
+│   ├── prosemirror-collab -> .pnpm/prosemirror-collab@1.3.1/node_modules/prosemirror-collab
+│   ├── prosemirror-commands -> .pnpm/prosemirror-commands@1.7.1/node_modules/prosemirror-commands
+│   ├── prosemirror-dropcursor -> .pnpm/prosemirror-dropcursor@1.8.2/node_modules/prosemirror-dropcursor
+│   ├── prosemirror-gapcursor -> .pnpm/prosemirror-gapcursor@1.4.0/node_modules/prosemirror-gapcursor
+│   ├── prosemirror-history -> .pnpm/prosemirror-history@1.5.0/node_modules/prosemirror-history
+│   ├── prosemirror-inputrules -> .pnpm/prosemirror-inputrules@1.5.1/node_modules/prosemirror-inputrules
+│   ├── prosemirror-keymap -> .pnpm/prosemirror-keymap@1.2.3/node_modules/prosemirror-keymap
+│   ├── prosemirror-markdown -> .pnpm/prosemirror-markdown@1.13.2/node_modules/prosemirror-markdown
+│   ├── prosemirror-menu -> .pnpm/prosemirror-menu@1.2.5/node_modules/prosemirror-menu
+│   ├── prosemirror-model -> .pnpm/prosemirror-model@1.25.4/node_modules/prosemirror-model
+│   ├── prosemirror-schema-basic -> .pnpm/prosemirror-schema-basic@1.2.4/node_modules/prosemirror-schema-basic
+│   ├── prosemirror-schema-list -> .pnpm/prosemirror-schema-list@1.5.1/node_modules/prosemirror-schema-list
+│   ├── prosemirror-state -> .pnpm/prosemirror-state@1.4.4/node_modules/prosemirror-state
+│   ├── prosemirror-tables -> .pnpm/prosemirror-tables@1.8.1/node_modules/prosemirror-tables
+│   ├── prosemirror-trailing-node -> .pnpm/prosemirror-trailing-node@3.0.0_prosemirror-model@1.25.4_prosemirror-state@1.4.4_prosemirror-view@1.41.3/node_modules/prosemirror-trailing-node
+│   ├── prosemirror-transform -> .pnpm/prosemirror-transform@1.10.5/node_modules/prosemirror-transform
+│   ├── prosemirror-view -> .pnpm/prosemirror-view@1.41.3/node_modules/prosemirror-view
+│   ├── @protobufjs
+│   │   ├── aspromise -> ../.pnpm/@protobufjs+aspromise@1.1.2/node_modules/@protobufjs/aspromise
+│   │   ├── base64 -> ../.pnpm/@protobufjs+base64@1.1.2/node_modules/@protobufjs/base64
+│   │   ├── codegen -> ../.pnpm/@protobufjs+codegen@2.0.4/node_modules/@protobufjs/codegen
+│   │   ├── eventemitter -> ../.pnpm/@protobufjs+eventemitter@1.1.0/node_modules/@protobufjs/eventemitter
+│   │   ├── fetch -> ../.pnpm/@protobufjs+fetch@1.1.0/node_modules/@protobufjs/fetch
+│   │   ├── float -> ../.pnpm/@protobufjs+float@1.0.2/node_modules/@protobufjs/float
+│   │   ├── inquire -> ../.pnpm/@protobufjs+inquire@1.1.0/node_modules/@protobufjs/inquire
+│   │   ├── path -> ../.pnpm/@protobufjs+path@1.1.2/node_modules/@protobufjs/path
+│   │   ├── pool -> ../.pnpm/@protobufjs+pool@1.1.0/node_modules/@protobufjs/pool
+│   │   └── utf8 -> ../.pnpm/@protobufjs+utf8@1.1.0/node_modules/@protobufjs/utf8
+│   ├── protobufjs -> .pnpm/protobufjs@7.5.4/node_modules/protobufjs
+│   ├── proxy-addr -> .pnpm/proxy-addr@2.0.7/node_modules/proxy-addr
+│   ├── proxy-agent -> .pnpm/proxy-agent@6.5.0/node_modules/proxy-agent
+│   ├── proxy-from-env -> .pnpm/proxy-from-env@1.1.0/node_modules/proxy-from-env
+│   ├── pump -> .pnpm/pump@3.0.3/node_modules/pump
+│   ├── punycode -> .pnpm/punycode@2.3.1/node_modules/punycode
+│   ├── punycode.js -> .pnpm/punycode.js@2.3.1/node_modules/punycode.js
+│   ├── @puppeteer
+│   │   └── browsers -> ../.pnpm/@puppeteer+browsers@2.10.13/node_modules/@puppeteer/browsers
+│   ├── puppeteer -> .pnpm/puppeteer@24.31.0_typescript@5.9.3/node_modules/puppeteer
+│   ├── puppeteer-core -> .pnpm/puppeteer-core@24.31.0/node_modules/puppeteer-core
+│   ├── qs -> .pnpm/qs@6.13.0/node_modules/qs
+│   ├── queue-microtask -> .pnpm/queue-microtask@1.2.3/node_modules/queue-microtask
+│   ├── @radix-ui
+│   │   ├── react-compose-refs -> ../.pnpm/@radix-ui+react-compose-refs@1.1.2_@types+react@18.3.26_react@18.3.1/node_modules/@radix-ui/react-compose-refs
+│   │   └── react-slot -> ../.pnpm/@radix-ui+react-slot@1.2.4_@types+react@18.3.26_react@18.3.1/node_modules/@radix-ui/react-slot
+│   ├── range-parser -> .pnpm/range-parser@1.2.1/node_modules/range-parser
+│   ├── raw-body -> .pnpm/raw-body@3.0.1/node_modules/raw-body
+│   ├── react -> .pnpm/react@18.3.1/node_modules/react
+│   ├── react-dom -> .pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom
+│   ├── react-draggable -> .pnpm/react-draggable@4.5.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-draggable
+│   ├── react-grid-layout -> .pnpm/react-grid-layout@1.5.2_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-grid-layout
+│   ├── react-is -> .pnpm/react-is@16.13.1/node_modules/react-is
+│   ├── react-refresh -> .pnpm/react-refresh@0.17.0/node_modules/react-refresh
+│   ├── react-resizable -> .pnpm/react-resizable@3.0.5_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-resizable
+│   ├── react-router -> .pnpm/react-router@6.30.2_react@18.3.1/node_modules/react-router
+│   ├── react-router-dom -> .pnpm/react-router-dom@6.30.2_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/react-router-dom
+│   ├── react-table -> .pnpm/react-table@7.8.0_react@18.3.1/node_modules/react-table
+│   ├── readable-stream -> .pnpm/readable-stream@3.6.2/node_modules/readable-stream
+│   ├── read-cache -> .pnpm/read-cache@1.0.0/node_modules/read-cache
+│   ├── readdirp -> .pnpm/readdirp@3.6.0/node_modules/readdirp
+│   ├── @redis
+│   │   ├── bloom -> ../.pnpm/@redis+bloom@1.2.0_@redis+client@1.6.1/node_modules/@redis/bloom
+│   │   ├── client -> ../.pnpm/@redis+client@1.6.1/node_modules/@redis/client
+│   │   ├── graph -> ../.pnpm/@redis+graph@1.1.1_@redis+client@1.6.1/node_modules/@redis/graph
+│   │   ├── json -> ../.pnpm/@redis+json@1.0.7_@redis+client@1.6.1/node_modules/@redis/json
+│   │   ├── search -> ../.pnpm/@redis+search@1.2.0_@redis+client@1.6.1/node_modules/@redis/search
+│   │   └── time-series -> ../.pnpm/@redis+time-series@1.1.0_@redis+client@1.6.1/node_modules/@redis/time-series
+│   ├── redis -> .pnpm/redis@4.7.1/node_modules/redis
+│   ├── reflect.getprototypeof -> .pnpm/reflect.getprototypeof@1.0.10/node_modules/reflect.getprototypeof
+│   ├── regexp.prototype.flags -> .pnpm/regexp.prototype.flags@1.5.4/node_modules/regexp.prototype.flags
+│   ├── @remirror
+│   │   └── core-constants -> ../.pnpm/@remirror+core-constants@3.0.0/node_modules/@remirror/core-constants
+│   ├── @remix-run
+│   │   └── router -> ../.pnpm/@remix-run+router@1.23.1/node_modules/@remix-run/router
+│   ├── @repo
+│   │   ├── agents -> ../../packages/agents
+│   │   ├── api-contract -> ../../packages/api-contract
+│   │   ├── common -> ../../packages/common
+│   │   ├── eslint-config -> ../../packages/eslint-config
+│   │   ├── mcp-server-vfs -> ../../packages/mcp-server-vfs
+│   │   ├── typescript-config -> ../../packages/typescript-config
+│   │   └── voice-input -> ../../apps/voice-input
+│   ├── require-directory -> .pnpm/require-directory@2.1.1/node_modules/require-directory
+│   ├── require-from-string -> .pnpm/require-from-string@2.0.2/node_modules/require-from-string
+│   ├── require-in-the-middle -> .pnpm/require-in-the-middle@7.5.2/node_modules/require-in-the-middle
+│   ├── resize-observer-polyfill -> .pnpm/resize-observer-polyfill@1.5.1/node_modules/resize-observer-polyfill
+│   ├── resolve -> .pnpm/resolve@2.0.0-next.5/node_modules/resolve
+│   ├── resolve-from -> .pnpm/resolve-from@4.0.0/node_modules/resolve-from
+│   ├── resolve-pkg-maps -> .pnpm/resolve-pkg-maps@1.0.0/node_modules/resolve-pkg-maps
+│   ├── restore-cursor -> .pnpm/restore-cursor@5.1.0/node_modules/restore-cursor
+│   ├── reusify -> .pnpm/reusify@1.1.0/node_modules/reusify
+│   ├── rfdc -> .pnpm/rfdc@1.4.1/node_modules/rfdc
+│   ├── rimraf -> .pnpm/rimraf@5.0.10/node_modules/rimraf
+│   ├── @rolldown
+│   │   └── pluginutils -> ../.pnpm/@rolldown+pluginutils@1.0.0-beta.27/node_modules/@rolldown/pluginutils
+│   ├── @rollup
+│   │   ├── rollup-android-arm64 -> ../.pnpm/@rollup+rollup-android-arm64@4.53.2/node_modules/@rollup/rollup-android-arm64
+│   │   ├── rollup-android-arm-eabi -> ../.pnpm/@rollup+rollup-android-arm-eabi@4.53.2/node_modules/@rollup/rollup-android-arm-eabi
+│   │   ├── rollup-darwin-arm64 -> ../.pnpm/@rollup+rollup-darwin-arm64@4.53.2/node_modules/@rollup/rollup-darwin-arm64
+│   │   ├── rollup-darwin-x64 -> ../.pnpm/@rollup+rollup-darwin-x64@4.53.2/node_modules/@rollup/rollup-darwin-x64
+│   │   ├── rollup-freebsd-arm64 -> ../.pnpm/@rollup+rollup-freebsd-arm64@4.53.2/node_modules/@rollup/rollup-freebsd-arm64
+│   │   ├── rollup-freebsd-x64 -> ../.pnpm/@rollup+rollup-freebsd-x64@4.53.2/node_modules/@rollup/rollup-freebsd-x64
+│   │   ├── rollup-linux-arm64-gnu -> ../.pnpm/@rollup+rollup-linux-arm64-gnu@4.53.2/node_modules/@rollup/rollup-linux-arm64-gnu
+│   │   ├── rollup-linux-arm64-musl -> ../.pnpm/@rollup+rollup-linux-arm64-musl@4.53.2/node_modules/@rollup/rollup-linux-arm64-musl
+│   │   ├── rollup-linux-arm-gnueabihf -> ../.pnpm/@rollup+rollup-linux-arm-gnueabihf@4.53.2/node_modules/@rollup/rollup-linux-arm-gnueabihf
+│   │   ├── rollup-linux-arm-musleabihf -> ../.pnpm/@rollup+rollup-linux-arm-musleabihf@4.53.2/node_modules/@rollup/rollup-linux-arm-musleabihf
+│   │   ├── rollup-linux-loong64-gnu -> ../.pnpm/@rollup+rollup-linux-loong64-gnu@4.53.2/node_modules/@rollup/rollup-linux-loong64-gnu
+│   │   ├── rollup-linux-ppc64-gnu -> ../.pnpm/@rollup+rollup-linux-ppc64-gnu@4.53.2/node_modules/@rollup/rollup-linux-ppc64-gnu
+│   │   ├── rollup-linux-riscv64-gnu -> ../.pnpm/@rollup+rollup-linux-riscv64-gnu@4.53.2/node_modules/@rollup/rollup-linux-riscv64-gnu
+│   │   ├── rollup-linux-riscv64-musl -> ../.pnpm/@rollup+rollup-linux-riscv64-musl@4.53.2/node_modules/@rollup/rollup-linux-riscv64-musl
+│   │   ├── rollup-linux-s390x-gnu -> ../.pnpm/@rollup+rollup-linux-s390x-gnu@4.53.2/node_modules/@rollup/rollup-linux-s390x-gnu
+│   │   ├── rollup-linux-x64-gnu -> ../.pnpm/@rollup+rollup-linux-x64-gnu@4.53.2/node_modules/@rollup/rollup-linux-x64-gnu
+│   │   ├── rollup-linux-x64-musl -> ../.pnpm/@rollup+rollup-linux-x64-musl@4.53.2/node_modules/@rollup/rollup-linux-x64-musl
+│   │   ├── rollup-openharmony-arm64 -> ../.pnpm/@rollup+rollup-openharmony-arm64@4.53.2/node_modules/@rollup/rollup-openharmony-arm64
+│   │   ├── rollup-win32-arm64-msvc -> ../.pnpm/@rollup+rollup-win32-arm64-msvc@4.53.2/node_modules/@rollup/rollup-win32-arm64-msvc
+│   │   ├── rollup-win32-ia32-msvc -> ../.pnpm/@rollup+rollup-win32-ia32-msvc@4.53.2/node_modules/@rollup/rollup-win32-ia32-msvc
+│   │   ├── rollup-win32-x64-gnu -> ../.pnpm/@rollup+rollup-win32-x64-gnu@4.53.2/node_modules/@rollup/rollup-win32-x64-gnu
+│   │   └── rollup-win32-x64-msvc -> ../.pnpm/@rollup+rollup-win32-x64-msvc@4.53.2/node_modules/@rollup/rollup-win32-x64-msvc
+│   ├── rollup -> .pnpm/rollup@4.53.2/node_modules/rollup
+│   ├── rope-sequence -> .pnpm/rope-sequence@1.3.4/node_modules/rope-sequence
+│   ├── router -> .pnpm/router@2.2.0/node_modules/router
+│   ├── run-parallel -> .pnpm/run-parallel@1.2.0/node_modules/run-parallel
+│   ├── safe-array-concat -> .pnpm/safe-array-concat@1.1.3/node_modules/safe-array-concat
+│   ├── safe-buffer -> .pnpm/safe-buffer@5.2.1/node_modules/safe-buffer
+│   ├── safe-push-apply -> .pnpm/safe-push-apply@1.0.0/node_modules/safe-push-apply
+│   ├── safer-buffer -> .pnpm/safer-buffer@2.1.2/node_modules/safer-buffer
+│   ├── safe-regex-test -> .pnpm/safe-regex-test@1.1.0/node_modules/safe-regex-test
+│   ├── saxes -> .pnpm/saxes@6.0.0/node_modules/saxes
+│   ├── scheduler -> .pnpm/scheduler@0.23.2/node_modules/scheduler
+│   ├── semver -> .pnpm/semver@6.3.1/node_modules/semver
+│   ├── send -> .pnpm/send@0.19.0/node_modules/send
+│   ├── serve-static -> .pnpm/serve-static@1.16.2/node_modules/serve-static
+│   ├── set-function-length -> .pnpm/set-function-length@1.2.2/node_modules/set-function-length
+│   ├── set-function-name -> .pnpm/set-function-name@2.0.2/node_modules/set-function-name
+│   ├── set-proto -> .pnpm/set-proto@1.0.0/node_modules/set-proto
+│   ├── setprototypeof -> .pnpm/setprototypeof@1.2.0/node_modules/setprototypeof
+│   ├── shebang-command -> .pnpm/shebang-command@2.0.0/node_modules/shebang-command
+│   ├── shebang-regex -> .pnpm/shebang-regex@3.0.0/node_modules/shebang-regex
+│   ├── shimmer -> .pnpm/shimmer@1.2.1/node_modules/shimmer
+│   ├── side-channel -> .pnpm/side-channel@1.1.0/node_modules/side-channel
+│   ├── side-channel-list -> .pnpm/side-channel-list@1.0.0/node_modules/side-channel-list
+│   ├── side-channel-map -> .pnpm/side-channel-map@1.0.1/node_modules/side-channel-map
+│   ├── side-channel-weakmap -> .pnpm/side-channel-weakmap@1.0.2/node_modules/side-channel-weakmap
+│   ├── siginfo -> .pnpm/siginfo@2.0.0/node_modules/siginfo
+│   ├── simple-git -> .pnpm/simple-git@3.30.0/node_modules/simple-git
+│   ├── @sindresorhus
+│   ├── slash -> .pnpm/slash@3.0.0/node_modules/slash
+│   ├── slice-ansi -> .pnpm/slice-ansi@7.1.2/node_modules/slice-ansi
+│   ├── smart-buffer -> .pnpm/smart-buffer@4.2.0/node_modules/smart-buffer
+│   ├── socks -> .pnpm/socks@2.8.7/node_modules/socks
+│   ├── socks-proxy-agent -> .pnpm/socks-proxy-agent@8.0.5/node_modules/socks-proxy-agent
+│   ├── source-map -> .pnpm/source-map@0.6.1/node_modules/source-map
+│   ├── source-map-js -> .pnpm/source-map-js@1.2.1/node_modules/source-map-js
+│   ├── split2 -> .pnpm/split2@4.2.0/node_modules/split2
+│   ├── ssh2 -> .pnpm/ssh2@1.17.0/node_modules/ssh2
+│   ├── ssh2-sftp-client -> .pnpm/ssh2-sftp-client@12.0.1/node_modules/ssh2-sftp-client
+│   ├── stackback -> .pnpm/stackback@0.0.2/node_modules/stackback
+│   ├── state-local -> .pnpm/state-local@1.0.7/node_modules/state-local
+│   ├── statuses -> .pnpm/statuses@2.0.1/node_modules/statuses
+│   ├── std-env -> .pnpm/std-env@3.10.0/node_modules/std-env
+│   ├── stop-iteration-iterator -> .pnpm/stop-iteration-iterator@1.1.0/node_modules/stop-iteration-iterator
+│   ├── streamx -> .pnpm/streamx@2.23.0/node_modules/streamx
+│   ├── string-argv -> .pnpm/string-argv@0.3.2/node_modules/string-argv
+│   ├── string_decoder -> .pnpm/string_decoder@1.3.0/node_modules/string_decoder
+│   ├── string.prototype.matchall -> .pnpm/string.prototype.matchall@4.0.12/node_modules/string.prototype.matchall
+│   ├── string.prototype.repeat -> .pnpm/string.prototype.repeat@1.0.0/node_modules/string.prototype.repeat
+│   ├── string.prototype.trim -> .pnpm/string.prototype.trim@1.2.10/node_modules/string.prototype.trim
+│   ├── string.prototype.trimend -> .pnpm/string.prototype.trimend@1.0.9/node_modules/string.prototype.trimend
+│   ├── string.prototype.trimstart -> .pnpm/string.prototype.trimstart@1.0.8/node_modules/string.prototype.trimstart
+│   ├── string-width -> .pnpm/string-width@4.2.3/node_modules/string-width
+│   ├── string-width-cjs -> .pnpm/string-width@4.2.3/node_modules/string-width
+│   ├── strip-ansi -> .pnpm/strip-ansi@6.0.1/node_modules/strip-ansi
+│   ├── strip-ansi-cjs -> .pnpm/strip-ansi@6.0.1/node_modules/strip-ansi
+│   ├── strip-json-comments -> .pnpm/strip-json-comments@3.1.1/node_modules/strip-json-comments
+│   ├── sucrase -> .pnpm/sucrase@3.35.0/node_modules/sucrase
+│   ├── superjson -> .pnpm/superjson@2.2.5/node_modules/superjson
+│   ├── supports-color -> .pnpm/supports-color@7.2.0/node_modules/supports-color
+│   ├── supports-preserve-symlinks-flag -> .pnpm/supports-preserve-symlinks-flag@1.0.0/node_modules/supports-preserve-symlinks-flag
+│   ├── symbol-tree -> .pnpm/symbol-tree@3.2.4/node_modules/symbol-tree
+│   ├── @szmarczak
+│   ├── tailwindcss -> .pnpm/tailwindcss@3.4.18_tsx@4.20.6_yaml@2.8.2/node_modules/tailwindcss
+│   ├── tailwindcss-animate -> .pnpm/tailwindcss-animate@1.0.7_tailwindcss@3.4.18_tsx@4.20.6_yaml@2.8.2_/node_modules/tailwindcss-animate
+│   ├── tailwind-merge -> .pnpm/tailwind-merge@3.4.0/node_modules/tailwind-merge
+│   ├── @tanstack
+│   │   ├── query-core -> ../.pnpm/@tanstack+query-core@4.41.0/node_modules/@tanstack/query-core
+│   │   └── react-query -> ../.pnpm/@tanstack+react-query@4.42.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@tanstack/react-query
+│   ├── tar-fs -> .pnpm/tar-fs@3.1.1/node_modules/tar-fs
+│   ├── text-decoder -> .pnpm/text-decoder@1.2.3/node_modules/text-decoder
+│   ├── text-table -> .pnpm/text-table@0.2.0/node_modules/text-table
+│   ├── thenify -> .pnpm/thenify@3.3.1/node_modules/thenify
+│   ├── thenify-all -> .pnpm/thenify-all@1.6.0/node_modules/thenify-all
+│   ├── thingies -> .pnpm/thingies@2.5.0_tslib@2.8.1/node_modules/thingies
+│   ├── tinybench -> .pnpm/tinybench@2.9.0/node_modules/tinybench
+│   ├── tinyexec -> .pnpm/tinyexec@0.3.2/node_modules/tinyexec
+│   ├── tinypool -> .pnpm/tinypool@1.1.1/node_modules/tinypool
+│   ├── tinyrainbow -> .pnpm/tinyrainbow@1.2.0/node_modules/tinyrainbow
+│   ├── tinyspy -> .pnpm/tinyspy@3.0.2/node_modules/tinyspy
+│   ├── @tiptap
+│   │   ├── core -> ../.pnpm/@tiptap+core@3.11.0_@tiptap+pm@3.11.0/node_modules/@tiptap/core
+│   │   ├── extension-blockquote -> ../.pnpm/@tiptap+extension-blockquote@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-blockquote
+│   │   ├── extension-bold -> ../.pnpm/@tiptap+extension-bold@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-bold
+│   │   ├── extension-bubble-menu -> ../.pnpm/@tiptap+extension-bubble-menu@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-bubble-menu
+│   │   ├── extension-bullet-list -> ../.pnpm/@tiptap+extension-bullet-list@3.11.0_@tiptap+extension-list@3.11.0_@tiptap+core@3.11.0__0a75a6fc67e709ee8471035af89ed134/node_modules/@tiptap/extension-bullet-list
+│   │   ├── extension-code -> ../.pnpm/@tiptap+extension-code@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-code
+│   │   ├── extension-code-block -> ../.pnpm/@tiptap+extension-code-block@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-code-block
+│   │   ├── extension-document -> ../.pnpm/@tiptap+extension-document@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-document
+│   │   ├── extension-dropcursor -> ../.pnpm/@tiptap+extension-dropcursor@3.11.0_@tiptap+extensions@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-dropcursor
+│   │   ├── extension-floating-menu -> ../.pnpm/@tiptap+extension-floating-menu@3.11.0_@floating-ui+dom@1.7.4_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-floating-menu
+│   │   ├── extension-gapcursor -> ../.pnpm/@tiptap+extension-gapcursor@3.11.0_@tiptap+extensions@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-gapcursor
+│   │   ├── extension-hard-break -> ../.pnpm/@tiptap+extension-hard-break@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-hard-break
+│   │   ├── extension-heading -> ../.pnpm/@tiptap+extension-heading@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-heading
+│   │   ├── extension-horizontal-rule -> ../.pnpm/@tiptap+extension-horizontal-rule@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-horizontal-rule
+│   │   ├── extension-italic -> ../.pnpm/@tiptap+extension-italic@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-italic
+│   │   ├── extension-link -> ../.pnpm/@tiptap+extension-link@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-link
+│   │   ├── extension-list -> ../.pnpm/@tiptap+extension-list@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extension-list
+│   │   ├── extension-list-item -> ../.pnpm/@tiptap+extension-list-item@3.11.0_@tiptap+extension-list@3.11.0_@tiptap+core@3.11.0_@t_8fa9d4f283df576a59cbccee1d5c0734/node_modules/@tiptap/extension-list-item
+│   │   ├── extension-list-keymap -> ../.pnpm/@tiptap+extension-list-keymap@3.11.0_@tiptap+extension-list@3.11.0_@tiptap+core@3.11.0__da5ca5bdaaf4aabfdf05f842e1c7a873/node_modules/@tiptap/extension-list-keymap
+│   │   ├── extension-ordered-list -> ../.pnpm/@tiptap+extension-ordered-list@3.11.0_@tiptap+extension-list@3.11.0_@tiptap+core@3.11.0_8a9e45536c8fad4e8e0fd47c68a9f4ca/node_modules/@tiptap/extension-ordered-list
+│   │   ├── extension-paragraph -> ../.pnpm/@tiptap+extension-paragraph@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-paragraph
+│   │   ├── extension-placeholder -> ../.pnpm/@tiptap+extension-placeholder@3.11.0_@tiptap+extensions@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-placeholder
+│   │   ├── extensions -> ../.pnpm/@tiptap+extensions@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tiptap+pm@3.11.0/node_modules/@tiptap/extensions
+│   │   ├── extension-strike -> ../.pnpm/@tiptap+extension-strike@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-strike
+│   │   ├── extension-text -> ../.pnpm/@tiptap+extension-text@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-text
+│   │   ├── extension-underline -> ../.pnpm/@tiptap+extension-underline@3.11.0_@tiptap+core@3.11.0_@tiptap+pm@3.11.0_/node_modules/@tiptap/extension-underline
+│   │   ├── pm -> ../.pnpm/@tiptap+pm@3.11.0/node_modules/@tiptap/pm
+│   │   ├── react -> ../.pnpm/@tiptap+react@3.11.0_@floating-ui+dom@1.7.4_@tiptap+core@3.11.0_@tiptap+pm@3.11.0__@tip_be1658d958e06a0284209cf39284f639/node_modules/@tiptap/react
+│   │   └── starter-kit -> ../.pnpm/@tiptap+starter-kit@3.11.0/node_modules/@tiptap/starter-kit
+│   ├── tldts -> .pnpm/tldts@7.0.18/node_modules/tldts
+│   ├── tldts-core -> .pnpm/tldts-core@7.0.18/node_modules/tldts-core
+│   ├── toidentifier -> .pnpm/toidentifier@1.0.1/node_modules/toidentifier
+│   ├── @tootallnate
+│   │   └── quickjs-emscripten -> ../.pnpm/@tootallnate+quickjs-emscripten@0.23.0/node_modules/@tootallnate/quickjs-emscripten
+│   ├── to-regex-range -> .pnpm/to-regex-range@5.0.1/node_modules/to-regex-range
+│   ├── tough-cookie -> .pnpm/tough-cookie@6.0.0/node_modules/tough-cookie
+│   ├── tr46 -> .pnpm/tr46@6.0.0/node_modules/tr46
+│   ├── tree-dump -> .pnpm/tree-dump@1.1.0_tslib@2.8.1/node_modules/tree-dump
+│   ├── @trpc
+│   │   ├── client -> ../.pnpm/@trpc+client@10.45.2_@trpc+server@10.45.2/node_modules/@trpc/client
+│   │   ├── react-query -> ../.pnpm/@trpc+react-query@10.45.2_@tanstack+react-query@4.42.0_react-dom@18.3.1_react@18.3.1__r_9976a6b5a9c8ca507396716c4823530d/node_modules/@trpc/react-query
+│   │   └── server -> ../.pnpm/@trpc+server@10.45.2/node_modules/@trpc/server
+│   ├── ts-api-utils -> .pnpm/ts-api-utils@1.4.3_typescript@5.9.3/node_modules/ts-api-utils
+│   ├── ts-interface-checker -> .pnpm/ts-interface-checker@0.1.13/node_modules/ts-interface-checker
+│   ├── tslib -> .pnpm/tslib@2.8.1/node_modules/tslib
+│   ├── tsx -> .pnpm/tsx@4.20.6/node_modules/tsx
+│   ├── turbo -> .pnpm/turbo@2.6.3/node_modules/turbo
+│   ├── turbo-darwin-64 -> .pnpm/turbo-darwin-64@2.6.1/node_modules/turbo-darwin-64
+│   ├── turbo-darwin-arm64 -> .pnpm/turbo-darwin-arm64@2.6.1/node_modules/turbo-darwin-arm64
+│   ├── turbo-linux-64 -> .pnpm/turbo-linux-64@2.6.1/node_modules/turbo-linux-64
+│   ├── turbo-linux-arm64 -> .pnpm/turbo-linux-arm64@2.6.1/node_modules/turbo-linux-arm64
+│   ├── turbo-windows-64 -> .pnpm/turbo-windows-64@2.6.1/node_modules/turbo-windows-64
+│   ├── turbo-windows-arm64 -> .pnpm/turbo-windows-arm64@2.6.1/node_modules/turbo-windows-arm64
+│   ├── tweetnacl -> .pnpm/tweetnacl@0.14.5/node_modules/tweetnacl
+│   ├── type-check -> .pnpm/type-check@0.4.0/node_modules/type-check
+│   ├── typedarray -> .pnpm/typedarray@0.0.6/node_modules/typedarray
+│   ├── typed-array-buffer -> .pnpm/typed-array-buffer@1.0.3/node_modules/typed-array-buffer
+│   ├── typed-array-byte-length -> .pnpm/typed-array-byte-length@1.0.3/node_modules/typed-array-byte-length
+│   ├── typed-array-byte-offset -> .pnpm/typed-array-byte-offset@1.0.4/node_modules/typed-array-byte-offset
+│   ├── typed-array-length -> .pnpm/typed-array-length@1.0.7/node_modules/typed-array-length
+│   ├── typed-query-selector -> .pnpm/typed-query-selector@2.12.0/node_modules/typed-query-selector
+│   ├── type-fest -> .pnpm/type-fest@0.20.2/node_modules/type-fest
+│   ├── type-is -> .pnpm/type-is@1.6.18/node_modules/type-is
+│   ├── @types
+│   │   ├── babel__core -> ../.pnpm/@types+babel__core@7.20.5/node_modules/@types/babel__core
+│   │   ├── babel__generator -> ../.pnpm/@types+babel__generator@7.27.0/node_modules/@types/babel__generator
+│   │   ├── babel__template -> ../.pnpm/@types+babel__template@7.4.4/node_modules/@types/babel__template
+│   │   ├── babel__traverse -> ../.pnpm/@types+babel__traverse@7.28.0/node_modules/@types/babel__traverse
+│   │   ├── body-parser -> ../.pnpm/@types+body-parser@1.19.6/node_modules/@types/body-parser
+│   │   ├── connect -> ../.pnpm/@types+connect@3.4.38/node_modules/@types/connect
+│   │   ├── cors -> ../.pnpm/@types+cors@2.8.19/node_modules/@types/cors
+│   │   ├── estree -> ../.pnpm/@types+estree@1.0.8/node_modules/@types/estree
+│   │   ├── express -> ../.pnpm/@types+express@4.17.25/node_modules/@types/express
+│   │   ├── express-serve-static-core -> ../.pnpm/@types+express-serve-static-core@4.19.7/node_modules/@types/express-serve-static-core
+│   │   ├── http-errors -> ../.pnpm/@types+http-errors@2.0.5/node_modules/@types/http-errors
+│   │   ├── jsdom -> ../.pnpm/@types+jsdom@27.0.0/node_modules/@types/jsdom
+│   │   ├── linkify-it -> ../.pnpm/@types+linkify-it@5.0.0/node_modules/@types/linkify-it
+│   │   ├── markdown-it -> ../.pnpm/@types+markdown-it@14.1.2/node_modules/@types/markdown-it
+│   │   ├── mdurl -> ../.pnpm/@types+mdurl@2.0.0/node_modules/@types/mdurl
+│   │   ├── mime -> ../.pnpm/@types+mime@1.3.5/node_modules/@types/mime
+│   │   ├── morgan -> ../.pnpm/@types+morgan@1.9.10/node_modules/@types/morgan
+│   │   ├── node -> ../.pnpm/@types+node@20.19.25/node_modules/@types/node
+│   │   ├── pdf-parse -> ../.pnpm/@types+pdf-parse@1.1.5/node_modules/@types/pdf-parse
+│   │   ├── pg -> ../.pnpm/@types+pg@8.15.6/node_modules/@types/pg
+│   │   ├── picomatch -> ../.pnpm/@types+picomatch@4.0.2/node_modules/@types/picomatch
+│   │   ├── plist -> ../.pnpm/@types+plist@3.0.5/node_modules/@types/plist
+│   │   ├── prop-types -> ../.pnpm/@types+prop-types@15.7.15/node_modules/@types/prop-types
+│   │   ├── qs -> ../.pnpm/@types+qs@6.14.0/node_modules/@types/qs
+│   │   ├── range-parser -> ../.pnpm/@types+range-parser@1.2.7/node_modules/@types/range-parser
+│   │   ├── react -> ../.pnpm/@types+react@18.3.26/node_modules/@types/react
+│   │   ├── react-dom -> ../.pnpm/@types+react-dom@18.3.7_@types+react@18.3.26/node_modules/@types/react-dom
+│   │   ├── react-grid-layout -> ../.pnpm/@types+react-grid-layout@1.3.6/node_modules/@types/react-grid-layout
+│   │   ├── react-table -> ../.pnpm/@types+react-table@7.7.20/node_modules/@types/react-table
+│   │   ├── send -> ../.pnpm/@types+send@1.2.1/node_modules/@types/send
+│   │   ├── serve-static -> ../.pnpm/@types+serve-static@1.15.10/node_modules/@types/serve-static
+│   │   ├── shimmer -> ../.pnpm/@types+shimmer@1.2.0/node_modules/@types/shimmer
+│   │   ├── ssh2 -> ../.pnpm/@types+ssh2@1.15.5/node_modules/@types/ssh2
+│   │   ├── ssh2-sftp-client -> ../.pnpm/@types+ssh2-sftp-client@9.0.5/node_modules/@types/ssh2-sftp-client
+│   │   ├── tough-cookie -> ../.pnpm/@types+tough-cookie@4.0.5/node_modules/@types/tough-cookie
+│   │   ├── trusted-types -> ../.pnpm/@types+trusted-types@2.0.7/node_modules/@types/trusted-types
+│   │   ├── use-sync-external-store -> ../.pnpm/@types+use-sync-external-store@0.0.6/node_modules/@types/use-sync-external-store
+│   │   ├── verror -> ../.pnpm/@types+verror@1.10.11/node_modules/@types/verror
+│   │   ├── ws -> ../.pnpm/@types+ws@8.18.1/node_modules/@types/ws
+│   │   └── yauzl -> ../.pnpm/@types+yauzl@2.10.3/node_modules/@types/yauzl
+│   ├── typescript -> .pnpm/typescript@5.9.3/node_modules/typescript
+│   ├── @typescript-eslint
+│   │   ├── eslint-plugin -> ../.pnpm/@typescript-eslint+eslint-plugin@7.18.0_@typescript-eslint+parser@7.18.0_eslint@8.57.1__8913d4bf05924a02a609c10a2088d6a4/node_modules/@typescript-eslint/eslint-plugin
+│   │   ├── parser -> ../.pnpm/@typescript-eslint+parser@7.18.0_eslint@8.57.1_typescript@5.9.3/node_modules/@typescript-eslint/parser
+│   │   ├── project-service -> ../.pnpm/@typescript-eslint+project-service@8.47.0_typescript@5.9.3/node_modules/@typescript-eslint/project-service
+│   │   ├── scope-manager -> ../.pnpm/@typescript-eslint+scope-manager@7.18.0/node_modules/@typescript-eslint/scope-manager
+│   │   ├── tsconfig-utils -> ../.pnpm/@typescript-eslint+tsconfig-utils@8.47.0_typescript@5.9.3/node_modules/@typescript-eslint/tsconfig-utils
+│   │   ├── types -> ../.pnpm/@typescript-eslint+types@7.18.0/node_modules/@typescript-eslint/types
+│   │   ├── typescript-estree -> ../.pnpm/@typescript-eslint+typescript-estree@7.18.0_typescript@5.9.3/node_modules/@typescript-eslint/typescript-estree
+│   │   ├── type-utils -> ../.pnpm/@typescript-eslint+type-utils@7.18.0_eslint@8.57.1_typescript@5.9.3/node_modules/@typescript-eslint/type-utils
+│   │   ├── utils -> ../.pnpm/@typescript-eslint+utils@7.18.0_eslint@8.57.1_typescript@5.9.3/node_modules/@typescript-eslint/utils
+│   │   └── visitor-keys -> ../.pnpm/@typescript-eslint+visitor-keys@7.18.0/node_modules/@typescript-eslint/visitor-keys
+│   ├── typescript-eslint -> .pnpm/typescript-eslint@8.47.0_eslint@8.57.1_typescript@5.9.3/node_modules/typescript-eslint
+│   ├── uc.micro -> .pnpm/uc.micro@2.1.0/node_modules/uc.micro
+│   ├── ui -> ../apps/ui
+│   ├── unbox-primitive -> .pnpm/unbox-primitive@1.1.0/node_modules/unbox-primitive
+│   ├── undici-types -> .pnpm/undici-types@6.21.0/node_modules/undici-types
+│   ├── @ungap
+│   │   └── structured-clone -> ../.pnpm/@ungap+structured-clone@1.3.0/node_modules/@ungap/structured-clone
+│   ├── unpipe -> .pnpm/unpipe@1.0.0/node_modules/unpipe
+│   ├── update-browserslist-db -> .pnpm/update-browserslist-db@1.1.4_browserslist@4.28.0/node_modules/update-browserslist-db
+│   ├── uri-js -> .pnpm/uri-js@4.4.1/node_modules/uri-js
+│   ├── use-sync-external-store -> .pnpm/use-sync-external-store@1.6.0_react@18.3.1/node_modules/use-sync-external-store
+│   ├── @utcp
+│   │   ├── code-mode -> ../.pnpm/@utcp+code-mode@1.0.5/node_modules/@utcp/code-mode
+│   │   └── sdk -> ../.pnpm/@utcp+sdk@1.0.17/node_modules/@utcp/sdk
+│   ├── util-deprecate -> .pnpm/util-deprecate@1.0.2/node_modules/util-deprecate
+│   ├── utils-merge -> .pnpm/utils-merge@1.0.1/node_modules/utils-merge
+│   ├── uuid -> .pnpm/uuid@9.0.1/node_modules/uuid
+│   ├── vary -> .pnpm/vary@1.1.2/node_modules/vary
+│   ├── verror -> .pnpm/verror@1.10.1/node_modules/verror
+│   ├── vite -> .pnpm/vite@5.4.21_@types+node@20.19.25/node_modules/vite
+│   ├── @vitejs
+│   │   └── plugin-react -> ../.pnpm/@vitejs+plugin-react@4.7.0_vite@5.4.21_@types+node@20.19.25_/node_modules/@vitejs/plugin-react
+│   ├── vite-plugin-monaco-editor -> .pnpm/vite-plugin-monaco-editor@1.1.0_monaco-editor@0.54.0/node_modules/vite-plugin-monaco-editor
+│   ├── @vitest
+│   │   ├── expect -> ../.pnpm/@vitest+expect@2.1.9/node_modules/@vitest/expect
+│   │   ├── mocker -> ../.pnpm/@vitest+mocker@2.1.9_vite@5.4.21_@types+node@20.19.25_/node_modules/@vitest/mocker
+│   │   ├── pretty-format -> ../.pnpm/@vitest+pretty-format@2.1.9/node_modules/@vitest/pretty-format
+│   │   ├── runner -> ../.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner
+│   │   ├── snapshot -> ../.pnpm/@vitest+snapshot@2.1.9/node_modules/@vitest/snapshot
+│   │   ├── spy -> ../.pnpm/@vitest+spy@2.1.9/node_modules/@vitest/spy
+│   │   └── utils -> ../.pnpm/@vitest+utils@2.1.9/node_modules/@vitest/utils
+│   ├── vitest -> .pnpm/vitest@2.1.9_@types+node@20.19.25_jsdom@27.2.0/node_modules/vitest
+│   ├── volcano-sdk -> .pnpm/volcano-sdk@1.1.0_@opentelemetry+api@1.9.0_ws@8.18.3_zod@3.25.76/node_modules/volcano-sdk
+│   ├── @vscode
+│   │   └── iconv-lite-umd -> ../.pnpm/@vscode+iconv-lite-umd@0.7.0/node_modules/@vscode/iconv-lite-umd
+│   ├── vscode-jsonrpc -> .pnpm/vscode-jsonrpc@8.2.1/node_modules/vscode-jsonrpc
+│   ├── vscode-languageclient -> .pnpm/vscode-languageclient@9.0.1/node_modules/vscode-languageclient
+│   ├── vscode-languageserver-protocol -> .pnpm/vscode-languageserver-protocol@3.17.5/node_modules/vscode-languageserver-protocol
+│   ├── vscode-languageserver-types -> .pnpm/vscode-languageserver-types@3.17.5/node_modules/vscode-languageserver-types
+│   ├── vscode-oniguruma -> .pnpm/vscode-oniguruma@1.7.0/node_modules/vscode-oniguruma
+│   ├── vscode-textmate -> .pnpm/vscode-textmate@9.2.1/node_modules/vscode-textmate
+│   ├── vscode-ws-jsonrpc -> .pnpm/vscode-ws-jsonrpc@3.5.0/node_modules/vscode-ws-jsonrpc
+│   ├── w3c-keyname -> .pnpm/w3c-keyname@2.2.8/node_modules/w3c-keyname
+│   ├── w3c-xmlserializer -> .pnpm/w3c-xmlserializer@5.0.0/node_modules/w3c-xmlserializer
+│   ├── webdriver-bidi-protocol -> .pnpm/webdriver-bidi-protocol@0.3.9/node_modules/webdriver-bidi-protocol
+│   ├── webidl-conversions -> .pnpm/webidl-conversions@8.0.0/node_modules/webidl-conversions
+│   ├── web-streams-polyfill -> .pnpm/web-streams-polyfill@3.3.3/node_modules/web-streams-polyfill
+│   ├── whatwg-encoding -> .pnpm/whatwg-encoding@3.1.1/node_modules/whatwg-encoding
+│   ├── whatwg-mimetype -> .pnpm/whatwg-mimetype@4.0.0/node_modules/whatwg-mimetype
+│   ├── whatwg-url -> .pnpm/whatwg-url@15.1.0/node_modules/whatwg-url
+│   ├── which -> .pnpm/which@2.0.2/node_modules/which
+│   ├── which-boxed-primitive -> .pnpm/which-boxed-primitive@1.1.1/node_modules/which-boxed-primitive
+│   ├── which-builtin-type -> .pnpm/which-builtin-type@1.2.1/node_modules/which-builtin-type
+│   ├── which-collection -> .pnpm/which-collection@1.0.2/node_modules/which-collection
+│   ├── which-typed-array -> .pnpm/which-typed-array@1.1.19/node_modules/which-typed-array
+│   ├── why-is-node-running -> .pnpm/why-is-node-running@2.3.0/node_modules/why-is-node-running
+│   ├── word-wrap -> .pnpm/word-wrap@1.2.5/node_modules/word-wrap
+│   ├── wrap-ansi -> .pnpm/wrap-ansi@9.0.2/node_modules/wrap-ansi
+│   ├── wrap-ansi-cjs -> .pnpm/wrap-ansi@7.0.0/node_modules/wrap-ansi
+│   ├── wrappy -> .pnpm/wrappy@1.0.2/node_modules/wrappy
+│   ├── ws -> .pnpm/ws@8.18.3/node_modules/ws
+│   ├── xmlchars -> .pnpm/xmlchars@2.2.0/node_modules/xmlchars
+│   ├── @xmldom
+│   ├── xml-name-validator -> .pnpm/xml-name-validator@5.0.0/node_modules/xml-name-validator
+│   ├── xtend -> .pnpm/xtend@4.0.2/node_modules/xtend
+│   ├── xterm -> .pnpm/xterm@5.3.0/node_modules/xterm
+│   ├── xterm-addon-fit -> .pnpm/xterm-addon-fit@0.8.0_xterm@5.3.0/node_modules/xterm-addon-fit
+│   ├── y18n -> .pnpm/y18n@5.0.8/node_modules/y18n
+│   ├── yallist -> .pnpm/yallist@4.0.0/node_modules/yallist
+│   ├── yaml -> .pnpm/yaml@2.8.2/node_modules/yaml
+│   ├── yargs -> .pnpm/yargs@17.7.2/node_modules/yargs
+│   ├── yargs-parser -> .pnpm/yargs-parser@21.1.1/node_modules/yargs-parser
+│   ├── yauzl -> .pnpm/yauzl@2.10.0/node_modules/yauzl
+│   ├── yocto-queue -> .pnpm/yocto-queue@0.1.0/node_modules/yocto-queue
+│   ├── zod -> .pnpm/zod@3.25.76/node_modules/zod
+│   ├── zod-to-json-schema -> .pnpm/zod-to-json-schema@3.24.6_zod@3.25.76/node_modules/zod-to-json-schema
+│   └── zustand -> .pnpm/zustand@5.0.8_@types+react@18.3.26_react@18.3.1_use-sync-external-store@1.6.0_react@18.3.1_/node_modules/zustand
+├── out
+│   ├── full
+│   │   ├── apps
+│   │   │   └── api
+│   │   │       ├── dist
+│   │   │       │   └── index.js
+│   │   │       ├── package.json
+│   │   │       ├── src
+│   │   │       │   └── index.ts
+│   │   │       └── tsconfig.json
+│   │   ├── package.json
+│   │   ├── pnpm-workspace.yaml
+│   │   └── turbo.json
+│   ├── json
+│   │   ├── apps
+│   │   │   └── api
+│   │   │       └── package.json
+│   │   ├── package.json
+│   │   ├── pnpm-lock.yaml
+│   │   └── pnpm-workspace.yaml
+│   ├── pnpm-lock.yaml
+│   ├── pnpm-workspace.yaml
+│   └── traces
+├── package.json
+├── packages
+│   ├── agents
+│   │   └── package.json
+│   ├── api-contract
+│   │   ├── dist
+│   │   │   ├── apps
+│   │   │   │   └── api
+│   │   │   │       └── src
+│   │   │   │           ├── db
+│   │   │   │           │   ├── index.d.ts
+│   │   │   │           │   ├── index.d.ts.map
+│   │   │   │           │   ├── index.js
+│   │   │   │           │   └── index.js.map
+│   │   │   │           ├── db.d.ts
+│   │   │   │           ├── db.d.ts.map
+│   │   │   │           ├── db.js
+│   │   │   │           ├── db.js.map
+│   │   │   │           ├── llm-adapters.d.ts
+│   │   │   │           ├── llm-adapters.d.ts.map
+│   │   │   │           ├── llm-adapters.js
+│   │   │   │           ├── llm-adapters.js.map
+│   │   │   │           ├── rateLimiter.d.ts
+│   │   │   │           ├── rateLimiter.d.ts.map
+│   │   │   │           ├── rateLimiter.js
+│   │   │   │           ├── rateLimiter.js.map
+│   │   │   │           ├── redis.d.ts
+│   │   │   │           ├── redis.d.ts.map
+│   │   │   │           ├── redis.js
+│   │   │   │           ├── redis.js.map
+│   │   │   │           ├── routers
+│   │   │   │           │   ├── external.router.d.ts
+│   │   │   │           │   ├── external.router.d.ts.map
+│   │   │   │           │   ├── external.router.js
+│   │   │   │           │   ├── external.router.js.map
+│   │   │   │           │   ├── git.router.d.ts
+│   │   │   │           │   ├── git.router.d.ts.map
+│   │   │   │           │   ├── git.router.js
+│   │   │   │           │   ├── git.router.js.map
+│   │   │   │           │   ├── index.d.ts
+│   │   │   │           │   ├── index.d.ts.map
+│   │   │   │           │   ├── index.js
+│   │   │   │           │   ├── index.js.map
+│   │   │   │           │   ├── model.router.d.ts
+│   │   │   │           │   ├── model.router.d.ts.map
+│   │   │   │           │   ├── model.router.js
+│   │   │   │           │   ├── model.router.js.map
+│   │   │   │           │   ├── providers.router.d.ts
+│   │   │   │           │   ├── providers.router.d.ts.map
+│   │   │   │           │   ├── providers.router.js
+│   │   │   │           │   ├── providers.router.js.map
+│   │   │   │           │   ├── role.router.d.ts
+│   │   │   │           │   ├── role.router.d.ts.map
+│   │   │   │           │   ├── role.router.js
+│   │   │   │           │   ├── role.router.js.map
+│   │   │   │           │   ├── types.d.ts
+│   │   │   │           │   ├── types.d.ts.map
+│   │   │   │           │   ├── types.js
+│   │   │   │           │   ├── types.js.map
+│   │   │   │           │   ├── vfs.router.d.ts
+│   │   │   │           │   ├── vfs.router.d.ts.map
+│   │   │   │           │   ├── vfs.router.js
+│   │   │   │           │   └── vfs.router.js.map
+│   │   │   │           ├── services
+│   │   │   │           │   ├── git.service.d.ts
+│   │   │   │           │   ├── git.service.d.ts.map
+│   │   │   │           │   ├── git.service.js
+│   │   │   │           │   ├── git.service.js.map
+│   │   │   │           │   ├── model.service.d.ts
+│   │   │   │           │   ├── model.service.d.ts.map
+│   │   │   │           │   ├── model.service.js
+│   │   │   │           │   ├── model.service.js.map
+│   │   │   │           │   ├── vfsSession.service.d.ts
+│   │   │   │           │   ├── vfsSession.service.d.ts.map
+│   │   │   │           │   ├── vfsSession.service.js
+│   │   │   │           │   └── vfsSession.service.js.map
+│   │   │   │           ├── tokenizer.d.ts
+│   │   │   │           ├── tokenizer.d.ts.map
+│   │   │   │           ├── tokenizer.js
+│   │   │   │           ├── tokenizer.js.map
+│   │   │   │           ├── types.d.ts
+│   │   │   │           ├── types.d.ts.map
+│   │   │   │           ├── types.js
+│   │   │   │           └── types.js.map
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   └── packages
+│   │   │       └── api-contract
+│   │   │           └── src
+│   │   │               ├── index.d.ts
+│   │   │               ├── index.d.ts.map
+│   │   │               ├── index.js
+│   │   │               └── index.js.map
+│   │   ├── node_modules
+│   │   │   ├── @trpc
+│   │   │   │   └── server -> ../../../../node_modules/.pnpm/@trpc+server@10.45.2/node_modules/@trpc/server
+│   │   │   ├── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   │   └── zod -> ../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   └── index.ts
+│   │   └── tsconfig.json
+│   ├── coc
+│   │   ├── add_worker_roles.js
+│   │   ├── agents
+│   │   │   ├── roles.json
+│   │   │   ├── scenarios
+│   │   │   │   ├── comprehensive_tool_test.json
+│   │   │   │   ├── sample_happy.json -> tool_comprehensive_test.json
+│   │   │   │   ├── sample_short_tasks.json
+│   │   │   │   ├── test_tools.json
+│   │   │   │   ├── tool_call_test.json
+│   │   │   │   ├── tool_comprehensive_test.json
+│   │   │   │   └── valid_tool_test.json
+│   │   │   └── templates
+│   │   │       ├── orchestrator.tpl
+│   │   │       ├── planner-code.tpl
+│   │   │       └── worker-short-code.tpl
+│   │   ├── coc_role_test.log
+│   │   ├── coc_tool_test.log
+│   │   ├── dist
+│   │   │   ├── api-client.d.ts
+│   │   │   ├── api-client.js
+│   │   │   ├── bandit.d.ts
+│   │   │   ├── bandit.js
+│   │   │   ├── coc.d.ts
+│   │   │   ├── coc.js
+│   │   │   ├── code-executors.d.ts
+│   │   │   ├── code-executors.js
+│   │   │   ├── config.d.ts
+│   │   │   ├── config.js
+│   │   │   ├── evaluator.d.ts
+│   │   │   ├── evaluator.js
+│   │   │   ├── event-bus.d.ts
+│   │   │   ├── event-bus.js
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.js
+│   │   │   ├── model-bandit_Version2.d.ts
+│   │   │   ├── model-bandit_Version2.js
+│   │   │   ├── model-registry.d.ts
+│   │   │   ├── model-registry.js
+│   │   │   ├── model-registry.prod.d.ts
+│   │   │   ├── model-registry.prod.js
+│   │   │   ├── model-registry.real.d.ts
+│   │   │   ├── model-registry.real.js
+│   │   │   ├── orchestrator.d.ts
+│   │   │   ├── orchestrator.js
+│   │   │   ├── prod
+│   │   │   │   ├── evaluator.d.ts
+│   │   │   │   ├── evaluator.js
+│   │   │   │   ├── model-registry.d.ts
+│   │   │   │   ├── model-registry.js
+│   │   │   │   ├── retriever.d.ts
+│   │   │   │   └── retriever.js
+│   │   │   ├── provider-simulator.d.ts
+│   │   │   ├── provider-simulator.js
+│   │   │   ├── rate-limit-tracker.d.ts
+│   │   │   ├── rate-limit-tracker.js
+│   │   │   ├── real-tools.d.ts
+│   │   │   ├── real-tools.js
+│   │   │   ├── retriever.d.ts
+│   │   │   ├── retriever.js
+│   │   │   ├── role-bandit-v2.d.ts
+│   │   │   ├── role-bandit-v2.js
+│   │   │   ├── role-requirements.d.ts
+│   │   │   ├── role-requirements.js
+│   │   │   ├── task-queue.d.ts
+│   │   │   ├── task-queue.js
+│   │   │   ├── tool-registry.d.ts
+│   │   │   └── tool-registry.js
+│   │   ├── example-workflow.yaml
+│   │   ├── mock-config.example.json
+│   │   ├── monitor_coc.sh
+│   │   ├── node_modules
+│   │   │   ├── dotenv -> ../../../node_modules/.pnpm/dotenv@16.6.1/node_modules/dotenv
+│   │   │   ├── node-fetch -> ../../../node_modules/.pnpm/node-fetch@2.7.0/node_modules/node-fetch
+│   │   │   ├── ts-node -> ../../../node_modules/.pnpm/ts-node@10.9.2_@types+node@20.19.25_typescript@5.9.3/node_modules/ts-node
+│   │   │   ├── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   │   └── yaml -> ../../../node_modules/.pnpm/yaml@2.8.2/node_modules/yaml
+│   │   ├── out
+│   │   │   ├── model_bandit_state.json
+│   │   │   ├── role_bandit_state.json
+│   │   │   ├── sandbox
+│   │   │   ├── test
+│   │   │   └── traces
+│   │   │       └── events.jsonl
+│   │   ├── package.json
+│   │   ├── prod
+│   │   │   └── evaluators.ts
+│   │   ├── README.md
+│   │   ├── scripts
+│   │   │   ├── experiment.ts
+│   │   │   ├── replay.ts
+│   │   │   ├── seed-bandits-realmodels.ts
+│   │   │   └── seed-bandits.ts
+│   │   ├── SIMULATION_STATUS.md
+│   │   ├── src
+│   │   │   ├── api-client.ts
+│   │   │   ├── bandit.ts
+│   │   │   ├── coc.ts
+│   │   │   ├── code-executors.ts
+│   │   │   ├── config.ts
+│   │   │   ├── evaluator.ts
+│   │   │   ├── event-bus.ts
+│   │   │   ├── index.ts
+│   │   │   ├── model-bandit_Version2.ts
+│   │   │   ├── model-registry.prod.ts
+│   │   │   ├── model-registry.real.ts
+│   │   │   ├── model-registry.ts
+│   │   │   ├── orchestrator.ts.bak
+│   │   │   ├── prod
+│   │   │   │   ├── evaluator.ts
+│   │   │   │   ├── model-registry.ts
+│   │   │   │   └── retriever.ts
+│   │   │   ├── provider-simulator.ts
+│   │   │   ├── rate-limit-tracker.ts
+│   │   │   ├── real-tools.ts
+│   │   │   ├── retriever.ts
+│   │   │   ├── role-bandit-v2.ts
+│   │   │   ├── role-requirements.ts
+│   │   │   ├── task-queue.ts
+│   │   │   ├── test-runner.ts
+│   │   │   └── tool-registry.ts
+│   │   ├── summary_report.sh
+│   │   ├── test-real-api.ts
+│   │   └── tsconfig.json
+│   ├── common
+│   │   ├── dist
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   ├── redis-client.d.ts
+│   │   │   ├── redis-client.d.ts.map
+│   │   │   ├── redis-client.js
+│   │   │   ├── redis-client.js.map
+│   │   │   └── types
+│   │   │       ├── agent.types.d.ts
+│   │   │       ├── agent.types.d.ts.map
+│   │   │       ├── agent.types.js
+│   │   │       └── agent.types.js.map
+│   │   ├── node_modules
+│   │   │   ├── @repo
+│   │   │   │   └── typescript-config -> ../../../typescript-config
+│   │   │   ├── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   │   └── zod -> ../../../node_modules/.pnpm/zod@3.25.76/node_modules/zod
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   ├── index.ts
+│   │   │   ├── redis-client.ts
+│   │   │   └── types
+│   │   │       ├── agent.types.d.ts
+│   │   │       ├── agent.types.d.ts.map
+│   │   │       ├── agent.types.js
+│   │   │       ├── agent.types.js.map
+│   │   │       └── agent.types.ts
+│   │   └── tsconfig.json
+│   ├── dist
+│   │   ├── llm-adapter.d.ts
+│   │   └── llm-adapter.js
+│   ├── eslint-config
+│   │   ├── base.js
+│   │   ├── node_modules
+│   │   │   ├── eslint-config-turbo -> ../../../node_modules/.pnpm/eslint-config-turbo@2.6.1_eslint@8.57.1_turbo@2.6.3/node_modules/eslint-config-turbo
+│   │   │   └── @typescript-eslint
+│   │   │       ├── eslint-plugin -> ../../../../node_modules/.pnpm/@typescript-eslint+eslint-plugin@7.18.0_@typescript-eslint+parser@7.18.0_eslint@8.57.1__8913d4bf05924a02a609c10a2088d6a4/node_modules/@typescript-eslint/eslint-plugin
+│   │   │       └── parser -> ../../../../node_modules/.pnpm/@typescript-eslint+parser@7.18.0_eslint@8.57.1_typescript@5.9.3/node_modules/@typescript-eslint/parser
+│   │   ├── package.json
+│   │   └── react-internal.js
+│   ├── mcp-server-vfs
+│   │   ├── dist
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   ├── list_files_tree.d.ts
+│   │   │   ├── list_files_tree.d.ts.map
+│   │   │   ├── list_files_tree.js
+│   │   │   ├── list_files_tree.js.map
+│   │   │   ├── search_codebase.d.ts
+│   │   │   ├── search_codebase.d.ts.map
+│   │   │   ├── search_codebase.js
+│   │   │   └── search_codebase.js.map
+│   │   ├── node_modules
+│   │   │   ├── memfs -> ../../../node_modules/.pnpm/memfs@4.51.0/node_modules/memfs
+│   │   │   ├── @repo
+│   │   │   │   └── typescript-config -> ../../../typescript-config
+│   │   │   └── typescript -> ../../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.d.ts.map
+│   │   │   ├── index.js
+│   │   │   ├── index.js.map
+│   │   │   ├── index.ts
+│   │   │   ├── list_files_tree.d.ts
+│   │   │   ├── list_files_tree.d.ts.map
+│   │   │   ├── list_files_tree.js
+│   │   │   ├── list_files_tree.js.map
+│   │   │   ├── list_files_tree.ts
+│   │   │   ├── search_codebase.d.ts
+│   │   │   ├── search_codebase.d.ts.map
+│   │   │   ├── search_codebase.js
+│   │   │   ├── search_codebase.js.map
+│   │   │   └── search_codebase.ts
+│   │   └── tsconfig.json
+│   ├── package.json
+│   ├── src
+│   │   └── agents
+│   │       └── specialists
+│   │           └── IngestionAgent.js
+│   ├── tsconfig.json
+│   └── typescript-config
+│       ├── base.json
+│       ├── package.json
+│       └── react-library.json
+├── pg_hba.conf
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── qodana.yaml
+├── registry_count.txt
+├── scripts
+│   ├── generate_native_docs.d.ts
+│   ├── generate_native_docs.d.ts.map
+│   ├── generate_native_docs.js
+│   ├── generate_native_docs.js.map
+│   └── generate_native_docs.ts
+├── start-ui.sh
+├── start-voice-input.sh
+├── stop-dev.sh
+├── test.txt
+├── tree_filesystem.sh
+├── tsc
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+├── turbo.json
+├── ui_dev_foreground.log
+└── up.log
+
+1370 directories, 1591 files

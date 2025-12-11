@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { Robot } from '@phosphor-icons/react';
-import { AiButton } from '../components/ui/AiButton.js';
+import { useState } from 'react';
+import { Plus, Trash2, Bot } from 'lucide-react';
+import { AiButton } from '../../NUI/ui/AiButton.js';
 
 /**
  * COORP (Cognitive Orchestration & Routing Platform) Page
@@ -41,7 +40,7 @@ export default function COORP() {
       {/* Header */}
       <div className="flex-none h-12 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)] flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <Robot size={24} weight="duotone" className="text-[var(--color-primary)]" />
+          <Bot size={24} className="text-[var(--color-primary)]" />
           <h1 className="text-lg font-bold tracking-wider">COORP</h1>
           <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
             Cognitive Orchestration Platform
@@ -108,7 +107,7 @@ export default function COORP() {
           {nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-[var(--color-text-muted)]">
-                <Robot size={48} weight="duotone" className="mx-auto mb-4 opacity-50" />
+                <Bot size={48} className="mx-auto mb-4 opacity-50" />
                 <p className="text-sm">No nodes yet. Click &quot;Add Node&quot; to get started.</p>
               </div>
             </div>

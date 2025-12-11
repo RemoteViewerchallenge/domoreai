@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { trpc } from '../../utils/trpc.js';
+import { callVoid } from '../../lib/callVoid.js';
 import { Play, Save, Globe, Code } from 'lucide-react';
 
 export const ApiExplorerNode: React.FC = () => {
@@ -89,7 +90,7 @@ export const ApiExplorerNode: React.FC = () => {
           )}
 
           <button 
-            onClick={handleExecute}
+            onClick={() => callVoid(handleExecute)}
             disabled={executeMutation.isLoading}
             className="btn btn-sm btn-primary w-full gap-2"
           >

@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { VFile, FileSystemProviderType } from './FileSystemTypes.js';
-import type { SshConfig } from '../components/SshConnectionModal.js';
+import type { SshConfig } from '../legacy/unused/components/SshConnectionModal.js';
 
 interface FileSystemContextType {
   files: VFile[];

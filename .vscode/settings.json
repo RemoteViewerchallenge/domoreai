@@ -8,7 +8,6 @@
 
   "terminal.integrated.gpuAcceleration": "on",
 
-
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
     "**/.env": false
@@ -27,15 +26,18 @@
     "aiplatform",
     "Avenir",
     "chatcmpl",
+    "cmdk",
     "cmiho",
     "cmjh",
     "codestral",
     "codingame",
+    "coorp",
     "cuid",
     "dall",
     "datalake",
     "deepseek",
     "dirents",
+    "doesn",
     "domore",
     "domoreai",
     "dotenv",

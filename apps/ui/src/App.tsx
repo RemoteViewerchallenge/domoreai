@@ -1,28 +1,19 @@
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import MyWorkspacePage from './pages/workspace/[id]';
-import SmartSwitchPage from './pages/workspace/SmartSwitch';
-import UnifiedProviderPage from './pages/UnifiedProviderPage';
-import ModelsPage from './pages/admin/models';
-import DataLake from './pages/DataLake';
-import RoleCreator from './pages/RoleCreator';
-import ProjectCreator from './pages/ProjectCreator';
-import ProjectsDashboard from './pages/ProjectsDashboard';
-import ProjectPage from './pages/ProjectPage';
-import WorkSpace from './pages/WorkSpace';
-import ProviderRecovery from './pages/ProviderRecovery';
-import CreatorStudio from './pages/CreatorStudio';
-import SettingsPage from './pages/SettingsPage';
-import FileLocationPage from './pages/FileLocationPage';
-import DesignSystemSettingsPage from './pages/DesignSystemSettingsPage';
-import FeatureFlagWrapper from './components/FeatureFlagWrapper';
+import CreatorStudio from './pages/CreatorStudio.js';
+import SettingsPage from './pages/SettingsPage.js';
+import FileLocationPage from './pages/FileLocationPage.js';
+import DesignSystemSettingsPage from './pages/DesignSystemSettingsPage.js';
+import FeatureFlagWrapper from './components/core/FeatureFlagWrapper.js';
+import NewUIRoot from '../NUI/Dum/NewUIRoot.js';
+import AdaptiveDataExplorer from './legacy/unused/data/DataExplorer.js';
 import './App.css';
 
-import { FileSystemProvider } from './stores/FileSystemStore';
-import { UnifiedMenuBar } from './components/UnifiedMenuBar';
-import { ThemeProvider } from './theme/ThemeProvider';
-import { useHotkeys } from './hooks/useHotkeys';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { FileSystemProvider } from './stores/FileSystemStore.js';
+import { UnifiedMenuBar } from './components/layout/UnifiedMenuBar.js';
+import { ThemeProvider, useThemeContext } from './theme/ThemeProvider.js';
+import { useHotkeys } from './hooks/useHotkeys.js';
+import { ErrorBoundary } from './components/core/ErrorBoundary.js';
 
 interface Hotkey {
   id: string;
@@ -38,6 +29,7 @@ const HOTKEYS_STORAGE_KEY = 'core-hotkeys';
  */
 function App() {
   const navigate = useNavigate();
+  const { theme: _theme } = useThemeContext();
   const location = useLocation();
   const [hotkeys, setHotkeys] = useState<Hotkey[]>([]);
 
@@ -114,25 +106,25 @@ function App() {
             letterSpacing: 'var(--letter-spacing)'
           }}
         >
-          <UnifiedMenuBar />
+          {/* Hide the old menu bar on the new UI page */}
+          {location.pathname !== '/dummy' && <UnifiedMenuBar />}
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<FeatureFlagWrapper />} />
-              <Route path="/smartswitch" element={<SmartSwitchPage />} />
-              <Route path="/projects" element={<ProjectsDashboard />} />
-              <Route path="/providers" element={<UnifiedProviderPage />} />
-              <Route path="/admin/models" element={<ModelsPage />} />
-              <Route path="/workspace/:id" element={<MyWorkspacePage />} />
-              <Route path="/data-lake" element={<DataLake />} />
-              <Route path="/role-creator" element={<RoleCreator />} />
-              <Route path="/creator" element={<CreatorStudio />} />
-              <Route path="/project-creator" element={<ProjectCreator />} />
-              <Route path="/project/:id" element={<ProjectPage />} />
               <Route path="/workspace" element={<FeatureFlagWrapper />} />
-              <Route path="/workspace/legacy" element={<WorkSpace />} />
+
+              {/* Data workbench (was UnifiedProviderPage) */}
+              <Route path="/data-explorer" element={<AdaptiveDataExplorer />} />
+
+              {/* Creator Studio */}
+              <Route path="/creator" element={<CreatorStudio />} />
+
+              {/* Settings and tools */}
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
-              <Route path="/provider-recovery" element={<ProviderRecovery />} />
+
+              {/* The new UI sandbox page */}
+              <Route path="/dummy" element={<NewUIRoot />} />
               <Route path="/design-system" element={<DesignSystemSettingsPage />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">

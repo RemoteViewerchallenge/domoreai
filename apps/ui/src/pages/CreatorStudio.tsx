@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import RoleCreatorPanel from '../components/RoleCreatorPanel.js';
+import RoleCreatorPanel from '../features/creator-studio/RoleCreatorPanel.js';
 import { OrchestrationDesigner } from '../features/creator-studio/OrchestrationDesigner.js';
 import { Users, Workflow } from 'lucide-react';
 

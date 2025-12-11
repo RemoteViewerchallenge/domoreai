@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor } from 'lucide-react';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
 import { useTheme } from '../hooks/useTheme.js';
-import { AnimationToggle } from '../components/AnimationToggle.js';
+import { AnimationToggle } from '../../NUI/ui/AnimationToggle.js';
 
 interface Hotkey {
   id: string;

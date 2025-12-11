@@ -92,7 +92,7 @@ export const aiRouter = createTRPCRouter({
               modelId: selectedModel.modelId,
               internalId: selectedModel.internalId,
               provider: selectedModel.providerId,
-              contextWindow: selectedModel.context_window || selectedModel.contextWindow,
+              contextWindow: selectedModel.contextWindow,
             } : null,
             prompt: input.prompt,
             // Placeholder for actual AI response

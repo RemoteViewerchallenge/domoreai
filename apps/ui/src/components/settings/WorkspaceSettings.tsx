@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc.js';
+import { callVoid } from '../../lib/callVoid.js';
 import { Sparkles, Save, Plus, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface Role {
@@ -216,7 +217,7 @@ export const WorkspaceSettings: React.FC = () => {
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">Project System Prompt</label>
             <button
-              onClick={handleMagicGenerate}
+              onClick={() => callVoid(handleMagicGenerate)}
               disabled={generatePromptMutation.isLoading}
               className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white text-[10px] font-bold rounded hover:opacity-80 transition-all"
             >
@@ -237,7 +238,7 @@ export const WorkspaceSettings: React.FC = () => {
 
         <div className="flex justify-end">
           <button 
-            onClick={handleSave}
+            onClick={() => callVoid(handleSave)}
             className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] font-bold rounded shadow-lg shadow-[var(--color-primary)]/20 transition-all"
           >
             <Save size={16} />

@@ -61,6 +61,14 @@ export async function logUsage(data: RawProviderOutput) {
   }
 }
 
+interface SelectedModel {
+  modelId: string;
+  internalId: string;
+  providerId: string;
+  contextWindow?: number;
+  [key: string]: any;
+}
+
 /**
  * The "Brain" for model selection.
  * Finds the best, non-rate-limited model for a given role.
@@ -70,7 +78,7 @@ export async function logUsage(data: RawProviderOutput) {
  * Supports "Exhaustive Fallback" by excluding failed models (not providers).
  * This allows other models from the same provider to remain active.
  */
-export async function selectModelFromRegistry(roleId: string, failedModels: string[] = []) {
+export async function selectModelFromRegistry(roleId: string, failedModels: string[] = []): Promise<SelectedModel | null> {
   // 1. Get Role & Criteria
   const role = await prisma.role.findUnique({ where: { id: roleId } });
   if (!role) throw new Error(`Role not found: ${roleId}`);
