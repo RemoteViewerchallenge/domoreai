@@ -628,9 +628,8 @@ Example prompts:
           Drag nodes • Click headers to connect • {activeTab === 'data' ? 'Drawing connections...' : activeTab === 'assets' ? 'Browse & organize files' : 'Build relationships'}
         </div>
       </div>
-      </div>
-    </Layout>
+    </div>
   );
-};
+}
 
-export default FutureDataExplorer;
+export default AdaptiveDataExplorer;

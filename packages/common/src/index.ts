@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Export redis client
+export { getRedisClient, closeRedis, type RedisClient } from './redis-client.js';
+
 /**
  * Represents an LLM provider.
  */

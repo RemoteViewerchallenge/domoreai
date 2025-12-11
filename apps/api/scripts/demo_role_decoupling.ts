@@ -40,7 +40,7 @@ async function main() {
   });
 
   console.log(`✅ Created orchestration: "${orchestration.name}" (ID: ${orchestration.id})`);
-  console.log(`   Steps: ${orchestration.steps.map(s => s.name).join(', ')}`);
+  console.log(`   Steps: ${(orchestration as any).steps?.map((s: any) => s.name).join(', ') || 'N/A'}`);
 
   // Step 2: Create example roles (if they don't exist)
   console.log('\n👥 Step 2: Ensuring example roles exist...\n');
