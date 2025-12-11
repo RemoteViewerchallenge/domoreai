@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
+import { ThemeEditorSidebar } from '../components/appearance/ThemeEditorSidebar.js';
+import { useTheme } from '../hooks/useTheme.js';
 
 export default function WorkSpace() {
+  const { theme, setTheme } = useTheme();
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
   const [columns, setColumns] = useState(3);
   const [cards, setCards] = useState([
     { id: '1', roleId: '', column: 0 },
@@ -98,12 +102,23 @@ export default function WorkSpace() {
               +
             </button>
           </div>
+
+          <div className="w-px h-4 bg-[var(--color-border)] mx-2" />
+          <button
+            onClick={() => setShowThemeEditor(!showThemeEditor)}
+            className={`p-1 rounded hover:bg-[var(--color-background)] ${showThemeEditor ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+            title="Theme Editor"
+          >
+            <Settings size={14} />
+          </button>
         </div>
       </div>
 
-      {/* Main Grid - Columns */}
-      <div className="flex-1 flex gap-0 overflow-hidden">
-        {Array.from({ length: columns }).map((_, columnIndex) => {
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Grid - Columns */}
+        <div className="flex-1 flex gap-0 overflow-hidden">
+          {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
           const currentFocusIndex = focusedCardIndex[columnIndex] || 0;
           const currentCard = columnCards[currentFocusIndex];
@@ -187,6 +202,15 @@ export default function WorkSpace() {
             </div>
           );
         })}
+      </div>
+
+      {showThemeEditor && (
+        <ThemeEditorSidebar
+          theme={theme}
+          onUpdateTheme={setTheme}
+          onClose={() => setShowThemeEditor(false)}
+        />
+      )}
       </div>
     </div>
   );
