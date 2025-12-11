@@ -1,8 +1,8 @@
-# Dead Code Cleanup Report - Frontend Analysis (UPDATED)
+# Dead Code Cleanup Report - Frontend Analysis (FINAL)
 
 **Date:** 2025-12-11  
 **Analysis Tool:** Knip v5.73.3  
-**Scope:** Frontend code (apps/ui) reachable from core pages + settings
+**Scope:** Frontend code (apps/ui) reachable from core pages + settings + workspace pages
 
 ## Entry Points Analyzed
 
@@ -16,37 +16,46 @@ The following pages were designated as entry points for the application:
 ### Additional Pages Kept (Per User Request)
 4. **`/settings`** → `apps/ui/src/pages/SettingsPage.tsx` ⭐ **User requested to keep**
 5. **`/file-location`** → `apps/ui/src/pages/FileLocationPage.tsx` ⭐ **User requested to keep**
+6. **`/workspace/:id`** → `apps/ui/src/pages/workspace/[id].tsx` ⭐ **User requested to keep (#8)**
+7. **`/workspace/smart-switch`** → `apps/ui/src/pages/workspace/SmartSwitch.tsx` ⭐ **User requested to keep (#9)**
 
-### Additional Pages Kept (Direct Dependencies)
-6. **`/data-lake`** → `apps/ui/src/pages/DataLake.tsx` 
-   - **Reason:** Linked from UnifiedProviderPage via `<Link to="/data-lake">`
+### Components Kept (Per User Request)
+- **`GitControls.tsx`** ⭐ **User requested to keep ("I want the git thing")**
+
+### Pages Removed (Per User Request)
+- **`DataLake.tsx`** ❌ **User requested to remove ("I dont need data lake if its a linked page")**
+
+### Monaco Editor Status ✅
+Monaco editor is **STILL AVAILABLE** and actively used:
+- `MonacoEditor.tsx` component exists and is imported by:
+  - `workspace/[id].tsx` (kept per user request)
+  - `SmartEditor.tsx` → used by `SwappableCard.tsx` → used by `WorkSpace.tsx`
+  - `WorkOrderCard.tsx` → used by workspace components
+- Dependencies: `@monaco-editor/react`, `monaco-editor` are both in use
 
 ### Note on Menu Access
-Both `/settings` and `/file-location` are accessible via `UnifiedMenuBar` which appears on all pages, making them reachable from the core UI.
+`/settings` and `/file-location` are accessible via `UnifiedMenuBar` which appears on all pages.
 
 ## Dead Code Identified
 
 ### Pages to Remove (9 files)
 
-These page files are not reachable from any of the kept entry points:
-
 1. `apps/ui/src/pages/admin/models.tsx` - Admin models management page
-2. `apps/ui/src/pages/ProjectCreator.tsx` - Project creation interface
-3. `apps/ui/src/pages/ProjectPage.tsx` - Individual project view
-4. `apps/ui/src/pages/ProjectsDashboard.tsx` - Projects dashboard/list
-5. `apps/ui/src/pages/ProviderManager.tsx` - Provider management (old)
-6. `apps/ui/src/pages/ProviderRecovery.tsx` - Provider recovery tool
-7. `apps/ui/src/pages/RoleCreator.tsx` - Role creation page
-8. `apps/ui/src/pages/workspace/[id].tsx` - Individual workspace view
-9. `apps/ui/src/pages/workspace/SmartSwitch.tsx` - Workspace switcher
-10. `apps/ui/src/pages/WorkspaceList.tsx` - Workspace list view
+2. `apps/ui/src/pages/DataLake.tsx` - Data lake view ❌ **User doesn't want linked pages**
+3. `apps/ui/src/pages/ProjectCreator.tsx` - Project creation interface
+4. `apps/ui/src/pages/ProjectPage.tsx` - Individual project view
+5. `apps/ui/src/pages/ProjectsDashboard.tsx` - Projects dashboard/list
+6. `apps/ui/src/pages/ProviderManager.tsx` - Provider management (old)
+7. `apps/ui/src/pages/ProviderRecovery.tsx` - Provider recovery tool
+8. `apps/ui/src/pages/RoleCreator.tsx` - Role creation page
+9. `apps/ui/src/pages/WorkspaceList.tsx` - Workspace list view
 
-### Component Files to Remove (22 files)
+### Component Files to Remove (19 files)
 
 1. `apps/ui/src/components/BottomSummaryBar.tsx`
 2. `apps/ui/src/components/DataLakeTable.tsx`
-3. `apps/ui/src/components/GitControls.tsx`
-4. `apps/ui/src/components/InteractiveTerminal.tsx`
+3. `apps/ui/src/components/InteractiveTerminal.tsx`
+4. `apps/ui/src/components/JsonImportModal.tsx`
 5. `apps/ui/src/components/nodes/ApiExplorerNode.tsx`
 6. `apps/ui/src/components/nodes/DatabaseManagerNode.tsx`
 7. `apps/ui/src/components/OrchestrationCreatorPanel.tsx`
@@ -59,45 +68,53 @@ These page files are not reachable from any of the kept entry points:
 14. `apps/ui/src/components/ToolSelector.tsx`
 15. `apps/ui/src/components/TopSummaryBar.tsx`
 16. `apps/ui/src/components/ui/Accordion.tsx`
-17. `apps/ui/src/components/ui/Button.tsx`
-18. `apps/ui/src/components/ui/Icon.tsx`
-19. `apps/ui/src/components/ui/Panel.tsx`
-20. `apps/ui/src/components/VfsViewer.tsx`
-21. `apps/ui/src/components/work-order/WorkOrderCard.tsx`
-22. `apps/ui/src/components/work-order/WorkOrderColumn.tsx`
+17. `apps/ui/src/components/VfsViewer.tsx`
+18. `apps/ui/src/components/work-order/WorkOrderCard.tsx`
+19. `apps/ui/src/components/work-order/WorkOrderColumn.tsx`
 
-### Utility & Hook Files to Remove (4 files)
+**NOTE:** The following were in the original analysis but are NOW KEPT:
+- ❌ ~~`GitControls.tsx`~~ → ✅ **KEPT** (actively used, user requested)
+- ❌ ~~`ui/Button.tsx`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`ui/Icon.tsx`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`ui/Panel.tsx`~~ → ✅ **KEPT** (actively used)
+
+### Utility & Hook Files to Remove (3 files)
 
 1. `apps/ui/src/constants/savedQueries.ts`
-2. `apps/ui/src/hooks/useVFS.ts`
-3. `apps/ui/src/hooks/useWebSocket.ts`
-4. `apps/ui/src/lib/utils.ts`
-5. `apps/ui/src/types.ts`
+2. `apps/ui/src/hooks/useWebSocket.ts`
+3. `apps/ui/src/types.ts`
 
-### Total Files to Delete: 37
+**NOTE:** The following were in the original analysis but are NOW KEPT:
+- ❌ ~~`hooks/useVFS.ts`~~ → ✅ **KEPT** (used by FileLocationPage and workspace pages)
+- ❌ ~~`lib/utils.ts`~~ → ✅ **KEPT** (actively used)
+
+### Total Files to Delete: 31 (down from 37)
 
 ## Unused Dependencies
 
 The following npm dependencies are not imported by any live code and can be removed from `apps/ui/package.json`:
 
-### Production Dependencies (17)
-1. `@codingame/monaco-vscode-api`
-2. `@radix-ui/react-slot`
-3. `@repo/api-contract`
-4. `@types/react-grid-layout`
-5. `ag-grid-community`
-6. `ag-grid-react`
-7. `api`
-8. `axios`
-9. `class-variance-authority`
-10. `clsx`
-11. `flyonui`
-12. `jspreadsheet-ce`
-13. `monaco-languageclient`
-14. `react-grid-layout`
-15. `react-table`
-16. `tailwind-merge`
-17. `tailwindcss-animate`
+### Production Dependencies (13)
+1. `@codingame/monaco-vscode-api` ⚠️ (Monaco VSCode API - not directly used but may be needed)
+2. `@repo/api-contract`
+3. `@types/react-grid-layout`
+4. `ag-grid-community`
+5. `ag-grid-react`
+6. `api`
+7. `axios`
+8. `flyonui`
+9. `jspreadsheet-ce`
+10. `monaco-languageclient`
+11. `react-grid-layout`
+12. `react-table`
+13. `tailwindcss-animate`
+
+**NOTE:** The following were in the original analysis but are NOW KEPT:
+- ❌ ~~`@radix-ui/react-slot`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`class-variance-authority`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`clsx`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`tailwind-merge`~~ → ✅ **KEPT** (actively used)
+- ❌ ~~`superjson`~~ → ✅ **KEPT** (actively used for tRPC)
 
 ### Dev Dependencies (6)
 1. `@eslint/js`
@@ -155,7 +172,7 @@ The following routes should be removed from `apps/ui/src/App.tsx`:
 ```tsx
 <Route path="/projects" element={<ProjectsDashboard />} />
 <Route path="/admin/models" element={<ModelsPage />} />
-<Route path="/workspace/:id" element={<MyWorkspacePage />} />
+<Route path="/data-lake" element={<DataLake />} />             ❌ User doesn't want linked pages
 <Route path="/role-creator" element={<RoleCreator />} />
 <Route path="/project-creator" element={<ProjectCreator />} />
 <Route path="/project/:id" element={<ProjectPage />} />
@@ -168,18 +185,32 @@ The following routes should be removed from `apps/ui/src/App.tsx`:
 <Route path="/" element={<WorkSpace />} />
 <Route path="/workspace" element={<WorkSpace />} />
 <Route path="/providers" element={<UnifiedProviderPage />} />
-<Route path="/data-lake" element={<DataLake />} />
 <Route path="/creator" element={<CreatorStudio />} />
-<Route path="/settings" element={<SettingsPage />} />          ⭐ KEPT per user request
-<Route path="/file-location" element={<FileLocationPage />} /> ⭐ KEPT per user request
+<Route path="/settings" element={<SettingsPage />} />              ⭐ KEPT per user request
+<Route path="/file-location" element={<FileLocationPage />} />     ⭐ KEPT per user request
+<Route path="/workspace/:id" element={<MyWorkspacePage />} />      ⭐ KEPT per user request (#8)
+<Route path="/workspace/smart-switch" element={<SmartSwitch />} /> ⭐ KEPT per user request (#9)
 ```
 
 ## Recommendation
 
-⚠️ **BEFORE PROCEEDING:** Please review this list carefully. Once approved:
+⚠️ **UPDATED PER USER FEEDBACK** 
 
-1. **File Deletion:** All 40 files listed above will be deleted
-2. **Route Cleanup:** App.tsx will be updated to remove unused routes
+User requested:
+- ✅ **KEEP** workspace pages #8 and #9 (`workspace/[id].tsx`, `workspace/SmartSwitch.tsx`)
+- ✅ **KEEP** GitControls component ("I want the git thing")
+- ❌ **REMOVE** DataLake page ("I dont need data lake if its a linked page")
+
+**Monaco Editor Status:** ✅ Still available and actively used through workspace components
+
+**User Approval:** "you can get it back so go for it" - Proceeding with deletion
+
+1. **File Deletion:** All 31 files listed above will be deleted
+2. **Route Cleanup:** App.tsx will be updated to remove unused routes (including /data-lake)
+3. **Dependency Cleanup:** package.json will be updated to remove unused dependencies
+4. **Export Cleanup:** Unused exports will be removed from remaining files
+5. **Build Verification:** Frontend build will be run to ensure no breakage
+6. **Manual Testing:** The core pages will be tested in browser
 3. **Dependency Cleanup:** package.json will be updated to remove unused dependencies
 4. **Export Cleanup:** Unused exports will be removed from remaining files
 5. **Build Verification:** Frontend build will be run to ensure no breakage
