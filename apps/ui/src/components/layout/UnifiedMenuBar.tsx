@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Settings, FolderOpen, LayoutGrid, Database, Users, Workflow, Briefcase } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme.js';
+import { useThemeContext } from '../../theme/ThemeProvider.js';
 import useIngestStore from '../../stores/ingest.store.js';
 
 export const UnifiedMenuBar = () => {
   const location = useLocation();
-  const { theme } = useTheme();
+  const { theme } = useThemeContext();
   const isIngesting = useIngestStore(state => state.activeCount > 0);
   const currentPath = useIngestStore(state => state.currentPath);
   const filesProcessed = useIngestStore(state => state.filesProcessed);

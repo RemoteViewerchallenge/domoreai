@@ -5,6 +5,8 @@ import {
   Zap, MessageSquare, Move, Search, Maximize, 
   Minimize, Trash2, Copy, Bot, Network, X, ChevronDown
 } from 'lucide-react';
+import { Layout } from '../components/Layout.js';
+import { AIContextButton } from '../components/AIContextButton.js';
 
 // --- TYPES ---
 
@@ -148,9 +150,12 @@ const NodeSettingsModal: React.FC<NodeSettingsModalProps> = ({ node, nodes, onCl
                         <Settings size={18} className="text-purple-400" />
                         Edit Node: {node.name}
                     </h3>
-                    <button onClick={onClose} className="p-1.5 rounded-full hover:bg-zinc-700 text-zinc-400">
-                        <X size={16} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <AIContextButton context={`Node: ${node.name}`} size="sm" />
+                        <button onClick={onClose} className="p-1.5 rounded-full hover:bg-zinc-700 text-zinc-400">
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body */}
@@ -472,9 +477,12 @@ export default function App() {
              </Tooltip>
 
              {/* More Actions */}
-             <button onClick={(e) => { e.stopPropagation(); /* Future: Context Menu */ }} className="p-1 hover:bg-white/10 rounded text-zinc-400 hover:text-white transition-colors">
-                <Settings size={12} />
-             </button>
+             <div className="flex items-center gap-1">
+                <AIContextButton context={`Node: ${node.name}`} size="sm" />
+                <button onClick={(e) => { e.stopPropagation(); /* Future: Context Menu */ }} className="p-1 hover:bg-white/10 rounded text-zinc-400 hover:text-white transition-colors">
+                    <Settings size={12} />
+                </button>
+             </div>
           </div>
         </div>
 
@@ -540,12 +548,13 @@ export default function App() {
   const activeNode = nodes.find(n => n.id === editingNodeId);
 
   return (
-    <div className="w-screen h-screen flex bg-black text-zinc-200 overflow-hidden font-sans select-none">
+    <Layout activePage="coore">
+      <div className="w-full h-full flex bg-black text-zinc-200 overflow-hidden font-sans select-none relative">
       
-      {/* 1. TOOLBOX SIDEBAR (Draggables) */}
-      <div className="w-16 flex-none border-r border-zinc-800 bg-[#0c0c0e] flex flex-col items-center py-4 gap-4 z-20">
+      {/* 1. TOOLBOX SIDEBAR (Floating) */}
+      <div className="absolute left-4 top-4 bottom-4 w-16 bg-[#0c0c0e]/90 backdrop-blur border border-zinc-800 rounded-xl flex flex-col items-center py-4 gap-4 z-20 shadow-2xl">
         <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-purple-900/50 mb-4">
-           COORP
+           C
         </div>
         
         <Tooltip text="New Corporation (Node)">
@@ -668,6 +677,7 @@ export default function App() {
             onSave={handleNodeSave}
         />
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

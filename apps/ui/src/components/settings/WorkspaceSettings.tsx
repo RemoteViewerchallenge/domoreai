@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { trpc } from '../../utils/trpc.js';
+import { trpc } from '../../utils/trpc';
 import { callVoid } from '../../lib/callVoid.js';
 import { Sparkles, Save, Plus, X, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -55,10 +55,10 @@ export const WorkspaceSettings: React.FC = () => {
 
   const handleSave = () => {
     if (!workspace) return;
-    updateWorkspaceMutation.mutate({
+    callVoid(() => updateWorkspaceMutation.mutate({
       id: workspace.id,
       systemPrompt
-    });
+    }));
   };
 
   const handleMagicGenerate = async () => {

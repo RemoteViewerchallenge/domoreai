@@ -5,7 +5,9 @@ import SettingsPage from './pages/SettingsPage.js';
 import FileLocationPage from './pages/FileLocationPage.js';
 import DesignSystemSettingsPage from './pages/DesignSystemSettingsPage.js';
 import FeatureFlagWrapper from './components/core/FeatureFlagWrapper.js';
-import NewUIRoot from '../NUI/Dum/NewUIRoot.js';
+import COORE from '../NUI/future/COORE.js';
+import FutureDataExplorer from '../NUI/future/Dataexplorer.js';
+import SidebarCustomizer from '../NUI/future/SidebarCustomizer.js';
 import AdaptiveDataExplorer from './legacy/unused/data/DataExplorer.js';
 import './App.css';
 
@@ -106,8 +108,8 @@ function App() {
             letterSpacing: 'var(--letter-spacing)'
           }}
         >
-          {/* Hide the old menu bar on the new UI page */}
-          {location.pathname !== '/dummy' && <UnifiedMenuBar />}
+          {/* Hide the old menu bar on the new UI pages */}
+          {!['/coore', '/data', '/customizer'].includes(location.pathname) && <UnifiedMenuBar />}
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<FeatureFlagWrapper />} />
@@ -123,8 +125,11 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
 
-              {/* The new UI sandbox page */}
-              <Route path="/dummy" element={<NewUIRoot />} />
+              {/* NUI Future Pages */}
+              <Route path="/coore" element={<COORE />} />
+              <Route path="/data" element={<FutureDataExplorer />} />
+              <Route path="/customizer" element={<SidebarCustomizer />} />
+              
               <Route path="/design-system" element={<DesignSystemSettingsPage />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">

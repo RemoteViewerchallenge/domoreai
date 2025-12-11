@@ -3,8 +3,10 @@ import {
   Database, Table, Plus, Minimize2, Maximize2, 
   Sparkles, Link2, Download, Upload, Trash2, 
   Film, FileAudio, FileText, Image, Zap, X, Save, FolderOpen,
-  Code, Layout, Grid, Eye, PlayCircle, FileCode, Archive
+  Code, Layout as LayoutIcon, Grid, Eye, PlayCircle, FileCode, Archive
 } from 'lucide-react';
+import { Layout } from '../components/Layout.js';
+import { AIContextButton } from '../components/AIContextButton.js';
 
 const FutureDataExplorer = () => {
   const colors = {
@@ -202,6 +204,7 @@ const FutureDataExplorer = () => {
             >
               <Save size={12} style={{ color: colors.accent }} />
             </button>
+            <AIContextButton context={`Table: ${node.title}`} size="sm" />
             <button 
               onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }} 
               className="p-1 hover:bg-white/10 rounded"
@@ -304,6 +307,7 @@ const FutureDataExplorer = () => {
             <button className="flex items-center gap-2 px-4 py-2 rounded text-xs font-bold" style={{ backgroundColor: colors.accent, color: 'white' }}>
               <Upload size={14} /> Upload
             </button>
+            <AIContextButton context="Asset Library" size="sm" />
           </div>
 
           <div className="grid grid-cols-4 gap-4">
@@ -354,6 +358,7 @@ const FutureDataExplorer = () => {
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: colors.text }}>
             <Grid size={18} style={{ color: colors.primary }} />
             Data Relationships
+            <AIContextButton context="Data Relationships" size="sm" />
           </h3>
           <div className="space-y-3">
             {connections.map(conn => (
@@ -402,7 +407,8 @@ const FutureDataExplorer = () => {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden font-sans" style={{ backgroundColor: colors.bg }}>
+    <Layout activePage="data">
+      <div className="h-full w-full flex flex-col overflow-hidden font-sans" style={{ backgroundColor: colors.bg }}>
       
       <div 
         className="h-14 flex items-center justify-between px-4 border-b"
@@ -622,3 +628,9 @@ Example prompts:
           Drag nodes • Click headers to connect • {activeTab === 'data' ? 'Drawing connections...' : activeTab === 'assets' ? 'Browse & organize files' : 'Build relationships'}
         </div>
       </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default FutureDataExplorer;

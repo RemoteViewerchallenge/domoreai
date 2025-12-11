@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { trpc } from '../utils/trpc.js';
+import { trpc } from '../utils/trpc';
 import { callVoid } from '../../lib/callVoid.js';
 import { X, Upload } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({ onClose, onSuc
     try {
       // Validate JSON
       JSON.parse(jsonString);
-    } catch (e) {
+    } catch {
       setError('Invalid JSON format.');
       return;
     }

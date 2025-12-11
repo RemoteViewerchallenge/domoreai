@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor } from 'lucide-react';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
-import { useTheme } from '../hooks/useTheme.js';
+import { useThemeContext } from '../theme/ThemeProvider.js';
 import { AnimationToggle } from '../../NUI/ui/AnimationToggle.js';
 
 interface Hotkey {
@@ -32,7 +32,7 @@ const SELECTED_SCHEME_STORAGE_KEY = 'core-selected-scheme';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'appearance' | 'hotkeys' | 'workspace'>('appearance');
-  const { theme, setTheme, resetToDefault } = useTheme();
+  const { theme, setTheme, resetToDefault } = useThemeContext();
 
   // Load hotkeys from localStorage
   const [hotkeys, setHotkeys] = useState<Hotkey[]>(() => {

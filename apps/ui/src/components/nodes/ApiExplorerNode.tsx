@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { trpc } from '../../utils/trpc.js';
+import { trpc } from '../../utils/trpc';
 import { callVoid } from '../../lib/callVoid.js';
 import { Play, Save, Globe, Code } from 'lucide-react';
 
@@ -27,12 +27,12 @@ export const ApiExplorerNode: React.FC = () => {
   const handleExecute = () => {
     try {
       const parsedHeaders = JSON.parse(headers);
-      executeMutation.mutate({
+      callVoid(() => executeMutation.mutate({
         method,
         url,
         headers: parsedHeaders,
         body: method !== 'GET' ? body : undefined
-      });
+      }));
     } catch {
       alert('Invalid JSON in Headers');
     }
@@ -126,10 +126,10 @@ export const ApiExplorerNode: React.FC = () => {
              
              {response !== null && (
                <button 
-                 onClick={() => {
-                    const name = prompt("Provider Name for Data Lake?");
-                    if (name) saveMutation.mutate({ providerName: name, data: response });
-                 }}
+              onClick={() => {
+                const name = prompt("Provider Name for Data Lake?");
+                if (name) callVoid(() => saveMutation.mutate({ providerName: name, data: response }));
+              }}
                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1 rounded text-xs flex items-center gap-2 border border-zinc-600"
                >
                  <Save size={12} /> Save to Lake
