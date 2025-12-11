@@ -1,18 +1,12 @@
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import MyWorkspacePage from './pages/workspace/[id].js';
-import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
-import ModelsPage from './pages/admin/models.js';
-import DataLake from './pages/DataLake.js';
-import RoleCreator from './pages/RoleCreator.js';
-import ProjectCreator from './pages/ProjectCreator.js';
-import ProjectsDashboard from './pages/ProjectsDashboard.js';
-import ProjectPage from './pages/ProjectPage.js';
-import WorkSpace from './pages/WorkSpace.js';
-import ProviderRecovery from './pages/ProviderRecovery.js';
-import CreatorStudio from './pages/CreatorStudio.js';
-import SettingsPage from './pages/SettingsPage.js';
-import FileLocationPage from './pages/FileLocationPage.js';
+import SmartSwitch from './pages/workspace/smart-switch.js';
+import DataCenterPage from './pages/datacenter.js';
+import WorkSpace from './pages/workspace.js';
+import CreatorStudio from './pages/creator.js';
+import SettingsPage from './pages/settings.js';
+import FileLocationPage from './pages/file-location.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -86,11 +80,11 @@ function App() {
     'Go to Workspace': () => {
       navigate('/workspace');
     },
-    'Go to Projects': () => {
-      navigate('/projects');
-    },
     'Go to Creator Studio': () => {
       navigate('/creator');
+    },
+    'Go to DataCenter': () => {
+      navigate('/datacenter');
     },
   };
 
@@ -115,19 +109,13 @@ function App() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<WorkSpace />} />
-              <Route path="/projects" element={<ProjectsDashboard />} />
-              <Route path="/providers" element={<UnifiedProviderPage />} />
-              <Route path="/admin/models" element={<ModelsPage />} />
+              <Route path="/datacenter" element={<DataCenterPage />} />
               <Route path="/workspace/:id" element={<MyWorkspacePage />} />
-              <Route path="/data-lake" element={<DataLake />} />
-              <Route path="/role-creator" element={<RoleCreator />} />
+              <Route path="/workspace/smart-switch" element={<SmartSwitch />} />
               <Route path="/creator" element={<CreatorStudio />} />
-              <Route path="/project-creator" element={<ProjectCreator />} />
-              <Route path="/project/:id" element={<ProjectPage />} />
               <Route path="/workspace" element={<WorkSpace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
-              <Route path="/provider-recovery" element={<ProviderRecovery />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
                   <div className="text-center">
