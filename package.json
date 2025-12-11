@@ -17,6 +17,7 @@
     "@types/picomatch": "^4.0.2",
     "cross-env": "^7.0.3",
     "husky": "^9.1.7",
+    "knip": "^5.73.3",
     "lint-staged": "^16.2.7",
     "prettier": "^2.8.8",
     "turbo": "latest"
