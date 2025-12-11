@@ -92,14 +92,14 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     }
 
     if (customMutation) {
-      customMutation.mutate(payload);
+      callVoid(() => customMutation.mutate(payload));
     } else {
-      mutation.mutate({
+      callVoid(() => mutation.mutate({
         name: payload.label,
         providerType: payload.type,
         baseURL: payload.baseURL,
         apiKey: payload.apiKey
-      });
+      }));
     }
   };
 

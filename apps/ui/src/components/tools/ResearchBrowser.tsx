@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Loader2, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { trpc } from '../../utils/trpc.js';
+import { trpc } from '../../utils/trpc';
 import { callVoid } from '../../lib/callVoid.js';
 
 export default function ResearchBrowser({ initialUrl = 'https://google.com' }: { initialUrl?: string }) {
@@ -156,13 +156,13 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
   const handleHome = useCallback(() => {
     setUrl('https://google.com');
     setTimeout(() => {
-      navigateMutation.mutate({ sessionId, url: 'https://google.com' }, {
-        onSuccess: (result) => {
+      callVoid(() => navigateMutation.mutate({ sessionId, url: 'https://google.com' }, {
+          onSuccess: (result) => { 
           setScreenshot(result.screenshot);
           setTitle(result.title);
           setCurrentUrl(result.url);
         }
-      });
+      }));
     }, 0);
   }, [sessionId, navigateMutation]);
 
@@ -183,7 +183,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
       handleNavigate();
     }
     return () => {
-      closeSessionMutation.mutate({ sessionId });
+      callVoid(() => closeSessionMutation.mutate({ sessionId }));
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

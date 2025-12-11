@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { FileSystemProviderType } from './FileSystemTypes.js';
-import { trpc } from '../utils/trpc.js';
-import type { SshConfig } from '../legacy/unused/components/SshConnectionModal.js';
-import { FileSystemContext } from './FileSystemContext.js';
+import type { FileSystemProviderType } from './FileSystemTypes';
+import { trpc } from '../utils/trpc';
+import type { SshConfig } from '../legacy/unused/components/SshConnectionModal';
+import { FileSystemContext } from './FileSystemContext';
 
 export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const utils = trpc.useUtils();

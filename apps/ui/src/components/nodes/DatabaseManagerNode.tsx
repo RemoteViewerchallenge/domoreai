@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc.js';
 import { UniversalDataGrid } from '../data/UniversalDataGrid.js';
 import { VisualQueryBuilder } from '../data/VisualQueryBuilder.js'; // Ensure this file exists from previous steps
 import { Database, Trash2, Play, Table } from 'lucide-react';
+import { callVoid } from '../../lib/callVoid.js';
 
 export const DatabaseManagerNode: React.FC = () => {
   const [activeTable, setActiveTable] = useState<string>('');
@@ -26,7 +27,7 @@ export const DatabaseManagerNode: React.FC = () => {
   const dropTableMutation = trpc.dataRefinement.deleteTable.useMutation({
     onSuccess: () => {
         setActiveTable('');
-        utils.dataRefinement.listAllTables.invalidate();
+        callVoid(() => utils.dataRefinement.listAllTables.invalidate());
     }
   });
 
@@ -41,20 +42,20 @@ export const DatabaseManagerNode: React.FC = () => {
   const saveQueryMutation = trpc.dataRefinement.saveMigrationQuery.useMutation({
     onSuccess: () => {
       alert("Query Saved!");
-      utils.dataRefinement.listSavedQueries.invalidate();
+      callVoid(() => utils.dataRefinement.listSavedQueries.invalidate());
     }
   });
 
   const deleteQueryMutation = trpc.dataRefinement.deleteSavedQuery.useMutation({
     onSuccess: () => {
-      utils.dataRefinement.listSavedQueries.invalidate();
+      callVoid(() => utils.dataRefinement.listSavedQueries.invalidate());
     }
   });
 
   const saveTableMutation = trpc.dataRefinement.saveQueryResults.useMutation({
     onSuccess: (data) => {
         alert(`Table "${data.newTableName}" created!`);
-        utils.dataRefinement.listAllTables.invalidate();
+        callVoid(() => utils.dataRefinement.listAllTables.invalidate());
     }
   });
 
@@ -87,7 +88,7 @@ export const DatabaseManagerNode: React.FC = () => {
             {activeTable && (
                 <button 
                 onClick={() => {
-                    if (confirm(`DROP TABLE ${activeTable}? This is irreversible.`)) dropTableMutation.mutate({ tableName: activeTable });
+                  if (confirm(`DROP TABLE ${activeTable}? This is irreversible.`)) callVoid(() => dropTableMutation.mutate({ tableName: activeTable }));
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-red-900/20 text-red-400 hover:bg-red-900/40 rounded"
                 >
@@ -112,14 +113,14 @@ export const DatabaseManagerNode: React.FC = () => {
         <div className="flex-none border-b border-zinc-800 animate-in slide-in-from-top-2">
            <VisualQueryBuilder 
              activeTable={activeTable}
-             onExecute={(sql) => executeMutation.mutate({ query: sql })}
-             onSaveTable={(sql, name) => saveTableMutation.mutate({ query: sql, newTableName: name })}
-             onSaveQuery={(sql, name) => saveQueryMutation.mutate({ name, query: sql })}
+             onExecute={(sql) => callVoid(() => executeMutation.mutate({ query: sql }))}
+             onSaveTable={(sql, name) => callVoid(() => saveTableMutation.mutate({ query: sql, newTableName: name }))}
+             onSaveQuery={(sql, name) => callVoid(() => saveQueryMutation.mutate({ name, query: sql }))}
              savedQueries={savedQueries as any[]} // Type cast to avoid strict date mismatch if any
-             onDeleteQuery={(name) => deleteQueryMutation.mutate({ name })}
+             onDeleteQuery={(name) => callVoid(() => deleteQueryMutation.mutate({ name }))}
              isLoading={isLoadingSavedQueries}
              error={error}
-             onRefreshSaved={() => utils.dataRefinement.listSavedQueries.invalidate()}
+             onRefreshSaved={() => callVoid(() => utils.dataRefinement.listSavedQueries.invalidate())}
            />
         </div>
       )}

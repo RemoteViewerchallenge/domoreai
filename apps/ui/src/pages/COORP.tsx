@@ -1,34 +1,41 @@
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Plus, Trash2, Bot } from 'lucide-react';
+import ReactFlow, {
+  MiniMap,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+} from 'reactflow';
+import 'reactflow/dist/style.css'; // Import default ReactFlow styles
 import { AiButton } from '../../NUI/ui/AiButton.js';
+import CoorpNode from '../components/nodes/CoorpNode.js'; // Import custom node component
+
+const nodeTypes = { coorpNode: CoorpNode };
+
 
 /**
  * COORP (Cognitive Orchestration & Routing Platform) Page
  * Visual graph interface for managing AI orchestration nodes and edges
  */
 export default function COORP() {
-  const [nodes, setNodes] = useState<Array<{ id: string; x: number; y: number; label: string }>>([
-    { id: '1', x: 100, y: 100, label: 'Start' },
-    { id: '2', x: 300, y: 100, label: 'Process' },
-    { id: '3', x: 500, y: 100, label: 'End' },
-  ]);
+  const initialNodes: Node[] = [
+    { id: '1', type: 'coorpNode', position: { x: 100, y: 100 }, data: { label: 'Start' } },
+    { id: '2', type: 'coorpNode', position: { x: 300, y: 100 }, data: { label: 'Process' } },
+    { id: '3', type: 'coorpNode', position: { x: 500, y: 100 }, data: { label: 'End' } },
+  ];
+  const initialEdges: Edge[] = [];
 
-  const handleAddNode = () => {
-    const newId = String(Date.now());
-    setNodes((prev) => [
-      ...prev,
-      {
-        id: newId,
-        x: 100 + Math.random() * 400,
-        y: 100 + Math.random() * 300,
-        label: `Node ${prev.length + 1}`,
-      },
-    ]);
-  };
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const handleDeleteNode = (id: string) => {
-    setNodes((prev) => prev.filter((n) => n.id !== id));
-  };
+  const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+
+  const [activeTab, setActiveTab] = useState('Structure');
 
   const handleAiResult = (result: { success: boolean; message: string; data?: Record<string, unknown> }) => {
     console.log('AI Result:', result);
@@ -46,78 +53,62 @@ export default function COORP() {
             Cognitive Orchestration Platform
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleAddNode}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded bg-[var(--color-primary)]/20 border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30 transition-colors"
-          >
-            <Plus size={14} />
-            Add Node
-          </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {['Structure', 'Crews', 'Projects'].map((tab) => (
+              <button
+                key={tab}
+                className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${
+                  activeTab === tab
+                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
+                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-background-tertiary)]'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Quick actions will go here */}
+          </div>
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1 relative overflow-auto bg-[var(--color-background)]">
-        <div className="absolute inset-0 p-8">
-          {/* Grid background */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `
-                linear-gradient(var(--color-border) 1px, transparent 1px),
-                linear-gradient(90deg, var(--color-border) 1px, transparent 1px)
-              `,
-              backgroundSize: '20px 20px',
-              opacity: 0.2,
-            }}
-          />
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Pane - Role & Department Tree */}
+        <div className="flex-none w-64 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] p-4 overflow-y-auto">
+          <h2 className="text-md font-bold mb-4 text-[var(--color-text)]">Role Tree</h2>
+          <p className="text-sm text-[var(--color-text-muted)]">Placeholder for role and department hierarchy.</p>
+        </div>
 
-          {/* Nodes */}
-          {nodes.map((node) => (
-            <div
-              key={node.id}
-              className="absolute flex flex-col gap-2 p-4 bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded shadow-lg"
-              style={{
-                left: `${node.x}px`,
-                top: `${node.y}px`,
-                minWidth: '150px',
-              }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold text-[var(--color-text)]">{node.label}</span>
-                <button
-                  onClick={() => handleDeleteNode(node.id)}
-                  className="text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors"
-                  aria-label="Delete node"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              <div className="text-xs text-[var(--color-text-muted)]">ID: {node.id}</div>
-              <div className="flex justify-end">
-                <AiButton
-                  source={{ type: 'coorp-node', nodeId: node.id }}
-                  onResult={handleAiResult}
-                />
-              </div>
-            </div>
-          ))}
+        {/* Center Pane - Graph Canvas */}
+        <div className="flex-1 relative overflow-hidden">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            fitView
+          >
+            <MiniMap />
+            <Controls />
+            <Background variant="dots" gap={12} size={1} />
+          </ReactFlow>
+        </div>
 
-          {nodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-[var(--color-text-muted)]">
-                <Bot size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="text-sm">No nodes yet. Click &quot;Add Node&quot; to get started.</p>
-              </div>
-            </div>
-          )}
+        {/* Right Pane - Role Detail Inspector */}
+        <div className="flex-none w-80 bg-[var(--color-background-secondary)] border-l border-[var(--color-border)] p-4 overflow-y-auto">
+          <h2 className="text-md font-bold mb-4 text-[var(--color-text)]">Details</h2>
+          <p className="text-sm text-[var(--color-text-muted)]">Placeholder for selected node details.</p>
         </div>
       </div>
 
       {/* Footer */}
       <div className="flex-none h-8 bg-[var(--color-background-secondary)] border-t border-[var(--color-border)] flex items-center justify-between px-4">
-        <span className="text-xs text-[var(--color-text-muted)]">{nodes.length} nodes</span>
+        <span className="text-xs text-[var(--color-text-muted)]">COORP Canvas</span>
         <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
           Feature Preview
         </span>

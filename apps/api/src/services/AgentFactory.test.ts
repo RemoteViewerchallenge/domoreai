@@ -33,7 +33,7 @@ describe('VolcanoAgent', () => {
     mockNextProvider.generateCompletion.mockResolvedValue('Success after failover');
 
     // Mock ProviderManager to return providers
-    vi.mocked(ProviderManager.getProvider).mockImplementation((id) => {
+    vi.mocked(ProviderManager.getProvider).mockImplementation(function (this: void, id) {
       if (id === 'provider-1') return mockProvider;
       if (id === 'provider-2') return mockNextProvider;
       return undefined;
@@ -79,7 +79,9 @@ describe('VolcanoAgent', () => {
   it('should throw an error if the orchestrator returns a failed provider', async () => {
     mockProvider.generateCompletion.mockRejectedValue({ status: 500, message: 'Server Error' });
 
-    vi.mocked(ProviderManager.getProvider).mockReturnValue(mockProvider);
+    vi.mocked(ProviderManager.getProvider).mockImplementation(function (this: void) {
+      return mockProvider;
+    });
 
     // Orchestrator returns the SAME provider that just failed (simulating a bug or exhaustion)
     vi.mocked(modelManager.getBestModel).mockResolvedValue({

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Save, Database, Trash2, Plus, X, Settings, Code } from 'lucide-react';
-import { trpc } from '../../utils/trpc.js';
+import { trpc } from '../../utils/trpc';
 import { callVoid } from '../../lib/callVoid.js';
 
 interface VisualQueryBuilderProps {
@@ -355,7 +355,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                            <td className="p-3">
                              {col !== 'id' && col !== 'createdAt' && (
                                <button 
-                                 onClick={() => { if(confirm(`Drop column "${col}"?`)) dropColumnMutation.mutate({ tableName: activeTable, columnName: col }) }}
+                                 onClick={() => { if(confirm(`Drop column "${col}"?`)) callVoid(() => dropColumnMutation.mutate({ tableName: activeTable, columnName: col })) }}
                                  className="text-zinc-600 hover:text-red-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                >
                                  <Trash2 size={14} /> Drop
@@ -386,7 +386,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                        <option value="JSONB">JSON</option>
                      </select>
                      <button 
-                       onClick={() => addColumnMutation.mutate({ tableName: activeTable, columnName: newColName, type: newColType })}
+                       onClick={() => callVoid(() => addColumnMutation.mutate({ tableName: activeTable, columnName: newColName, type: newColType }))}
                        disabled={!newColName}
                        className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-4 py-2 rounded font-bold flex items-center gap-2"
                      >
@@ -437,7 +437,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                           <pre className="text-[10px] text-[var(--color-text-secondary)] font-mono whitespace-pre-wrap break-all">{sq.query}</pre>
                           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/80 pointer-events-none" />
                        </div>
-                       <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                           <button 
                             onClick={() => { setSql(sq.query); setMode('query'); setNewQueryName(sq.name); }}
                             className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-1.5 rounded text-xs font-bold flex items-center justify-center gap-2"
@@ -446,7 +446,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                           </button>
                           {onDeleteQuery && (
                             <button 
-                              onClick={() => { if(confirm(`Delete query "${sq.name}"?`)) onDeleteQuery(sq.name); }}
+                              onClick={() => { if(confirm(`Delete query "${sq.name}"?`)) callVoid(() => onDeleteQuery?.(sq.name)); }}
                               className="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded"
                             >
                               <Trash2 size={12} />
