@@ -89,14 +89,14 @@ export const aiRouter = createTRPCRouter({
               vfsPaths: context.vfsList.slice(0, MAX_VFS_PATHS_IN_RESPONSE), // Limit for response size
             },
             model: selectedModel ? {
-              modelId: selectedModel.model_id || selectedModel.id,
-              modelName: selectedModel.model_name || selectedModel.name,
-              provider: selectedModel.provider_id || selectedModel.provider,
+              modelId: selectedModel.modelId,
+              internalId: selectedModel.internalId,
+              provider: selectedModel.providerId,
               contextWindow: selectedModel.context_window || selectedModel.contextWindow,
             } : null,
             prompt: input.prompt,
             // Placeholder for actual AI response
-            response: `Context built with ${context.sizeEstimate.fileCount} files (${context.sizeEstimate.totalTokens} tokens). Model: ${selectedModel?.model_name || selectedModel?.name || 'unknown'}. Ready to process: "${input.prompt.substring(0, 50)}${input.prompt.length > 50 ? '...' : ''}"`,
+            response: `Context built with ${context.sizeEstimate.fileCount} files (${context.sizeEstimate.totalTokens} tokens). Model: ${selectedModel?.modelId || 'unknown'}. Ready to process: "${input.prompt.substring(0, 50)}${input.prompt.length > 50 ? '...' : ''}"`,
             timestamp: new Date().toISOString(),
           },
         };
