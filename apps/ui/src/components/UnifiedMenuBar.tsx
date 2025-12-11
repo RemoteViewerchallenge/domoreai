@@ -14,8 +14,7 @@ export const UnifiedMenuBar = () => {
   const menuItems = [
     { path: '/workspace', icon: LayoutGrid, label: 'Workspace', color: 'cyan' },
     { path: '/creator', icon: Users, label: 'Creator Studio', color: 'purple' },
-    { path: '/providers', icon: Database, label: 'Data', color: 'magenta' },
-    { path: '/projects', icon: Briefcase, label: 'Projects', color: 'green' },
+    { path: '/datacenter', icon: Database, label: 'Data Center', color: 'magenta' },
   ];
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
