@@ -70,9 +70,10 @@ export async function logUsage(data: RawProviderOutput) {
  * Supports "Exhaustive Fallback" by excluding failed models (not providers).
  * This allows other models from the same provider to remain active.
  */
-export async function selectModelFromRegistry(roleId: string, failedModels: string[] = []) {
+export async function selectModelFromRegistry(roleId: string, failedModels: string[] = [], failedProviders: string[] = []) {
   // 1. Get Role & Criteria
-  const role = await prisma.role.findUnique({ where: { id: roleId } });
+  const roleRecord = await prisma.role.findUnique({ where: { id: roleId }, include: { template: true } });
+  const role = roleRecord ? { ...roleRecord, ...(roleRecord.template || {}) } as any : null;
   if (!role) throw new Error(`Role not found: ${roleId}`);
 
   // 2. Get Active Registry Table
@@ -120,7 +121,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       if (!columns.includes(key)) return;
 
       if (typeof value === 'boolean' && value === true) {
-        query += ` AND "${key}" = true`;
+        // Support both boolean and text columns by checking the lowercase text form
+        query += ` AND LOWER(CAST("${key}" AS text)) IN ('true','t','1','yes')`;
       } else if (Array.isArray(value) && value.length === 2) {
         const [min, max] = value;
         if (typeof min === 'number' && typeof max === 'number') {
@@ -140,7 +142,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       if (!roleNeed) return;
       const validCols = candidates.filter(c => cols.includes(c));
       if (validCols.length > 0) {
-          const checks = validCols.map(c => `${c} = true`).join(' OR ');
+          // Safe truthy check that works for boolean or text columns
+          const checks = validCols.map(c => `LOWER(CAST("${c}" AS text)) IN ('true','t','1','yes')`).join(' OR ');
           query += ` AND (${checks})`;
       }
   };
@@ -154,12 +157,12 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   
   if (imageCols.length > 0) {
       if (role.needsImageGeneration) {
-        // MUST have it
-        const checks = imageCols.map(c => `${c} = true`).join(' OR ');
+        // MUST have it (safe truthy checks)
+        const checks = imageCols.map(c => `LOWER(CAST("${c}" AS text)) IN ('true','t','1','yes')`).join(' OR ');
         query += ` AND (${checks})`;
       } else {
-        // MUST NOT have it - CRITICAL: Use is_gen which has actual data
-        const checks = imageCols.map(c => `${c} IS NOT TRUE`).join(' AND ');
+        // MUST NOT have it - check that the text form is not truthy
+        const checks = imageCols.map(c => `LOWER(CAST("${c}" AS text)) NOT IN ('true','t','1','yes')`).join(' AND ');
         query += ` AND (${checks})`;
       }
   }
@@ -183,6 +186,12 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   if (providerIdCol) {
     // UUID/string columns cannot be empty strings, only NULL or valid values
     query += ` AND "${providerIdCol}" IS NOT NULL`;
+  }
+
+  // Exclude any failed providers (persisted or passed-in)
+  if (failedProviders && failedProviders.length > 0 && providerIdCol) {
+    const provList = failedProviders.map(p => `'${p.replace(/'/g, "''")}'`).join(', ');
+    query += ` AND "${providerIdCol}" NOT IN (${provList})`;
   }
 
   // F. FILTER BY TYPE (Smart Logic with Fallback)
@@ -232,7 +241,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   // The user explicitly requested "only want to use free models for now".
   // We check for 'is_free' column or 'cost' column.
   if (columns.includes('is_free')) {
-      query += ` AND is_free = true`;
+      query += ` AND LOWER(CAST("is_free" AS text)) IN ('true','t','1','yes')`;
   } else if (columns.includes('cost')) {
       query += ` AND cost = 0`;
   } else if (columns.includes('pricing')) {
@@ -349,6 +358,87 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     return null;
   }
 
+  // Check persisted failure records and filter accordingly
+  try {
+    const candidateIds = validCandidates.map(m => (m.model_id || m.id) as string).filter(Boolean);
+    if (candidateIds.length > 0) {
+      // Include failures scoped to this role and global failures (roleId IS NULL)
+      const roleScope = roleId ? [roleId, null] : [null];
+      const fails = await prisma.modelFailure.findMany({ where: { modelId: { in: candidateIds }, roleId: { in: roleScope as string[] } } });
+      const providerFails = await prisma.providerFailure.findMany({ where: { roleId: { in: roleScope as string[] } } });
+      const now = Date.now();
+      const filtered: Record<string, any>[] = [];
+
+      // Backoff windows (short-lived): single failure -> 10min, 2 failures -> 1h, 3+ -> 6h
+      const SHORT_BACKOFF = 10 * 60 * 1000; // 10 minutes
+      const MED_BACKOFF = 60 * 60 * 1000; // 1 hour
+      const LONG_BACKOFF = 6 * 60 * 60 * 1000; // 6 hours
+
+      for (const cand of validCandidates) {
+        const mid = (cand.model_id || cand.id) as string;
+        const providerKey = (cand.providerId || cand.provider_id || cand.provider);
+        // Prefer role-scoped record if available
+        const rec = fails.find(f => f.modelId === mid && f.providerId === providerKey && f.roleId === roleId) ||
+                    fails.find(f => f.modelId === mid && f.providerId === providerKey && f.roleId == null);
+        const pRec = providerFails.find(p => p.providerId === providerKey && p.roleId === roleId) ||
+                     providerFails.find(p => p.providerId === providerKey && p.roleId == null);
+        let excluded = false;
+        if (rec) {
+          const ageMs = now - new Date(rec.lastFailedAt).getTime();
+          if (rec.failures >= 1 && ageMs < SHORT_BACKOFF) {
+            excluded = true;
+          }
+          if (rec.failures >= 2 && ageMs < MED_BACKOFF) {
+            excluded = true;
+          }
+          if (rec.failures >= 3 && ageMs < LONG_BACKOFF) {
+            excluded = true;
+          }
+        }
+        if (pRec) {
+          const ageMs = now - new Date(pRec.lastFailedAt).getTime();
+          if (pRec.failures >= 1 && ageMs < SHORT_BACKOFF) excluded = true;
+          if (pRec.failures >= 2 && ageMs < MED_BACKOFF) excluded = true;
+          if (pRec.failures >= 3 && ageMs < LONG_BACKOFF) excluded = true;
+        }
+        if (!excluded) filtered.push(cand);
+      }
+
+      if (filtered.length === 0) {
+        console.warn('[Model Selection] All valid candidates are within failure backoff windows. Returning empty.');
+        return null;
+      }
+
+      // Replace validCandidates with filtered set for selection
+      // We won't reorder here; just ensure selection doesn't pick backoff models
+      // Pick random candidate from filtered
+      const selected = filtered[Math.floor(Math.random() * filtered.length)];
+      // Reuse remaining logic below by returning a consistent object
+      const finalModelId = selected.model_id as string;
+      const finalProviderId = selected.providerId || selected.provider_id || selected.provider || selected.data_source;
+
+      // Resolve provider and map to API model id as in existing logic
+      let apiModelId = (selected.model_name || selected.name || selected.model_id) as string;
+      const isUuidLike = (s: string | undefined) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+      if (isUuidLike(apiModelId)) apiModelId = (selected.model_name || selected.name) as string;
+      try {
+        const providerType = (selected.provider && selected.provider.type) || (selected.providerId && String(selected.providerId).split('-')[0]);
+        if (providerType && providerType.toLowerCase().includes('mistral') && apiModelId && /\s/.test(apiModelId)) {
+          apiModelId = apiModelId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        }
+      } catch (e) {}
+
+      return {
+        modelId: apiModelId,
+        internalId: (selected.id || selected.model_id) as string,
+        providerId: finalProviderId,
+        ...selected
+      };
+    }
+  } catch (e) {
+    console.warn('[Model Selection] Failed to consult model failures:', e);
+  }
+
   // Pick random candidate
   const selected = validCandidates[Math.floor(Math.random() * validCandidates.length)];
   
@@ -407,8 +497,29 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   // The AgentFactory/VolcanoAgent expects 'modelId' to be the string passed to the API.
   // So we MUST return 'model_name' as 'modelId'.
   
-  const apiModelId = (selected.model_name || selected.name || selected.model_id) as string; // Prefer name, fallback to ID
-  const internalId = (selected.model_id || selected.id) as string; // Keep UUID for reference if needed
+  // Prefer an API-compatible model identifier. In some registries `model_id` is an internal UUID,
+  // while `model_name` or `name` holds the API model id (e.g., 'codestral-latest' or 'gpt-4o').
+  const internalId = (selected.id || selected.model_id) as string; // internal registry id
+  let apiModelId = (selected.model_name || selected.name || selected.model_id) as string;
+
+  // If the chosen apiModelId is a UUID-like string, prefer model_name/name instead.
+  const isUuidLike = (s: string | undefined) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  if (isUuidLike(apiModelId)) {
+    apiModelId = (selected.model_name || selected.name) as string;
+  }
+
+  // Provider-specific normalization: some providers (e.g., Mistral) expect kebab-case lowercase ids.
+  try {
+    const providerType = (selected.provider && selected.provider.type) || (selected.providerId && String(selected.providerId).split('-')[0]);
+    if (providerType && providerType.toLowerCase().includes('mistral') && apiModelId && /\s/.test(apiModelId)) {
+      // Normalize 'Codestral Latest' -> 'codestral-latest'
+      const normalized = apiModelId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      console.log(`[Model Selection] Normalizing Mistral model id "${apiModelId}" -> "${normalized}"`);
+      apiModelId = normalized;
+    }
+  } catch (e) {
+    // Ignore normalization errors and use original apiModelId
+  }
 
   console.log(`[Model Selection] ✓ Selected: ${apiModelId} (Internal: ${internalId}) from ${resolvedProviderId}`);
   
@@ -426,7 +537,23 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
  * Finds the best, non-rate-limited model for a given role.
  * UPDATED: Uses Dynamic Registry first, falls back to legacy preferredModels.
  */
-export async function getBestModel(roleId: string, failedModels: string[] = []) {
+export async function getBestModel(roleId?: string, failedModels: string[] = [], failedProviders: string[] = []) {
+  // If a roleId wasn't provided, fall back to selecting any enabled model.
+  if (!roleId) {
+    const fallback = await prisma.model.findFirst({
+      where: { provider: { isEnabled: true } },
+      include: { provider: true },
+    });
+    if (!fallback) return null;
+    return {
+      modelId: fallback.modelId,
+      providerId: fallback.providerId,
+      model: fallback,
+      temperature: 0.7,
+      maxTokens: 2048,
+    } as any;
+  }
+
   // --- HARDCODED OVERRIDE ---
   // First, check if the role has a specific model assigned to it.
   // This bypasses all dynamic selection logic.
@@ -459,7 +586,7 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
 
   // 1. Try Dynamic Registry
   try {
-    const dynamicModel = await selectModelFromRegistry(roleId, failedModels);
+    const dynamicModel = await selectModelFromRegistry(roleId, failedModels, failedProviders);
     if (dynamicModel) {      
       // We need to return it in a format compatible with the rest of the system.
       // The system expects a ModelConfig-like object with a nested 'model' and 'provider'.
@@ -501,6 +628,10 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
   } catch (e: unknown) {
     console.warn("Dynamic selection failed, falling back to legacy:", e);
   }
+
+  // Exported helper: record a failure for a model
+
+// Failure helpers (moved to file bottom to avoid being inside getBestModel)
 
   // 2. Legacy Fallback (Original Logic)
   const role = await prisma.role.findUnique({
@@ -565,4 +696,34 @@ export async function getBestModel(roleId: string, failedModels: string[] = []) 
 
   // If we looped through all models and all are rate-limited
   throw new Error(`All preferred models for role ${role.name} are rate-limited or failed.`);
+}
+
+/**
+ * Increment persistent failure counts for a model (used to avoid retries across restarts)
+ */
+export async function recordModelFailure(providerId: string, modelId: string, roleId?: string) {
+  try {
+    // Use role-scoped unique constraint; roleId may be undefined/null to record global failure
+    await prisma.modelFailure.upsert({
+      where: { providerId_modelId_roleId: { providerId, modelId, roleId: (roleId ?? null) as string } },
+      update: { failures: { increment: 1 } },
+      create: { providerId, modelId, roleId: (roleId ?? null) as string, failures: 1 }
+    });
+    console.log(`[Model Failure] Recorded failure for ${modelId} on ${providerId} (role=${roleId ?? 'global'})`);
+  } catch (err) {
+    console.warn('[Model Failure] Failed to record model failure:', err);
+  }
+}
+
+export async function recordProviderFailure(providerId: string, roleId?: string) {
+  try {
+    await prisma.providerFailure.upsert({
+      where: { providerId_roleId: { providerId, roleId: (roleId ?? null) as string } },
+      update: { failures: { increment: 1 } },
+      create: { providerId, roleId: (roleId ?? null) as string, failures: 1 }
+    });
+    console.log(`[Provider Failure] Recorded failure for provider ${providerId} (role=${roleId ?? 'global'})`);
+  } catch (err) {
+    console.warn('[Provider Failure] Failed to record provider failure:', err);
+  }
 }

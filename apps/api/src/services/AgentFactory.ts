@@ -163,8 +163,60 @@ export class VolcanoAgent {
 
 export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
   // 1. Load Role Configuration
-  const role = await AgentConfigRepository.getRole(cardConfig.roleId);
-  
+  let role = await AgentConfigRepository.getRole(cardConfig.roleId);
+  // merge template if present
+  if (role && (role as any).template) {
+    role = { ...role, ...((role as any).template || {}) } as any;
+  }
+  // Fallback to 'general_worker' if not found
+  if (!role && cardConfig.roleId !== 'general_worker') {
+    role = await AgentConfigRepository.getRole('general_worker');
+    if (role) {
+      cardConfig.roleId = 'general_worker';
+    }
+  }
+
+  // If still not found, attempt to seed 'general_worker' from roles.json packaged with the repo
+  if (!role) {
+    try {
+      // Read roles.json from the monorepo packages
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const rolesPath = path.join(process.cwd(), 'packages', 'coc', 'agents', 'roles.json');
+      const raw = await fs.readFile(rolesPath, 'utf-8');
+      const list = JSON.parse(raw);
+      const gw = (list || []).find((r: any) => r.id === 'general_worker');
+      if (gw) {
+        // Insert into DB with id 'general_worker' so future lookups resolve
+        try {
+          const created = await (await import('../db.js')).prisma.role.create({
+            data: {
+              id: gw.id,
+              name: gw.name || 'General Worker',
+              category: gw.category || 'Utility',
+              basePrompt: gw.basePrompt || 'You are a versatile AI assistant.',
+              minContext: gw.minContext ?? null,
+              maxContext: gw.maxContext ?? null,
+              needsReasoning: gw.needsReasoning ?? false,
+              needsCoding: gw.needsCoding ?? false,
+              defaultTemperature: gw.defaultTemperature ?? 0.5,
+              defaultMaxTokens: gw.defaultMaxTokens ?? 2048,
+              tools: gw.tools || [],
+            } as any,
+          });
+          role = created as any;
+          cardConfig.roleId = 'general_worker';
+          console.log('[AgentFactory] Seeded general_worker role from roles.json');
+        } catch (createErr) {
+          console.warn('[AgentFactory] Failed to seed general_worker role:', createErr);
+        }
+      }
+    } catch (readErr) {
+      // ignore if file not present or parse error
+      console.warn('[AgentFactory] Could not read roles.json to seed default role:', readErr instanceof Error ? readErr.message : String(readErr));
+    }
+  }
+
   if (!role) {
     throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
   }
@@ -248,7 +300,7 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
         cardConfig.projectPrompt
     );
   } catch (error) {
-    console.warn(`[AgentFactory] PromptFactory failed for role "${role.name}". Falling back to simple role prompt load.`, error);
+    console.warn(`[AgentFactory] PromptFactory failed for role \"${role.name}\". Falling back to simple role prompt load.`, error);
     basePrompt = await loadRolePrompt(role.name);
   }
 

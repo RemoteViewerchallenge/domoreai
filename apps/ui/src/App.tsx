@@ -2,7 +2,7 @@ import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import MyWorkspacePage from './pages/workspace/[id].js';
 import SmartSwitch from './pages/workspace/SmartSwitch.js';
-import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
+import DataCenterPage from './pages/datacenter.js';
 import WorkSpace from './pages/WorkSpace.js';
 import CreatorStudio from './pages/CreatorStudio.js';
 import SettingsPage from './pages/SettingsPage.js';
@@ -83,8 +83,8 @@ function App() {
     'Go to Creator Studio': () => {
       navigate('/creator');
     },
-    'Go to Providers': () => {
-      navigate('/providers');
+    'Go to Datacenters': () => {
+      navigate('/datacenters');
     },
   };
 
@@ -109,7 +109,7 @@ function App() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<WorkSpace />} />
-              <Route path="/providers" element={<UnifiedProviderPage />} />
+              <Route path="/datacenters" element={<DataCenterPage />} />
               <Route path="/workspace/:id" element={<MyWorkspacePage />} />
               <Route path="/workspace/smart-switch" element={<SmartSwitch />} />
               <Route path="/creator" element={<CreatorStudio />} />

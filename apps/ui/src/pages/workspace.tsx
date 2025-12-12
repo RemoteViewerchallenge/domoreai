@@ -21,14 +21,28 @@ export default function WorkSpace() {
 
   // Redistribute cards when columns change
   const handleSetColumns = (newColumnCount: number) => {
-    setColumns(newColumnCount);
-    setCards(prevCards => 
-      prevCards.map((card, index) => ({
-        ...card,
-        column: index % newColumnCount
-      }))
-    );
-  };
+  setColumns(newColumnCount);
+  setCards(prevCards => {
+    // Redistribute existing cards
+    const redistributed = prevCards.map((card, index) => ({
+      ...card,
+      column: index % newColumnCount
+    }));
+    // If columns increased, add a new card for each new column
+    if (newColumnCount > columns) {
+      const newCards = [];
+      for (let i = columns; i < newColumnCount; i++) {
+        const newId = String(Date.now()) + '-' + i;
+        // Generate a file name for the new card
+        const fileName = `auto-card-${newId}.md`;
+        newCards.push({ id: newId, roleId: '', column: i, fileName });
+        // TODO: Optionally, trigger file creation logic here if needed
+      }
+      return [...redistributed, ...newCards];
+    }
+    return redistributed;
+  });
+};;
 
   // Group cards by column
   const cardsByColumn: { [key: number]: typeof cards } = {};
@@ -80,29 +94,38 @@ export default function WorkSpace() {
   return (
     <div className="flex flex-col flex-1 w-full bg-[var(--color-background)] text-[var(--color-text)] overflow-hidden font-mono">
       {/* Column Controls */}
-      <div className="flex-none h-7 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)] flex items-center justify-end px-3">
+      <div className="flex-none h-10 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)] flex items-center justify-between px-3 z-10 relative">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Columns:</span>
-          <div className="flex items-center bg-[var(--color-background)] rounded border border-[var(--color-border)] h-5">
+          <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Columns:</span>
+          <div className="flex items-center bg-[var(--color-background)] rounded border border-[var(--color-border)] h-7">
             <button
               onClick={() => handleSetColumns(Math.max(1, columns - 1))}
-              className="px-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-background-secondary)] rounded-l text-xs"
+              className="px-3 text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)]/80 rounded-l text-base font-bold transition-colors"
+              style={{ minWidth: 32 }}
             >
               -
             </button>
-            <span className="px-2 text-[10px] font-bold text-[var(--color-primary)] w-6 text-center">{columns}</span>
+            <span className="px-3 text-[12px] font-bold text-[var(--color-primary)] w-8 text-center">{columns}</span>
             <button
               onClick={() => handleSetColumns(Math.min(6, columns + 1))}
-              className="px-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-background-secondary)] rounded-r text-xs"
+              className="px-3 text-[var(--color-primary)] hover:text-white hover:bg-[var(--color-primary)]/80 rounded-r text-base font-bold transition-colors"
+              style={{ minWidth: 32 }}
             >
               +
             </button>
           </div>
         </div>
+        {/* Embedding/Model Display Placeholder */}
+        <div className="flex items-center ml-4 flex-1 justify-end">
+          <div className="bg-[var(--color-background)] border border-[var(--color-primary)] rounded-lg px-4 py-2 text-[var(--color-primary)] text-xs font-bold shadow-lg min-w-[220px] min-h-[40px] flex items-center justify-center text-center text-ellipsis overflow-hidden" style={{ fontSize: 18, height: 48 }}>
+            {/* TODO: Replace with actual embedding/model display */}
+            Embedding Models Display
+          </div>
+        </div>
       </div>
 
       {/* Main Grid - Columns */}
-      <div className="flex-1 flex gap-0 overflow-hidden">
+      <div className="flex-1 flex gap-0 overflow-hidden pt-1">
         {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
           const currentFocusIndex = focusedCardIndex[columnIndex] || 0;

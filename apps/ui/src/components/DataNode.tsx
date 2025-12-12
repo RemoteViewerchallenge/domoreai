@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
 import { VisualQueryBuilder } from './VisualQueryBuilder.js';
-import { AddProviderForm } from './AddProviderForm.js';
+import { AddDatacenterForm } from './AddDatacenterForm.js';
 import { 
   Database, Table, Trash2, Play, FileJson, 
   Search, RefreshCw, Plus, Crown, Download, Upload 
@@ -20,6 +20,9 @@ export const DataNode: React.FC = () => {
   const [filterText, setFilterText] = useState('');
   const [jsonViewerData, setJsonViewerData] = useState<any>(null);
   const [showJsonViewer, setShowJsonViewer] = useState(false);
+  const [showImportJsonModal, setShowImportJsonModal] = useState(false);
+  const [pendingImportJson, setPendingImportJson] = useState<string | null>(null);
+  const [importOptions, setImportOptions] = useState({ allowReserved: false, preserveIds: false, preserveCreatedAt: false, upsertOnConflict: false, auditReason: '' });
   const [tempQueryResults, setTempQueryResults] = useState<Record<string, unknown>[] | null>(null);
   const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
     onSuccess: (data) => {
@@ -36,6 +39,10 @@ export const DataNode: React.FC = () => {
   const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listAllTables.useQuery();
   const { data: tableData, refetch: refetchData, isLoading: isTableDataLoading } = trpc.dataRefinement.getTableData.useQuery(
     { tableName: activeTable || '', limit: 1000 },
+    { enabled: !!activeTable }
+  );
+  const { data: tableSchema } = trpc.dataRefinement.getTableSchema.useQuery(
+    { tableName: activeTable || '' },
     { enabled: !!activeTable }
   );
 
@@ -62,20 +69,22 @@ export const DataNode: React.FC = () => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        try {
-            const content = e.target?.result;
-            if (typeof content !== 'string') {
-                throw new Error("File content is not a string");
-            }
-            // The backend will parse and validate the JSON string
-            importTableFromJsonMutation.mutate({ tableName: activeTable, jsonString: content });
-        } catch (error) {
-            if (error instanceof Error) {
-                alert(`Error reading or parsing file: ${error.message}`);
-            } else {
-                alert('An unknown error occurred during import.');
-            }
+      try {
+        const content = e.target?.result;
+        if (typeof content !== 'string') {
+          throw new Error("File content is not a string");
         }
+        // Save pending content and show the modal so user can opt into reserved imports
+        setPendingImportJson(content);
+        setImportOptions({ allowReserved: false, preserveIds: false, preserveCreatedAt: false, upsertOnConflict: false, auditReason: '' });
+        setShowImportJsonModal(true);
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(`Error reading or parsing file: ${error.message}`);
+        } else {
+          alert('An unknown error occurred during import.');
+        }
+      }
     };
     reader.readAsText(file);
     
@@ -309,9 +318,61 @@ export const DataNode: React.FC = () => {
 
         </div>
       </div>
+      {/* Import Options Modal */}
+      {showImportJsonModal && (
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center">
+          <div className="bg-zinc-900 rounded-lg p-4 w-full max-w-xl border border-zinc-800">
+            <h3 className="text-lg font-bold mb-2">Import JSON to "{activeTable}"</h3>
+            <div className="text-sm text-zinc-400 mb-3">Choose import options. Use <span className="font-mono">Allow reserved</span> only if you understand the risks.</div>
+            <div className="space-y-2 mb-4">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={importOptions.allowReserved} onChange={(e) => setImportOptions({ ...importOptions, allowReserved: e.target.checked })} />
+                <span className="text-sm">Allow import into reserved tables (requires note)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={importOptions.preserveIds} onChange={(e) => setImportOptions({ ...importOptions, preserveIds: e.target.checked })} />
+                <span className="text-sm">Preserve incoming IDs (use incoming id as PK)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={importOptions.preserveCreatedAt} onChange={(e) => setImportOptions({ ...importOptions, preserveCreatedAt: e.target.checked })} />
+                <span className="text-sm">Preserve incoming created_at values</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={importOptions.upsertOnConflict} onChange={(e) => setImportOptions({ ...importOptions, upsertOnConflict: e.target.checked })} />
+                <span className="text-sm">Upsert when ID conflicts (only applies if preserving IDs)</span>
+              </label>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Audit reason (required when allowing reserved tables)"
+                  value={importOptions.auditReason}
+                  onChange={(e) => setImportOptions({ ...importOptions, auditReason: e.target.value })}
+                  className="w-full p-2 rounded bg-zinc-800 border border-zinc-700 text-sm"
+                />
+              </div>
+              <div className="text-xs text-zinc-500">Note: by default incoming <span className="font-mono">id</span> will be saved into <span className="font-mono">source_id</span>. Enable "Preserve incoming IDs" to use the incoming id as the table primary key.</div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowImportJsonModal(false); setPendingImportJson(null); }} className="px-3 py-1 rounded bg-zinc-700 hover:bg-zinc-600">Cancel</button>
+              <button
+                onClick={() => {
+                  if (!pendingImportJson) { alert('No JSON content to import'); return; }
+                  if (importOptions.allowReserved && !importOptions.auditReason) { alert('Please provide an audit reason when allowing reserved imports'); return; }
+                  importTableFromJsonMutation.mutate({ tableName: activeTable || '', jsonString: pendingImportJson, options: importOptions });
+                  setShowImportJsonModal(false);
+                  setPendingImportJson(null);
+                }}
+                className="px-4 py-1 rounded bg-green-600 hover:bg-green-500 text-white font-bold"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- MAIN WORKSPACE --- */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#09090b] relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)] relative">
         
         {/* 1. TOOLBAR */}
         <div className="flex-none h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950/50 backdrop-blur">
@@ -407,6 +468,7 @@ export const DataNode: React.FC = () => {
           {activeTable ? (
             <UniversalDataGrid 
               data={tempQueryResults || (tableData?.rows as Record<string, unknown>[]) || []} 
+              headers={tableSchema?.columns?.map(col => col.column_name) || []}
             />
           ) : showJsonViewer && jsonViewerData ? (
             <div className="h-full overflow-auto p-4 bg-zinc-950">
@@ -417,10 +479,10 @@ export const DataNode: React.FC = () => {
                     onClick={() => {
                       const tableName = prompt('Enter table name to import this JSON as:');
                       if (tableName) {
-                        importTableFromJsonMutation.mutate({ 
-                          tableName, 
-                          jsonString: JSON.stringify(jsonViewerData) 
-                        });
+                        setPendingImportJson(JSON.stringify(jsonViewerData));
+                        setImportOptions({ allowReserved: false, preserveIds: false, preserveCreatedAt: false, upsertOnConflict: false, auditReason: '' });
+                        setActiveTable(tableName);
+                        setShowImportJsonModal(true);
                       }
                     }}
                     className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-xs font-bold"
@@ -441,7 +503,7 @@ export const DataNode: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <pre className="text-[10px] text-zinc-300 bg-black p-4 rounded border border-zinc-800 overflow-auto">
+              <pre className="text-[10px] text-zinc-300 bg-[var(--color-background-secondary)] p-4 rounded border border-zinc-800 overflow-auto">
                 {JSON.stringify(jsonViewerData, null, 2)}
               </pre>
             </div>

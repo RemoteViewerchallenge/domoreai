@@ -9,7 +9,7 @@ const DataCenterPage: React.FC = () => {
       <div className="flex-none h-10 px-4 border-b border-[var(--color-border)] bg-[var(--color-background-secondary)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Database className="text-[var(--color-primary)]" size={16} />
-          <span className="text-sm font-bold tracking-wider uppercase">Data Center</span>
+          <span className="text-sm font-bold tracking-wider uppercase">Datacenters</span>
         </div>
       </div>
       
