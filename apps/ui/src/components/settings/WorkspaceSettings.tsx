@@ -44,7 +44,7 @@ export const WorkspaceSettings: React.FC = () => {
     return roles.filter(role => role.category === selectedCategory);
   }, [roles, selectedCategory]);
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [showAddProvider, setShowAddProvider] = useState(false);
+  const [showAddDatacenter, setShowAddDatacenter] = useState(false);
 
   useEffect(() => {
     if (workspace) {
@@ -84,14 +84,14 @@ export const WorkspaceSettings: React.FC = () => {
         Workspace Settings
       </h2>
 
-      {/* Add Provider Modal */}
-      {showAddProvider && (
+      {/* Add Datacenter Modal */}
+      {showAddDatacenter && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-              <h3 className="text-lg font-bold text-[var(--color-text)]">Add Provider</h3>
+              <h3 className="text-lg font-bold text-[var(--color-text)]">Add Datacenter</h3>
               <button
-                onClick={() => setShowAddProvider(false)}
+                onClick={() => setShowAddDatacenter(false)}
                 className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               >
                 <X size={20} />
@@ -100,12 +100,12 @@ export const WorkspaceSettings: React.FC = () => {
             
             <div className="flex-1 overflow-y-auto p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Provider Types */}
+                {/* Datacenter Types */}
                 <button
                   onClick={() => {
-                    // TODO: Implement provider addition logic
+                    // TODO: Implement datacenter addition logic
                     // For now just close
-                    setShowAddProvider(false);
+                    setShowAddDatacenter(false);
                   }}
                   className="p-4 border border-[var(--color-border)] rounded hover:border-[var(--color-primary)] hover:bg-[var(--color-background-secondary)] transition-all text-left group"
                 >
@@ -114,7 +114,7 @@ export const WorkspaceSettings: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={() => setShowAddProvider(false)}
+                  onClick={() => setShowAddDatacenter(false)}
                   className="p-4 border border-[var(--color-border)] rounded hover:border-[var(--color-primary)] hover:bg-[var(--color-background-secondary)] transition-all text-left group"
                 >
                   <div className="font-bold text-[var(--color-primary)] mb-1 group-hover:translate-x-1 transition-transform">Anthropic</div>
@@ -122,7 +122,7 @@ export const WorkspaceSettings: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setShowAddProvider(false)}
+                  onClick={() => setShowAddDatacenter(false)}
                   className="p-4 border border-[var(--color-border)] rounded hover:border-[var(--color-primary)] hover:bg-[var(--color-background-secondary)] transition-all text-left group"
                 >
                   <div className="font-bold text-[var(--color-primary)] mb-1 group-hover:translate-x-1 transition-transform">Google AI</div>
@@ -130,7 +130,7 @@ export const WorkspaceSettings: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setShowAddProvider(false)}
+                  onClick={() => setShowAddDatacenter(false)}
                   className="p-4 border border-[var(--color-border)] rounded hover:border-[var(--color-primary)] hover:bg-[var(--color-background-secondary)] transition-all text-left group"
                 >
                   <div className="font-bold text-[var(--color-primary)] mb-1 group-hover:translate-x-1 transition-transform">OpenRouter</div>
@@ -138,7 +138,7 @@ export const WorkspaceSettings: React.FC = () => {
                 </button>
                 
                 <button
-                  onClick={() => setShowAddProvider(false)}
+                  onClick={() => setShowAddDatacenter(false)}
                   className="p-4 border border-[var(--color-border)] rounded hover:border-[var(--color-primary)] hover:bg-[var(--color-background-secondary)] transition-all text-left group"
                 >
                   <div className="font-bold text-[var(--color-primary)] mb-1 group-hover:translate-x-1 transition-transform">Local AI</div>
@@ -154,17 +154,17 @@ export const WorkspaceSettings: React.FC = () => {
         {/* Data Providers Section */}
         <div className="border border-[var(--color-border)] rounded-lg p-4 bg-[var(--color-background-secondary)]/50">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-bold text-[var(--color-text)] uppercase">Data Providers</h3>
+            <h3 className="text-sm font-bold text-[var(--color-text)] uppercase">Datacenters</h3>
             <button
-              onClick={() => setShowAddProvider(true)}
+              onClick={() => setShowAddDatacenter(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-[var(--color-background)] rounded text-xs font-bold uppercase shadow-[0_0_15px_rgba(var(--color-success-rgb),0.6)] transition-all"
             >
               <Plus size={14} />
-              Add Provider
+              Add Datacenter
             </button>
           </div>
           <p className="text-[10px] text-[var(--color-text-muted)]">
-            Add data sources to your workspace. Providers can be API endpoints, databases, or other data sources.
+            Add data sources to your workspace. Datacenters can be API endpoints, databases, or other data sources.
           </p>
         </div>
 

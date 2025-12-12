@@ -229,23 +229,23 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     });
   }, [registryData, formData, selectedTypes]);
 
-  // 3. Provider Breakdown
-  const providerBreakdown = useMemo(() => {
+  // 3. Datacenter Breakdown
+  const datacenterBreakdown = useMemo(() => {
     const stats: Record<string, { matched: number, total: number }> = {};
     
     // Initialize totals
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registryData?.rows.forEach((row: any) => {
-       const provider = row.provider_name || row.data_source || row.provider_id || row.provider || 'Unknown';
-       if (!stats[provider]) stats[provider] = { matched: 0, total: 0 };
-       stats[provider].total++;
+       const datacenter = row.provider_name || row.data_source || row.provider_id || row.provider || 'Unknown';
+       if (!stats[datacenter]) stats[datacenter] = { matched: 0, total: 0 };
+       stats[datacenter].total++;
     });
 
     // Calculate matched
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     filteredModels.forEach((m: any) => {
-      const provider = m.provider_name || m.data_source || m.provider_id || m.provider || 'Unknown';
-      if (stats[provider]) stats[provider].matched++;
+      const datacenter = m.provider_name || m.data_source || m.provider_id || m.provider || 'Unknown';
+      if (stats[datacenter]) stats[datacenter].matched++;
     });
 
     return stats;
@@ -436,6 +436,15 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       <div className="w-48 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
         <div className="p-2 border-b border-[var(--color-border)] flex justify-between items-center">
           <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider">Roles (v2)</span>
+          <button 
+            onClick={() => {
+              // TODO: Implement loading from URL
+              console.log("Load from URL clicked");
+            }}
+            className="px-2 py-0.5 bg-blue-500/30 border border-blue-500 text-blue-300 hover:bg-blue-500/50 hover:text-white transition-all uppercase text-[10px] font-bold"
+          >
+            Load from URL
+          </button>
           <button 
             onClick={() => {
               setSelectedRoleId(null);
@@ -932,20 +941,20 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                      <table className="w-full text-left text-[10px]">
                        <thead className="bg-[var(--color-background-secondary)] text-[var(--color-text-muted)] uppercase">
                          <tr>
-                           <th className="p-2">Provider</th>
+                           <th className="p-2">Datacenter</th>
                            <th className="p-2 text-right">Match</th>
                            <th className="p-2 text-right">Total</th>
                            <th className="p-2 text-right">%</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-[var(--color-border)]">
-                         {Object.entries(providerBreakdown)
+                         {Object.entries(datacenterBreakdown)
                            .sort(([, a], [, b]) => b.matched - a.matched)
-                           .map(([provider, stats]) => {
+                           .map(([datacenter, stats]) => {
                              const percent = Math.round((stats.matched / stats.total) * 100);
                              return (
-                               <tr key={provider} className={stats.matched > 0 ? 'bg-[var(--color-background-secondary)]/20' : 'opacity-50'}>
-                                 <td className="p-2 font-bold text-[var(--color-text-secondary)]">{provider}</td>
+                               <tr key={datacenter} className={stats.matched > 0 ? 'bg-[var(--color-background-secondary)]/20' : 'opacity-50'}>
+                                 <td className="p-2 font-bold text-[var(--color-text-secondary)]">{datacenter}</td>
                                  <td className="p-2 text-right text-[var(--color-success)] font-bold">{stats.matched}</td>
                                  <td className="p-2 text-right text-[var(--color-text-muted)]">{stats.total}</td>
                                  <td className="p-2 text-right">

@@ -13,6 +13,7 @@ import useWebSocketStore from '../../stores/websocket.store.js';
 import { getNeonColorForPath, NEON_BUTTON_COLORS } from '../../utils/neonTheme.js';
 import { CardAgentPrompt } from './CardAgentPrompt.js';
 import { CardCustomButtons } from './CardCustomButtons.js';
+import { useTheme } from '../../hooks/useTheme.js';
 
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
 
@@ -28,6 +29,7 @@ interface RoleWithPreferredModels {
 }
 
 export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
+  const { theme } = useTheme();
   // Use per-card VFS state instead of global context
   const { 
     files, 
@@ -61,6 +63,10 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   }, [wsStatus, wsActions]);
   // REMOVED: const [isAiWorking, setIsAiWorking] = useState(false);
 
+  // Title State
+  const [cardTitle, setCardTitle] = useState(new Date().toLocaleString());
+  const [hasGenerated, setHasGenerated] = useState(false);
+
   // Fetch available roles for the settings panel
   const { data: roles } = trpc.role.list.useQuery();
   
@@ -69,10 +75,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
 
   // Agent Configuration (inherits from role, can be overridden per card)
   const [agentConfig, setAgentConfig] = useState<CardAgentState>(() => {
-    // Try to set Default Chat Agent immediately if roles are cached
-    const defaultRole = roles?.find(r => r.name === 'Default Chat Agent');
     return {
-      roleId: roleId || defaultRole?.id || '',
+      roleId: roleId || null,
       modelId: null,
       isLocked: false,
       temperature: 0.7,
@@ -83,13 +87,10 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     };
   });
 
-  // Set default role to "Default Chat Agent" when roles load
+  // Always select a role: if none is set, pick the first available role and keep it until changed by user
   useEffect(() => {
     if (roles && roles.length > 0 && !agentConfig.roleId) {
-        const defaultRole = roles.find(r => r.name === 'Default Chat Agent');
-        if (defaultRole) {
-            setAgentConfig(prev => ({ ...prev, roleId: defaultRole.id }));
-        }
+      setAgentConfig(prev => ({ ...prev, roleId: roles[0].id }));
     }
   }, [roles, agentConfig.roleId]);
 
@@ -194,6 +195,13 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       return;
     }
 
+    // Auto-title on first run
+    if (!hasGenerated) {
+        const summary = prompt.slice(0, 25) + (prompt.length > 25 ? '...' : '');
+        setCardTitle(summary);
+        setHasGenerated(true);
+    }
+
     // Start the agent session
     // setIsAiWorking(true); // No longer needed
     startSessionMutation.mutate({
@@ -206,7 +214,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       userGoal: prompt,
       cardId: id,
     });
-  }, [content, agentConfig, startSessionMutation, id, isAiWorking]);
+  }, [content, agentConfig, startSessionMutation, id, isAiWorking, hasGenerated]);
 
   // Handle file attachment
   const handleAttachFile = useCallback(async (filePath: string) => {
@@ -291,21 +299,28 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       />
       
       <div 
-        className="flex flex-col h-full w-full bg-[var(--color-background)] rounded overflow-hidden transition-all"
+        className="flex flex-col h-full w-full rounded overflow-hidden transition-all"
         style={{ 
-          border: `2px solid ${neonColor}`,
-          boxShadow: `0 0 10px ${neonColor}40, inset 0 0 10px ${neonColor}20`
+          backgroundColor: theme.colors.cardBackground || theme.colors.backgroundSecondary,
+          border: `2px solid ${theme.colors.cardBorder || neonColor}`,
+          boxShadow: activeFile ? `0 0 20px ${theme.colors.primary.glow}` : `0 0 10px ${neonColor}40, inset 0 0 10px ${neonColor}20`
         }}
       >
         
         {/* HEADER with File Controls */}
-        <div className="flex-none h-8 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)] flex items-center justify-between px-2">
+        <div 
+          className="flex-none h-8 border-b flex items-center justify-between px-2"
+          style={{
+            backgroundColor: theme.colors.cardHeaderBackground || theme.colors.backgroundSecondary,
+            borderColor: theme.colors.cardBorder || theme.colors.border
+          }}
+        >
           
-          {/* Left: VFS Badge + Component Label */}
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+          {/* Left: VFS Badge + Title */}
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] overflow-hidden">
             {/* VFS Path Badge - Minimal */}
             <div 
-              className="group relative px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider cursor-help"
+              className="group relative px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider cursor-help flex-none"
               style={{ 
                 backgroundColor: `${neonColor}20`,
                 color: neonColor,
@@ -320,29 +335,23 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                 {currentPath}
               </div>
             </div>
-            {viewMode === 'settings' ? (
-              <>
-                <Settings size={14} className="text-[var(--color-primary)]" />
-                <span className="uppercase tracking-wider font-bold">Settings</span>
-              </>
-            ) : (type === 'editor' || type === 'code') ? (
-              <>
-                {activeFile?.endsWith('.md') ? <FileText size={14} className="text-[var(--color-primary)]" /> : <FileCode size={14} className="text-[var(--color-warning)]" />}
-                <span className="font-bold text-[var(--color-text)]">
-                  {activeFile ? activeFile.split('/').pop() : 'No File Selected'}
+            
+            {/* Card Title */}
+            <div className="flex items-center gap-2 min-w-0">
+                {viewMode === 'settings' ? (
+                    <Settings size={14} className="text-[var(--color-primary)] flex-none" />
+                ) : (type === 'editor' || type === 'code') ? (
+                    activeFile?.endsWith('.md') ? <FileText size={14} className="text-[var(--color-primary)] flex-none" /> : <FileCode size={14} className="text-[var(--color-warning)] flex-none" />
+                ) : (
+                    (() => {
+                        const Item = menuItems.find(m => m.id === type);
+                        return Item ? <Item.icon size={14} className="flex-none" /> : null;
+                    })()
+                )}
+                <span className="font-bold text-[var(--color-text)] truncate" title={cardTitle}>
+                    {cardTitle}
                 </span>
-              </>
-            ) : (
-              <>
-                {(() => {
-                  const Item = menuItems.find(m => m.id === type);
-                  return Item ? <Item.icon size={14} /> : null;
-                })()}
-                <span className="uppercase tracking-wider font-bold">
-                  {menuItems.find(m => m.id === type)?.label}
-                </span>
-              </>
-            )}
+            </div>
           </div>
   
           {/* Right: Controls */}
@@ -352,7 +361,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
               <>
                 <button
                   onClick={handleRunAgent}
-                  disabled={isAiWorking || !agentConfig.roleId}
+                  disabled={isAiWorking}
                   className={`p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all ${NEON_BUTTON_COLORS.run.bg} ${NEON_BUTTON_COLORS.run.hover} ${NEON_BUTTON_COLORS.run.text} ${NEON_BUTTON_COLORS.run.border} ${NEON_BUTTON_COLORS.run.glow}`}
                   title="Run Agent (Cmd/Ctrl + Enter)"
                 >

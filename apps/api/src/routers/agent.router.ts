@@ -87,10 +87,10 @@ export const agentRouter = createTRPCRouter({
         // 2. Create the Volcano agent
         const agent = await createVolcanoAgent(agentConfig);
 
-        // 2.5 Fetch Role to get Tools
-        // We need to fetch the role again (or optimize createVolcanoAgent to return it, but separate fetch is cleaner for now)
-        const role = await prisma.role.findUnique({ where: { id: roleId } });
-        const tools = role?.tools || [];
+        // 2.5 Fetch Role (including template) to get Tools and other defaults
+        const roleRecord = await prisma.role.findUnique({ where: { id: roleId }, include: { template: true } });
+        const role = roleRecord ? { ...roleRecord, ...(roleRecord.template || {}) } as any : null;
+        const tools = (role && role.tools) ? role.tools : [];
 
         // 3. Create the agent runtime with selected tools
         const runtime = await AgentRuntime.create(undefined, tools);
@@ -171,9 +171,14 @@ export const agentRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { userPrompt, targetTable, roleName } = input;
 
-      // 1. Ensure role exists
-      await ensureSqlHelperRole();
-      const role = await prisma.role.findFirstOrThrow({ where: { name: roleName } });
+      // 1. Try to find an optional role; fall back to base prompt if none
+      let role = null as any;
+      if (roleName) {
+        role = await prisma.role.findFirst({ where: { name: roleName } });
+        if (!role) {
+          console.warn(`[AgentRouter] Role "${roleName}" not found; proceeding without role-specific settings.`);
+        }
+      }
 
       // 2. Build schema context (lightweight)
       let schemaContext = '';
@@ -187,7 +192,7 @@ export const agentRouter = createTRPCRouter({
       }
 
       // 3. Final prompt
-      const finalPrompt = (role.basePrompt || BASE_PROMPT_SQL_HELPER)
+      const finalPrompt = ((role && role.basePrompt) || BASE_PROMPT_SQL_HELPER)
         .replace('[TABLE_SCHEMAS_CONTEXT]', schemaContext)
         .replace('[USER_PROMPT]', userPrompt);
 
@@ -197,7 +202,7 @@ export const agentRouter = createTRPCRouter({
       
       let selectedModel;
       try {
-        selectedModel = await getBestModel(role.id);
+        selectedModel = await getBestModel(role?.id, [], []);
       } catch (e) {
         console.warn(`[AgentRouter] Dynamic model selection failed for role ${roleName}:`, e);
       }
@@ -224,23 +229,85 @@ export const agentRouter = createTRPCRouter({
 
       console.log(`[AgentRouter] Generating SQL using model: ${selectedModel.modelId} (${selectedModel.providerId})`);
 
-      const provider = ProviderManager.getProvider(selectedModel.providerId);
-      if (!provider) throw new Error(`Selected provider ${selectedModel.providerId} is not initialized.`);
+      // Attempt generation with retries and model fallbacks on invalid-model errors
+      const maxAttempts = 3;
+      const failedModels: string[] = [];
+      const failedProviders: string[] = [];
+      let attempt = 0;
+      let queryText = '';
+      while (attempt < maxAttempts) {
+        attempt++;
+        const provider = ProviderManager.getProvider(selectedModel.providerId);
+        if (!provider) throw new Error(`Selected provider ${selectedModel.providerId} is not initialized.`);
 
-      const text = await provider.generateCompletion({
-        modelId: selectedModel.modelId,
-        messages: [{ role: 'user', content: finalPrompt }],
-        temperature: selectedModel.temperature ?? 0.1,
-        max_tokens: selectedModel.maxTokens ?? 1024,
-      });
-      
-      // Strip markdown code blocks if present
-      let queryText = (text || '').trim();
-      if (queryText.startsWith('```sql')) {
-        queryText = queryText.replace(/^```sql\s*/, '').replace(/\s*```$/, '');
-      } else if (queryText.startsWith('```')) {
-        queryText = queryText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        try {
+          const text = await provider.generateCompletion({
+            modelId: selectedModel.modelId,
+            messages: [{ role: 'user', content: finalPrompt }],
+            temperature: selectedModel.temperature ?? 0.1,
+            max_tokens: selectedModel.maxTokens ?? 1024,
+          });
+
+          // Strip markdown code blocks if present
+          queryText = (text || '').trim();
+          if (queryText.startsWith('```sql')) {
+            queryText = queryText.replace(/^```sql\s*/, '').replace(/\s*```$/, '');
+          } else if (queryText.startsWith('```')) {
+            queryText = queryText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+
+          // Success
+          break;
+        } catch (err: any) {
+          const errMsg = (err && err.message) ? String(err.message) : String(err);
+          console.warn(`[AgentRouter] Model generation failed for ${selectedModel.modelId} (${selectedModel.providerId}): ${errMsg}`);
+
+          // If provider says invalid model, blacklist this model and try again
+          if (/invalid model|not found|invalid model id/i.test(errMsg)) {
+            // Persist the failure so future selections (even after restart) will avoid it
+            try {
+              const { recordModelFailure, recordProviderFailure } = await import('../services/modelManager.service.js');
+              await recordModelFailure(selectedModel.providerId, selectedModel.modelId, role?.id);
+              await recordProviderFailure(selectedModel.providerId, role?.id);
+            } catch (recErr) {
+              console.warn('[AgentRouter] Failed to persist model/provider failure:', recErr);
+            }
+
+            // Add provider-level fallback so we don't retry another model from the same provider
+            if (!failedProviders.includes(selectedModel.providerId)) failedProviders.push(selectedModel.providerId);
+
+            // Also track the failed model id for good measure
+            if (!failedModels.includes(selectedModel.modelId)) failedModels.push(selectedModel.modelId);
+
+            // Select a new model avoiding the failed ones
+            try {
+              selectedModel = await getBestModel(role?.id, failedModels, failedProviders);
+              if (!selectedModel) {
+                console.warn('[AgentRouter] No alternative model available after failure');
+                throw new Error('No alternative models available');
+              }
+              console.log(`[AgentRouter] Retrying with new model: ${selectedModel.modelId} (${selectedModel.providerId})`);
+            } catch (selectErr) {
+              console.warn('[AgentRouter] Failed to select alternative model:', selectErr);
+              // Try fallback selection
+              try {
+                const fallback = await getBestModel(role?.id, failedModels, failedProviders);
+                if (!fallback) throw new Error('No fallback model available');
+                selectedModel = fallback as any; // update to new candidate
+                console.log(`[AgentRouter] Retrying with fallback: ${selectedModel.modelId} (${selectedModel.providerId})`);
+                continue; // retry loop
+              } catch (fallbackErr) {
+                console.warn('[AgentRouter] Fallback selection failed:', fallbackErr);
+                // Continue to outer loop until attempts exhausted
+              }
+            }
+          } else {
+            throw err; // re-throw if not invalid model
+          }
+        }
       }
+
+      if (!queryText) throw new Error('Failed to generate query after multiple attempts.');
 
       return { queryText };
     }),

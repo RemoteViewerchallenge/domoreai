@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useTheme } from '../hooks/useTheme';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -11,6 +12,7 @@ interface XtermTerminalProps {
 }
 
 export default function XtermTerminal({ logs, workingDirectory, onInput }: XtermTerminalProps) {
+  const { theme } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -65,15 +67,15 @@ export default function XtermTerminal({ logs, workingDirectory, onInput }: Xterm
 
         // Initialize Xterm once we have dimensions
         const term = new Terminal({
-            cursorBlink: true,
-            fontSize: 14,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            theme: {
-                background: '#09090b', // zinc-950
-                foreground: '#e4e4e7', // zinc-200
-                cursor: '#22d3ee', // cyan-400
-            },
-            allowProposedApi: true,
+          cursorBlink: true,
+          fontSize: 14,
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          theme: {
+            background: theme.colors.background || '#09090b',
+            foreground: theme.colors.text || '#e4e4e7',
+            cursor: theme.colors.primary?.value || '#22d3ee',
+          },
+          allowProposedApi: true,
         });
 
         const fitAddon = new FitAddon();
@@ -129,5 +131,5 @@ export default function XtermTerminal({ logs, workingDirectory, onInput }: Xterm
     processLogs();
   }, [logs, processLogs]);
 
-  return <div className="h-full w-full overflow-hidden bg-zinc-950 text-left" ref={terminalRef} />;
+  return <div className="h-full w-full overflow-hidden bg-[var(--color-background)] text-left" ref={terminalRef} />;
 }

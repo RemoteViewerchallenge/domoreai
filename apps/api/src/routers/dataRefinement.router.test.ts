@@ -1,0 +1,54 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { importJsonToTableHandler } from './dataRefinement.router.js';
+
+describe('importJsonToTableHandler', () => {
+  let mockPrisma: any;
+  let ctx: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma = {
+      $executeRawUnsafe: vi.fn().mockResolvedValue(null),
+      $queryRawUnsafe: vi.fn().mockResolvedValue([{ count: BigInt(1) }]),
+    };
+    ctx = { prisma: mockPrisma, session: null };
+  });
+
+  it('refuses to import into reserved table without explicit allow', async () => {
+    const input = { tableName: 'Role', jsonString: JSON.stringify([{ id: 'r1', name: 'Admin' }]) };
+    await expect(importJsonToTableHandler(ctx, input as any)).rejects.toThrow(/Refusing to import into reserved table/);
+  });
+
+  it('allows import into reserved table when allowReserved and auditReason provided', async () => {
+    const input = {
+      tableName: 'Role',
+      jsonString: JSON.stringify([{ id: 'r1', name: 'Admin' }]),
+      options: { allowReserved: true, auditReason: 'testing import' }
+    };
+
+    const res = await importJsonToTableHandler(ctx, input as any);
+    expect(res).toEqual({ success: true, tableName: 'Role', rowCount: 1 });
+    // Ensure audit table creation and insert were attempted
+    expect(mockPrisma.$executeRawUnsafe).toHaveBeenCalled();
+    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalled();
+  });
+
+  it('creates id TEXT PRIMARY KEY when preserveIds is true and adds ON CONFLICT when upsertOnConflict is set', async () => {
+    const input = {
+      tableName: 'roles2',
+      jsonString: JSON.stringify([{ id: 'r1', name: 'Admin' }]),
+      options: { preserveIds: true, upsertOnConflict: true }
+    };
+
+    await importJsonToTableHandler(ctx, input as any);
+
+    // The CREATE TABLE call should include 'id TEXT PRIMARY KEY'
+    const createCalls = mockPrisma.$executeRawUnsafe.mock.calls.map((c: any[]) => String(c[0]));
+    expect(createCalls.some((sql: string) => /id TEXT PRIMARY KEY/i.test(sql))).toBeTruthy();
+
+    // The insert SQL should include 'ON CONFLICT (id) DO UPDATE' because upsertOnConflict was true
+    const insertCalls = createCalls.filter((sql: string) => sql.trim().toUpperCase().startsWith('INSERT'));
+    const combined = insertCalls.join('\n');
+    expect(/ON CONFLICT \(id\) DO UPDATE/i.test(combined)).toBeTruthy();
+  });
+});

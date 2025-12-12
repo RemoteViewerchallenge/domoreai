@@ -8,7 +8,6 @@
 
   "terminal.integrated.gpuAcceleration": "on",
 
-
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
     "**/.env": false
@@ -25,6 +24,7 @@
     "activebackground",
     "agentic",
     "aiplatform",
+    "allowpopups",
     "Avenir",
     "chatcmpl",
     "cmiho",
@@ -84,6 +84,7 @@
     "pynput",
     "qwen",
     "reactflow",
+    "roadmaps",
     "rqsxpvyg",
     "sandboxed",
     "schemaname",
@@ -101,6 +102,8 @@
     "Utcp",
     "VITE",
     "vitest",
+    "webpreferences",
+    "wireframes",
     "Ygzejpfk"
   ]
 }

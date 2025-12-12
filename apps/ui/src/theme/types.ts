@@ -27,6 +27,19 @@ export interface ThemeColors {
   textSecondary: string;
   textMuted: string;
   border: string;
+  menuBarBackground?: string;
+  
+  // New UI Element Colors
+  cardBackground?: string;
+  cardHeaderBackground?: string;
+  cardBorder?: string;
+  sidebarBackground?: string;
+  sidebarBorder?: string;
+  
+  // Button & Icon Colors
+  buttonBackground?: string; // Can be gradient
+  buttonText?: string;
+  iconColor?: string;
 }
 
 export interface VisualSettings {

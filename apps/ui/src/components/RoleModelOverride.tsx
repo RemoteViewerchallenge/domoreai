@@ -38,15 +38,15 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
     },
   });
 
-  // 5. Group models by provider for a clean, organized dropdown
+  // 5. Group models by datacenter for a clean, organized dropdown
   const groupedModels = useMemo(() => {
     if (!availableModels) return {};
     return availableModels.reduce((acc: Record<string, typeof availableModels>, model) => {
-      const providerLabel = model.providerLabel || 'Unknown Provider';
-      if (!acc[providerLabel]) {
-        acc[providerLabel] = [];
+      const datacenterLabel = model.providerLabel || 'Unknown Datacenter';
+      if (!acc[datacenterLabel]) {
+        acc[datacenterLabel] = [];
       }
-      acc[providerLabel].push(model);
+      acc[datacenterLabel].push(model);
       return acc;
     }, {} as Record<string, typeof availableModels>);
   }, [availableModels]);
@@ -91,9 +91,8 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
           disabled={isLoadingModels || updateRoleMutation.isLoading}
           className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] text-xs rounded focus:outline-none focus:border-[var(--color-primary)] transition-colors"
         >
-          <option value="">-- Dynamic Selection (Default) --</option>
-          {Object.entries(groupedModels).map(([providerLabel, models]) => (
-            <optgroup label={providerLabel} key={providerLabel}>
+          {Object.entries(groupedModels).map(([datacenterLabel, models]) => (
+            <optgroup label={datacenterLabel} key={datacenterLabel}>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {models.map((model: any) => (
                 <option key={model.id as string} value={`${model.providerId as string}/${model.id as string}`}>
@@ -107,7 +106,7 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
         <div className="flex gap-2">
           <button 
             onClick={handleSaveOverride} 
-            disabled={!isChanged || updateRoleMutation.isLoading}
+            disabled={updateRoleMutation.isLoading || !isChanged}
             className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-muted)] text-[var(--color-background)] rounded text-[10px] font-bold uppercase tracking-wider transition-all"
           >
             <Save size={12} />

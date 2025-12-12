@@ -199,3 +199,43 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Theme Editor Sidebar Override */
+.theme-editor-sidebar {
+  background-color: rgba(9, 9, 11, 0.8) !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Translucent Background Helpers */
+.bg-translucent-dark {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+.bg-translucent-darker {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+}
+.bg-translucent-light {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.hover-bg-translucent-light:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}

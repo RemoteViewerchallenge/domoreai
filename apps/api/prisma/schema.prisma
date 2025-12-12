@@ -63,6 +63,33 @@ model Model {
   @@map("model_registry")
 }
 
+// Persisted model failure counts to avoid retrying known-broken models across restarts
+model ModelFailure {
+  id         String   @id @default(cuid())
+  providerId String
+  modelId    String
+  // Optional role scope so failures are specific to a role
+  roleId     String?
+  failures   Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  // Unique per provider+model+role (role may be null)
+  @@unique([providerId, modelId, roleId])
+}
+
+model ProviderFailure {
+  id         String   @id @default(cuid())
+  providerId String
+  // Optional role scope so provider failures can be tracked per role
+  roleId     String?
+  failures   Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([providerId, roleId])
+}
+
 // -----------------------------------------------------------------
 // Stores the Roles for your agents
 // -----------------------------------------------------------------
@@ -87,22 +114,6 @@ model Role {
   needsUncensored Boolean @default(false)
   needsImageGeneration Boolean @default(false) // NEW: Requirement for image generation // NEW: Requirement for uncensored model
 
-  // Default Hyperparameters (inherited by cards)
-  defaultTemperature       Float?   @default(0.7)
-  defaultMaxTokens         Int?     @default(2048)
-  defaultTopP              Float?   @default(1.0)
-  defaultFrequencyPenalty  Float?   @default(0.0)
-  defaultPresencePenalty   Float?   @default(0.0)
-  defaultStop              Json?    // Array of stop sequences
-  defaultSeed              Int?     // For deterministic outputs
-  defaultResponseFormat    Json?    // { type: "json_object" } or null
-
-  // Terminal Security
-  terminalRestrictions     Json?    // { mode: "whitelist" | "blacklist", commands: string[] }
-  
-  // Dynamic Registry Criteria (Stores requirements for custom columns)
-  criteria                 Json?    // e.g. { "is_fast": true, "iq_score": { "min": 120 } }
-
   // Tools Configuration
   tools                    String[] @default([]) // Array of tool names (e.g. ["git", "postgres"])
 
@@ -115,13 +126,52 @@ model Role {
   // Relation to jobs this role can be assigned to
   jobs        Job[]
 
-  // Personality and knowledge fencing (Chris-June additions)
-  tone           String?   // Optional tone/personality enforcement for the role
-  domainKnowledge String[] @default([]) // Array of domain knowledge keys the role may use
-
   // Hardcoded Model Override (bypasses dynamic selection for this role only)
   hardcodedModelId     String? // e.g., "gpt-4", "claude-3-opus"
   hardcodedProviderId  String? // e.g., provider config ID
+}
+
+// -----------------------------------------------------------------
+// RoleTemplate: stores optional, shareable role defaults and internal settings
+// so that `Role` remains a light-weight descriptor and non-critical
+// configuration can be managed separately and shared across roles.
+// -----------------------------------------------------------------
+model RoleTemplate {
+  id          String   @id @default(cuid())
+  name        String?  // Optional human label
+
+  // Core prompt (optional override)
+  basePrompt  String?  @db.Text
+
+  // Fault handling / tuning
+  faultTemperature Float?
+
+  // Default Hyperparameters
+  defaultMaxTokens         Int?
+  defaultTopP              Float?
+  defaultFrequencyPenalty  Float?
+  defaultPresencePenalty   Float?
+  defaultStop              Json?
+  defaultSeed              Int?
+  defaultResponseFormat    Json?
+
+  // Terminal Security + misc
+  terminalRestrictions     Json?
+  criteria                 Json?
+  tools                    String[] @default([])
+
+  // Personality / domain
+  tone           String?
+  domainKnowledge String[] @default([])
+
+  // Hardcoded overrides
+  hardcodedModelId     String?
+  hardcodedProviderId  String?
+
+  // Virtual FS / plugin config
+  vfsConfig Json?
+
+  createdAt DateTime @default(now())
 }
 
 // -----------------------------------------------------------------

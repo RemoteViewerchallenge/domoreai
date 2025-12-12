@@ -2,7 +2,41 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { encrypt } from '../utils/encryption.js'; 
 import { ProviderManager } from '../services/ProviderManager.js'; 
-import { ModelDoctor } from '../services/ModelDoctor.js'; 
+import { ModelDoctor } from '../services/ModelDoctor.js';
+import { spawn, execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
+// Helper function to map SQL types to Prisma types
+function mapSqlTypeToPrisma(sqlType: string): string {
+  const typeMap: Record<string, string> = {
+    'integer': 'Int',
+    'bigint': 'BigInt',
+    'smallint': 'Int',
+    'serial': 'Int',
+    'bigserial': 'BigInt',
+    'real': 'Float',
+    'double precision': 'Float',
+    'numeric': 'Decimal',
+    'decimal': 'Decimal',
+    'character varying': 'String',
+    'varchar': 'String',
+    'character': 'String',
+    'char': 'String',
+    'text': 'String',
+    'boolean': 'Boolean',
+    'date': 'DateTime',
+    'time': 'DateTime',
+    'timestamp': 'DateTime',
+    'timestamp without time zone': 'DateTime',
+    'timestamp with time zone': 'DateTime',
+    'json': 'Json',
+    'jsonb': 'Json',
+    'uuid': 'String',
+  };
+
+  return typeMap[sqlType.toLowerCase()] || 'String'; // Default to String for unknown types
+}
 
 export const dataRefinementRouter = createTRPCRouter({
   
@@ -301,7 +335,14 @@ export const dataRefinementRouter = createTRPCRouter({
           const rows = await ctx.prisma.$queryRawUnsafe<any[]>(input.query);
           return { success: true, rows, rowCount: rows.length };
         } catch (error: any) {
-          throw new Error(`Query failed: ${error.message}`);
+          // Surface DB error with the original query to aid debugging (do not expose secrets)
+          const errMsg = (error && error.message) ? String(error.message) : String(error);
+          console.error(`[Query Exec] Failed to execute query. Error: ${errMsg}\nQuery: ${input.query}`);
+          // Provide actionable hint for missing columns
+          if (/column .* does not exist/i.test(errMsg)) {
+            throw new Error(`Query failed: ${errMsg}. Hint: check column names and quoting in your SQL. Query: ${input.query}`);
+          }
+          throw new Error(`Query failed: ${errMsg}`);
         }
       }),
 
@@ -572,35 +613,275 @@ export const dataRefinementRouter = createTRPCRouter({
     .input(z.object({
         tableName: z.string(),
         jsonString: z.string(),
+        options: z.object({
+          allowReserved: z.boolean().optional(),
+          preserveIds: z.boolean().optional(),
+          preserveCreatedAt: z.boolean().optional(),
+          upsertOnConflict: z.boolean().optional(),
+          auditReason: z.string().optional()
+        }).optional()
     }))
     .mutation(async ({ ctx, input }) => {
-        // Validate and sanitize table name
-        let safeTableName = input.tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
-        if (!safeTableName || safeTableName.match(/^\d/)) {
-            throw new Error("Invalid table name. Must contain letters, numbers, or underscores and not start with a number.");
+      return await importJsonToTableHandler(ctx, input as any);
+    }),
+
+  // Export table to JSON
+  exportTableToJson: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const rows = await ctx.prisma.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "${input.tableName}"`
+        );
+        const jsonString = JSON.stringify(rows, null, 2);
+        return { success: true, jsonString };
+      } catch (error: any) {
+        throw new Error(`Failed to export table: ${error.message}`);
+      }
+    }),
+
+  // Get table schema
+  getTableSchema: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const columns = await ctx.prisma.$queryRawUnsafe<any[]>(
+          `SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = '${input.tableName}' AND table_schema = 'public' ORDER BY ordinal_position`
+        );
+        return { columns };
+      } catch (error: any) {
+        return { columns: [] };
+      }
+    }),
+
+  // Generate Prisma model for a table
+  generatePrismaModel: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        // Get table schema
+        const columns = await ctx.prisma.$queryRawUnsafe<any[]>(
+          `SELECT column_name, data_type, is_nullable, column_default, ordinal_position FROM information_schema.columns WHERE table_name = '${input.tableName}' AND table_schema = 'public' ORDER BY ordinal_position`
+        );
+
+        if (columns.length === 0) {
+          throw new Error(`Table '${input.tableName}' not found or has no columns`);
         }
 
-        const { jsonString } = input;
+        // Generate Prisma model
+        let modelDef = `model ${input.tableName} {\n`;
+
+        for (const col of columns) {
+          const prismaType = mapSqlTypeToPrisma(col.data_type);
+          const nullable = col.is_nullable === 'YES' ? '?' : '';
+          const defaultValue = col.column_default ? ` @default(${col.column_default})` : '';
+
+          // Handle primary key (assume first column or 'id' column)
+          const isId = col.column_name === 'id' || col.ordinal_position === 1;
+          const idAnnotation = isId ? ' @id' : '';
+
+          modelDef += `  ${col.column_name} ${prismaType}${nullable}${idAnnotation}${defaultValue}\n`;
+        }
+
+        modelDef += `}\n`;
+
+        // Read current schema file
+        const fs = require('fs');
+        const path = require('path');
+        const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+        let schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+        // Create backup before making changes
+        const backupPath = `${schemaPath}.backup`;
+        fs.writeFileSync(backupPath, schemaContent);
+
+        // Check if model already exists
+        const modelRegex = new RegExp(`model ${input.tableName} \\{[^}]*\\}`, 'g');
+        const existingModel = schemaContent.match(modelRegex);
+
+        if (existingModel) {
+          // Replace existing model
+          schemaContent = schemaContent.replace(modelRegex, modelDef);
+        } else {
+          // Add new model at the end
+          schemaContent = schemaContent.trim() + '\n\n' + modelDef;
+        }
+
+        // Write back
+        fs.writeFileSync(schemaPath, schemaContent);
+
+        return {
+          success: true,
+          model: modelDef,
+          message: `Prisma model for '${input.tableName}' ${existingModel ? 'updated' : 'added'} to schema.prisma. Backup created at schema.prisma.backup. Run 'npx prisma generate' to update the client.`
+        };
+
+      } catch (error: any) {
+        throw new Error(`Failed to generate Prisma model: ${error.message}`);
+      }
+    }),
+
+  // Regenerate Prisma client
+  regeneratePrismaClient: publicProcedure
+    .mutation(async () => {
+      try {
         
-        console.log(`[Import] Starting JSON import to table: ${safeTableName}`);
+        // Run prisma generate
+        execSync('npx prisma generate', { 
+          cwd: process.cwd(),
+          stdio: 'pipe'
+        });
 
-        // Parse and validate JSON
-        let jsonData: any[];
-        try {
-            jsonData = JSON.parse(jsonString);
-            if (!Array.isArray(jsonData)) {
-                throw new Error("JSON must be an array of objects");
-            }
-            if (jsonData.length === 0) {
-                throw new Error("JSON array is empty");
-            }
-            console.log(`[Import] Parsed ${jsonData.length} records from JSON`);
-        } catch (e) {
-            const errMsg = (e as Error).message || String(e);
-            throw new Error(`Invalid JSON: ${errMsg}`);
-        }
+        return {
+          success: true,
+          message: 'Prisma client regenerated successfully!'
+        };
 
-        try {
+      } catch (error: any) {
+        throw new Error(`Failed to regenerate Prisma client: ${error.message}`);
+      }
+    }),
+
+    renameTableModel: protectedProcedure
+        .input(z.object({
+            oldTableName: z.string(),
+            newTableName: z.string(),
+            oldModelName: z.string(),
+            newModelName: z.string(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { oldTableName, newTableName, oldModelName, newModelName } = input;
+
+            try {
+                console.log(`[Rename] Starting rename from ${oldTableName} to ${newTableName}, model ${oldModelName} to ${newModelName}`);
+
+                // Step 1: Create backup of current schema
+                const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+                const backupPath = `${schemaPath}.backup.${Date.now()}`;
+                fs.copyFileSync(schemaPath, backupPath);
+                console.log(`[Rename] Schema backup created at ${backupPath}`);
+
+                // Step 2: Read current schema
+                const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+
+                // Step 3: Update model name in schema using regex
+                const modelRegex = new RegExp(`(model ${oldModelName}\\s+\\{)`, 'g');
+                const updatedSchema = schemaContent.replace(modelRegex, `model ${newModelName} {`);
+
+                // Step 4: Update table name references in model (@@map directive)
+                const mapRegex = new RegExp(`(@@map\\("${oldTableName}"\\))`, 'g');
+                const finalSchema = updatedSchema.replace(mapRegex, `@@map("${newTableName}")`);
+
+                // Step 5: Write updated schema
+                fs.writeFileSync(schemaPath, finalSchema);
+                console.log(`[Rename] Schema updated: model ${oldModelName} -> ${newModelName}, table ${oldTableName} -> ${newTableName}`);
+
+                // Step 6: Regenerate Prisma client
+                await new Promise((resolve, reject) => {
+                    const prismaGenerate = spawn('npx', ['prisma', 'generate'], {
+                        cwd: process.cwd(),
+                        stdio: 'inherit'
+                    });
+                    prismaGenerate.on('close', (code) => {
+                        if (code === 0) {
+                            console.log('[Rename] Prisma client regenerated successfully');
+                            resolve(void 0);
+                        } else {
+                            reject(new Error(`Prisma generate failed with code ${code}`));
+                        }
+                    });
+                    prismaGenerate.on('error', reject);
+                });
+
+                // Step 7: Rename the database table
+                const renameQuery = `ALTER TABLE "${oldTableName}" RENAME TO "${newTableName}";`;
+                await ctx.prisma.$executeRawUnsafe(renameQuery);
+                console.log(`[Rename] Database table renamed from ${oldTableName} to ${newTableName}`);
+
+                return {
+                    success: true,
+                    message: `Successfully renamed table from ${oldTableName} to ${newTableName} and model from ${oldModelName} to ${newModelName}`,
+                    backupPath
+                };
+
+            } catch (error: any) {
+                const errMsg = (error as Error).message || String(error);
+                console.error(`[Rename] Failed to rename table/model:`, errMsg);
+                throw new Error(`Rename operation failed: ${errMsg}`);
+            }
+        })
+
+  });
+
+
+  export async function importJsonToTableHandler(ctx: any, input: { tableName: string; jsonString: string; options?: any }) {
+    // Helper function to validate UUID
+    function isValidUUID(str: string): boolean {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(str);
+    }
+
+    // Validate and sanitize table name
+    let safeTableName = input.tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+    if (!safeTableName || safeTableName.match(/^\d/)) {
+      throw new Error("Invalid table name. Must contain letters, numbers, or underscores and not start with a number.");
+    }
+
+    const { jsonString } = input;
+    
+    console.log(`[Import] Starting JSON import to table: ${safeTableName}`);
+
+    // Parse and validate JSON
+    let jsonData: any[];
+    try {
+      jsonData = JSON.parse(jsonString);
+      if (!Array.isArray(jsonData)) {
+        throw new Error("JSON must be an array of objects");
+      }
+      if (jsonData.length === 0) {
+        throw new Error("JSON array is empty");
+      }
+      console.log(`[Import] Parsed ${jsonData.length} records from JSON`);
+    } catch (e) {
+      const errMsg = (e as Error).message || String(e);
+      throw new Error(`Invalid JSON: ${errMsg}`);
+    }
+
+    try {
+          const opts = input.options || {};
+
+          // Prevent accidental destructive imports into core schema tables unless explicitly allowed
+          // const reserved = new Set(['role','model','modelconfig','modelusage','job','_preferredmodels','provider','providerconfig']);
+          // if (reserved.has(safeTableName.toLowerCase()) && !opts.allowReserved) {
+          //   throw new Error(`Refusing to import into reserved table "${safeTableName}". Pass options.allowReserved=true and an auditReason to proceed.`);
+          // }
+
+          // If user is explicitly allowing reserved imports, require an audit reason to reduce accidental destructive actions
+          // if (reserved.has(safeTableName.toLowerCase()) && opts.allowReserved && !opts.auditReason) {
+          //   throw new Error(`Imports into reserved tables require an auditReason when allowReserved=true.`);
+          // }
+
+          // Create a simple audit table if it doesn't exist and record the import action
+          // if (opts.allowReserved) {
+          //   try {
+          //     await ctx.prisma.$executeRawUnsafe(`
+          //       CREATE TABLE IF NOT EXISTS "ImportAudit" (
+          //       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          //       table_name TEXT,
+          //       options JSONB,
+          //       initiated_by TEXT,
+          //       note TEXT,
+          //       created_at TIMESTAMP DEFAULT NOW()
+          //       )
+          //     `);
+
+          //     const initiatedBy = (ctx.session && (ctx.session as any).user?.email) ? (ctx.session as any).user.email : null;
+          //     await ctx.prisma.$executeRawUnsafe(`INSERT INTO "ImportAudit" (table_name, options, initiated_by, note) VALUES ('${safeTableName}', '${JSON.stringify(opts).replace(/'/g, "''")}'::jsonb, ${initiatedBy ? `'${String(initiatedBy).replace(/'/g, "''")}'` : 'NULL'}, '${String(opts.auditReason || 'allowed by operator').replace(/'/g, "''")}')`);
+          //   } catch (e) {
+          //     console.warn('[Import] Failed to record audit entry:', e);
+          //   }
+          // }
+
             // Drop existing table
             console.log(`[Import] Dropping table if exists: ${safeTableName}`);
             await ctx.prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${safeTableName}"`);
@@ -613,6 +894,35 @@ export const dataRefinementRouter = createTRPCRouter({
                 }
             });
 
+            // Handle id & created_at renames based on options
+            const optsPreserveIds = Boolean(opts.preserveIds);
+            const optsPreserveCreatedAt = Boolean(opts.preserveCreatedAt);
+
+            const hasIncomingId = keysSet.has('id');
+            if (hasIncomingId) {
+              if (optsPreserveIds) {
+                // keep 'id' as-is so it becomes the table PK
+                keysSet.delete('id');  // remove from columnDefs since it's defined separately
+                console.log(`[Import] Preserving incoming 'id' as table PK`);
+              } else {
+                keysSet.delete('id');
+                keysSet.add('source_id');
+                console.log(`[Import] Renaming incoming 'id' column to 'source_id' to avoid PK collision`);
+              }
+            }
+
+            const hasIncomingCreatedAt = keysSet.has('created_at');
+            if (hasIncomingCreatedAt) {
+              if (optsPreserveCreatedAt) {
+                console.log(`[Import] Preserving incoming 'created_at' values into created_at column`);
+                keysSet.delete('created_at');  // remove from columnDefs since it's defined separately
+              } else {
+                keysSet.delete('created_at');
+                keysSet.add('source_created_at');
+                console.log(`[Import] Renaming incoming 'created_at' to 'source_created_at' to avoid collision`);
+              }
+            }
+
             const keys = Array.from(keysSet).sort();
             console.log(`[Import] Found columns: ${keys.join(', ')}`);
 
@@ -622,12 +932,17 @@ export const dataRefinementRouter = createTRPCRouter({
 
             // Build CREATE TABLE statement with TEXT columns
             const columnDefs = keys.map(k => `"${k}" TEXT`).join(', ');
+            // Always use UUID with DEFAULT for id
+            const idColumnSql = `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`;
+            // Always use TIMESTAMP with DEFAULT NOW() for created_at
+            const createdAtSql = `created_at TIMESTAMP DEFAULT NOW()`;
+
             const createTableSql = `
-                CREATE TABLE "${safeTableName}" (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    ${columnDefs},
-                    created_at TIMESTAMP DEFAULT NOW()
-                )
+              CREATE TABLE "${safeTableName}" (
+                ${idColumnSql},
+                ${columnDefs},
+                ${createdAtSql}
+              )
             `;
             
             console.log(`[Import] Creating table with SQL:`, createTableSql.substring(0, 100) + '...');
@@ -636,16 +951,47 @@ export const dataRefinementRouter = createTRPCRouter({
             // Insert rows with proper NULL handling
             let insertedCount = 0;
             for (const row of jsonData) {
-                const columns = keys.map(k => `"${k}"`).join(', ');
+                const columns = keys.map(k => `"${k}"`);
                 const values = keys.map(k => {
-                    const val = row[k];
-                    if (val === null || val === undefined) return 'NULL';
-                    // Convert to string and escape single quotes
-                    const strVal = String(val).replace(/'/g, "''");
-                    return `'${strVal}'`;
-                }).join(', ');
+                  let val;
 
-                const insertSql = `INSERT INTO "${safeTableName}" (${columns}) VALUES (${values})`;
+                  if (k === 'source_id') {
+                    val = row['id'] ?? row['source_id'];
+                  } else if (k === 'source_created_at') {
+                    val = row['created_at'] ?? row['source_created_at'];
+                  } else {
+                    val = row[k];
+                  }
+
+                  if (val == null) return 'NULL';
+                  return `'${String(val).replace(/'/g, "''")}'`;
+                });
+
+                if (optsPreserveIds && hasIncomingId && row.id != null && isValidUUID(String(row.id))) {
+                  columns.unshift('"id"');
+                  values.unshift(`'${String(row.id).replace(/'/g, "''")}'`);
+                }
+
+                if (optsPreserveCreatedAt && hasIncomingCreatedAt && row.created_at != null) {
+                  columns.push('"created_at"');
+                  values.push(`'${String(row.created_at).replace(/'/g, "''")}'`);
+                } else {
+                  columns.push('"created_at"');
+                  values.push('NOW()');
+                }
+
+                const columnsStr = columns.join(', ');
+                const valuesStr = values.join(', ');
+
+                let insertSql = `INSERT INTO "${safeTableName}" (${columnsStr}) VALUES (${valuesStr})`;
+
+                // Optionally perform upsert on id conflicts when preserving ids
+                if (opts.upsertOnConflict && optsPreserveIds && hasIncomingId) {
+                  // Build SET clause to update all non-id columns
+                  const nonIdCols = keys.filter(k => k !== 'id').map(k => `"${k}" = EXCLUDED."${k}"`).join(', ');
+                  insertSql += ` ON CONFLICT (id) DO UPDATE SET ${nonIdCols}`;
+                }
+
                 await ctx.prisma.$executeRawUnsafe(insertSql);
                 insertedCount++;
             }
@@ -653,16 +999,15 @@ export const dataRefinementRouter = createTRPCRouter({
             console.log(`[Import] Inserted ${insertedCount} rows`);
 
             // Get row count for verification
-            const result = await ctx.prisma.$queryRawUnsafe<[{ count: bigint }]>(`SELECT COUNT(*) as count FROM "${safeTableName}"`);
-            const count = Number(result[0]?.count ?? 0);
+            const result = await ctx.prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "${safeTableName}"`) as [{ count: bigint }];
+            const count = Number(result[0]?.count ?? BigInt(0));
 
             console.log(`[Import] Final row count: ${count}`);
             return { success: true, tableName: safeTableName, rowCount: count };
 
         } catch (error: any) {
-            const errMsg = (error as Error).message || String(error);
-            console.error(`[Import] JSON import to table '${safeTableName}' failed:`, errMsg);
-            throw new Error(`Failed to import JSON: ${errMsg}`);
+          const errMsg = (error as Error).message || String(error);
+          console.error(`[Import] JSON import to table '${safeTableName}' failed:`, errMsg);
+          throw new Error(`Failed to import JSON: ${errMsg}`);
         }
-    }),
-});
+    }

@@ -1,22 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
-import { Plus, Settings } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { ThemeEditorSidebar } from '../components/appearance/ThemeEditorSidebar.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { trpc } from '../utils/trpc.js'; // Import trpc
 
 export default function WorkSpace() {
   const { theme, setTheme } = useTheme();
-  const [showThemeEditor, setShowThemeEditor] = useState(false);
-  const [columns, setColumns] = useState(3);
+  const { columns, showSidebar, setSidebarOpen } = useWorkspaceStore();
+  const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
+  const availableRoles = roles || [];
+  // Use the first available roleId if present, else empty string
+  const defaultRoleId = availableRoles[0]?.id || '';
   const [cards, setCards] = useState([
-    { id: '1', roleId: '', column: 0 },
-    { id: '2', roleId: '', column: 0 },
-    { id: '3', roleId: '', column: 1 },
-    { id: '4', roleId: '', column: 1 },
-    { id: '5', roleId: '', column: 2 },
-    { id: '6', roleId: '', column: 2 },
+    { id: '1', roleId: defaultRoleId, column: 0 },
+    { id: '2', roleId: defaultRoleId, column: 0 },
+    { id: '3', roleId: defaultRoleId, column: 1 },
+    { id: '4', roleId: defaultRoleId, column: 1 },
+    { id: '5', roleId: defaultRoleId, column: 2 },
+    { id: '6', roleId: defaultRoleId, column: 2 },
   ]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
@@ -24,15 +29,14 @@ export default function WorkSpace() {
   const { setColumnFocus } = useColumnFocus(columns);
 
   // Redistribute cards when columns change
-  const handleSetColumns = (newColumnCount: number) => {
-    setColumns(newColumnCount);
+  useEffect(() => {
     setCards(prevCards => 
       prevCards.map((card, index) => ({
         ...card,
-        column: index % newColumnCount
+        column: index % columns
       }))
     );
-  };
+  }, [columns]);
 
   // Group cards by column
   const cardsByColumn: { [key: number]: typeof cards } = {};
@@ -41,8 +45,13 @@ export default function WorkSpace() {
   }
 
   const handleSpawnCard = (columnIndex: number) => {
+    if (availableRoles.length === 0) {
+      alert('Please create at least one role in Creator Studio before spawning a card.');
+      return;
+    }
     const newId = String(Date.now());
-    setCards(prev => [...prev, { id: newId, roleId: '', column: columnIndex }]);
+    const newRoleId = availableRoles[0].id; // Assign the ID of the first available role
+    setCards(prev => [...prev, { id: newId, roleId: newRoleId, column: columnIndex }]);
   };
 
   const scrollToCardIndex = (columnIndex: number, cardIndex: number) => {
@@ -83,37 +92,6 @@ export default function WorkSpace() {
 
   return (
     <div className="flex flex-col flex-1 w-full bg-[var(--color-background)] text-[var(--color-text)] overflow-hidden font-mono">
-      {/* Column Controls */}
-      <div className="flex-none h-7 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)] flex items-center justify-end px-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Columns:</span>
-          <div className="flex items-center bg-[var(--color-background)] rounded border border-[var(--color-border)] h-5">
-            <button
-              onClick={() => handleSetColumns(Math.max(1, columns - 1))}
-              className="px-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-background-secondary)] rounded-l text-xs"
-            >
-              -
-            </button>
-            <span className="px-2 text-[10px] font-bold text-[var(--color-primary)] w-6 text-center">{columns}</span>
-            <button
-              onClick={() => handleSetColumns(Math.min(6, columns + 1))}
-              className="px-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-background-secondary)] rounded-r text-xs"
-            >
-              +
-            </button>
-          </div>
-
-          <div className="w-px h-4 bg-[var(--color-border)] mx-2" />
-          <button
-            onClick={() => setShowThemeEditor(!showThemeEditor)}
-            className={`p-1 rounded hover:bg-[var(--color-background)] ${showThemeEditor ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
-            title="Theme Editor"
-          >
-            <Settings size={14} />
-          </button>
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Grid - Columns */}
@@ -204,11 +182,11 @@ export default function WorkSpace() {
         })}
       </div>
 
-      {showThemeEditor && (
+      {showSidebar && (
         <ThemeEditorSidebar
           theme={theme}
           onUpdateTheme={setTheme}
-          onClose={() => setShowThemeEditor(false)}
+          onClose={() => setSidebarOpen(false)}
         />
       )}
       </div>

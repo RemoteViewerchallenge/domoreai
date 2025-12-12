@@ -44,20 +44,21 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
   socket: null,
   actions: {
     connect: (vfsToken) => {
-      if (get().socket) {
+      const { socket, status } = get();
+      if (socket || status === 'connecting') {
         return;
       }
 
       set({ status: 'connecting' });
-      const socket = new WebSocket(`ws://localhost:4000/vfs?vfs_token=${vfsToken}`);
+      const newSocket = new WebSocket(`ws://localhost:4000/vfs?vfs_token=${vfsToken}`);
 
-      socket.onopen = () => {
-        set({ status: 'connected', socket });
+      newSocket.onopen = () => {
+        set({ status: 'connected', socket: newSocket });
       };
 
-      socket.onmessage = (event) => {
+      newSocket.onmessage = (event) => {
         try {
-          const data: unknown = JSON.parse(event.data as string) as any;
+          const data: unknown = JSON.parse(event.data as string);
 
           // Pass through terminal-style messages
           if (isTerminalMessage(data)) {
@@ -105,11 +106,11 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
         }
       };
 
-      socket.onclose = () => {
+      newSocket.onclose = () => {
         set({ status: 'disconnected', socket: null });
       };
 
-      socket.onerror = (error) => {
+      newSocket.onerror = (error) => {
         console.error('WebSocket error:', error);
         set({ status: 'disconnected', socket: null });
       };
