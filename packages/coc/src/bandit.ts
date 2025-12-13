@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-type Arm = { id: string; modelName?: string; promptTemplate?: string; wins: number; plays: number; meta?: any };
+type Arm = { id: string; modelName?: string; promptTemplate?: string; topK?: number; wins: number; plays: number; meta?: any };
 
 export class Bandit {
   arms: Arm[] = [];

@@ -5,6 +5,12 @@ export class AgentConfigRepository {
     return prisma.role.findUnique({ where: { id: roleId } });
   }
 
+  static async getEffectiveRole(roleId: string) {
+    const role = await this.getRole(roleId);
+    if (!role) return null;
+    return role as any;
+  }
+
   static async getModel(providerId: string, modelId: string) {
     return prisma.model.findUnique({
       where: { providerId_modelId: { providerId, modelId } }

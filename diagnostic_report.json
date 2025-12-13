@@ -1,0 +1,6 @@
+{
+  "roleError": "\nInvalid `prisma.role.count()` invocation in\n/home/guy/mono/apps/api/src/scripts/diagnose_data.ts:9:46\n\n  6 async function main() {\n  7   const report: any = {};\n  8   \n→ 9   try { report.roleCount = await prisma.role.count(\nThe table `public.Role` does not exist in the current database.",
+  "modelCount": 0,
+  "gCount": 70,
+  "mCount": 36
+}

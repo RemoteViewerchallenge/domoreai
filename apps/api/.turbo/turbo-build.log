@@ -1,4 +1,6 @@
 
+
 > api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed.[39m

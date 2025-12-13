@@ -6,12 +6,14 @@ interface GridProps {
   // Allow parent to control column mapping
   columnMapping?: Record<string, string>; 
   onColumnMapChange?: (original: string, mapped: string) => void;
+  headers?: string[]; // For empty tables, show schema headers
 }
 
 export const UniversalDataGrid: React.FC<GridProps> = ({ 
   data, 
   columnMapping = {}, 
-  onColumnMapChange 
+  onColumnMapChange,
+  headers = []
 }) => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [resizing, setResizing] = useState<{ column: string; startX: number; startWidth: number } | null>(null);
@@ -20,7 +22,14 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   const [editingHeader, setEditingHeader] = useState<string | null>(null);
   const [tempHeaderVal, setTempHeaderVal] = useState('');
 
-  const columns = useMemo(() => (data && data.length > 0 ? Object.keys(data[0]) : []), [data]);
+  const columns = useMemo(() => {
+    if (data && data.length > 0) {
+      return Object.keys(data[0]);
+    } else if (headers && headers.length > 0) {
+      return headers;
+    }
+    return [];
+  }, [data, headers]);
 
   // Initialize Widths
   useEffect(() => {
@@ -64,9 +73,9 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   );
 
   return (
-    <div className="h-full w-full overflow-auto bg-[#09090b] scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+    <div className="h-full w-full overflow-auto bg-[var(--color-background-secondary)] scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent text-[var(--color-text)]">
       <table className="w-full text-left border-collapse text-xs font-mono table-fixed">
-        <thead className="sticky top-0 bg-zinc-950 z-20 shadow-md ring-1 ring-zinc-800">
+        <thead className="sticky top-0 bg-[var(--color-background)] z-20 shadow-md ring-1 ring-[var(--color-border)] text-[var(--color-text-secondary)]">
           <tr>
             {columns.map((col) => {
               const mappedName = columnMapping[col] || col;
@@ -133,9 +142,9 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
         </thead>
         <tbody className="divide-y divide-zinc-800/50">
           {data.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-zinc-900/50 transition-colors group">
+            <tr key={rowIndex} className="transition-colors group hover:bg-[var(--color-background)]/30">
               {columns.map((col) => (
-                <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-zinc-800/30 last:border-r-0 overflow-hidden text-zinc-300 whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
+                <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-[var(--color-border)]/30 last:border-r-0 overflow-hidden text-[var(--color-text)] whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
                   <span className="opacity-90 group-hover:opacity-100">
                     {(row[col] === null || row[col] === undefined) ? '' : (typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] as any))}
                   </span>

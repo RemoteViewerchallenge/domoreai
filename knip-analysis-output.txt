@@ -1,0 +1,93 @@
+[93m[4mUnused files[24m[39m (40)
+apps/ui/src/components/BottomSummaryBar.tsx               
+apps/ui/src/components/DataLakeTable.tsx                  
+apps/ui/src/components/GitControls.tsx                    
+apps/ui/src/components/InteractiveTerminal.tsx            
+apps/ui/src/components/nodes/ApiExplorerNode.tsx          
+apps/ui/src/components/nodes/DatabaseManagerNode.tsx      
+apps/ui/src/components/OrchestrationCreatorPanel.tsx      
+apps/ui/src/components/OrchestrationExecutor.tsx          
+apps/ui/src/components/ProviderList.tsx                   
+apps/ui/src/components/settings/OrchestratorSettings.tsx  
+apps/ui/src/components/settings/ThemeCustomization.tsx    
+apps/ui/src/components/settings/WorkspaceSettings.tsx     
+apps/ui/src/components/SimpleTableView.tsx                
+apps/ui/src/components/TerminalLogViewer.tsx              
+apps/ui/src/components/ToolSelector.tsx                   
+apps/ui/src/components/TopSummaryBar.tsx                  
+apps/ui/src/components/ui/Accordion.tsx                   
+apps/ui/src/components/ui/Button.tsx                      
+apps/ui/src/components/ui/Icon.tsx                        
+apps/ui/src/components/ui/Panel.tsx                       
+apps/ui/src/components/VfsViewer.tsx                      
+apps/ui/src/components/work-order/WorkOrderCard.tsx       
+apps/ui/src/components/work-order/WorkOrderColumn.tsx     
+apps/ui/src/constants/savedQueries.ts                     
+apps/ui/src/hooks/useVFS.ts                               
+apps/ui/src/hooks/useWebSocket.ts                         
+apps/ui/src/lib/utils.ts                                  
+apps/ui/src/pages/admin/models.tsx                        
+apps/ui/src/pages/FileLocationPage.tsx                    
+apps/ui/src/pages/ProjectCreator.tsx                      
+apps/ui/src/pages/ProjectPage.tsx                         
+apps/ui/src/pages/ProjectsDashboard.tsx                   
+apps/ui/src/pages/ProviderManager.tsx                     
+apps/ui/src/pages/ProviderRecovery.tsx                    
+apps/ui/src/pages/RoleCreator.tsx                         
+apps/ui/src/pages/SettingsPage.tsx                        
+apps/ui/src/pages/workspace/[id].tsx                      
+apps/ui/src/pages/workspace/SmartSwitch.tsx               
+apps/ui/src/pages/WorkspaceList.tsx                       
+apps/ui/src/types.ts                                      
+[93m[4mUnused dependencies[24m[39m (17)
+@codingame/monaco-vscode-api  apps/ui/package.json:15:6
+@radix-ui/react-slot          apps/ui/package.json:17:6
+@repo/api-contract            apps/ui/package.json:18:6
+@types/react-grid-layout      apps/ui/package.json:26:6
+ag-grid-community             apps/ui/package.json:27:6
+ag-grid-react                 apps/ui/package.json:28:6
+api                           apps/ui/package.json:29:6
+axios                         apps/ui/package.json:30:6
+class-variance-authority      apps/ui/package.json:31:6
+clsx                          apps/ui/package.json:32:6
+flyonui                       apps/ui/package.json:33:6
+jspreadsheet-ce               apps/ui/package.json:34:6
+monaco-languageclient         apps/ui/package.json:37:6
+react-grid-layout             apps/ui/package.json:40:6
+react-table                   apps/ui/package.json:42:6
+tailwind-merge                apps/ui/package.json:45:6
+tailwindcss-animate           apps/ui/package.json:46:6
+[93m[4mUnused devDependencies[24m[39m (6)
+@eslint/js                        apps/ui/package.json:52:6
+@types/react-table                apps/ui/package.json:56:6
+@typescript-eslint/eslint-plugin  apps/ui/package.json:57:6
+@typescript-eslint/parser         apps/ui/package.json:58:6
+eslint-plugin-react-refresh       apps/ui/package.json:64:6
+vite-plugin-monaco-editor         apps/ui/package.json:71:6
+[93m[4mUnlisted dependencies[24m[39m (1)
+@prisma/client  apps/ui/src/components/RoleModelOverride.tsx:4:27
+[93m[4mUnused exports[24m[39m (9)
+SshConnectionModal  apps/ui/src/components/SshConnectionModal.tsx:20:14
+useFileSystem       apps/ui/src/stores/FileSystemContext.tsx:28:14     
+lightTheme          apps/ui/src/theme/presets.ts:34:14                 
+minimalTheme        apps/ui/src/theme/presets.ts:96:14                 
+standardTheme       apps/ui/src/theme/presets.ts:144:14                
+flashyTheme         apps/ui/src/theme/presets.ts:202:14                
+extremeTheme        apps/ui/src/theme/presets.ts:250:14                
+NEON_COLORS         apps/ui/src/utils/neonTheme.ts:4:14                
+getNeonGlowClass    apps/ui/src/utils/neonTheme.ts:46:14               
+[93m[4mUnused exported types[24m[39m (12)
+FlowControlConfig       type       apps/ui/src/features/creator-studio/types.ts:20:13
+OrchestrationBlueprint  type       apps/ui/src/features/creator-studio/types.ts:52:13
+MenuStyle               type       apps/ui/src/theme/types.ts:3:13                   
+IconTheme               type       apps/ui/src/theme/types.ts:5:13                   
+Density                 type       apps/ui/src/theme/types.ts:7:13                   
+NeonColor               interface  apps/ui/src/theme/types.ts:9:18                   
+ThemeColors             interface  apps/ui/src/theme/types.ts:15:18                  
+VisualSettings          interface  apps/ui/src/theme/types.ts:32:18                  
+AnimationSettings       interface  apps/ui/src/theme/types.ts:47:18                  
+SoundSettings           interface  apps/ui/src/theme/types.ts:56:18                  
+WidgetSettings          interface  apps/ui/src/theme/types.ts:65:18                  
+LayoutSettings          interface  apps/ui/src/theme/types.ts:88:18                  
+[93m[4mDuplicate exports[24m[39m (1)
+standardTheme|defaultTheme  apps/ui/src/theme/presets.ts

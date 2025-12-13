@@ -13,17 +13,11 @@ interface SmartEditorProps {
   onRun?: () => void;   // Callback for running the agent (Cmd+Enter)
 }
 
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun }) => {
-  // 1. DETECT FILE TYPE
-  // If it ends in .ts, .js, .css, .json -> It's CODE (Monaco)
-  // If it ends in .md, .txt, or no extension -> It's TEXT (Tiptap)
-  const isCode = /\.(ts|tsx|js|jsx|css|json|py)$/.test(fileName);
-
-  // --- TIPTAP CONFIG (For Docs/Chat) ---
+const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: () => void }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: 'Write a plan or ask the AI...' }),
+      // No placeholder extension, start empty
     ],
     content: content,
     editorProps: {
@@ -32,22 +26,20 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
       },
     },
     onUpdate: ({ editor }) => {
-      if (!isCode) onChange(editor.getHTML());
+      onChange(editor.getHTML());
     },
-  }, [isCode, fileName]); // Re-mount if file changes
+  });
 
   // Keep Tiptap content synced if content prop changes externally (e.g. AI writes)
   useEffect(() => {
-    if (editor && !isCode && content !== editor.getHTML()) {
-      // Only update if strictly different to avoid cursor jumping
-      // In a real Y.js setup, this handles itself.
+    if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content); 
     }
-  }, [content, editor, isCode]);
+  }, [content, editor]);
 
   // Handle Cmd+Enter to Run
   useEffect(() => {
-    if (!editor || !onRun || isCode) return;
+    if (!editor || !onRun) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Enter' && event.shiftKey) {
@@ -56,10 +48,34 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
       }
     };
 
-    const dom = editor.view.dom;
-    dom.addEventListener('keydown', handleKeyDown);
-    return () => dom.removeEventListener('keydown', handleKeyDown);
-  }, [editor, onRun, isCode]);
+    // Safely access DOM
+    if (editor.view && editor.view.dom) {
+      const dom = editor.view.dom;
+      dom.addEventListener('keydown', handleKeyDown);
+      return () => dom.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [editor, onRun]);
+
+  return (
+    <div className="h-full w-full bg-zinc-900 overflow-y-auto relative flex flex-col">
+       {/* AI Status Indicator */}
+       {isAiTyping && (
+          <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 bg-purple-900/80 text-purple-400 px-2 py-1 rounded text-xs border border-purple-700 backdrop-blur-sm">
+            <Bot size={12} />
+            <span>AI Generating...</span>
+          </div>
+        )}
+
+      <EditorContent editor={editor} className="flex-1" />
+    </div>
+  );
+};
+
+const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun }) => {
+  // 1. DETECT FILE TYPE
+  // If it ends in .ts, .js, .css, .json -> It's CODE (Monaco)
+  // If it ends in .md, .txt, or no extension -> It's TEXT (Tiptap)
+  const isCode = /\.(ts|tsx|js|jsx|css|json|py)$/.test(fileName);
 
   // --- RENDER: CODE MODE (Monaco) ---
   if (isCode) {
@@ -89,19 +105,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
   }
 
   // --- RENDER: TEXT MODE (Tiptap) ---
-  return (
-    <div className="h-full w-full bg-zinc-900 overflow-y-auto relative flex flex-col">
-       {/* AI Status Indicator */}
-       {isAiTyping && (
-          <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 bg-purple-900/80 text-purple-400 px-2 py-1 rounded text-xs border border-purple-700 backdrop-blur-sm">
-            <Bot size={12} />
-            <span>AI Generating...</span>
-          </div>
-        )}
-
-      <EditorContent editor={editor} className="flex-1" />
-    </div>
-  );
+  return <TiptapEditor key={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} />;
 };
 
 export default SmartEditor;

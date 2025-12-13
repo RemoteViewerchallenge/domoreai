@@ -25,10 +25,15 @@ export class ModelConfigurator {
 
     const adjustments: Record<string, { original: any, reason: string }> = {};
 
-    // 1. Start with Role Defaults
+    // 1. Start with Role Defaults (template fields override role fields when present)
+    const roleDefaults: any = {
+      defaultTemperature: (role as any).defaultTemperature,
+      defaultMaxTokens: (role as any).defaultMaxTokens
+    };
+
     const finalParams: CompletionParams = {
-        temperature: role.defaultTemperature ?? 0.7,
-        max_tokens: role.defaultMaxTokens ?? contextWindow, // Fallback if contextWindow is null
+        temperature: roleDefaults.defaultTemperature ?? role.defaultTemperature ?? 0.7,
+        max_tokens: roleDefaults.defaultMaxTokens ?? role.defaultMaxTokens ?? contextWindow, // Fallback if contextWindow is null
     };
 
     // 2. Overrides from ModelConfig
