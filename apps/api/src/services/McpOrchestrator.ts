@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { RegistryClient } from './mcp-registry-client.js';
 import { SandboxTool } from '../types.js';
+import { searchCodebaseTool } from '../tools/search.js';
 
 interface ActiveServer {
   client: Client;
@@ -11,11 +12,12 @@ interface ActiveServer {
 
 export class McpOrchestrator {
   private activeServers = new Map<string, ActiveServer>();
+  private CLEANUP_INTERVAL_MS = 60_000;
   private SHUTDOWN_TIMEOUT = 1000 * 60 * 5; // 5 minutes
 
   constructor() {
     // Start cleanup interval
-    setInterval(() => this.cleanupIdleServers(), 60000);
+    setInterval(() => { void this.cleanupIdleServers(); }, this.CLEANUP_INTERVAL_MS);
   }
 
   /**
@@ -45,43 +47,21 @@ export class McpOrchestrator {
     const mcpTools = results.flat();
 
     // Inject Internal Tools
-    const internalTools = this.getInternalTools();
-    
-    return [...mcpTools, ...internalTools];
-  }
-
-  private getInternalTools(): SandboxTool[] {
     return [
-      {
-        name: 'search_codebase',
-        description: 'Semantic search over the codebase using vector embeddings. Use this to find relevant code snippets or documentation.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'The search query' },
-            limit: { type: 'number', description: 'Max results to return (default 5)' }
-          },
-          required: ['query']
-        },
-        handler: async (args: any) => {
-          const { vectorStore, createEmbedding } = await import('./vector.service.js');
-          const queryEmbedding = await createEmbedding(args.query);
-          const results = await vectorStore.search(queryEmbedding, args.limit || 5);
-          
-          return results.map(r => `File: ${r.metadata.filePath}\nSimilarity: ${(r as any).similarity.toFixed(4)}\nContent:\n${r.metadata.chunk}\n---`).join('\n');
-        }
-      }
+      ...mcpTools, 
+      searchCodebaseTool
     ];
   }
 
-  private formatToolForSandbox(serverName: string, server: ActiveServer, tool: any): SandboxTool {
+
+  private formatToolForSandbox(serverName: string, server: ActiveServer, tool: { name: string; description?: string; inputSchema: Record<string, unknown> }): SandboxTool {
     const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');
 
     return {
       name: safeName,
       description: `\n      [MCP Server: ${serverName}] ${tool.description}\n      @example\n      // Call the tool from code-mode:\n      await ${safeName}({ /* tool arguments here */ });\n      `,
       inputSchema: tool.inputSchema,
-      handler: async (args: any) => {
+      handler: async (args: Record<string, unknown>) => {
         server.lastUsed = Date.now();
 
         try {
@@ -91,7 +71,7 @@ export class McpOrchestrator {
           });
 
           // If the MCP protocol returned an application-level error, THROW so generated code's try/catch can handle it
-          if (result && typeof result === 'object' && (result.isError || result.error)) {
+          if (result && typeof result === 'object' && (result.isError || (result as any).error)) {
             console.warn(`[MCP] Tool Logic Error from ${serverName}:${tool.name}:`, result);
             throw new Error(`MCP Tool Error: ${JSON.stringify(result.content ?? result)}`);
           }
@@ -150,7 +130,7 @@ export class McpOrchestrator {
       // Document the server
       // We run this in background so it doesn't block startup
       import('./ToolDocumenter.js').then(({ ToolDocumenter }) => {
-        ToolDocumenter.documentServer(serverName, client).catch(err => {
+        void ToolDocumenter.documentServer(serverName, client).catch(err => {
           console.error(`[Orchestrator] Failed to document ${serverName}:`, err);
         });
       });

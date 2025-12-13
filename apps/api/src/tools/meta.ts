@@ -211,6 +211,7 @@ export const metaTools: SandboxTool[] = [
               inputMapping: {
                 type: 'object',
                 description: 'Map orchestration context to step input using {{template}} syntax',
+                additionalProperties: { type: 'string' },
               },
               outputMapping: {
                 type: 'object',

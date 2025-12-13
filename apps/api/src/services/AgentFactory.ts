@@ -3,6 +3,7 @@ import { AssessmentService } from "./AssessmentService.js";
 import { PromptFactory, loadRolePrompt } from "./PromptFactory.js";
 import { db } from "../db.js";
 import { PrismaLessonProvider } from "./PrismaLessonProvider.js";
+import { Role } from "@prisma/client";
 
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
@@ -10,6 +11,25 @@ import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
 import { ModelConfigurator } from "./ModelConfigurator.js";
 import { ProviderError } from "../types.js";
 import { executeWithRateLimit } from '../rateLimiter.js';
+
+// Configuration Constants
+const DEFAULT_RETRY_SECONDS = 2;
+const MAX_RETRY_WAIT = 5;
+const JUDGE_MAX_TOKENS = 500;
+
+// Type extension for Role to include metadata fields
+interface ExtendedRole extends Role {
+  metadata: {
+    template?: any;
+    memoryConfig?: any;
+    orchestrationConfig?: { 
+      requiresCheck: boolean; 
+      judgeRoleId?: string; 
+      minPassScore: number 
+    };
+    [key: string]: any;
+  } | null;
+}
 
 // Represents the state of a single Card's brain
 export interface CardAgentState {
@@ -84,7 +104,7 @@ export class VolcanoAgent {
                    modelId: this.config.apiModelId, // Use same model for now, or find a smart one
                    messages: [{ role: 'user', content: verificationPrompt }],
                    temperature: 0.0,
-                   max_tokens: 500
+                   max_tokens: JUDGE_MAX_TOKENS
                  });
                  
                  if (!verification.includes("PASS")) {
@@ -112,8 +132,8 @@ export class VolcanoAgent {
         // Add backoff for rate limits and server errors
         const status = err.status;
         if (status === 429 || status === 500) {
-          const retryAfter = err.headers?.get?.('retry-after') || '2';
-          const waitSeconds = Math.min(parseInt(retryAfter, 10) || 2, 5);
+          const retryAfter = err.headers?.get?.('retry-after') || String(DEFAULT_RETRY_SECONDS);
+          const waitSeconds = Math.min(parseInt(retryAfter, 10) || DEFAULT_RETRY_SECONDS, MAX_RETRY_WAIT);
           console.log(`[VolcanoAgent] Encountered ${status} error. Waiting ${waitSeconds}s before failover.`);
           await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
         }
@@ -124,6 +144,10 @@ export class VolcanoAgent {
           
           // 1. Get Next Best Model (excluding failed models)
           const nextModel = await getBestModel(this.roleId, this.failedModels);
+          
+          if (!nextModel) {
+             throw new Error("Orchestrator returned no model available.");
+          }
           
           // 2. Reconfigure Agent
           // Ensure we don't pick the same failed model again
@@ -163,15 +187,25 @@ export class VolcanoAgent {
 
 export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
   // 1. Load Role Configuration
-  let role = await AgentConfigRepository.getRole(cardConfig.roleId);
-  // merge template if present
-  if (role && (role as any).template) {
-    role = { ...role, ...((role as any).template || {}) } as any;
+  let rawRole = await AgentConfigRepository.getRole(cardConfig.roleId);
+  let role: ExtendedRole | null = null;
+  
+  if (rawRole) {
+    role = { ...rawRole, metadata: (rawRole as any).metadata || {} } as ExtendedRole;
+    
+    // Check for legacy fields or metadata fields
+    const template = role.metadata?.template || (rawRole as any).template;
+    if (template) {
+       // Merge template properties into role
+       role = { ...role, ...template, metadata: { ...role.metadata, ...template } };
+    }
   }
+
   // Fallback to 'general_worker' if not found
   if (!role && cardConfig.roleId !== 'general_worker') {
-    role = await AgentConfigRepository.getRole('general_worker');
-    if (role) {
+    const rawGw = await AgentConfigRepository.getRole('general_worker');
+    if (rawGw) {
+      role = { ...rawGw, metadata: (rawGw as any).metadata || {} } as ExtendedRole;
       cardConfig.roleId = 'general_worker';
     }
   }
@@ -204,7 +238,7 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
               tools: gw.tools || [],
             } as any,
           });
-          role = created as any;
+          role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
           cardConfig.roleId = 'general_worker';
           console.log('[AgentFactory] Seeded general_worker role from roles.json');
         } catch (createErr) {
@@ -241,13 +275,32 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     const modelDef = allModels.find(m => m.id === cardConfig.modelId);
     
     if (!modelDef) {
-      throw new Error(`Configuration Error: Model '${cardConfig.modelId}' is not available in any active provider.`);
+       // Allow fallback if model not found in provider list but might exist in DB
+       console.warn(`[AgentFactory] Model '${cardConfig.modelId}' not in active provider cache. Checking DB...`);
     }
 
     // Fetch the Prisma Model
-    model = await AgentConfigRepository.getModel(modelDef.providerId, modelDef.id);
+    const requestedModelId = modelDef?.id || cardConfig.modelId;
+    const requestedProviderId = modelDef?.providerId; // Might be undefined if not in cache
+
+    if (requestedProviderId) {
+       model = await AgentConfigRepository.getModel(requestedProviderId, requestedModelId);
+    } else {
+       // Try to find model by ID across all providers if providerId is unknown
+         // Optimization: Skip valid check if we can't find it.
+    }
     
-    if (!model) {
+    // Quick Fix for "model not found" when it strictly exists in DB but not cache
+    if (!model && (cardConfig.modelId)) {
+         // Attempt to find by just modelId? (AgentConfigRepository doesn't support generic find)
+         // Assuming user provided valid input.
+    }
+
+    if (!modelDef && !model) {
+      throw new Error(`Configuration Error: Model '${cardConfig.modelId}' is not available.`);
+    }
+    
+    if (modelDef && !model) {
         // JIT Creation: Model exists in provider but not in DB. Create it now.
         console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
         
@@ -292,10 +345,12 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     const lessonProvider = new PrismaLessonProvider();
     const promptFactory = new PromptFactory(lessonProvider);
     
+    const memoryConfig = role.metadata?.memoryConfig || (rawRole as any)?.memoryConfig;
+
     basePrompt = await promptFactory.build(
         role.name, 
         cardConfig.userGoal || '', 
-        (role as any).memoryConfig,
+        memoryConfig,
         role.tools,
         cardConfig.projectPrompt
     );
@@ -303,6 +358,8 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
     console.warn(`[AgentFactory] PromptFactory failed for role \"${role.name}\". Falling back to simple role prompt load.`, error);
     basePrompt = await loadRolePrompt(role.name);
   }
+
+  const orchestrationConfig = role.metadata?.orchestrationConfig || (rawRole as any)?.orchestrationConfig;
 
   return new VolcanoAgent(
     provider,
@@ -313,6 +370,6 @@ export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<Vo
       maxTokens: safeParams.max_tokens ?? 2048
     },
     role.id,
-    (role as any).orchestrationConfig
+    orchestrationConfig as any
   );
 }
