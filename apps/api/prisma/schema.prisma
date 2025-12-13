@@ -117,6 +117,9 @@ model Role {
   // Tools Configuration
   tools                    String[] @default([]) // Array of tool names (e.g. ["git", "postgres"])
 
+  // Misc - Flexible storage for template merging, memory config, etc.
+  metadata    Json?    @default("{}")
+
   // TODO: Add Tool & Task relations later
   preferredModels ModelConfig[] @relation("PreferredModels")
 

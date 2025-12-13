@@ -42,7 +42,7 @@ When an agent has `meta` tool access, they can write TypeScript code like this:
 
 ```typescript
 // Create a code reviewer role
-const result = await system.create_role({
+const result = await create_role({
   name: "Code Reviewer",
   basePrompt: `You are a senior code reviewer. Analyze code for:
 - Security vulnerabilities
@@ -71,7 +71,7 @@ console.log(result);
 
 ```typescript
 // Create a "Planner-Executor-Reviewer" orchestration
-const orchestration = await system.create_orchestration({
+const orchestration = await create_orchestration({
   name: "Code Generation Pipeline",
   description: "Plans, generates, and reviews code changes",
   tags: ["coding", "quality"],
@@ -125,7 +125,7 @@ console.log(orchestration);
 
 ```typescript
 // Research orchestration with parallel searches
-const researchFlow = await system.create_orchestration({
+const researchFlow = await create_orchestration({
   name: "Multi-Source Research",
   description: "Searches multiple sources in parallel, then synthesizes",
   tags: ["research"],
@@ -182,7 +182,7 @@ const researchFlow = await system.create_orchestration({
 
 ```typescript
 // Self-correcting code generation
-const selfCorrectingFlow = await system.create_orchestration({
+const selfCorrectingFlow = await create_orchestration({
   name: "Self-Correcting Coder",
   description: "Generates code and auto-fixes errors",
   tags: ["coding", "reliability"],
@@ -230,7 +230,7 @@ const selfCorrectingFlow = await system.create_orchestration({
 
 ```typescript
 // Execute an orchestration
-const execution = await system.execute_orchestration({
+const execution = await execute_orchestration({
   orchestrationId: "clf...",
   input: {
     userRequest: "Create a React component for a login form",
@@ -239,7 +239,7 @@ const execution = await system.execute_orchestration({
 });
 
 // Check status
-const status = await system.get_execution_status({
+const status = await get_execution_status({
   executionId: execution.id
 });
 
@@ -338,21 +338,21 @@ Use `{{path.to.value}}` to reference context values:
 
 ```typescript
 // List all orchestrations
-const allOrchestrations = await system.list_orchestrations({});
+const allOrchestrations = await list_orchestrations({});
 
 // Filter by tags
-const codingFlows = await system.list_orchestrations({
+const codingFlows = await list_orchestrations({
   tags: ["coding"],
   activeOnly: true
 });
 
 // Get details
-const details = await system.get_orchestration({
+const details = await get_orchestration({
   nameOrId: "Code Generation Pipeline"
 });
 
 // Update
-await system.update_orchestration({
+await update_orchestration({
   orchestrationId: "clf...",
   updates: {
     isActive: false, // Disable temporarily
@@ -361,7 +361,7 @@ await system.update_orchestration({
 });
 
 // Delete
-await system.delete_orchestration({
+await delete_orchestration({
   orchestrationId: "clf..."
 });
 ```
