@@ -55,7 +55,6 @@ const createRoleSchema = z.object({
   needsJson: z.boolean().default(false),
   needsUncensored: z.boolean().default(false),
   tools: z.array(z.string()).optional().default([]),
-  defaultTemperature: z.number().min(0).max(2).optional().default(0.7),
   defaultMaxTokens: z
     .number()
     .int()
@@ -105,7 +104,6 @@ const updateRoleSchema = z.object({
   needsJson: z.boolean().optional(),
   needsUncensored: z.boolean().optional(),
   tools: z.array(z.string()).optional(),
-  defaultTemperature: z.number().min(0).max(2).optional(),
   defaultMaxTokens: z.number().int().min(256).max(32000).optional(),
   defaultTopP: z.number().min(0).max(1).optional(),
   defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
@@ -174,16 +172,7 @@ export const roleRouter = createTRPCRouter({
             needsUncensored: false,
             needsImageGeneration: false, // Explicitly add needsImageGeneration
             tools: [], // Explicitly add tools
-            defaultTemperature: 0.7,
             preferredModels: [],
-            defaultMaxTokens: 2048,
-            defaultTopP: 1.0,
-            defaultFrequencyPenalty: 0.0,
-            defaultPresencePenalty: 0.0,
-            defaultStop: null,
-            defaultSeed: null,
-            defaultResponseFormat: null,
-            terminalRestrictions: null,
           },
         ];
   }),
@@ -206,16 +195,7 @@ export const roleRouter = createTRPCRouter({
           needsJson: input.needsJson,
           needsUncensored: input.needsUncensored,
           tools: input.tools, // Include tools from input
-          defaultTemperature: input.defaultTemperature,
-          defaultMaxTokens: input.defaultMaxTokens,
-          defaultTopP: input.defaultTopP,
-          defaultFrequencyPenalty: input.defaultFrequencyPenalty,
-          defaultPresencePenalty: input.defaultPresencePenalty,
-          defaultStop: input.defaultStop,
-          defaultSeed: input.defaultSeed,
-          defaultResponseFormat: input.defaultResponseFormat,
-          terminalRestrictions: input.terminalRestrictions,
-          criteria: input.criteria,
+          // criteria: input.criteria, // Removed, not in schema
           orchestrationConfig: input.orchestrationConfig,
           memoryConfig: input.memoryConfig,
         } as any,
@@ -241,7 +221,8 @@ export const roleRouter = createTRPCRouter({
 
       // Note: The original code filtered out several fields. We'll keep that behavior
       // while ensuring our new fields are passed through.
-      const { orchestrationConfig: _o, memoryConfig: _m, terminalRestrictions: _t, criteria: _c, defaultStop: _ds, defaultSeed: _dseed, defaultResponseFormat: _drf, ...data } = dataToUpdate;
+      // Remove all non-schema fields from dataToUpdate
+      const { orchestrationConfig, memoryConfig, terminalRestrictions, criteria, defaultStop, defaultSeed, defaultResponseFormat, defaultMaxTokens, defaultTopP, defaultFrequencyPenalty, defaultPresencePenalty, ...data } = dataToUpdate;
 
       // The `data` object now contains all valid fields for the Prisma update,
       // including the hardcodedModelId and hardcodedProviderId.

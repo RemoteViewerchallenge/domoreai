@@ -1,0 +1,44 @@
+he "models table the app wants" is defined by the Model model in your schema.prisma file. Here’s what the app expects for the Model table:
+
+id: String (primary key, cuid)
+providerId: String (foreign key to ProviderConfig)
+modelId: String (unique model identifier)
+name: String (model name)
+providerData: Json (raw API data)
+aiData: Json (AI-inferred data)
+specs: Json (computed specs for the app)
+isFree: Boolean (default false)
+costPer1k: Float? (optional)
+updatedAt: DateTime (auto-updated)
+modelConfigs: ModelConfig[] (relation)
+This is the structure Prisma will create in your database if you run a migration. The app expects this table and these fields for all model-related queries and logic.
+
+GPT-4.1 • 0x
+Restore Checkpoint
+ok now tell me the same for role
+
+Used 1 reference
+Read schema.prisma, lines 96 to 139
+
+The Role table the app wants is defined by the Role model in your schema.prisma. Here’s the structure:
+
+id: String (primary key, cuid)
+name: String (unique, role name)
+category: String? (optional)
+basePrompt: String (text, main prompt for the role)
+minContext: Int? (optional)
+maxContext: Int? (optional)
+needsVision: Boolean (default false)
+needsReasoning: Boolean (default false)
+needsCoding: Boolean (default false)
+needsTools: Boolean (default false)
+needsJson: Boolean (default false)
+needsUncensored: Boolean (default false)
+needsImageGeneration: Boolean (default false)
+tools: String[] (array of tool names, default empty)
+preferredModels: ModelConfig[] (relation)
+modelUsage: ModelUsage[] (relation)
+jobs: Job[] (relation)
+hardcodedModelId: String? (optional, for model override)
+hardcodedProviderId: String? (optional, for provider override)
+This is the structure Prisma will create and what the app expects for all role-related logic.
