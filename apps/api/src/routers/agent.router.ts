@@ -87,9 +87,9 @@ export const agentRouter = createTRPCRouter({
         // 2. Create the Volcano agent
         const agent = await createVolcanoAgent(agentConfig);
 
-        // 2.5 Fetch Role (including template) to get Tools and other defaults
-        const roleRecord = await prisma.role.findUnique({ where: { id: roleId }, include: { template: true } });
-        const role = roleRecord ? { ...roleRecord, ...(roleRecord.template || {}) } as any : null;
+        // 2.5 Fetch Role to get Tools and other defaults
+        const roleRecord = await prisma.role.findUnique({ where: { id: roleId } });
+        const role = roleRecord ? { ...roleRecord } as any : null;
         const tools = (role && role.tools) ? role.tools : [];
 
         // 3. Create the agent runtime with selected tools

@@ -1,0 +1,580 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------------------------------
+// Stores the provider-specific credentials and configuration
+// -----------------------------------------------------------------
+model ProviderConfig {
+  id          String   @id @default(uuid())
+  label       String
+  type        String
+  apiKey      String   // Encrypted
+  baseURL     String?
+  isEnabled   Boolean  @default(true)
+  requestsPerMinute Int? @default(60)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  models      Model[]
+  
+  // Keep existing relation
+  modelConfigs ModelConfig[]
+}
+
+// -----------------------------------------------------------------
+// Stores the individual models from all providers
+// -----------------------------------------------------------------
+// THE FLEXIBLE CORE
+model Model {
+  id        String @id @default(cuid())
+  
+  providerId String @map("provider_id")
+  provider   ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  // Strict Identity
+  modelId      String  @map("model_id")
+  name         String  @map("model_name")
+
+  // THE TRIPLE LAYER SYSTEM
+  // 1. Raw Data: Exactly what the API sent us. Never touched by us.
+  providerData Json    @default("{}") @map("provider_data")
+  
+  // 2. AI Knowledge: Data inferred or researched by our Agents.
+  aiData       Json    @default("{}") @map("ai_data")
+
+  // 3. Specs: The computed view (Provider + AI Overrides) used by the app.
+  specs        Json    @default("{}") @map("specs")
+
+  // Kept for backward compatibility with Drizzle/Router until fully migrated
+  isFree       Boolean @default(false) @map("is_free")
+  costPer1k    Float?  @map("cost_per_1k")
+
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Keep existing relation
+  modelConfigs ModelConfig[]
+
+  @@unique([providerId, modelId])
+  @@map("model_registry")
+}
+
+// Persisted model failure counts to avoid retrying known-broken models across restarts
+model ModelFailure {
+  id         String   @id @default(cuid())
+  providerId String
+  modelId    String
+  // Optional role scope so failures are specific to a role
+  roleId     String?
+  failures   Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  // Unique per provider+model+role (role may be null)
+  @@unique([providerId, modelId, roleId])
+}
+
+model ProviderFailure {
+  id         String   @id @default(cuid())
+  providerId String
+  // Optional role scope so provider failures can be tracked per role
+  roleId     String?
+  failures   Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([providerId, roleId])
+}
+
+// -----------------------------------------------------------------
+// Stores the Roles for your agents
+// -----------------------------------------------------------------
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  category    String?
+  basePrompt  String @db.Text
+  
+  // Role Parameters (for the "fiddler")
+  minContext  Int?
+  maxContext  Int?
+  
+  // Feature Booleans
+  needsVision    Boolean @default(false)
+  needsReasoning Boolean @default(false)
+  needsCoding    Boolean @default(false)
+  
+  // NEW: Role requirements
+  needsTools     Boolean @default(false)
+  needsJson      Boolean @default(false)
+  needsUncensored Boolean @default(false)
+  needsImageGeneration Boolean @default(false) // NEW: Requirement for image generation // NEW: Requirement for uncensored model
+
+  // Tools Configuration
+  tools                    String[] @default([]) // Array of tool names (e.g. ["git", "postgres"])
+
+  // TODO: Add Tool & Task relations later
+  preferredModels ModelConfig[] @relation("PreferredModels")
+
+  // This is the other side of the `role` relation in `ModelUsage`.
+  modelUsage      ModelUsage[]
+
+  // Relation to jobs this role can be assigned to
+  jobs        Job[]
+
+  // Hardcoded Model Override (bypasses dynamic selection for this role only)
+  hardcodedModelId     String? // e.g., "gpt-4", "claude-3-opus"
+  hardcodedProviderId  String? // e.g., provider config ID
+}
+
+// -----------------------------------------------------------------
+// RoleTemplate: stores optional, shareable role defaults and internal settings
+// so that `Role` remains a light-weight descriptor and non-critical
+// configuration can be managed separately and shared across roles.
+// -----------------------------------------------------------------
+model RoleTemplate {
+  id          String   @id @default(cuid())
+  name        String?  // Optional human label
+
+  // Core prompt (optional override)
+  basePrompt  String?  @db.Text
+
+  // Fault handling / tuning
+  faultTemperature Float?
+
+  // Default Hyperparameters
+  defaultMaxTokens         Int?
+  defaultTopP              Float?
+  defaultFrequencyPenalty  Float?
+  defaultPresencePenalty   Float?
+  defaultStop              Json?
+  defaultSeed              Int?
+  defaultResponseFormat    Json?
+
+  // Terminal Security + misc
+  terminalRestrictions     Json?
+  criteria                 Json?
+  tools                    String[] @default([])
+
+  // Personality / domain
+  tone           String?
+  domainKnowledge String[] @default([])
+
+  // Hardcoded overrides
+  hardcodedModelId     String?
+  hardcodedProviderId  String?
+
+  // Virtual FS / plugin config
+  vfsConfig Json?
+
+  createdAt DateTime @default(now())
+}
+
+// -----------------------------------------------------------------
+// Stores the configuration for a specific model within a role
+// This allows for role-specific overrides or settings for a model
+// -----------------------------------------------------------------
+model ModelConfig {
+  id         String @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  // --- Relation to Model ---
+  modelId    String
+  model      Model    @relation(fields: [modelId], references: [id])
+
+  // --- Relation to Provider (for convenience/denormalization) ---
+  providerId String
+  provider   ProviderConfig @relation(fields: [providerId], references: [id])
+
+  // --- Role-specific settings for this model ---
+  // e.g., max tokens, temperature, etc.
+  // These would override global model settings for this specific role
+  maxTokens  Int?
+  temperature Float?
+
+  // NEW: Store parameters that were auto-adjusted/ignored 
+  adjustedParameters Json?
+
+  // --- Relations ---
+  roles      Role[]       @relation("PreferredModels")
+  modelUsage ModelUsage[]
+}
+
+// -----------------------------------------------------------------
+// Stores the usage logs for models
+// -----------------------------------------------------------------
+model ModelUsage {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  userId         String
+  modelConfigId  String
+  roleId         String
+  promptTokens   Int?
+  completionTokens Int?
+  cost           Float
+  metadata       Json?
+
+  // Relations
+  modelConfig    ModelConfig @relation(fields: [modelConfigId], references: [id])
+  role           Role        @relation(fields: [roleId], references: [id])
+}
+
+// -----------------------------------------------------------------
+// Raw Data Lake
+// Stores raw API responses before they are processed into Models
+// -----------------------------------------------------------------
+model RawDataLake {
+  id         String   @id @default(cuid())
+  provider   String   // e.g. "openrouter", "vertex"
+  rawData    Json     // The exact JSON returned by the provider's list models endpoint
+  ingestedAt DateTime @default(now())
+}
+
+model FlattenedTable {
+  id          String   @id @default(cuid())
+  name        String   @unique // Table name in Postgres
+  sourceId    String   // RawDataLake record ID
+  columns     Json     // Column definitions {name: string, type: string}[]
+  rowCount    Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+// -----------------------------------------------------------------
+// Stores how a Raw Table maps to the Unified Model Schema
+// Used by the "Merge to C.O.R.E." feature
+// -----------------------------------------------------------------
+model TableMapping {
+  id        String   @id @default(cuid())
+  tableName String   @unique // e.g., "openrouterfree"
+  
+  // Stores the mapping: { "raw_column_name": "Model_field_name" }
+  // e.g., { "context_length": "contextWindow", "pricing": "costPer1k" }
+  mapping   Json     
+  
+  updatedAt DateTime @updatedAt
+}
+
+model OrchestratorConfig {
+  id             String   @id @default("global")
+  activeTableName String  @default("model_registry") // The user-selected table
+  
+  // Future-proofing for strategies
+  strategies     Json?    @default("[]") 
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Stores reusable SQL queries for data refinement and migration
+model SavedQuery {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "OpenRouter Free Models Migration"
+  query       String   @db.Text
+  targetTable String?  // The table this query targets (e.g., "my_free_models")
+  updatedAt   DateTime @updatedAt
+}
+
+// Represents a broad scope of work (e.g., a specific repository or project)
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  rootPath  String   // Local path on the host machine
+  systemPrompt String? @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  cards     WorkOrderCard[]
+}
+
+// Formerly "Session" or generic "Context" - The persisted state of a user's task
+model WorkOrderCard {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  
+  // Fencing Configuration
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  relativePath String   @default(".") // Path relative to Workspace root
+  
+  // Execution Context
+  isRemote    Boolean  @default(false)
+  sshConfigId String?  // Optional relation to saved SSH configs (if we persist them)
+
+  // NEW: System Prompt specific to this card
+  systemPrompt String? @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Securely store SSH configs (excluding sensitive secrets if possible, or encrypted)
+model SshConfig {
+  id        String   @id @default(cuid())
+  alias     String   // e.g., "Production Server"
+  host      String
+  port      Int      @default(22)
+  username  String
+  // Note: Passwords/Keys should generally be session-based or encrypted via `utils/encryption.ts`
+  createdAt DateTime @default(now())
+}
+
+// -----------------------------------------------------------------
+// Project Management Hierarchy
+// -----------------------------------------------------------------
+
+// Top-level container for a complete scope of work.
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  status      String   @default("not_started") // e.g., "not_started", "in_progress", "completed", "on_hold"
+  priority    String   @default("medium") // e.g., "low", "medium", "high", "critical"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Relation to its jobs
+  jobs        Job[]
+}
+
+// A significant phase or step within a project, assigned to a Role.
+model Job {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  status      String   @default("not_started") // e.g., "not_started", "in_progress", "completed", "failed"
+  priority    String   @default("medium")
+
+  // --- Relations ---
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  roleId      String?  // The role responsible for this job
+  role        Role?    @relation(fields: [roleId], references: [id])
+
+  // --- Execution Flow ---
+  // For sequential jobs, this points to the job that must be completed first.
+  dependsOnJobId String?  @unique
+  dependsOn      Job?     @relation("JobDependencies", fields: [dependsOnJobId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dependencyFor  Job?     @relation("JobDependencies")
+
+  // For parallel jobs, this groups them. They can start once the job they depend on is complete.
+  parallelGroup String?
+
+  // --- Timing ---
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Relation to its tasks
+  tasks       Task[]
+
+  @@index([projectId, status])
+  @@index([roleId])
+}
+
+// A granular piece of work within a job.
+model Task {
+  id          String   @id @default(cuid())
+  description String   @db.Text
+  status      String   @default("not_started") // e.g., "not_started", "in_progress", "completed"
+
+  // --- Relations ---
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // --- Timing & Data ---
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  completionData Json? // Any data/output generated by the task
+  
+  // Relation to its errands
+  errands     Errand[]
+}
+
+// The most granular action, like a single command or API call.
+model Errand {
+  id          String   @id @default(cuid())
+  description String   @db.Text
+  status      String   @default("not_started") // e.g., "not_started", "completed"
+
+  // --- Relations ---
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // --- Timing ---
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+
+// -----------------------------------------------------------------
+// Orchestration: Defines workflows between roles
+// -----------------------------------------------------------------
+model Orchestration {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // User ID who created this orchestration
+  
+  // Steps in this orchestration (ordered)
+  steps       OrchestrationStep[]
+  
+  // Execution history
+  executions  OrchestrationExecution[]
+  
+  // Tags for categorization
+  tags        String[] @default([])
+  
+  // Enable/disable this orchestration
+  isActive    Boolean  @default(true)
+}
+
+// -----------------------------------------------------------------
+// OrchestrationStep: Individual step in an orchestration
+// -----------------------------------------------------------------
+model OrchestrationStep {
+  id              String   @id @default(cuid())
+  
+  // Relation to parent orchestration
+  orchestrationId String
+  orchestration   Orchestration @relation(fields: [orchestrationId], references: [id], onDelete: Cascade)
+  
+  // Step metadata
+  name            String   // e.g., "Generate Plan", "Execute Code Review"
+  description     String?  @db.Text
+  order           Int      // Execution order (0, 1, 2, ...)
+  
+  // Role assignment
+  // Role assignment removed to decouple Roles from Orchestrations
+  // roleId          String?
+  // roleName        String?
+  
+  // Control flow
+  stepType        String   @default("sequential") // "sequential", "parallel", "conditional", "loop"
+  
+  // Conditional logic (JSON schema)
+  condition       Json?    // e.g., { "field": "output.confidence", "operator": ">", "value": 0.8 }
+  
+  // Input/Output mapping
+  inputMapping    Json?    // Maps orchestration context to step input, e.g., { "query": "{{context.userQuery}}" }
+  outputMapping   Json?    // Maps step output to orchestration context, e.g., { "plan": "{{output.result}}" }
+  
+  // Retry configuration
+  maxRetries      Int      @default(0)
+  retryDelay      Int?     // Delay in milliseconds between retries
+  
+  // Timeout
+  timeout         Int?     // Timeout in milliseconds
+  
+  // Parallel execution group (for parallel steps)
+  parallelGroup   String?  // Steps with same group ID execute in parallel
+  
+  // Validation and context access controls (Anubis guards additions)
+  validationRules Json?    // Optional JSON validation rules/guards for this step
+  contextKeys     String[] @default([]) // Keys of memory/context this step is allowed to access
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([orchestrationId, order])
+}
+
+// -----------------------------------------------------------------
+// OrchestrationExecution: Tracks execution of orchestrations
+// -----------------------------------------------------------------
+model OrchestrationExecution {
+  id              String   @id @default(cuid())
+  
+  // Relation to orchestration
+  orchestrationId String
+  orchestration   Orchestration @relation(fields: [orchestrationId], references: [id], onDelete: Cascade)
+  
+  // Execution metadata
+  status          String   @default("pending") // "pending", "running", "completed", "failed", "cancelled"
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  // Input and output
+  input           Json     // Initial input to the orchestration
+  output          Json?    // Final output
+  context         Json     @default("{}") // Shared context across steps
+  
+  // Step execution logs
+  stepLogs        Json     @default("[]") // Array of { stepId, status, input, output, duration, error }
+  
+  // Error tracking
+  error           String?  @db.Text
+  
+  // User who triggered this execution
+  userId          String?
+  
+  @@index([orchestrationId, status])
+  @@index([startedAt])
+}
+
+// -----------------------------------------------------------------
+// Agent Lessons: Learned behaviors and rules
+// -----------------------------------------------------------------
+model AgentLesson {
+  id          String   @id @default(cuid())
+  trigger     String   // Keyword or phrase that triggers this lesson
+  rule        String   // The instruction/rule to follow
+  confidence  Float    @default(1.0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------
+// UI Configuration Models
+// -----------------------------------------------------------------
+
+model CardConfig {
+  cardId      String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customButtons CustomButton[]
+  componentRoles ComponentRole[]
+}
+
+model CustomButton {
+  id          String   @id @default(cuid())
+  cardId      String
+  cardConfig  CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+  
+  label       String
+  action      String   // 'command', 'url', 'agent'
+  actionData  String
+  icon        String?
+  color       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ComponentRole {
+  id          String   @id @default(cuid())
+  cardId      String
+  cardConfig  CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+  
+  component   String   // 'terminal', 'fileSystem', 'monacoEditor', 'tiptapEditor', 'browser'
+  roleId      String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cardId, component])
+}

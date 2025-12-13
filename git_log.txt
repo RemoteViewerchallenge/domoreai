@@ -1,0 +1,20 @@
+51966c9 Node up
+e5911e3 ui
+920e4ac Fix COC package TypeScript build errors - add @types/node, fix Arm type, update imports
+3086f26 Restore ToolSelector component per user request
+47a5c5e Restore TerminalLogViewer and summary bars, remove DataLake link from providers
+dfc75a2 Delete unused pages and components while preserving workspace functionality
+e2e60d3 Restore all UI functionality - keep all pages and components
+2709eb5 Delete 31 dead code files and rename pages to match routes (datacenter, etc.)
+4d7c047 Update analysis per user feedback: keep workspace pages, GitControls; remove DataLake
+7506990 Update dead code analysis to keep Settings and FileLocation pages per user request
+9c85a35 Initial plan
+fc39780 scaffold: COC (Chain Of Command) package (mock-first) + observability docs
+909ace6 start aidatabase
+7f3043d stupid
+bb4e9b9 json and embed fix
+4b089ae fuck
+67326be groq
+2c45b82 fix
+570e773 fuck me
+d4ce597 yes

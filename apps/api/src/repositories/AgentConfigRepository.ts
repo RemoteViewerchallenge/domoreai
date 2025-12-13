@@ -2,15 +2,13 @@ import { prisma } from '../db.js';
 
 export class AgentConfigRepository {
   static async getRole(roleId: string) {
-    return prisma.role.findUnique({ where: { id: roleId }, include: { template: true } });
+    return prisma.role.findUnique({ where: { id: roleId } });
   }
 
   static async getEffectiveRole(roleId: string) {
     const role = await this.getRole(roleId);
     if (!role) return null;
-    // Merge template fields (template overrides role fields when present)
-    const tpl = (role as any).template || {};
-    return { ...role, ...tpl } as any;
+    return role as any;
   }
 
   static async getModel(providerId: string, modelId: string) {

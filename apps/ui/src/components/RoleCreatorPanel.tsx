@@ -172,23 +172,9 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
 
   const filteredModels = useMemo(() => {
     if (!registryData?.rows) return [];
-    
+    // Remove all type-based filtering: show all models
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return registryData.rows.filter((row: any) => {
-      // RELAXED TYPE CHECK:
-      const rowType = (row.type || row.model_type || 'chat').toLowerCase(); 
-      
-      // Allow if ANY selected type matches part of the row type string
-      // e.g. selected=['tts'] matches rowType='text-to-speech'
-      const typeMatch = selectedTypes.some(t => rowType.includes(t.toLowerCase()));
-
-      // If 'chat' is selected, include 'text-generation' and models with NO type
-      if (selectedTypes.includes('chat') && (rowType === 'text-generation' || !row.type)) {
-          // keep it
-      } else if (!typeMatch) {
-          return false;
-      }
-
       // Check standard context window
       const contextCol = Object.keys(row).find(k => k.includes('context') || k.includes('window'));
       if (contextCol) {
@@ -203,23 +189,18 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       if (formData.needsTools && row['supports_tools'] === false) return false;
       if (formData.needsJson && row['supports_json'] === false) return false;
       if (formData.needsUncensored && row['is_uncensored'] === false) return false;
-      
+
       // Image Generation Check
-      // We check multiple possible column names for image generation capability
       const hasImageGen = row['has_image_generation'] === true || row['is_image_generation'] === true || row['is_gen'] === true;
       if (formData.needsImageGeneration && !hasImageGen) return false;
-      if (!formData.needsImageGeneration && hasImageGen) return false; // Exclude image models if not requested
+      if (!formData.needsImageGeneration && hasImageGen) return false;
 
       // Check Dynamic Criteria (Sliders)
       for (const [key, value] of Object.entries(formData.criteria)) {
         if (value === undefined || value === null) continue;
-
-        // Boolean Check (if mapped to criteria)
         if (typeof value === 'boolean' && value === true) {
           if (!row[key]) return false;
         }
-
-        // Range Check (Array [min, max])
         if (Array.isArray(value) && value.length === 2) {
           const rowVal = Number(row[key]);
           if (rowVal < value[0] || rowVal > value[1]) return false;
