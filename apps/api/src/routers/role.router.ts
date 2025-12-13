@@ -196,8 +196,8 @@ export const roleRouter = createTRPCRouter({
           needsUncensored: input.needsUncensored,
           tools: input.tools, // Include tools from input
           // criteria: input.criteria, // Removed, not in schema
-          orchestrationConfig: input.orchestrationConfig,
-          memoryConfig: input.memoryConfig,
+          // orchestrationConfig: input.orchestrationConfig, // Not in schema
+          // memoryConfig: input.memoryConfig, // Not in schema
         } as any,
       });
       return role;
