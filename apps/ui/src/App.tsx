@@ -7,6 +7,10 @@ import WorkSpace from './pages/WorkSpace.js';
 import CreatorStudio from './pages/CreatorStudio.js';
 import SettingsPage from './pages/SettingsPage.js';
 import FileLocationPage from './pages/FileLocationPage.js';
+import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
+import COORE from './pages/COORE.js';
+import FutureDataExplorer from './pages/Dataexplorer.js';
+import SidebarCustomizer from './pages/SidebarCustomizer.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -116,6 +120,10 @@ function App() {
               <Route path="/workspace" element={<WorkSpace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
+              <Route path="/providers" element={<UnifiedProviderPage />} />
+              <Route path="/coore" element={<COORE />} />
+              <Route path="/data" element={<FutureDataExplorer />} />
+              <Route path="/customizer" element={<SidebarCustomizer />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
                   <div className="text-center">
