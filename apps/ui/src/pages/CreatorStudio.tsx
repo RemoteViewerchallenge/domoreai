@@ -6,7 +6,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import SuperNode from '../features/creator-studio/nodes/SuperNode.js';
 import { trpc } from '../utils/trpc.js';
-import { ThemeEditorSidebar } from '../components/appearance/ThemeEditorSidebar.js';
+import { VisualInspectorPanel } from '../features/creator-studio/InspectorPanel.js';
 import { Layers, Server, Layout, Database, Filter, Settings } from 'lucide-react';
 import { NewUIThemeProvider, useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 import type { Theme } from '../theme/types.js';
@@ -102,11 +102,13 @@ const CreatorStudioContent = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* 2. THEME SIDEBAR */}
         {showSidebar && (
-            <div className="w-[280px] border-r border-[var(--color-border)] bg-[var(--color-card-background)] z-20">
-               <ThemeEditorSidebar 
-                 theme={theme}
-                 onUpdateTheme={handleUpdateTheme}
-                 onClose={() => setShowSidebar(false)}
+            <div className="w-80 h-full border-l border-zinc-800 z-50 absolute right-0 top-0 bottom-0 pointer-events-auto">
+               <VisualInspectorPanel 
+                  selectedNodeId={nodes.find(n => n.selected)?.id || null}
+                  nodeType={nodes.find(n => n.selected)?.data?.type || 'ui'}
+                  componentName={nodes.find(n => n.selected)?.data?.label || 'Component'}
+                  currentClasses={nodes.find(n => n.selected)?.data?.className || ''}
+                  memoryUsage={12}
                />
             </div>
         )}

@@ -1,6 +1,4 @@
 /* eslint-disable no-undef */
-/* eslint-disable @typescript-eslint/no-require-imports */
- 
 /** @type {import('tailwindcss').Config} */
 export default {
     darkMode: ['class'],
@@ -8,15 +6,11 @@ export default {
       './src/**/*.{ts,tsx}',
       './node_modules/flyonui/dist/js/*.js',
     ],
-  safelist: [
-    'border-t-2',
-    'border-l-2',
-    'border-b-2',
-    'border-r-2',
-    'border-cyan-400',
-    'border-lime-400',
-  ],
-  theme: {
+    safelist: [
+      'border-t-2', 'border-l-2', 'border-b-2', 'border-r-2',
+      'border-cyan-400', 'border-lime-400', 'bg-zinc-950'
+    ],
+    theme: {
         extend: {
                 borderRadius: {
                         lg: 'var(--radius)',
@@ -24,51 +18,44 @@ export default {
                         sm: 'calc(var(--radius) - 4px)'
                 },
                 colors: {
-                        background: 'hsl(var(--background))',
-                        foreground: 'hsl(var(--foreground))',
-                        card: {
-                                DEFAULT: 'hsl(var(--card))',
-                                foreground: 'hsl(var(--card-foreground))'
-                        },
-                        popover: {
-                                DEFAULT: 'hsl(var(--popover))',
-                                foreground: 'hsl(var(--popover-foreground))'
-                        },
+                        // FIX: Use variables directly without hsl() wrapper since they are HEX
+                        background: 'var(--color-background)', 
+                        foreground: 'var(--color-text)',
+                        
                         primary: {
-                                DEFAULT: 'hsl(var(--primary))',
-                                foreground: 'hsl(var(--primary-foreground))'
+                                DEFAULT: 'var(--color-primary)',
+                                foreground: '#000000'
                         },
                         secondary: {
-                                DEFAULT: 'hsl(var(--secondary))',
-                                foreground: 'hsl(var(--secondary-foreground))'
-                        },
-                        muted: {
-                                DEFAULT: 'hsl(var(--muted))',
-                                foreground: 'hsl(var(--muted-foreground))'
+                                DEFAULT: 'var(--color-secondary)',
+                                foreground: '#ffffff'
                         },
                         accent: {
-                                DEFAULT: 'hsl(var(--accent))',
-                                foreground: 'hsl(var(--accent-foreground))'
+                                DEFAULT: 'var(--color-accent)',
+                                foreground: '#000000'
                         },
-                        destructive: {
-                                DEFAULT: 'hsl(var(--destructive))',
-                                foreground: 'hsl(var(--destructive-foreground))'
+                        muted: {
+                                DEFAULT: 'var(--color-background-secondary)',
+                                foreground: 'var(--color-text-secondary)'
                         },
-                        border: 'hsl(var(--border))',
-                        input: 'hsl(var(--input))',
-                        ring: 'hsl(var(--ring))',
-                        chart: {
-                                '1': 'hsl(var(--chart-1))',
-                                '2': 'hsl(var(--chart-2))',
-                                '3': 'hsl(var(--chart-3))',
-                                '4': 'hsl(var(--chart-4))',
-                                '5': 'hsl(var(--chart-5))'
+                        border: 'var(--color-border)',
+                        input: 'var(--color-border)',
+                        
+                        // Semantic Maps
+                        success: 'var(--color-success)',
+                        warning: 'var(--color-warning)',
+                        error: 'var(--color-error)',
+                        info: 'var(--color-info)',
+                        
+                        card: {
+                                DEFAULT: 'var(--color-background-secondary)',
+                                foreground: 'var(--color-text)'
                         }
                 }
         }
-  },
-  plugins: [
-    require("tailwindcss-animate"),
-    require("flyonui")
-  ],
+    },
+    plugins: [
+      require("tailwindcss-animate"),
+      require("flyonui")
+    ],
 }
