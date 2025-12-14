@@ -2,194 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import theme overrides AFTER Tailwind so they take precedence */
+/* 1. Import Titanium Theme - This MUST be the source of truth */
 @import './theme/global.css';
 
-:root {
-  color-scheme: dark;
-}
-
-body {
-  background-color: var(--color-background);
-  color: var(--color-text);
-}
-
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: var(--color-text, rgba(255, 255, 255, 0.87));
-  background-color: var(--color-background, #242424);
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: var(--color-primary, #646cff);
-  text-decoration: inherit;
-}
-a:hover {
-  color: var(--color-secondary, #535bf2);
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  position: fixed;
-  inset: 0;
-  background-color: var(--color-background) !important;
-  color: var(--color-text) !important;
-}
-
-/* NUCLEAR OPTION: Force theme colors on EVERYTHING */
-/* This overrides ALL Tailwind background classes */
-*[class*="bg-black"],
-*[class*="bg-zinc"],
-*[class*="bg-slate"],
-*[class*="bg-gray"],
-div[class*="bg-"],
-section[class*="bg-"],
-header[class*="bg-"],
-footer[class*="bg-"],
-nav[class*="bg-"] {
-  background-color: var(--color-background) !important;
-}
-
-/* Secondary backgrounds for panels/cards */
-*[class*="bg-zinc-9"],
-*[class*="bg-gray-9"],
-*[class*="bg-slate-9"] {
-  background-color: var(--color-background-secondary) !important;
-}
-
-/* Force text colors */
-*[class*="text-white"],
-*[class*="text-zinc"],
-*[class*="text-slate"],
-*[class*="text-gray"],
-div[class*="text-"],
-p[class*="text-"],
-span[class*="text-"],
-h1[class*="text-"],
-h2[class*="text-"],
-h3[class*="text-"],
-label[class*="text-"] {
-  color: var(--color-text) !important;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-
-
+/* 2. Map Titanium Variables to Tailwind/Shadcn Expectations 
+   This bridges the gap so <div className="bg-primary"> works with your HEX colors.
+*/
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Map 'background' to your Titanium --color-background */
+    --background: var(--color-background); 
+    --foreground: var(--color-text);
+
+    /* Map 'primary' to Titanium --color-primary */
+    --primary: var(--color-primary);
+    --primary-foreground: #000000;
+
+    /* Map 'secondary' to Titanium --color-secondary */
+    --secondary: var(--color-secondary);
+    --secondary-foreground: #ffffff;
+
+    /* Map 'border' and 'input' to Titanium --color-border */
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: var(--color-primary);
+    
     --radius: 0.5rem;
   }
+
+  /* KILL THE OLD SHADCN DEFAULTS - DO NOT UNCOMMENT
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
+    --background: 222.2 84% 4.9%; <--- THIS WAS OVERRIDING YOU
+    ...
+  } 
+  */
 }
-
-
 
 @layer base {
   * {
@@ -200,42 +47,9 @@ button:focus-visible {
   }
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
-}
-
-/* Theme Editor Sidebar Override */
+/* Force Theme Editor to float above everything */
 .theme-editor-sidebar {
-  background-color: rgba(9, 9, 11, 0.8) !important;
-  backdrop-filter: blur(12px);
-}
-
-/* Translucent Background Helpers */
-.bg-translucent-dark {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-}
-.bg-translucent-darker {
-  background-color: rgba(0, 0, 0, 0.4) !important;
-}
-.bg-translucent-light {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.hover-bg-translucent-light:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(9, 9, 11, 0.95) !important;
+  border-left: 1px solid var(--color-primary);
+  z-index: 9999;
 }

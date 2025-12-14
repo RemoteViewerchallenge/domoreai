@@ -1,99 +1,108 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface GraphNode {
-  id: string; // Absolute path or relative to root
+  id: string;
   label: string;
   type: 'file' | 'directory';
-  roleId: string; // 'frontend', 'backend', 'database' etc
+  roleId: string; // 'api', 'service', 'db', 'config'
+  parentId?: string;
   imports: string[];
   path: string;
 }
 
 export class CodeGraphService {
-  async generateGraph(rootPath?: string): Promise<GraphNode[]> {
-    const startPath = rootPath || process.cwd();
+  
+  // Find Monorepo Root
+  private async findRoot(start: string): Promise<string> {
+    let curr = start;
+    while (curr !== path.parse(curr).root) {
+      try {
+        const files = await fs.readdir(curr);
+        if (files.includes('pnpm-workspace.yaml') || files.includes('turbo.json')) return curr;
+        curr = path.dirname(curr);
+      } catch (e) { break; }
+    }
+    return start;
+  }
+
+  async generateGraph(inputPath?: string): Promise<GraphNode[]> {
+    const root = inputPath || await this.findRoot(process.cwd());
+    console.log(`[Graph] Scanning Backend at: ${root}`);
+    
     const nodes: GraphNode[] = [];
     
-    await this.scanDirectory(startPath, startPath, nodes);
+    // Scan specific backend targets only
+    const targets = ['apps/api/src', 'packages/api-contract/src', 'apps/api/prisma'];
+    
+    for (const target of targets) {
+        const targetPath = path.join(root, target);
+        try {
+            await this.scanDir(targetPath, root, nodes);
+        } catch (e) { console.warn(`Skipping ${target}:`, e); }
+    }
+    
     return nodes;
   }
 
-  private async scanDirectory(currentPath: string, rootPath: string, nodes: GraphNode[]) {
-    try {
-      const entries = await fs.readdir(currentPath, { withFileTypes: true });
+  private async scanDir(curr: string, root: string, nodes: GraphNode[]) {
+    const entries = await fs.readdir(curr, { withFileTypes: true });
 
-      for (const entry of entries) {
-        const fullPath = path.join(currentPath, entry.name);
-        const relativePath = path.relative(rootPath, fullPath);
+    for (const entry of entries) {
+      const fullPath = path.join(curr, entry.name);
+      const relative = path.relative(root, fullPath);
+
+      if (entry.isDirectory()) {
+        nodes.push({
+          id: fullPath,
+          label: entry.name,
+          type: 'directory',
+          roleId: 'folder',
+          path: fullPath,
+          imports: []
+        });
+        await this.scanDir(fullPath, root, nodes);
+      } else if (/\.(ts|prisma|json|sql)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.map')) {
         
-        // Skip node_modules, .git, dist, etc.
-        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') {
-          continue;
-        }
+        let imports: string[] = [];
+        let role = 'config';
 
-        if (entry.isDirectory()) {
-          // Add Directory Node (optional, but good for structure)
-          nodes.push({
-            id: fullPath,
-            label: entry.name,
-            type: 'directory',
-            roleId: this.determineRole(relativePath),
-            imports: [],
-            path: fullPath
-          });
-          
-          // Recurse
-          await this.scanDirectory(fullPath, rootPath, nodes);
-        } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
-          // Parse Imports
-          const content = await fs.readFile(fullPath, 'utf-8');
-          const imports = this.parseImports(content);
-
-          nodes.push({
-            id: fullPath, // Use full path as ID for uniqueness
-            label: entry.name,
-            type: 'file',
-            roleId: this.determineRole(relativePath),
-            imports: imports.map(imp => {
-                // Resolve relative imports to absolute-ish paths or keep as is?
-                // For simplified graph, we just keep the module specifier
-                // Ideally we resolve it to a file path if starts with .
+        // Role Detection
+        if (entry.name.includes('router')) role = 'api';
+        else if (entry.name.includes('service')) role = 'service';
+        else if (entry.name.endsWith('.prisma')) role = 'db';
+        
+        // Parse Imports for TS files
+        if (entry.name.endsWith('.ts')) {
+            const content = await fs.readFile(fullPath, 'utf-8');
+            const importRegex = /import\s+.*?\s+from\s+['"](.*?)['"]/g;
+            let match;
+            while ((match = importRegex.exec(content)) !== null) {
+                const imp = match[1];
+                // Resolve relative imports to absolute paths for linking
                 if (imp.startsWith('.')) {
-                    return path.resolve(path.dirname(fullPath), imp);
+                    const resolved = path.resolve(path.dirname(fullPath), imp);
+                    // Try to match exact file or index.ts
+                    imports.push(resolved); 
                 }
-                return imp;
-            }),
-            path: fullPath
-          });
+            }
         }
+
+        nodes.push({
+          id: fullPath,
+          label: entry.name,
+          type: 'file',
+          roleId: role,
+          parentId: path.dirname(fullPath),
+          imports,
+          path: fullPath
+        });
       }
-    } catch (error) {
-      console.error(`Error scanning directory ${currentPath}:`, error);
     }
-  }
-
-  private determineRole(relativePath: string): string {
-    const lower = relativePath.toLowerCase();
-    
-    if (lower.includes('apps/ui') || lower.includes('frontend') || lower.includes('components')) return 'frontend-lead';
-    if (lower.includes('apps/api') || lower.includes('backend') || lower.includes('services')) return 'backend-architect';
-    if (lower.includes('db') || lower.includes('prisma') || lower.includes('database')) return 'database-admin';
-    if (lower.includes('docker') || lower.includes('config')) return 'devops-engineer';
-    
-    return 'general-developer';
-  }
-
-  private parseImports(content: string): string[] {
-    const imports: string[] = [];
-    // Simple regex for import ... from '...'
-    const regex = /import\s+.*?\s+from\s+['"](.*?)['"];?/g;
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-      imports.push(match[1]);
-    }
-    // Dynamic imports? import(...)
-    return imports;
   }
 }
 

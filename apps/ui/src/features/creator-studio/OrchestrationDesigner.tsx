@@ -15,7 +15,7 @@ import 'reactflow/dist/style.css';
 import { FileJson, Download } from 'lucide-react';
 
 import { nodeTypes } from './CustomNodes.js';
-import { InspectorPanel } from './InspectorPanel.js';
+import { InspectorPanel } from './OrchestrationInspectorPanel.js';
 import type { OrchestrationStep, RoleConfig } from './types.js';
 import { trpc } from '../../utils/trpc.js';
 

@@ -1,73 +1,95 @@
-import { Link, useLocation } from 'react-router-dom';
+import React from 'react';
 import { 
-  Settings, LayoutGrid, Database, Users, 
-  Mic, User, Cpu, ChevronDown 
+  Search, 
+  Bell, 
+  Cpu, 
+  Database, 
+  Layout, 
+  Palette, // New Icon
 } from 'lucide-react';
-import { useState } from 'react';
-import { useTheme } from '../hooks/useTheme.js';
+import { useLocation, useNavigate } from 'react-router-dom';
+// import { useNewUITheme } from './appearance/NewUIThemeProvider.js';
 
 export const UnifiedMenuBar = () => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const { theme } = useTheme();
-  const [voiceActive, setVoiceActive] = useState(false);
+  // const { theme, setTheme } = useNewUITheme();
   
+  // We need to trigger the global event for the Theme Editor
+  const toggleThemeEditor = () => {
+    // Dispatch a custom event that NewUIRoot listens for
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', ctrlKey: true }));
+  };
+
+  const NavItem = ({ icon: Icon, label, path, active }: any) => (
+    <button
+      onClick={() => navigate(path)}
+      className={`relative group flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200 ${
+        active 
+          ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20' 
+          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-text)]/5'
+      }`}
+    >
+      <Icon size={14} />
+      <span className="text-xs font-bold tracking-wide">{label}</span>
+      
+      {/* Active Glow Indicator */}
+      {active && (
+        <div className="absolute bottom-0 left-2 right-2 h-[1px] bg-[var(--color-primary)] shadow-[0_0_8px_var(--color-primary)]" />
+      )}
+    </button>
+  );
+
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div 
-      className="flex-none w-full h-12 border-b border-zinc-800 bg-[#09090b] text-white flex items-center justify-between px-4 z-50 shadow-md"
-    >
-      {/* LEFT: VOICE & COMMAND */}
-      <div className="flex items-center gap-4 flex-1">
+    <div className="h-12 border-b border-[var(--color-border)] bg-[var(--color-background-secondary)]/80 backdrop-blur-md flex items-center justify-between px-4 z-50 select-none">
+      
+      {/* Left: Navigation */}
+      <div className="flex items-center gap-1">
+        <div className="mr-4 flex items-center gap-2 text-[var(--color-primary)]">
+          <Cpu size={18} />
+          <span className="font-black tracking-widest text-sm">TITANIUM</span>
+        </div>
+
+        <div className="h-4 w-[1px] bg-[var(--color-border)] mx-2" />
+
+        <NavItem icon={Layout} label="WORKSPACE" path="/workspace" active={isActive('/workspace')} />
+        <NavItem icon={Database} label="DATA" path="/data" active={isActive('/data')} />
+        <NavItem icon={Cpu} label="NODES" path="/supernodes" active={isActive('/supernodes')} />
+        <NavItem icon={Layout} label="UI BUILDER" path="/interface-builder" active={isActive('/interface-builder')} />
+      </div>
+
+      {/* Center: Command Center (Placeholder) */}
+      <div className="flex-1 max-w-md mx-4">
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] group-focus-within:text-[var(--color-primary)] transition-colors" size={14} />
+          <input 
+            type="text" 
+            placeholder="Search nodes, data, or commands... (Ctrl+K)"
+            className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-full py-1.5 pl-9 pr-4 text-xs text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all placeholder-[var(--color-text-secondary)]"
+          />
+        </div>
+      </div>
+
+      {/* Right: Tools */}
+      <div className="flex items-center gap-3">
         <button 
-           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${voiceActive ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'}`}
-           onClick={() => setVoiceActive(!voiceActive)}
+            onClick={toggleThemeEditor}
+            className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 rounded-full transition-colors"
+            title="Open Theme Editor"
         >
-           <Mic size={14} />
-           <span className="text-[10px] font-bold tracking-widest">VOICE</span>
+            <Palette size={16} />
         </button>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer">
-           <User size={14} className="text-purple-400" />
-           <div className="flex flex-col leading-none">
-              <span className="text-[8px] text-zinc-500 uppercase font-bold">Talking To</span>
-              <span className="text-[10px] font-bold text-zinc-200">Lead Developer</span>
-           </div>
-           <ChevronDown size={12} className="text-zinc-600 ml-1" />
-        </div>
-      </div>
-
-      {/* CENTER: NAVIGATION (Centered) */}
-      <div className="flex items-center justify-center gap-1 flex-1">
-        {[
-          { path: '/workspace', icon: LayoutGrid, label: 'Work' },
-          { path: '/creator', icon: Users, label: 'Creator' },
-          { path: '/supernodes', icon: Database, label: 'Refinery' },
-        ].map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex items-center gap-2 px-4 py-2 rounded font-bold uppercase text-[10px] tracking-widest transition-all ${
-              isActive(item.path) 
-                ? 'bg-zinc-100 text-black' 
-                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900'
-            }`}
-          >
-            <item.icon size={14} />
-            {item.label}
-          </Link>
-        ))}
-      </div>
-
-      {/* RIGHT: STATS */}
-      <div className="flex items-center gap-4 flex-1 justify-end">
-        <div className="flex items-center gap-2 text-zinc-500" title="Context Usage">
-           <Cpu size={14} />
-           <span className="text-[10px] font-mono">14%</span>
-        </div>
-        <div className="w-px h-4 bg-zinc-800" />
-        <button className="text-zinc-500 hover:text-white transition-colors">
-           <Settings size={16} />
+        <button className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors relative">
+          <Bell size={16} />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[var(--color-error)] rounded-full animate-pulse" />
+        </button>
+        
+        <button className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-primary)] transition-colors">
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]" />
+          <span className="text-[10px] font-bold pr-1">ADMIN</span>
         </button>
       </div>
     </div>

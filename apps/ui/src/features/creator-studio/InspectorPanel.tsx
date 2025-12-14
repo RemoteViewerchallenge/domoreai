@@ -1,256 +1,192 @@
-import React, { useState } from 'react';
-import type { OrchestrationStep, RoleConfig } from './types.js';
-import { Settings, Users, Workflow } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { 
+  Activity, 
+  Layers, 
+  Zap, 
+  Cpu, 
+  Maximize2
+} from 'lucide-react';
 
-interface InspectorPanelProps {
-  selectedStep: OrchestrationStep | null;
-  availableRoles: RoleConfig[];
-  onUpdateStep: (stepId: string, updates: Partial<OrchestrationStep>) => void;
-  onCreateRole: (role: RoleConfig) => void;
-  onUpdateRole: (role: RoleConfig) => void;
+
+// --- Types (Strictly Typed for Performance) ---
+interface InspectorProps {
+  selectedNodeId: string | null;
+  nodeType: 'ui' | 'api' | 'data';
+  componentName?: string;
+  currentClasses?: string; // Tailwind string
+  memoryUsage?: number; // Estimated MB
+  onClassChange?: (newClasses: string) => void;
 }
 
-export const InspectorPanel: React.FC<InspectorPanelProps> = ({
-  selectedStep,
-  availableRoles,
-  onUpdateStep,
-  onCreateRole,
-  onUpdateRole
-}) => {
-  const [activeTab, setActiveTab] = useState<'flow' | 'role'>('flow');
-  
-  if (!selectedStep) {
-    return (
-      <div className="h-full flex items-center justify-center text-[var(--color-text-secondary)] p-8 text-center bg-[var(--color-background-secondary)] border-l border-[var(--color-border)]">
-        <div>
-          <Workflow className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>Select a node to configure its Logic and Assigned Role.</p>
-        </div>
-      </div>
-    );
-  }
+// --- 1. The Header: Context Awareness ---
+const InspectorHeader = ({ title, type }: { title: string, type: string }) => (
+  <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+    <div className="flex flex-col">
+      <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">
+        {type} NODE
+      </span>
+      <h2 className="text-zinc-100 font-mono text-sm font-semibold truncate max-w-[200px]">
+        {title}
+      </h2>
+    </div>
+    <div className="h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)] animate-pulse" />
+  </div>
+);
 
-  // const assignedRole = availableRoles.find(r => r.id === selectedStep.assignedRoleId);
-
-  // -- handlers --
-  
-  // Role handling removed
-  /*
-  const handleRoleChange = (roleId: string) => {
-    if (roleId === 'new') {
-      // Create a temporary new role and assign it
-      const newRole: RoleConfig = {
-        id: crypto.randomUUID(),
-        name: `${selectedStep.label} Role`,
-        description: 'Auto-generated role',
-        modelProvider: 'openai',
-        model: 'gpt-4',
-        systemPrompt: 'You are a helpful AI assistant.',
-        temperature: 0.7,
-        tools: []
-      };
-      onCreateRole(newRole);
-      onUpdateStep(selectedStep.id, { assignedRoleId: newRole.id });
-      setActiveTab('role'); // Switch to role editor
-    } else {
-      onUpdateStep(selectedStep.id, { assignedRoleId: roleId });
-    }
-  };
-  */
-
+// --- 2. Live Preview: Isolated & Suspended ---
+const LivePreviewStage = ({ isLoading }: { isLoading?: boolean }) => {
   return (
-    <div className="w-96 bg-[var(--color-background-secondary)] border-l border-[var(--color-border)] h-full flex flex-col shadow-2xl z-20">
+    <div className="relative w-full aspect-video bg-zinc-900 border-b border-zinc-800 overflow-hidden group">
+      {/* Grid Pattern Background for Transparency Check */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(#3f3f46 1px, transparent 1px)', backgroundSize: '12px 12px' }} 
+      />
       
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border)]">
-        <h2 className="text-[var(--color-text)] font-bold flex items-center gap-2">
-          <Settings className="w-4 h-4 text-[var(--color-primary)]" />
-          Configuration
-        </h2>
-        <div className="text-xs text-[var(--color-text-secondary)] mt-1 font-mono">{selectedStep.id}</div>
+      {/* The Render Container */}
+      <div className="absolute inset-4 border border-dashed border-zinc-700 rounded flex items-center justify-center">
+         {isLoading ? (
+           <div className="flex flex-col items-center gap-2">
+             <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+             <span className="text-xs text-zinc-500 font-mono">Compiling...</span>
+           </div>
+         ) : (
+           <span className="text-zinc-600 text-xs font-mono">[ Live Component Render ]</span>
+         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[var(--color-border)]">
-        <button
-          onClick={() => setActiveTab('flow')}
-          className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-            activeTab === 'flow' ? 'text-[var(--color-primary)] bg-zinc-800/50 border-b-2 border-blue-500' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          <Workflow className="w-4 h-4" />
-          Flow & Inputs
+      {/* Overlay Controls */}
+      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-600">
+          <Maximize2 size={12} />
         </button>
-      </div>
-
-      {/* Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        
-        {/* --- TAB: FLOW CONFIGURATION --- */}
-        {activeTab === 'flow' && (
-          <div className="space-y-6">
-            
-            {/* 1. Step Metadata */}
-            <div className="space-y-2">
-              <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">Step Label</label>
-              <input 
-                type="text" 
-                value={selectedStep.label}
-                onChange={(e) => onUpdateStep(selectedStep.id, { label: e.target.value })}
-                className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded p-2 text-[var(--color-text)] focus:border-[var(--color-primary)] outline-none"
-              />
-            </div>
-
-            {/* 2. Role Assignment (The Link) - Removed */}
-            {/*
-            <div className="space-y-2">
-              <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">Assigned Role</label>
-              <select 
-                value={selectedStep.assignedRoleId || ''}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded p-2 text-[var(--color-text)] focus:border-[var(--color-secondary)] outline-none"
-              >
-                <option value="" disabled>Select a Role...</option>
-                {availableRoles.map(role => (
-                  <option key={role.id} value={role.id}>{role.name}</option>
-                ))}
-                <option value="new" className="text-[var(--color-primary)]">+ Create New Role</option>
-              </select>
-              <p className="text-[10px] text-[var(--color-text-secondary)]">
-                The identity determines the model, system prompt, and tools.
-              </p>
-            </div>
-            */}
-
-            {/* 3. Inputs (Data Mapping) */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">Input Mapping</label>
-                <button 
-                  onClick={() => {
-                     const key = prompt("Enter input variable name (e.g. 'code'):");
-                     if(key) onUpdateStep(selectedStep.id, { 
-                       inputMapping: { ...selectedStep.inputMapping, [key]: '{{context.previous.output}}' } 
-                     });
-                  }}
-                  className="text-[10px] text-[var(--color-primary)] hover:underline"
-                >
-                  + Add Input
-                </button>
-              </div>
-              
-              <div className="bg-[var(--color-background)] border border-[var(--color-border)] rounded p-2 space-y-2">
-                {Object.entries(selectedStep.inputMapping).length === 0 && (
-                  <div className="text-xs text-[var(--color-text-secondary)] italic p-2 text-center">No inputs defined.</div>
-                )}
-                {Object.entries(selectedStep.inputMapping).map(([key, value]) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-xs text-[var(--color-primary)] font-mono">{key}:</span>
-                    <input 
-                      type="text" 
-                      value={value}
-                      onChange={(e) => onUpdateStep(selectedStep.id, { 
-                        inputMapping: { ...selectedStep.inputMapping, [key]: e.target.value }
-                      })}
-                      className="w-full bg-[var(--color-background-secondary)] border border-[var(--color-border)] text-xs text-[var(--color-success)] font-mono rounded px-2 py-1"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 4. Conditional Logic (If Judge) */}
-            {selectedStep.type === 'judge' && (
-               <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
-                 <label className="text-xs uppercase text-[var(--color-warning)] font-semibold tracking-wider flex items-center gap-2">
-                   <Settings className="w-3 h-3"/> Judge Logic
-                 </label>
-                 <div className="bg-[var(--color-warning)]/10 border border-amber-900/30 rounded p-3 space-y-3">
-                   <div>
-                     <span className="text-[10px] text-amber-400 block mb-1">Failure Condition (Regex)</span>
-                     <input 
-                       type="text" 
-                       value={selectedStep.flowControl.conditionExpression || ''}
-                       placeholder="e.g. contains('INVALID')"
-                       onChange={(e) => onUpdateStep(selectedStep.id, { 
-                         flowControl: { ...selectedStep.flowControl, conditionExpression: e.target.value } 
-                       })}
-                       className="w-full bg-[var(--color-background)] border border-amber-900/50 rounded p-1 text-xs text-[var(--color-text)] font-mono"
-                     />
-                   </div>
-                 </div>
-               </div>
-            )}
-          </div>
-        )}
-
-        {/* --- TAB: ROLE CONFIGURATION --- */}
-        {activeTab === 'role' && assignedRole && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
-             <div className="space-y-2">
-              <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">Role Name</label>
-              <input 
-                type="text" 
-                value={assignedRole.name}
-                onChange={(e) => onUpdateRole({ ...assignedRole, name: e.target.value })}
-                className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded p-2 text-[var(--color-text)] focus:border-[var(--color-secondary)] outline-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs uppercase text-[var(--color-text-secondary)] font-semibold tracking-wider">System Prompt</label>
-              <textarea 
-                value={assignedRole.systemPrompt}
-                onChange={(e) => onUpdateRole({ ...assignedRole, systemPrompt: e.target.value })}
-                className="w-full h-48 bg-[var(--color-background)] border border-[var(--color-border)] rounded p-2 text-xs text-[var(--color-text)] font-mono focus:border-[var(--color-secondary)] outline-none resize-none leading-relaxed"
-                placeholder="You are a helpful assistant..."
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                 <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-semibold">Model</label>
-                 <select 
-                    value={assignedRole.model}
-                    onChange={(e) => onUpdateRole({ ...assignedRole, model: e.target.value })}
-                    className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded p-1.5 text-xs text-[var(--color-text)]"
-                 >
-                   <option value="gpt-4">GPT-4</option>
-                   <option value="gpt-4o-mini">GPT-4o Mini</option>
-                   <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                 </select>
-              </div>
-              <div className="space-y-1">
-                 <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-semibold">Temp: {assignedRole.temperature}</label>
-                 <input 
-                   type="range" min="0" max="1" step="0.1"
-                   value={assignedRole.temperature}
-                   onChange={(e) => onUpdateRole({ ...assignedRole, temperature: parseFloat(e.target.value) })}
-                   className="w-full mt-2 accent-[var(--color-secondary)]"
-                 />
-              </div>
-            </div>
-            
-            <div className="p-3 bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)]/30 rounded text-xs text-[var(--color-secondary)]">
-              <Users className="w-3 h-3 inline mr-1" />
-              Changes here update the <strong>{assignedRole.name}</strong> role definition globally or locally depending on save scope.
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'role' && !assignedRole && (
-          <div className="text-center text-[var(--color-text-secondary)] py-8">
-            <p>No role assigned to this step.</p>
-            <button 
-              onClick={() => handleRoleChange('new')}
-              className="mt-2 text-[var(--color-secondary)] hover:underline text-sm"
-            >
-              Create One Now
-            </button>
-          </div>
-        )}
-
       </div>
     </div>
   );
 };
+
+// --- 3. Tailwind Class Inspector: Visual & Code ---
+const ClassManager = ({ classes }: { classes: string }) => {
+  const classList = useMemo(() => classes.split(' ').filter(Boolean), [classes]);
+  
+  return (
+    <div className="p-4 border-b border-zinc-800">
+      <div className="flex items-center gap-2 mb-3">
+        <Layers size={14} className="text-purple-400" />
+        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Style Composition</span>
+      </div>
+      
+      <div className="flex flex-wrap gap-2">
+        {classList.map((cls, idx) => (
+          <span 
+            key={`${cls}-${idx}`} 
+            className="px-2 py-1 text-[10px] font-mono text-zinc-300 bg-zinc-900 border border-zinc-700 rounded hover:border-purple-500 hover:text-purple-300 cursor-pointer transition-colors"
+          >
+            {cls}
+          </span>
+        ))}
+        <button className="px-2 py-1 text-[10px] font-mono text-zinc-500 border border-dashed border-zinc-700 rounded hover:text-zinc-300 hover:border-zinc-500">
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- 4. Memory Health Monitor (Performance First) ---
+const SystemHealth = ({ usage }: { usage: number }) => {
+  // Determine health color
+  const statusColor = usage > 80 ? 'text-red-500' : usage > 50 ? 'text-amber-500' : 'text-emerald-500';
+  
+  return (
+    <div className="mt-auto p-3 bg-zinc-925 border-t border-zinc-800">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Activity size={12} className="text-zinc-500" />
+          <span className="text-[10px] text-zinc-500 font-medium">GRAPH HEALTH</span>
+        </div>
+        <span className={`text-[10px] font-mono font-bold ${statusColor}`}>
+          {usage < 20 ? 'OPTIMAL' : 'HEAVY'}
+        </span>
+      </div>
+      
+      <div className="w-full bg-zinc-800 h-1 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${usage > 80 ? 'bg-red-500' : 'bg-emerald-500'} transition-all duration-500`} 
+          style={{ width: `${usage}%` }} 
+        />
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px] text-zinc-600 font-mono">VRAM: {usage}MB</span>
+        <span className="text-[9px] text-zinc-600 font-mono">FPS: 60</span>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN COMPONENT: VisualInspectorPanel ---
+export const VisualInspectorPanel: React.FC<InspectorProps> = React.memo(({
+  selectedNodeId,
+  nodeType,
+  componentName = "Untitled Component",
+  currentClasses = "p-4 bg-white rounded shadow-lg flex flex-col gap-2",
+  memoryUsage = 12
+}) => {
+  
+  if (!selectedNodeId) {
+    return (
+      <div className="h-full w-80 bg-zinc-950 border-l border-zinc-800 flex flex-col items-center justify-center text-zinc-600 p-6 text-center">
+        <Cpu size={32} className="mb-4 opacity-20" />
+        <span className="text-xs font-mono">Select a Node to inspect signal flow.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-80 bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl z-50">
+      {/* 1. Identity */}
+      <InspectorHeader title={componentName} type={nodeType} />
+
+      {/* 2. Visual Reality */}
+      <LivePreviewStage />
+
+      {/* 3. Scrollable Controls */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        
+        {/* Actions Toolbar */}
+        <div className="grid grid-cols-2 gap-2 p-4 border-b border-zinc-800">
+           <button className="flex items-center justify-center gap-2 py-2 bg-purple-900/20 border border-purple-500/30 text-purple-400 text-xs font-bold rounded hover:bg-purple-900/40 transition-all">
+             <Zap size={12} />
+             Edit Code
+           </button>
+           <button className="flex items-center justify-center gap-2 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-bold rounded hover:bg-zinc-800 transition-all">
+             <Layers size={12} />
+             Wrap
+           </button>
+        </div>
+
+        {/* CSS Classes */}
+        <ClassManager classes={currentClasses} />
+
+        {/* AI Context Integration (Addressing the "useless AI button" issue) */}
+        <div className="p-4 border-b border-zinc-800">
+           <div className="flex items-center gap-2 mb-2">
+             <div className="w-2 h-2 rounded-full bg-emerald-500" />
+             <span className="text-xs font-bold text-zinc-400">AI Context</span>
+           </div>
+           <p className="text-[10px] text-zinc-500 leading-relaxed">
+             Active Agent: <span className="text-zinc-300">Frontend Specialist</span>.
+             Listening for styling directives.
+           </p>
+        </div>
+
+      </div>
+
+      {/* 4. Telemetry */}
+      <SystemHealth usage={memoryUsage} />
+    </div>
+  );
+});
+
+VisualInspectorPanel.displayName = 'VisualInspectorPanel';
+
+export default VisualInspectorPanel;
