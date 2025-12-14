@@ -15,9 +15,11 @@ import { browserRouter } from './browser.router.js';
 import { projectRouter } from './project.router.js';
 import { contextRouter } from './context.router.js';
 import { workspaceRouter } from './workspace.router.js';
+import { codeGraphRouter } from './codeGraph.router.js';
 
 export const appRouter = createTRPCRouter({
   project: projectRouter,
+  codeGraph: codeGraphRouter,
   git: gitRouter,
   providers: providerRouter,
   role: roleRouter,

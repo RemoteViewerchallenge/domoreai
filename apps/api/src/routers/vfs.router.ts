@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { vfsSessionService } from '../services/vfsSession.service.js';
 
 export const vfsRouter = createTRPCRouter({
   
@@ -99,6 +98,24 @@ export const vfsRouter = createTRPCRouter({
        }
     }),
 
+  // 4a. Read File (Direct String Return for IDE)
+  readFile: publicProcedure
+    .input(z.object({ 
+      path: z.string(), 
+    }))
+    .query(async ({ input, ctx }) => {
+       try {
+         const provider = await ctx.vfsSession.getProvider({ provider: 'local' });
+         const content = await provider.read(input.path);
+         return content; // Returns raw string (or whatever provider returns)
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Read Failed',
+         });
+       }
+    }),
+
     // Basic Read
     read: publicProcedure
     .input(z.object({ 
@@ -150,19 +167,19 @@ export const vfsRouter = createTRPCRouter({
        }
     }),
     
-    // 5. Ingest Directory
-    ingestDirectory: publicProcedure
-    .input(z.object({ 
-      path: z.string(), 
-      cardId: z.string().optional(),
-      provider: z.enum(['local', 'ssh']).default('local'),
-      connectionId: z.string().optional()
-    }))
-    .mutation(async ({ input, ctx }) => {
-       try {
-         // Currently only supporting local ingestion for simplicity, but we could expand
-         // For now, we'll just use the path directly if it's local
-         if (input.provider !== 'local') {
+     // 5. Ingest Directory
+     ingestDirectory: publicProcedure
+     .input(z.object({ 
+       path: z.string(), 
+       cardId: z.string().optional(),
+       provider: z.enum(['local', 'ssh']).default('local'),
+       connectionId: z.string().optional()
+     }))
+     .mutation(async ({ input }) => {
+        try {
+          // Currently only supporting local ingestion for simplicity, but we could expand
+          // For now, we'll just use the path directly if it's local
+          if (input.provider !== 'local') {
             throw new Error('Remote ingestion not yet supported');
          }
          
