@@ -11,6 +11,7 @@ import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
 import COORE from './pages/COORE.js';
 import FutureDataExplorer from './pages/Dataexplorer.js';
 import SidebarCustomizer from './pages/SidebarCustomizer.js';
+import SuperNodeCanvas from './pages/SuperNodeCanvas.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -109,7 +110,7 @@ function App() {
             letterSpacing: 'var(--letter-spacing)'
           }}
         >
-          <UnifiedMenuBar />
+          {location.pathname !== '/supernodes' && <UnifiedMenuBar />}
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<WorkSpace />} />
@@ -124,6 +125,7 @@ function App() {
               <Route path="/coore" element={<COORE />} />
               <Route path="/data" element={<FutureDataExplorer />} />
               <Route path="/customizer" element={<SidebarCustomizer />} />
+              <Route path="/supernodes" element={<SuperNodeCanvas />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
                   <div className="text-center">

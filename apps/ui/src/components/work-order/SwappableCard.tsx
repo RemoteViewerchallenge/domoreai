@@ -4,7 +4,7 @@ import SmartEditor from '../SmartEditor.js';
 import { FileExplorer } from '../FileExplorer.js'; 
 import { useCardVFS } from '../../hooks/useCardVFS.js';
 import XtermTerminal from '../XtermTerminal.js';
-import ResearchBrowser from '../ResearchBrowser.js';
+import BrowserCard from '../BrowserCard.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
 import useIngestStore from '../../stores/ingest.store.js';
@@ -52,7 +52,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [showAttachModal, setShowAttachModal] = useState(false);
-  // const [logs, setLogs] = useState<TerminalMessage[]>([]); // Use store logs instead
   const { messages: storeLogs, actions: wsActions, status: wsStatus } = useWebSocketStore();
   
   // Connect to WS on mount
@@ -61,7 +60,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           wsActions.connect('dummy-token'); // In real app, get token from auth
       }
   }, [wsStatus, wsActions]);
-  // REMOVED: const [isAiWorking, setIsAiWorking] = useState(false);
 
   // Title State
   const [cardTitle, setCardTitle] = useState(new Date().toLocaleString());
@@ -96,11 +94,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
 
   // Compute adjusted parameters for the current selection
   const currentRole = roles?.find(r => r.id === agentConfig.roleId);
-  
-  // We need to find the ModelConfig that matches the selected model (by provider model ID)
-  // The role.preferredModels includes model relation.
-  // We assume agentConfig.modelId is the provider's model ID (e.g. "gpt-4o")
-  // The prisma generate might take a moment to propagate types.
   const currentModelConfig = (currentRole as unknown as RoleWithPreferredModels)?.preferredModels?.find((pm) => pm.model?.modelId === agentConfig.modelId);
   const adjustedParameters = currentModelConfig?.adjustedParameters;
 
@@ -135,15 +128,15 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           // Heuristic: If result looks like a URL, switch to browser
           if (data.result.trim().startsWith('http')) {
              setType('browser');
+             // TODO: Pass URL to browser if needed, currently browser manages own state
           }
       }
 
-      // Lock in the model if it was dynamically selected
       if (data.modelId) {
           setAgentConfig(prev => ({
               ...prev,
               modelId: data.modelId,
-              isLocked: true // Optional: visually indicate it's locked?
+              isLocked: true 
           }));
       }
     },
@@ -154,10 +147,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   });
 
   const ingestDirectoryMutation = trpc.vfs.ingestDirectory.useMutation({
-    // We treat ingestion as potentially long-running. Use onMutate to mark start,
-    // and onSettled to clear the indicator regardless of success/failure.
     onMutate: async () => {
-      // nothing special to do here for now
     },
     onSuccess: () => {
       console.log('Ingestion started/completed successfully');
@@ -167,18 +157,15 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       setError(`Ingestion failed: ${err.message}`);
     },
     onSettled: () => {
-      // decrement global counter when ingestion job finishes (successful or failed)
       useIngestStore.getState().decrement();
     }
   });
 
   const isAiWorking = startSessionMutation.isLoading;
 
-  // Removed detached Tiptap editor hook
-
   // Run agent function - wrapped in useCallback to stabilize reference
   const handleRunAgent = useCallback(() => {
-    if (isAiWorking) return; // Prevent multiple clicks
+    if (isAiWorking) return; 
 
     // Strip HTML to get plain text prompt
     const tmp = document.createElement("DIV");
@@ -202,8 +189,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         setHasGenerated(true);
     }
 
-    // Start the agent session
-    // setIsAiWorking(true); // No longer needed
     startSessionMutation.mutate({
       roleId: agentConfig.roleId,
       modelConfig: {
@@ -229,33 +214,19 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     }
   }, [readFile]);
 
-  // Handle Enter key to run agent
-  // Handle Enter key is now managed by SmartEditor via onRun prop
 
   // Auto-creation logic
   const initializedRef = useRef<string | null>(null);
-  
   useEffect(() => {
-    // Only initialize once per card ID
     if (initializedRef.current === id) return;
     
     const init = async () => {
-        // Ensure we have a valid path to work with, defaulting to currentPath from store
         const basePath = currentPath === '.' ? 'workspace' : currentPath;
         const agentsDir = `${basePath}/agents`;
         const autoFileName = `${agentsDir}/card-${id}.md`;
         
         try {
-            // Try to create directory structure first
-            // Note: mkdir might fail if it exists, which is fine, or we should check first.
-            // Assuming mkdir is idempotent or we ignore error.
             await mkdir(agentsDir).catch(() => {}); 
-            
-            // Create the file if it doesn't exist
-            // We can check if it exists by trying to read it first? 
-            // Or just try to create and ignore error if it exists (if createFile throws on exist)
-            // But createFile usually overwrites if not careful. 
-            // Let's try to read first.
             try {
                 const existing = await readFile(autoFileName);
                 if (!activeFile) {
@@ -263,7 +234,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                     setContent(existing);
                 }
             } catch {
-                // File doesn't exist, create it
                 await createFile(autoFileName, `# Card ${id} Workspace\n\nAuto-generated session.`);
                 if (!activeFile) {
                     setActiveFile(autoFileName);
@@ -278,7 +248,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, currentPath]); // Removed other dependencies to prevent re-runs
+  }, [id, currentPath]);
 
   // The "Little Button" Menu options
   const menuItems = [
@@ -289,6 +259,28 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   ];
 
   const neonColor = getNeonColorForPath(currentPath);
+
+  // View Switcher Component (Reused)
+  const viewSwitcher = (
+    <div className="flex items-center gap-1 bg-[var(--color-background)] rounded p-0.5 border border-[var(--color-border)]">
+        {menuItems.map((item) => (
+        <button
+            key={item.id}
+            onClick={() => {
+            setType(item.id as ComponentType);
+            setViewMode('editor');
+            }}
+            className={`p-1 rounded ${type === item.id ? 'bg-[var(--color-background-secondary)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'}`}
+            title={item.label}
+        >
+            <item.icon size={14} />
+        </button>
+        ))}
+    </div>
+  );
+
+  // Determine if we are in "Universal Mode" (upgraded tools)
+  const isUniversalMode = viewMode === 'editor' && (type === 'browser' || type === 'terminal');
   
   return (
     <>
@@ -307,7 +299,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         }}
       >
         
-        {/* HEADER with File Controls */}
+        {/* HEADER with File Controls - HIDDEN IN UNIVERSAL MODE */}
+        {!isUniversalMode && (
         <div 
           className="flex-none h-8 border-b flex items-center justify-between px-2"
           style={{
@@ -410,24 +403,12 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
               </div>
             )}
   
-            {/* Component Swapper - Now visible buttons */}
-            <div className="flex items-center gap-1 bg-[var(--color-background)] rounded p-0.5 border border-[var(--color-border)]">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setType(item.id as ComponentType);
-                    setViewMode('editor');
-                  }}
-                  className={`p-1 rounded ${type === item.id ? 'bg-[var(--color-background-secondary)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'}`}
-                  title={item.label}
-                >
-                  <item.icon size={14} />
-                </button>
-              ))}
-            </div>
+            {/* Component Swapper */}
+            {viewSwitcher}
+            
           </div>
         </div>
+        )}
   
         {/* BODY */}
         <div className="flex-1 min-h-0 relative bg-[var(--color-background)]">
@@ -494,7 +475,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                 onRefresh={refresh}
                 onLoadChildren={loadChildren}
                 onEmbedDir={() => {
-                  // Increment global ingestion counter with the current path, then start ingestion.
                   useIngestStore.getState().increment(currentPath);
                   ingestDirectoryMutation.mutate({ path: currentPath, cardId: id });
                 }}
@@ -514,20 +494,25 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           )}
   
           {/* OTHER VIEWS */}
-          {viewMode === 'editor' && type === 'browser' && <ResearchBrowser initialUrl={content.trim().startsWith('http') ? content.trim() : undefined} />}
+          {viewMode === 'editor' && type === 'browser' && <BrowserCard headerEnd={viewSwitcher} />}
           {viewMode === 'editor' && type === 'terminal' && (
             <XtermTerminal 
               logs={storeLogs}
               workingDirectory={currentPath}
               onInput={(data) => {
                 wsActions.sendMessage({ command: data });
-              }} 
+              }}
+              headerEnd={viewSwitcher}
             />
           )}
   
         </div>
         
-        {/* Status Footer */}
+        {/* Status Footer - HIDDEN IN UNIVERSAL MODE (To respect "full height" and new design?)
+            Wait, prompt says "hide its own 'File Path / Title' header". Does not mention footer.
+            However, UniversalCardWrapper has its own footer? No, it has front/back faces.
+            I will KEEP the footer for now as it contains AI status and CardCustomButtons.
+        */}
         <div className="flex-none p-2 bg-[var(--color-background-secondary)] border-t border-[var(--color-border)]">
           {/* Single Row - Status Info and Action Buttons */}
           <div className="flex gap-2 justify-between items-center px-1 text-[10px]">
@@ -555,7 +540,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                   type
                 }}
                 onSubmit={(prompt) => {
-                  // Combine card context with user prompt
                   const contextPrompt = `
 Context from Card ${id}:
 - Current Path: ${currentPath}
@@ -582,7 +566,7 @@ User Question: ${prompt}
               {/* Custom Buttons */}
               <CardCustomButtons
                 cardId={id}
-                buttons={[]} // TODO: Load from backend
+                buttons={[]} 
                 onExecute={(button) => {
                   if (button.action === 'command') {
                     wsActions.sendMessage({ command: button.actionData });
@@ -603,7 +587,6 @@ User Question: ${prompt}
                   }
                 }}
                 onAddButton={() => {
-                  // TODO: Open button creator modal
                   alert('Button creator coming soon! Use Role Creator panel to create buttons.');
                 }}
               />

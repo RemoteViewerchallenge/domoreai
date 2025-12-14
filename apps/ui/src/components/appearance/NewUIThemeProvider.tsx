@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { DesignTheme } from '../design-system/types.js';
-import { defaultDesignThemePresets } from '../design-system/presets.js';
+import type { Theme } from '../../theme/types.js';
+import { defaultTheme } from '../../theme/presets.js';
 
 interface NewUIThemeContextValue {
-  theme: DesignTheme;
-  setTheme: React.Dispatch<React.SetStateAction<DesignTheme>>;
+  theme: Theme;
+  setTheme: React.Dispatch<React.SetStateAction<Theme>>;
 }
 
 const NewUIThemeContext = createContext<NewUIThemeContextValue | undefined>(undefined);
 
 export const NewUIThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<DesignTheme>(defaultDesignThemePresets[0].theme);
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme]);
 

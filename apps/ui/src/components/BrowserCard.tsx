@@ -1,24 +1,42 @@
 import React, { useRef, useState } from 'react';
+import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
+import ResearchBrowser from './ResearchBrowser.js';
+import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock } from 'lucide-react';
 
 /**
- * BrowserCard: An Electron-only browser card using the <webview> tag for full browsing.
- * Shows a warning if not running in Electron.
+ * BrowserCard: An Electron-only browser card using the <webview> tag.
+ * Wraps functionality in the UniversalCardWrapper.
  */
 
 const isElectron = () => {
-  // Check for Electron renderer process
   return typeof window !== 'undefined' &&
     typeof window.process === 'object' &&
     (window.process as unknown as { versions?: { electron?: string } }).versions?.electron;
 };
 
-export const BrowserCard: React.FC = () => {
+interface BrowserCardProps {
+  headerEnd?: React.ReactNode;
+}
+
+export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
   const [url, setUrl] = useState('https://www.google.com');
   const [input, setInput] = useState(url);
   const webviewRef = useRef<HTMLWebViewElement>(null);
+  
+  // Settings State
+  const [showDebugView, setShowDebugView] = useState(false);
+  const [blockAds, setBlockAds] = useState(true);
+  const [mobileUA, setMobileUA] = useState(false);
+
+  // Sync input with valid URL changes (optional, usually annoying if typing)
+  // We'll just update input on navigation events if we could listen to them.
 
   const handleGo = () => {
-    setUrl(input);
+    let target = input;
+    if (!target.startsWith('http')) {
+      target = `https://${target}`;
+    }
+    setUrl(target);
   };
 
   const handleBack = () => {
@@ -34,37 +52,149 @@ export const BrowserCard: React.FC = () => {
     if (webviewRef.current) webviewRef.current.reload();
   };
 
-  if (!isElectron()) {
-    return (
-      <div className="p-4 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
-        <b>BrowserCard:</b> Full browsing is only available in the desktop (Electron) app.
+  // Settings Panel Content
+  const settingsContent = (
+    <div className="space-y-6 text-zinc-300">
+      
+      {/* Active Role - Mocked for visual */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Role</label>
+        <div className="p-3 bg-zinc-800 rounded border border-zinc-700 flex items-center justify-between">
+            <span>Research Agent (GPT-4)</span>
+            <span className="text-xs text-zinc-500">▼</span>
+        </div>
       </div>
-    );
-  }
+
+      {/* Debugging */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Debugging</label>
+        <div className="p-3 bg-zinc-800/50 rounded border border-zinc-700 space-y-3">
+            <div className="flex items-center gap-3">
+                <input 
+                    type="checkbox" 
+                    id="debug-toggle" 
+                    checked={showDebugView} 
+                    onChange={e => setShowDebugView(e.target.checked)}
+                    className="w-4 h-4 accent-purple-500 bg-zinc-700 border-zinc-600 rounded focus:ring-purple-500 focus:ring-offset-0"
+                />
+                <div>
+                    <label htmlFor="debug-toggle" className="block text-sm font-medium text-zinc-200">Show Agent&apos;s &quot;Research Browser&quot; Stream</label>
+                    <p className="text-xs text-zinc-500">Enable this only if the Agent is stuck or for debugging remote browsing.</p>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Options</label>
+        <div className="space-y-2">
+            <label className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded cursor-pointer transition-colors">
+                <input 
+                    type="checkbox" 
+                    checked={blockAds} 
+                    onChange={e => setBlockAds(e.target.checked)}
+                    className="w-4 h-4 accent-blue-500 rounded"
+                />
+                <span className="text-sm">Block Ads</span>
+            </label>
+            <label className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded cursor-pointer transition-colors">
+                <input 
+                    type="checkbox" 
+                    checked={mobileUA} 
+                    onChange={e => setMobileUA(e.target.checked)}
+                    className="w-4 h-4 accent-blue-500 rounded"
+                />
+                <span className="text-sm">Mobile User Agent</span>
+            </label>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="flex flex-col h-full w-full bg-[var(--color-card-background)] rounded shadow border border-[var(--color-border)] overflow-hidden">
-      <div className="flex items-center gap-2 p-2 bg-[var(--color-background-secondary)] border-b border-[var(--color-border)]">
-        <button onClick={handleBack} className="px-2 py-1 rounded bg-zinc-200 hover:bg-zinc-300">◀</button>
-        <button onClick={handleForward} className="px-2 py-1 rounded bg-zinc-200 hover:bg-zinc-300">▶</button>
-        <button onClick={handleReload} className="px-2 py-1 rounded bg-zinc-200 hover:bg-zinc-300">⟳</button>
-        <input
-          className="flex-1 px-2 py-1 rounded border border-zinc-300 text-xs"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
-        />
-        <button onClick={handleGo} className="px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600">Go</button>
-      </div>
-      {/** @ts-expect-error Electron-specific props: allowpopups, webpreferences */}
-      <webview
-        ref={webviewRef}
-        src={url}
-        style={{ flex: 1, width: '100%', height: '100%' }}
-        allowpopups
-        webpreferences="nativeWindowOpen=yes, contextIsolation=yes, nodeIntegration=no"
-      />
-    </div>
+    <UniversalCardWrapper
+      title="Browser (Electron)"
+      icon={Globe}
+      aiContext={url}
+      settings={settingsContent}
+      headerEnd={headerEnd}
+    >
+        {/* Helper for non-Electron envs */}
+        {!isElectron() && !showDebugView && (
+             <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-900/80 backdrop-blur-sm p-8">
+                <div className="bg-yellow-900/20 border border-yellow-700/50 p-6 rounded-lg max-w-md text-center">
+                    <h3 className="text-yellow-500 font-bold mb-2">Electron Required</h3>
+                    <p className="text-yellow-200/60 text-sm mb-4">
+                        The native browser view requires the Electron app. 
+                        Enable &quot;Show Agent&apos;s Research Browser&quot; in settings to use the remote browser instead.
+                    </p>
+                    <button 
+                        onClick={() => setShowDebugView(true)}
+                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black font-bold rounded transition-colors"
+                    >
+                        Switch to Remote Browser
+                    </button>
+                </div>
+             </div>
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <div className="relative w-full h-full bg-white">
+            
+            {/* The Actual Browser View */}
+            {showDebugView ? (
+                <div className="w-full h-full bg-zinc-900">
+                     <ResearchBrowser initialUrl={url} />
+                </div>
+            ) : (
+                isElectron() ? (
+                    // @ts-expect-error Electron webview tag
+                    <webview
+                        ref={webviewRef}
+                        src={url}
+                        style={{ width: '100%', height: '100%' }}
+                        allowpopups={true}
+                        useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
+                    />
+                ) : null
+            )}
+
+            {/* FLOATING OMNIBOX (Only show if NOT in debug view) */}
+            {!showDebugView && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[600px] max-w-[90%] z-40">
+                    <div className="flex items-center gap-2 p-1.5 pl-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 shadow-2xl rounded-full text-zinc-100 transition-all focus-within:bg-zinc-900 focus-within:border-zinc-500 focus-within:shadow-indigo-500/20">
+                        {/* Lock Icon */}
+                        <div className="text-emerald-500 pl-1"><Lock size={12} /></div>
+                        
+                        {/* Input */}
+                        <input 
+                            className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder-zinc-500 text-zinc-100 h-8 min-w-0"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
+                            placeholder="Search or enter URL"
+                            onFocus={(e) => e.target.select()}
+                        />
+
+                        {/* Controls Group */}
+                        <div className="flex items-center gap-1 pr-1">
+                             <button onClick={handleReload} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                                <RotateCw size={14} />
+                             </button>
+                             <div className="w-px h-4 bg-white/10 mx-1" />
+                             <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                                <ArrowLeft size={14} />
+                             </button>
+                             <button onClick={handleForward} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
+                                <ArrowRight size={14} />
+                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    </UniversalCardWrapper>
   );
 };
 
