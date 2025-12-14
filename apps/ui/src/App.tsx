@@ -110,7 +110,7 @@ function App() {
             letterSpacing: 'var(--letter-spacing)'
           }}
         >
-          {location.pathname !== '/supernodes' && <UnifiedMenuBar />}
+          <UnifiedMenuBar />
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<WorkSpace />} />
