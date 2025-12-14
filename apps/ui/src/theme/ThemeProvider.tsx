@@ -107,3 +107,8 @@ export const useThemeContext = () => {
   }
   return context;
 };
+
+export const useAnimations = () => {
+  const { theme } = useThemeContext();
+  return theme.animations;
+};

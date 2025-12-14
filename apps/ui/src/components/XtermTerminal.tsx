@@ -1,23 +1,32 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useTheme } from '../hooks/useTheme';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { useTheme } from '../hooks/useTheme.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
+import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
 import type { TerminalMessage } from '@repo/common/agent';
+import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
+import { Terminal as TerminalIcon, ArrowRight, Sparkles } from 'lucide-react';
 
 interface XtermTerminalProps {
   logs: TerminalMessage[];
   workingDirectory?: string;
   onInput: (input: string) => void;
+  headerEnd?: React.ReactNode;
 }
 
-export default function XtermTerminal({ logs, workingDirectory, onInput }: XtermTerminalProps) {
+export default function XtermTerminal({ logs, workingDirectory, onInput, headerEnd }: XtermTerminalProps) {
   const { theme } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const lastProcessedIndexRef = useRef<number>(-1);
   const logsRef = useRef(logs);
+
+  // AI Command Generator State
+  const [aiRequest, setAiRequest] = useState('');
+  const [aiResult, setAiResult] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Keep logsRef in sync
   useEffect(() => {
@@ -71,15 +80,19 @@ export default function XtermTerminal({ logs, workingDirectory, onInput }: Xterm
           fontSize: 14,
           fontFamily: 'Menlo, Monaco, "Courier New", monospace',
           theme: {
-            background: theme.colors.background || '#09090b',
+            background: 'transparent', // Transparent to let app theme bleed through
             foreground: theme.colors.text || '#e4e4e7',
             cursor: theme.colors.primary?.value || '#22d3ee',
+            selectionBackground: 'rgba(255, 255, 255, 0.3)',
           },
           allowProposedApi: true,
         });
 
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
+        
+        // Add WebLinks Addon
+        term.loadAddon(new WebLinksAddon());
 
         term.open(terminalRef.current);
         try {
@@ -117,7 +130,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput }: Xterm
           lastProcessedIndexRef.current = -1;
       }
     };
-  }, [onInput, processLogs, formatPrompt, workingDirectory]);
+  }, [onInput, processLogs, formatPrompt, workingDirectory, theme]);
 
   // Update prompt when working directory changes
   useEffect(() => {
@@ -131,5 +144,115 @@ export default function XtermTerminal({ logs, workingDirectory, onInput }: Xterm
     processLogs();
   }, [logs, processLogs]);
 
-  return <div className="h-full w-full overflow-hidden bg-[var(--color-background)] text-left" ref={terminalRef} />;
+  // Handle AI Generation
+  const handleGenerateCommand = () => {
+    if (!aiRequest.trim()) return;
+    setIsGenerating(true);
+    
+    // Simulate AI Call
+    setTimeout(() => {
+        // Simple mock response logic for demo
+        let response = `find . -name "${aiRequest.split(' ')[0]}*"`;
+        if (aiRequest.includes('kill') && aiRequest.includes('3000')) {
+             response = "kill -9 $(lsof -t -i:3000)";
+        } else if (aiRequest.includes('log')) {
+             response = 'find . -name "*.log" -size +100M -delete';
+        }
+        
+        setAiResult(response);
+        setIsGenerating(false);
+    }, 1500);
+  };
+
+  const handleInsertCommand = () => {
+      if (!xtermRef.current || !aiResult) return;
+      onInput(aiResult);
+      // Optional: focus terminal
+      xtermRef.current.focus();
+      // Reset
+      setAiResult('');
+      setAiRequest('');
+  };
+
+  // Settings Panel Content
+  const settingsContent = (
+    <div className="space-y-6 text-zinc-300">
+       <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles size={12} className="text-purple-400" />
+                AI Command Generator
+            </label>
+            <div className="p-4 bg-zinc-800/50 rounded border border-zinc-700 space-y-4">
+                
+                {/* Request Input */}
+                <div className="space-y-1">
+                    <label className="text-xs text-zinc-400">Request</label>
+                    <textarea 
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-zinc-200 focus:border-purple-500 outline-none resize-none h-20"
+                        placeholder="e.g. Find all large log files and delete them"
+                        value={aiRequest}
+                        onChange={e => setAiRequest(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleGenerateCommand();
+                            }
+                        }}
+                    />
+                </div>
+
+                {/* Generate Button */}
+                {!aiResult && (
+                    <button 
+                        onClick={handleGenerateCommand}
+                        disabled={isGenerating || !aiRequest.trim()}
+                        className="w-full flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded font-medium transition-colors"
+                    >
+                        {isGenerating ? (
+                            <span className="animate-pulse">Generating...</span>
+                        ) : (
+                            <>
+                                <Sparkles size={14} />
+                                <span>Generate Command</span>
+                            </>
+                        )}
+                    </button>
+                )}
+
+                {/* Result Area */}
+                {aiResult && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-3 pt-2 border-t border-zinc-700/50">
+                        <div className="bg-black/50 p-3 rounded font-mono text-sm text-green-400 border border-zinc-700 break-all">
+                            &gt; {aiResult}
+                        </div>
+                        <button 
+                            onClick={handleInsertCommand}
+                            className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-200 hover:bg-white text-zinc-900 rounded font-bold transition-colors"
+                        >
+                            <span>Insert into Terminal</span>
+                            <ArrowRight size={14} />
+                        </button>
+                    </div>
+                )}
+            </div>
+       </div>
+    </div>
+  );
+
+  return (
+    <UniversalCardWrapper
+      title="Terminal (Local)"
+      icon={TerminalIcon}
+      aiContext={workingDirectory || 'Local Terminal'}
+      settings={settingsContent}
+      headerEnd={headerEnd}
+    >
+      <div 
+        className="h-full w-full overflow-hidden bg-zinc-950/90 text-left" 
+        ref={terminalRef} 
+        // Force background to be partially transparent to show "Bleed through"
+        style={{ backgroundImage: 'radial-gradient(circle at center, rgba(30,30,40,0.5) 0%, rgba(10,10,15,0.95) 100%)' }}
+      />
+    </UniversalCardWrapper>
+  );
 }

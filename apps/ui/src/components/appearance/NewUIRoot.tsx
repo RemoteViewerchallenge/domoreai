@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
 import { Command } from 'cmdk';
 
 import { NewUIThemeProvider, useNewUITheme } from './NewUIThemeProvider.js';
-import { buildCssVariablesFromTheme } from '../design-system/cssVariables.js';
+import { buildCssVariablesFromTheme } from '../../design-system/cssVariables.js';
 import { ThemeEditorSidebar } from './ThemeEditorSidebar.js';
-import { UIDisplayPage } from './UIDisplayPage.js';
+import { UIDisplayPage } from '../../pages/UIDisplayPage.js';
+
+import type { Theme } from '../../theme/types.js';
+import type { DesignTheme } from '../../design-system/types.js';
 
 const keyMap = {
   OPEN_COMMAND_MENU: 'ctrl+k',
@@ -13,13 +16,54 @@ const keyMap = {
   TOGGLE_THEME_EDITOR: 'ctrl+e',
 };
 
-const NewUIInternal: React.FC = () => {
+const adaptThemeToDesignTheme = (theme: Theme): DesignTheme => {
+    const getColor = (c: any) => (typeof c === 'object' && c !== null && 'value' in c) ? c.value : c;
+
+    return {
+        colors: {
+            primary: getColor(theme.colors.primary),
+            secondary: getColor(theme.colors.secondary),
+            accent: getColor(theme.colors.accent),
+            success: getColor(theme.colors.success),
+            background: theme.colors.background,
+            backgroundSecondary: theme.colors.backgroundSecondary,
+            text: theme.colors.text,
+            textSecondary: theme.colors.textSecondary,
+            border: theme.colors.border,
+        },
+        gradients: {
+            primary: `linear-gradient(135deg, ${getColor(theme.colors.primary)} 0%, ${getColor(theme.colors.accent)} 100%)`,
+            accent: `linear-gradient(135deg, ${getColor(theme.colors.accent)} 0%, ${getColor(theme.colors.secondary)} 100%)`,
+            surface: `linear-gradient(180deg, ${theme.colors.background} 0%, ${theme.colors.backgroundSecondary} 100%)`,
+            button: theme.colors.buttonBackground || `linear-gradient(180deg, ${theme.colors.backgroundSecondary} 0%, ${theme.colors.background} 100%)`,
+        },
+        typography: {
+            fontFamilyUi: 'system',
+            fontFamilyMono: 'mono',
+            baseSize: theme.visual.fontSize,
+            secondarySize: theme.visual.fontSize * 0.85,
+        },
+        visual: {
+            borderWidth: theme.visual.borderWidth,
+            glowIntensity: theme.visual.glowIntensity,
+            radiusScale: 1,
+            density: 'standard',
+        }
+    };
+};
+
+const NewUIInternal: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { theme, setTheme } = useNewUITheme();
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [showThemeEditor, setShowThemeEditor] = useState(false);
 
   // 1. Apply the current theme to the entire component
-  const cssVariables = buildCssVariablesFromTheme(theme);
+  const designTheme = adaptThemeToDesignTheme(theme);
+  const cssVariables = buildCssVariablesFromTheme(designTheme);
+
+  const handleUpdateTheme = (partial: Partial<Theme>) => {
+      setTheme((prev) => ({ ...prev, ...partial }));
+  };
 
   // 2. Hotkeys handlers
   const handlers = {
@@ -60,12 +104,12 @@ const NewUIInternal: React.FC = () => {
         {showThemeEditor && (
           <ThemeEditorSidebar
             theme={theme}
-            onUpdateTheme={setTheme}
+            onUpdateTheme={handleUpdateTheme}
             onClose={() => setShowThemeEditor(false)}
           />
         )}
 
-        <UIDisplayPage onToggleSidebar={() => setShowThemeEditor((show) => !show)} />
+        {children ? children : <UIDisplayPage onToggleSidebar={() => setShowThemeEditor((show) => !show)} />}
 
         {showCommandMenu && (
           <Command.Dialog open={showCommandMenu} onOpenChange={setShowCommandMenu} label="Global Command Menu">
@@ -98,10 +142,10 @@ const NewUIInternal: React.FC = () => {
   );
 };
 
-export const NewUIRoot: React.FC = () => {
+export const NewUIRoot: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   return (
     <NewUIThemeProvider>
-      <NewUIInternal />
+      <NewUIInternal>{children}</NewUIInternal>
     </NewUIThemeProvider>
   );
 };
