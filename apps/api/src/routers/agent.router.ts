@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
+<<<<<<< HEAD
 import { AgentService, startSessionSchema } from '../services/agent.service.js';
+=======
+import { AgentRuntime } from '../services/AgentRuntime.js';
+import { createVolcanoAgent } from '../services/AgentFactory.js';
+import type { CardAgentState } from '../types.js';
+import { ProviderManager } from '../services/ProviderManager.js';
+>>>>>>> ee321ad (Refactor Core Services to Interfaces & Document API)
 
 const agentService = new AgentService();
 
