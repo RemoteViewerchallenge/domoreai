@@ -31,19 +31,33 @@ export const codeGraphRouter = createTRPCRouter({
       // Filter Nodes
       let filteredNodes = nodes;
 
-      // 1. Division Filter
+      // 1. Division Filter (Keep directories to maintain structure)
       if (input.division && input.division !== 'all') {
-          filteredNodes = filteredNodes.filter(n => n.data?.department === input.division);
+          filteredNodes = filteredNodes.filter(n => 
+            n.data?.department === input.division || n.type === 'directory'
+          );
       }
 
-      // 2. Orphan Filter (Hide if no edges connected)
+      // 2. Orphan Filter (Hide if no edges connected, but keep directories)
       if (!input.showOrphans) {
           filteredNodes = filteredNodes.filter(n => {
+              if (n.type === 'directory') return true;
               const hasSourceEdge = edges.some(e => e.source === n.id);
               const hasTargetEdge = edges.some(e => e.target === n.id);
               return hasSourceEdge || hasTargetEdge;
           });
       }
+
+      // 3. SANITIZE PARENT IDs (Critical for ReactFlow)
+      // If a node's parent is not in the filtered list, remove the parentId.
+      // This allows the node to float at the root level instead of crashing the app.
+      const nodeIds = new Set(filteredNodes.map(n => n.id));
+      filteredNodes = filteredNodes.map(n => {
+          if (n.parentId && !nodeIds.has(n.parentId)) {
+              return { ...n, parentId: undefined };
+          }
+          return n;
+      });
 
       // Filter edges to only include those between filtered nodes
       const filteredEdges = edges.filter(e => 

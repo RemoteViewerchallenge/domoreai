@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Cpu, GitBranch, HardDrive, Server, Settings, Share2, Star, Bot } from 'lucide-react';
+import { Cpu, GitBranch, HardDrive, Server, Settings, Share2, Star } from 'lucide-react';
 
 import { AiButton } from '../components/ui/AiButton.js';
 import { Accordion } from '../components/ui/Accordion.js';
 import DualRangeSlider from '../components/ui/DualRangeSlider.js';
-import { useAnimations } from '../theme/ThemeProvider.js';
+import { useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 import { NewUIMenuBar } from '../components/appearance/NewUIMenuBar.js';
 
 const cardVariants = {
@@ -23,7 +23,8 @@ interface UIDisplayPageProps {
 }
 
 export const UIDisplayPage: React.FC<UIDisplayPageProps> = ({ onToggleSidebar }) => {
-  const { enabled: animationsEnabled } = useAnimations();
+  const { theme } = useNewUITheme();
+  const animationsEnabled = theme.animations.enabled;
   const MotionDiv = animationsEnabled ? motion.div : 'div';
 
   return (

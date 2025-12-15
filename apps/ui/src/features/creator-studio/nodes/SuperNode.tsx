@@ -2,7 +2,8 @@ import React, { memo, useState, useMemo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { 
   FileCode, Sparkles,
-  Maximize2, Minimize2, X 
+  Maximize2, Minimize2, X,
+  AppWindow, Component, FunctionSquare
 } from 'lucide-react';
 import { CodeCapability } from './capabilities/CodeCapability.js'; 
 import { CardAgentPrompt } from '../../../components/work-order/CardAgentPrompt.js';
@@ -51,7 +52,11 @@ const SuperNode = ({ data, id, selected }: NodeProps<SuperNodeData>) => {
         style={{ backgroundColor: 'var(--color-card-header-background)', borderColor: 'var(--color-border)' }}
       >
         <div className="flex items-center gap-3">
-          <FileCode size={14} style={{ color: deptStyle.text }} />
+          {data.roleId === 'page' ? <AppWindow size={14} style={{ color: deptStyle.text }} /> :
+           data.roleId === 'component' ? <Component size={14} style={{ color: deptStyle.text }} /> :
+           data.roleId === 'hook' ? <FunctionSquare size={14} style={{ color: deptStyle.text }} /> :
+           <FileCode size={14} style={{ color: deptStyle.text }} />
+          }
           <span className="font-mono text-[11px] font-bold truncate max-w-[180px]" style={{ color: 'var(--color-text)' }} title={data.label}>
             {data.label}
           </span>

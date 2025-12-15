@@ -8,6 +8,9 @@ import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock } from 'lucide-react';
  * Wraps functionality in the UniversalCardWrapper.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const WebView = 'webview' as any;
+
 const isElectron = () => {
   return typeof window !== 'undefined' &&
     typeof window.process === 'object' &&
@@ -139,60 +142,56 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
              </div>
         )}
 
-        {/* MAIN CONTENT AREA */}
-        <div className="relative w-full h-full bg-white">
-            
-            {/* The Actual Browser View */}
-            {showDebugView ? (
-                <div className="w-full h-full bg-zinc-900">
-                     <ResearchBrowser initialUrl={url} />
-                </div>
-            ) : (
-                isElectron() ? (
-                    // @ts-expect-error Electron webview tag
-                    <webview
-                        ref={webviewRef}
-                        src={url}
-                        style={{ width: '100%', height: '100%' }}
-                        allowpopups={true}
-                        useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
-                    />
-                ) : null
-            )}
-
-            {/* FLOATING ADDRESS BAR (Only show if NOT in debug view) */}
-            {!showDebugView && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[600px] max-w-[90%] z-40">
-                    <div className="flex items-center gap-2 p-1.5 pl-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 shadow-2xl rounded-full text-zinc-100 transition-all focus-within:bg-zinc-900 focus-within:border-zinc-500 focus-within:shadow-indigo-500/20">
-                        {/* Lock Icon */}
-                        <div className="text-emerald-500 pl-1"><Lock size={12} /></div>
-                        
-                        {/* Input */}
+        <div className="flex flex-col w-full h-full bg-zinc-950">
+             {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
+             {!showDebugView && (
+                <div className="h-10 bg-zinc-950 flex items-center px-2 space-x-2 border-b border-zinc-800">
+                    <button onClick={handleBack} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                        <ArrowLeft size={16} />
+                    </button>
+                    <button onClick={handleForward} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                        <ArrowRight size={16} />
+                    </button>
+                    <button onClick={handleReload} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                        <RotateCw size={16} />
+                    </button>
+                    
+                    {/* Address Input */}
+                    <div className="flex-1 relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                            <Lock size={12} />
+                        </div>
                         <input 
-                            className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder-zinc-500 text-zinc-100 h-8 min-w-0"
+                            className="w-full bg-zinc-900 text-zinc-200 text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
-                            placeholder="Search or enter URL"
-                            onFocus={(e) => e.target.select()}
+                            onFocus={e => e.target.select()}
+                            placeholder="Enter URL or search..."
                         />
-
-                        {/* Controls Group */}
-                        <div className="flex items-center gap-1 pr-1">
-                             <button onClick={handleReload} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
-                                <RotateCw size={14} />
-                             </button>
-                             <div className="w-px h-4 bg-white/10 mx-1" />
-                             <button onClick={handleBack} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
-                                <ArrowLeft size={14} />
-                             </button>
-                             <button onClick={handleForward} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-400 hover:text-white transition-colors">
-                                <ArrowRight size={14} />
-                             </button>
-                        </div>
                     </div>
                 </div>
-            )}
+             )}
+
+            {/* BROWSER CONTENT */}
+            <div className="flex-1 relative bg-white overflow-hidden">
+                {showDebugView ? (
+                    <div className="w-full h-full bg-zinc-900">
+                        <ResearchBrowser initialUrl={url} />
+                    </div>
+                ) : (
+                    isElectron() ? (
+                        <WebView
+                            ref={webviewRef}
+                            src={url}
+                            style={{ width: '100%', height: '100%' }}
+                            allowpopups={true}
+                            webpreferences="nativeWindowOpen=yes"
+                            useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
+                        />
+                    ) : null
+                )}
+            </div>
         </div>
     </UniversalCardWrapper>
   );

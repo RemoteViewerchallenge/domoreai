@@ -11,13 +11,34 @@ import { Layers, Server, Layout, Database, Filter, Settings, PenTool, Network } 
 import { NewUIThemeProvider, useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 
 // Craft.js Imports
-import { Editor, Frame, Element } from '@craftjs/core';
-import { CraftContainer, CraftText, CraftButton, CraftUniversalDataGrid } from '../features/ui-builder/CraftComponents.js';
+import { Editor, Frame, Element, useEditor } from '@craftjs/core';
+import { COMPONENT_REGISTRY } from '../craft-registry.js';
+import { CraftContainer, CraftText } from '../features/ui-builder/CraftComponents.js'; // Keep specific imports for initial template
 import { Toolbox } from '../features/ui-builder/Toolbox.js';
 import { SettingsPanel } from '../features/ui-builder/SettingsPanel.js';
 
 const nodeTypes = {
   superNode: SuperNode,
+};
+
+
+const SaveLayoutButton = () => {
+  const { query } = useEditor();
+
+  const handleSave = () => {
+    const json = query.serialize();
+    console.log('Saved Layout JSON:', json);
+    alert('Layout saved to console!');
+  };
+
+  return (
+    <button 
+      onClick={handleSave}
+      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
+    >
+      Save Layout
+    </button>
+  );
 };
 
 const CreatorStudioContent = () => {
@@ -48,9 +69,11 @@ const CreatorStudioContent = () => {
   useEffect(() => {
     if (data && viewMode === 'graph') {
 
-      setNodes(data.nodes);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setNodes(data.nodes as any);
 
-      setEdges(data.edges);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setEdges(data.edges as any);
     }
   }, [data, setNodes, setEdges, viewMode]);
 
@@ -59,7 +82,7 @@ const CreatorStudioContent = () => {
   // Tab Component
   const Tab = ({ id, label, icon: Icon }: { id: string, label: string, icon: React.ElementType }) => (
     <button 
-      onClick={() => setDivision(id)}
+      onClick={() => setDivision(id as 'all' | 'frontend' | 'backend' | 'database')}
       className={`flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all ${
         division === id 
           ? 'border-[var(--color-primary)] text-[var(--color-text)] bg-[var(--color-background-secondary)]' 
@@ -106,6 +129,7 @@ const CreatorStudioContent = () => {
 
          {/* Right Controls */}
          <div className="flex items-center gap-2">
+            {viewMode === 'builder' && <SaveLayoutButton />}
             {viewMode === 'graph' && (
                 <>
                     <button 
@@ -183,42 +207,34 @@ const CreatorStudioContent = () => {
 
         {/* BUILDER VIEW */}
         {viewMode === 'builder' && (
-            <Editor
-                resolver={{
-                    CraftContainer,
-                    CraftText,
-                    CraftButton,
-                    CraftUniversalDataGrid
-                }}
-            >
-                <div className="flex w-full h-full bg-[#1e1e20]">
-                    {/* Toolbox */}
-                    <Toolbox />
+            // Editor is now wrapping the whole component, so we just render the inner content
+            <div className="flex w-full h-full bg-[#1e1e20]">
+                {/* Toolbox */}
+                <Toolbox />
 
-                    {/* Canvas Area */}
-                    <div className="flex-1 flex flex-col items-center p-8 overflow-y-auto bg-[url('/grid-pattern.svg')]">
-                        <div className="w-full max-w-[1200px] min-h-[800px] bg-zinc-950 border border-zinc-800 shadow-xl rounded-lg overflow-hidden">
-                             <Frame>
-                                <Element 
-                                    is={CraftContainer} 
-                                    canvas 
-                                    background="#09090b" 
-                                    padding={40}
-                                    custom={{ displayName: 'App Root' }}
-                                >
-                                    <CraftText text="Welcome to The Factory" fontSize={24} color="#e4e4e7" />
-                                    <Element is={CraftContainer} canvas background="#18181b" padding={20}>
-                                        <CraftText text="Drag components here..." fontSize={14} color="#a1a1aa" />
-                                    </Element>
+                {/* Canvas Area */}
+                <div className="flex-1 flex flex-col items-center p-8 overflow-y-auto bg-[url('/grid-pattern.svg')]">
+                    <div className="w-full max-w-[1200px] min-h-[800px] bg-zinc-900 border border-zinc-800 shadow-xl rounded-lg overflow-hidden">
+                            <Frame>
+                            <Element 
+                                is={CraftContainer} 
+                                canvas 
+                                background="#09090b" 
+                                padding={40}
+                                custom={{ displayName: 'App Root' }}
+                            >
+                                <CraftText text="Welcome to The Factory" fontSize={24} color="#e4e4e7" />
+                                <Element is={CraftContainer} canvas background="#18181b" padding={20}>
+                                    <CraftText text="Drag components here..." fontSize={14} color="#a1a1aa" />
                                 </Element>
-                             </Frame>
-                        </div>
+                            </Element>
+                            </Frame>
                     </div>
-
-                    {/* Settings Panel */}
-                    <SettingsPanel />
                 </div>
-            </Editor>
+
+                {/* Settings Panel */}
+                <SettingsPanel />
+            </div>
         )}
 
       </div>
@@ -226,11 +242,19 @@ const CreatorStudioContent = () => {
   );
 };
 
+const CreatorStudioWrapped = () => {
+  return (
+    <Editor resolver={COMPONENT_REGISTRY}>
+      <CreatorStudioContent />
+    </Editor>
+  );
+};
+
 export default function CreatorStudio() {
   return (
      <NewUIThemeProvider>
        <ReactFlowProvider>
-         <CreatorStudioContent />
+         <CreatorStudioWrapped />
        </ReactFlowProvider>
      </NewUIThemeProvider>
   );

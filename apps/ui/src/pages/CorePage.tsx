@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
-  Users, Database, Settings, Plus, Play, Save, 
-  Layers, Box, Cpu, Shield, FileCode, Terminal, 
-  Zap, MessageSquare, Move, Search, Maximize, 
+  Users, Settings, Play, Save, 
+  Layers, Box, Terminal, 
+  Zap, Move, Maximize, 
   Minimize, Trash2, Copy, Bot, Network, X, ChevronDown
 } from 'lucide-react';
 import { Layout } from '../components/Layout.js';
@@ -238,7 +238,7 @@ const NODE_WIDTH = 280;
 const NODE_HEIGHT = 100;
 const CONTAINER_MIN_SIZE = 150;
 
-export default function App() {
+export default function CorePage() {
   const [nodes, setNodes] = useState<OrgNode[]>(INITIAL_NODES);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);

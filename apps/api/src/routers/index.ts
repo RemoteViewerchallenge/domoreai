@@ -17,8 +17,10 @@ import { contextRouter } from './context.router.js';
 import { workspaceRouter } from './workspace.router.js';
 import { codeGraphRouter } from './codeGraph.router.js';
 import { volcanoRouter } from './volcano.router.js';
+import { ingestionRouter } from './ingestion.router.js';
 
 export const appRouter = createTRPCRouter({
+  ingestion: ingestionRouter,
   project: projectRouter,
   codeGraph: codeGraphRouter,
   git: gitRouter,

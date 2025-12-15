@@ -35,8 +35,8 @@ export type OrchestrationStep = {
   label: string; // Display name on canvas
   type: 'agent' | 'judge' | 'manager' | 'router' | 'start' | 'end';
   
-  // The Link to the Role (Identity) - Removed for decoupling
-  // assignedRoleId?: string;  
+  // The Link to the Role (Identity)
+  assignedRoleId?: string;  
   
   // Data Flow (Inputs)
   inputMapping: Record<string, string>; // e.g. { "code": "{{context.step1.output}}" }

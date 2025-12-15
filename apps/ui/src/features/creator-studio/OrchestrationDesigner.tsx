@@ -34,7 +34,8 @@ export const OrchestrationDesigner: React.FC = () => {
     modelProvider: 'openai', // Default or derived
     model: 'gpt-4', // Default or derived
     systemPrompt: r.basePrompt,
-    temperature: r.defaultTemperature || 0.7,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    temperature: ((r as any).defaultTemperature as number) || 0.7,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: (r as any).tools || []
   }));
@@ -128,14 +129,12 @@ export const OrchestrationDesigner: React.FC = () => {
 
   const handleCreateRole = async (newRole: RoleConfig) => {
     // Persist to backend
-    const createdRole = await createRoleMutation.mutateAsync({
+    await createRoleMutation.mutateAsync({
       name: newRole.name,
       basePrompt: newRole.systemPrompt,
-      defaultTemperature: newRole.temperature,
       tools: newRole.tools
     });
 
-    // Update any nodes that were temporarily assigned the temp ID
     // Update any nodes that were temporarily assigned the temp ID - Logic removed as roles are decoupled
     /*
     setNodes(nds => nds.map(node => {
@@ -161,7 +160,6 @@ export const OrchestrationDesigner: React.FC = () => {
       id: updatedRole.id,
       name: updatedRole.name,
       basePrompt: updatedRole.systemPrompt,
-      defaultTemperature: updatedRole.temperature,
       tools: updatedRole.tools
     });
   };

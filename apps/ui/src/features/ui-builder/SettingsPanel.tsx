@@ -2,7 +2,6 @@ import React from 'react';
 import { useEditor } from '@craftjs/core';
 
 export const SettingsPanel = () => {
-    // @ts-expect-error Craft.js types
   const { actions, selected } = useEditor((state, query) => {
     const [currentNodeId] = state.events.selected;
     let selected;
