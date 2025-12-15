@@ -109,13 +109,23 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [isNewCategory, setIsNewCategory] = useState<boolean>(false);
 
+  // Helper to extract category name safely
+  const getCategoryName = (role: any): string => {
+    if (role.category && typeof role.category === 'object' && 'name' in role.category) {
+        return role.category.name || 'Uncategorized';
+    }
+    if (role.categoryString) return role.categoryString;
+    if (typeof role.category === 'string') return role.category;
+    return 'Uncategorized';
+  };
+
   const uniqueCategories = useMemo(() => {
     const categories = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (roles as any[])?.forEach(role => {
-      if (role.category) categories.add(role.category);
+       categories.add(getCategoryName(role));
     });
-    return Array.from(categories).sort();
+    return Array.from(categories).filter(Boolean).sort();
   }, [roles]);
 
   // Memoize grouped roles for performance and to ensure categories are processed consistently
@@ -124,7 +134,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     const groups: Record<string, Role[]> = {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (roles as any[])?.forEach(role => {
-      const category = role.category || 'Uncategorized';
+      const category = getCategoryName(role);
       if (!groups[category]) {
         groups[category] = [];
       }
@@ -306,7 +316,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     setFormData({
       name: role.name,
       basePrompt: role.basePrompt,
-      category: role.category || '',
+      category: (role.category as any)?.name || (typeof role.category === 'string' ? role.category : '') || '',
       minContext: role.minContext || 0, // Added minContext
       maxContext: role.maxContext || 128000, // Added maxContext
       needsVision: role.needsVision,

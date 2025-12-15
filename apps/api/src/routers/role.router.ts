@@ -114,26 +114,38 @@ export const roleRouter = createTRPCRouter({
 
   // --- CATEGORY MANAGEMENT ---
   
+  // --- CATEGORY MANAGEMENT ---
+  
   listCategories: publicProcedure.query(async () => {
+    // Nested query is tricky with simple client usage.
+    // We return flat list and reconstruct tree on client, or return with children.
+    // Let's return flat for maximum flexibility in UI.
     return prisma.roleCategory.findMany({
       orderBy: { order: 'asc' },
     });
   }),
 
   createCategory: publicProcedure
-    .input(z.object({ name: z.string().min(1) }))
+    .input(z.object({ name: z.string().min(1), parentId: z.string().optional() }))
     .mutation(async ({ input }) => {
       return prisma.roleCategory.create({
-        data: { name: input.name }
+        data: { 
+            name: input.name,
+            parentId: input.parentId || null
+        }
       });
     }),
 
   updateCategory: publicProcedure
-    .input(z.object({ id: z.string(), name: z.string().min(1) }))
+    .input(z.object({ id: z.string(), name: z.string().min(1).optional(), parentId: z.string().nullable().optional() }))
     .mutation(async ({ input }) => {
+      const data: any = {};
+      if (input.name) data.name = input.name;
+      if (input.parentId !== undefined) data.parentId = input.parentId;
+
       return prisma.roleCategory.update({
         where: { id: input.id },
-        data: { name: input.name }
+        data: data
       });
     }),
 
@@ -142,14 +154,27 @@ export const roleRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const category = await prisma.roleCategory.findUnique({
           where: { id: input.id },
-          include: { roles: true } 
+          include: { roles: true, children: true } 
       });
 
-      if (category && category.roles.length > 0) {
-          await prisma.role.updateMany({
-              where: { categoryId: input.id },
-              data: { categoryId: null, categoryString: 'Uncategorized' }
-          });
+      if (category) {
+          // Flatten roles: set category to null (or parent?)
+          // Let's set to null ('Uncategorized') for safety
+          if (category.roles.length > 0) {
+              await prisma.role.updateMany({
+                  where: { categoryId: input.id },
+                  data: { categoryId: null, categoryString: 'Uncategorized' }
+              });
+          }
+          
+          // Flatten children: move up to root or parent?
+          // Let's set to null (root)
+          if(category.children.length > 0) {
+             await prisma.roleCategory.updateMany({
+                where: { parentId: input.id },
+                data: { parentId: category.parentId } // Move to grandparent or root
+             });
+          }
       }
 
       return prisma.roleCategory.delete({
@@ -272,7 +297,7 @@ export const roleRouter = createTRPCRouter({
     // Get the directory where this router is located
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const agentsDir = path.join(__dirname, "../../data/agents/en");
+    const agentsDir = path.join(__dirname, "../../../data/agents/en");
 
     const stats = await ingestAgentLibrary(agentsDir, prisma);
     return {

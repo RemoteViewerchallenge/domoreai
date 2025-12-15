@@ -1,10 +1,6 @@
 import { DynamicModelAdapter, type DynamicModel } from '../services/DynamicModelAdapter.js';
 import { UsageCollector } from '../services/UsageCollector.js';
-import { getRedisClient } from '../redis.js';
 import { prisma } from '../db.js';
-import { AssessmentService } from '../services/AssessmentService.js';
-import { ProviderManager } from '../services/ProviderManager.js';
-import { CreditGuard } from '../services/CreditGuard.js';
 
 // --- Error Classes ---
 export class HardStopError extends Error {
@@ -29,12 +25,6 @@ export interface SelectionCriteria {
   tableName?: string;    // Which Data Lake table to query (default: 'unified_models')
 }
 
-interface ScoredModel {
-  model: DynamicModel;
-  score: number;
-  reasons: string[];
-}
-
 export interface SelectedModel extends DynamicModel {
   onComplete?: (status: 'SUCCESS' | 'FAILURE' | 'RATE_LIMIT', tokensIn: number, tokensOut: number, duration: number) => void;
 }
@@ -47,8 +37,6 @@ export interface SelectedModel extends DynamicModel {
  * @returns A promise that resolves to the selected model with tracking callback
  */
 export async function selectModel(criteria: SelectionCriteria): Promise<SelectedModel | null> {
-  const client = await getRedisClient();
-
   // 1. LOAD: Fetch all models
   const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
   const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
@@ -68,17 +56,16 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
 
   const providers = new Map(candidates.map(m => [m.id, m]));
 
-  // Tier 1: Free Cloud Models (Groq/Gemini)
-  const freeCloudModels = ['gemini-1.5-flash', 'mixtral-8x7b-32768'];
-  for (const modelId of freeCloudModels) {
-    const model = providers.get(modelId);
-    if (model) {
-      const currentUsage = await UsageCollector.getCurrentUsage(model.providerConfigId);
-      const limit = model.rpm_limit || 1000; // Default limit
-      if (currentUsage < limit) {
-        console.log(`Selected Tier 1 model: ${modelId}`);
-        return { ...model, onComplete: createOnCompleteCallback(model) };
-      }
+  // Tier 1: Free Cloud Models (Dynamic Selection)
+  // Filter for models explicitly tagged as free, or having 0 cost.
+  const freeModels = candidates.filter(m => m.is_free_tier || m.cost === 0);
+
+  for (const model of freeModels) {
+    const currentUsage = await UsageCollector.getCurrentUsage(model.providerConfigId);
+    const limit = model.rpm_limit || 1000; // Default limit
+    if (currentUsage < limit) {
+      console.log(`Selected Tier 1 model (Dynamic): ${model.id}`);
+      return { ...model, onComplete: createOnCompleteCallback(model) };
     }
   }
 
@@ -104,7 +91,7 @@ export async function selectModel(criteria: SelectionCriteria): Promise<Selected
 
 function createOnCompleteCallback(model: DynamicModel) {
   return (status: 'SUCCESS' | 'FAILURE' | 'RATE_LIMIT', tokensIn: number, tokensOut: number, duration: number) => {
-    UsageCollector.logRequest({
+    void UsageCollector.logRequest({
       modelId: model.id,
       providerConfigId: model.providerConfigId,
       status,
@@ -138,8 +125,7 @@ export async function selectCandidateModels(criteria: SelectionCriteria): Promis
     if (model.providerConfigId.startsWith('ollama')) {
       rank = 2; // Tier 2 - Local
     }
-    const freeCloudModels = ['gemini-1.5-flash', 'mixtral-8x7b-32768'];
-    if (freeCloudModels.includes(model.id)) {
+    if (model.is_free_tier || model.cost === 0) {
       rank = 1; // Tier 1 - Free Cloud
     }
     return { ...model, rank };
@@ -151,7 +137,7 @@ export async function selectCandidateModels(criteria: SelectionCriteria): Promis
 /**
  * Legacy compatibility function
  */
-export async function loadModelCatalog(paths: string[]): Promise<DynamicModel[]> {
+export async function loadModelCatalog(_paths: string[]): Promise<DynamicModel[]> {
   console.warn('loadModelCatalog is deprecated. Use DynamicModelAdapter.loadModelsFromTable instead.');
   return DynamicModelAdapter.loadModelsFromSimpleDB();
 }

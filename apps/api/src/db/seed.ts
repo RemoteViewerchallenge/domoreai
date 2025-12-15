@@ -51,7 +51,8 @@ async function main() {
           apiKey: p.apiKey,
           baseURL: p.baseURL,
           isEnabled: p.isEnabled,
-          requestsPerMinute: p.requestsPerMinute
+          requestsPerMinute: p.requestsPerMinute,
+          updatedAt: new Date(),
       }).onConflictDoUpdate({
           target: providerConfigs.id,
           set: {
@@ -60,7 +61,8 @@ async function main() {
             apiKey: p.apiKey,
             baseURL: p.baseURL,
             isEnabled: p.isEnabled,
-            requestsPerMinute: p.requestsPerMinute
+            requestsPerMinute: p.requestsPerMinute,
+            updatedAt: new Date(),
           }
       });
     }
@@ -92,7 +94,7 @@ async function main() {
 
       if (existing.length > 0) {
         await db.update(providerConfigs)
-          .set({ apiKey: encryptedKey })
+          .set({ apiKey: encryptedKey, updatedAt: new Date() })
           .where(eq(providerConfigs.id, existing[0].id));
         console.log(`Updated ${p.label}`);
       } else {
@@ -102,6 +104,7 @@ async function main() {
             type: p.type,
             apiKey: encryptedKey,
             isEnabled: true,
+            updatedAt: new Date(),
         });
         console.log(`Created ${p.label}`);
       }

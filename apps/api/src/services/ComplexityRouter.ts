@@ -1,4 +1,4 @@
-import { ProviderManager } from './ProviderManager.js';
+import { prisma } from '../db.js';
 
 export type ComplexityScore = {
   decision: 'single-agent' | 'swarm';
@@ -20,7 +20,7 @@ const COMPLEX_KEYWORDS = ['architect','design system','orchestrate','coordinate'
 export class ComplexityRouter {
   constructor() {}
 
-  async analyzeTask(taskDescription: string, config: any = {}): Promise<ComplexityScore> {
+  async analyzeTask(taskDescription: string, _config: Record<string, unknown> = {}): Promise<ComplexityScore> {
     const reasoning: string[] = [];
     const lower = (taskDescription || '').toLowerCase();
 
@@ -65,25 +65,45 @@ export class ComplexityRouter {
     // --- THE NEW ROUTING LOGIC (Zero-Burn) ---
     let recommendedModel = 'gpt-4o-mini'; // Default safe fallback
 
-    // 1. HEAVY DUTY (Code/Arch) -> Google Free Tier
-    if (taskDescription.includes('code') || taskDescription.length > 500) {
-         if (ProviderManager.hasProvider('google')) {
-             recommendedModel = 'gemini-1.5-pro'; // The King of Free Tier
-         }
-    }
-    // 2. REASONING/WRITING -> Mistral Free
-    else if (taskDescription.includes('plan') || taskDescription.includes('write')) {
-         if (ProviderManager.hasProvider('mistral')) {
-             recommendedModel = 'mistral-small-latest';
-         } else if (ProviderManager.hasProvider('openrouter')) {
-             recommendedModel = 'meta-llama/llama-3-8b-instruct:free';
-         }
-    }
-    // 3. FAST/SIMPLE -> OpenRouter Free
-    else {
-         if (ProviderManager.hasProvider('openrouter')) {
-             recommendedModel = 'google/gemma-2-9b-it:free';
-         }
+    try {
+      // Helper to find best free model with capability
+      const findBestModel = async (capability: string, minContext = 4096) => {
+        return await prisma.model.findFirst({
+          where: {
+            OR: [
+              { isFree: true },
+              { costPer1k: 0 }
+            ],
+            capabilities: { has: capability },
+            specs: {
+               path: ['contextWindow'],
+               gte: minContext
+            }
+          },
+          orderBy: [
+            // { specs: { path: ['speed'], sort: 'desc' } }, // Removed to avoid non-standard Prisma JSON sort typing issues
+            { costPer1k: 'asc' }
+          ]
+        });
+      };
+
+      // 1. HEAVY DUTY (Code/Arch) -> Needs large context and coding capability
+      if (taskDescription.includes('code') || taskDescription.length > 500) {
+           const model = await findBestModel('coding', 16000) || await findBestModel('text', 16000);
+           if (model) recommendedModel = model.id;
+      }
+      // 2. REASONING/WRITING -> Needs reasoning capability
+      else if (taskDescription.includes('plan') || taskDescription.includes('write')) {
+           const model = await findBestModel('reasoning', 8000) || await findBestModel('text', 8000);
+           if (model) recommendedModel = model.id;
+      }
+      // 3. FAST/SIMPLE -> Any text model
+      else {
+           const model = await findBestModel('text', 4096);
+           if (model) recommendedModel = model.id;
+      }
+    } catch (e) {
+      console.warn('DB Model routing failed, using fallback:', e);
     }
 
     reasoning.push('Routed via Zero-Burn Protocol');
