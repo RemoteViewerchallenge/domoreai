@@ -28,7 +28,6 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import ExecutiveOffice from './pages/ExecutiveOffice.js';
 import NexusPage from './pages/Nexus.js';
 import DbBrowserPage from './pages/DbBrowserPage.js';
-import UIDisplayPage from './pages/UIDisplayPage.js';
 import WideScreenWorkspace from './pages/adaptive_workspace_ui.js';
 
 interface Hotkey {
@@ -82,7 +81,6 @@ function App() {
 
                 {/* New Core Components */}
                 <Route path="/db-browser" element={<DbBrowserPage />} />
-                <Route path="/ui-showcase" element={<UIDisplayPage onToggleSidebar={() => {}} />} />
                 <Route path="/adaptive" element={<WideScreenWorkspace />} />
 
                 {/* Legacy / Utilities */}

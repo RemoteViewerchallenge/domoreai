@@ -1,7 +1,7 @@
 /**
  * Neon color palette for VFS-based theming
  */
-export const NEON_COLORS = {
+const NEON_COLORS = {
   root: '#00FFFF',        // Cyan - Root directory
   depth1: '#FF00FF',      // Magenta - First level
   depth2: '#00FF00',      // Lime - Second level
@@ -38,18 +38,6 @@ export const getNeonColorForPath = (path: string): string => {
     default:
       return NEON_COLORS.depth4;
   }
-};
-
-/**
- * Get Tailwind-compatible shadow class for neon glow
- */
-export const getNeonGlowClass = (color: string): string => {
-  // Convert hex to RGB for shadow
-  const r = parseInt(color.slice(1, 3), 16);
-  const g = parseInt(color.slice(3, 5), 16);
-  const b = parseInt(color.slice(5, 7), 16);
-  
-  return `shadow-[0_0_10px_rgba(${r},${g},${b},0.5)]`;
 };
 
 /**
