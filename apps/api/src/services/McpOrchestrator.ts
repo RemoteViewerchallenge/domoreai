@@ -3,6 +3,8 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { RegistryClient } from './mcp-registry-client.js';
 import { SandboxTool } from '../types.js';
 import { searchCodebaseTool } from '../tools/search.js';
+import { IMcpOrchestrator } from '../interfaces/IMcpOrchestrator.js';
+import { IRegistryClient } from '../interfaces/IRegistryClient.js';
 
 interface ActiveServer {
   client: Client;
@@ -10,12 +12,15 @@ interface ActiveServer {
   lastUsed: number;
 }
 
-export class McpOrchestrator {
+export class McpOrchestrator implements IMcpOrchestrator {
   private activeServers = new Map<string, ActiveServer>();
   private CLEANUP_INTERVAL_MS = 60_000;
   private SHUTDOWN_TIMEOUT = 1000 * 60 * 5; // 5 minutes
+  private registryClient: IRegistryClient;
 
-  constructor() {
+  constructor(registryClient?: IRegistryClient) {
+    this.registryClient = registryClient || new RegistryClient();
+
     // Start cleanup interval
     setInterval(() => { void this.cleanupIdleServers(); }, this.CLEANUP_INTERVAL_MS);
   }
@@ -101,7 +106,7 @@ export class McpOrchestrator {
 
     try {
       // 1. Get Config
-      const config = await RegistryClient.getServerConfig(serverName);
+      const config = await this.registryClient.getServerConfig(serverName);
 
       // 2. Initialize Transport (Stdio)
       const transport = new StdioClientTransport({

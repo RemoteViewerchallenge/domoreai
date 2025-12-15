@@ -42,3 +42,14 @@ export interface SandboxTool {
   inputSchema?: any;
   handler?: (args: any) => Promise<any>;
 }
+
+// Represents the state of a single Card's brain
+export interface CardAgentState {
+  roleId: string;
+  modelId: string | null;
+  isLocked: boolean;
+  temperature: number;
+  maxTokens: number;
+  userGoal?: string; // Optional context for memory injection
+  projectPrompt?: string; // Optional project-specific system prompt
+}
