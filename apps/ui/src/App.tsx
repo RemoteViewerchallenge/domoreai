@@ -8,11 +8,12 @@ import CreatorStudio from './pages/CreatorStudio.js';
 import SettingsPage from './pages/SettingsPage.js';
 import FileLocationPage from './pages/FileLocationPage.js';
 import UnifiedProviderPage from './pages/UnifiedProviderPage.js';
-import COORE from './pages/COORE.js';
-import FutureDataExplorer from './pages/Dataexplorer.js';
+import CorePage from './pages/CorePage.js';
+import FutureDataExplorer from './pages/DataExplorer.js';
 import SidebarCustomizer from './pages/SidebarCustomizer.js';
 import SuperNodeCanvas from './pages/SuperNodeCanvas.js';
 import InterfaceBuilderPage from './pages/InterfaceBuilder.js';
+import VolcanoBoardroom from './pages/VolcanoBoardroom.js';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -68,11 +69,12 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/file-location" element={<FileLocationPage />} />
               <Route path="/providers" element={<UnifiedProviderPage />} />
-              <Route path="/coore" element={<COORE />} />
+              <Route path="/coore" element={<CorePage />} />
               <Route path="/data" element={<FutureDataExplorer />} />
               <Route path="/customizer" element={<SidebarCustomizer />} />
               <Route path="/supernodes" element={<SuperNodeCanvas />} />
               <Route path="/interface-builder" element={<InterfaceBuilderPage />} />
+              <Route path="/boardroom" element={<VolcanoBoardroom />} />
               <Route path="*" element={
                 <div className="flex items-center justify-center h-full text-zinc-500">
                   <div className="text-center">

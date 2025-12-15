@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
+import { StrategyEngine } from './StrategyEngine';
 import { config, isMock, TRACE_DIR } from './config';
 import { Bandit } from './bandit';
 import { TaskQueue, Task } from './task-queue';
@@ -68,6 +69,7 @@ export async function runDirective(specInput: any, meta: any = {}) {
   const tasks = spec.spec || [];
   const queue = new TaskQueue();
   const bandit = new Bandit(path.join(process.cwd(), 'out', 'bandit_state.json'));
+  const strategyEngine = new StrategyEngine();
 
   // enqueue
   for (const t of tasks) {
@@ -92,10 +94,17 @@ export async function runDirective(specInput: any, meta: any = {}) {
     if (!task) break;
     trace({ event: 'task.picked', taskId: task.id, role: task.role });
 
-    const arm = bandit.selectArm(task.role);
-    trace({ event: 'bandit.selected', taskId: task.id, arm });
+    // Use Strategy Engine for model selection
+    const modelName = strategyEngine.selectModel(task.role);
+    
+    // Still use bandit for other params if needed, or just log it
+    // const arm = bandit.selectArm(task.role); 
+    // For now we override the model selection entirely
+    const arm = { modelName, id: 'strategy-override', topK: 5 }; 
 
-    const model = registry.pick({ role: task.role, name: arm.modelName });
+    trace({ event: 'strategy.selected', taskId: task.id, model: modelName });
+
+    const model = registry.pick({ role: task.role, name: modelName });
     trace({ event: 'model.call.start', taskId: task.id, model: model.name });
 
     const docs = await retriever.retrieve({ query: task.title, payloadId: task.payloadId, topK: arm.topK || 5 });

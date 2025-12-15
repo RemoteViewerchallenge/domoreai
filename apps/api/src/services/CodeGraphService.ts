@@ -13,6 +13,9 @@ export interface GraphNode {
   parentId?: string;
   imports: string[];
   path: string;
+  data?: {
+      department: string;
+  };
 }
 
 export class CodeGraphService {
@@ -25,7 +28,7 @@ export class CodeGraphService {
         const files = await fs.readdir(curr);
         if (files.includes('pnpm-workspace.yaml') || files.includes('turbo.json')) return curr;
         curr = path.dirname(curr);
-      } catch (e) { break; }
+      } catch { break; }
     }
     return start;
   }
@@ -54,7 +57,6 @@ export class CodeGraphService {
 
     for (const entry of entries) {
       const fullPath = path.join(curr, entry.name);
-      const relative = path.relative(root, fullPath);
 
       if (entry.isDirectory()) {
         nodes.push({
@@ -68,7 +70,7 @@ export class CodeGraphService {
         await this.scanDir(fullPath, root, nodes);
       } else if (/\.(ts|prisma|json|sql)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.map')) {
         
-        let imports: string[] = [];
+        const imports: string[] = [];
         let role = 'config';
 
         // Role Detection
@@ -99,7 +101,10 @@ export class CodeGraphService {
           roleId: role,
           parentId: path.dirname(fullPath),
           imports,
-          path: fullPath
+          path: fullPath,
+          data: {
+              department: role === 'api' ? 'backend' : role === 'db' ? 'database' : 'frontend'
+          }
         });
       }
     }

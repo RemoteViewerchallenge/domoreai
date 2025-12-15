@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Globe, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const BrowserCapability = () => {

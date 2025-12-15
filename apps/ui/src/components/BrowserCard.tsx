@@ -160,7 +160,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
                 ) : null
             )}
 
-            {/* FLOATING OMNIBOX (Only show if NOT in debug view) */}
+            {/* FLOATING ADDRESS BAR (Only show if NOT in debug view) */}
             {!showDebugView && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[600px] max-w-[90%] z-40">
                     <div className="flex items-center gap-2 p-1.5 pl-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 shadow-2xl rounded-full text-zinc-100 transition-all focus-within:bg-zinc-900 focus-within:border-zinc-500 focus-within:shadow-indigo-500/20">

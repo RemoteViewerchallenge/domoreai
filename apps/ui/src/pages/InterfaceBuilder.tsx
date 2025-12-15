@@ -45,7 +45,7 @@ const COMPONENT_PALETTE = [
     label: 'Text Block', 
     icon: Type, 
     defaultClasses: 'text-zinc-300 text-sm leading-relaxed',
-    defaultProps: { text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' }
+    defaultProps: { text: 'This represents a text block. You can edit this content in the properties panel.' }
   },
   { 
     type: 'input', 
