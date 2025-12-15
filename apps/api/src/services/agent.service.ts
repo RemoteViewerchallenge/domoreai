@@ -5,7 +5,7 @@ import { ProviderManager } from './ProviderManager.js';
 import { prisma } from '../db.js';
 import { getBestModel, recordModelFailure, recordProviderFailure } from './modelManager.service.js';
 
-const startSessionSchema = z.object({
+export const startSessionSchema = z.object({
   roleId: z.string(),
   modelConfig: z.object({
     providerId: z.string().optional(),
