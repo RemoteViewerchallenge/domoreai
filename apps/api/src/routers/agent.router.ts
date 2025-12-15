@@ -1,20 +1,8 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { AgentService } from '../services/agent.service.js';
+import { AgentService, startSessionSchema } from '../services/agent.service.js';
 
 const agentService = new AgentService();
-
-const startSessionSchema = z.object({
-  roleId: z.string(),
-  modelConfig: z.object({
-    providerId: z.string().optional(),
-    modelId: z.string().optional(),
-    temperature: z.number().min(0).max(2).default(0.7),
-    maxTokens: z.number().int().min(256).max(32000).default(2048),
-  }),
-  userGoal: z.string().min(1, 'User goal/prompt is required'),
-  cardId: z.string(), // For targeting WebSocket events
-});
 
 export const agentRouter = createTRPCRouter({
   /**
