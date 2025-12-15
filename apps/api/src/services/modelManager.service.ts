@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 // Define a basic interface for the expected data structure.
 interface RawProviderOutput {
-  modelConfigId: string;
+  modelId: string;
   roleId: string;
   userId: string;
   usage?: {
@@ -25,7 +25,7 @@ const prisma = new PrismaClient();
 export async function logUsage(data: RawProviderOutput) {
   // 1. Destructure the *known* fields and capture the "rest"
   const {
-    modelConfigId,
+    modelId,
     roleId,
     userId,
     usage,
@@ -38,7 +38,7 @@ export async function logUsage(data: RawProviderOutput) {
     const newLog = await prisma.modelUsage.create({
       data: {
         userId,
-        modelConfigId, // Relation to ModelConfig
+        modelId, // Relation to Model
         roleId,          // Relation to Role
 
         // Handle null usage from free providers
@@ -90,7 +90,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
   // Load models from JSON instead of DB
   const allModels = loadModelsFromJson();
   // Exclude failed models/providers
-  const candidates = allModels.filter(m =>
+  const candidates = allModels.filter((m: any) =>
     (!failedModels.includes(m.model_id || m.modelId || m.id)) &&
     (!failedProviders.includes(m.provider || m.providerId))
   );
@@ -127,35 +127,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
     } as any;
   }
 
-  // --- HARDCODED OVERRIDE ---
-  // First, check if the role has a specific model assigned to it.
-  // This bypasses all dynamic selection logic.
-  const roleWithOverride = await prisma.role.findUnique({
-    where: { id: roleId },
-    select: { hardcodedModelId: true, hardcodedProviderId: true }
-  });
 
-  if (roleWithOverride?.hardcodedModelId && roleWithOverride.hardcodedProviderId) {
-    const { hardcodedModelId, hardcodedProviderId } = roleWithOverride;
-    console.log(`[Model Selection] ✅ Using hardcoded override for role ${roleId}: ${hardcodedModelId} from ${hardcodedProviderId}`);
-    
-    // Return the model in the format AgentFactory expects.
-    // This structure ensures compatibility with the rest of the system.
-    return {
-      modelId: hardcodedModelId,
-      providerId: hardcodedProviderId,
-      model: {
-        id: hardcodedModelId,
-        providerId: hardcodedProviderId,
-        provider: {
-          id: hardcodedProviderId,
-          type: hardcodedProviderId.split('-')[0] || 'unknown' // Infer type from ID
-        }
-      },
-      temperature: 0.7, // Default values
-      maxTokens: 4096   // Default values
-    };
-  }
 
   // 1. Try Dynamic Registry
   try {
@@ -206,69 +178,28 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 
 // Failure helpers (moved to file bottom to avoid being inside getBestModel)
 
-  // 2. Legacy Fallback (Original Logic)
-  const role = await prisma.role.findUnique({
-    where: { id: roleId },
-    include: {
-      preferredModels: {
-        include: {
-          model: { // Include the Model relation
-            include: {
-              provider: true // Then include the Provider through the Model
-            }
-          }
-        }
-      }
-    },
+  // 2. Legacy Fallback (Original Logic) - REMOVED due to simplified schema
+  // If dynamic selection failed, we have no other source of truth for "preferred models" 
+  // since ModelConfig was removed.
+  // We can fallback to "any enabled model" if that's desired, or just throw.
+  
+  // Try to find ANY enabled model for the requested provider if specified, or just any global model.
+  const fallbackModel = await prisma.model.findFirst({
+      where: { provider: { isEnabled: true } },
+      include: { provider: true }
   });
 
-  if (!role) {
-    throw new Error(`Role not found: ${roleId}`);
+  if (fallbackModel) {
+      return {
+          modelId: fallbackModel.modelId,
+          providerId: fallbackModel.providerId,
+          model: fallbackModel,
+          temperature: 0.7,
+          maxTokens: 2048
+      };
   }
 
-  if (!role.preferredModels || role.preferredModels.length === 0) {
-    // If dynamic failed AND legacy failed, we are truly out of options
-    throw new Error(`Role has no preferred models and no dynamic matches found: ${roleId}`);
-  }
-
-  const oneMinuteAgo = new Date(Date.now() - 60000);
-
-  // Go through preferred models and find the first one that isn't rate-limited
-  for (const modelConfig of role.preferredModels) {
-    const provider = modelConfig.model.provider; // Access provider through model
-    const modelId = modelConfig.model.modelId;
-    
-    // Skip failed models (Circuit Breaker Fix)
-    if (failedModels.includes(modelId)) continue;
-
-    // If provider has no rate limit defined, it's good to go
-    const rpm = provider.requestsPerMinute ?? Infinity;
-
-    // If provider declares no RPM limit in DB, treat as unlimited and pick it
-    if (rpm === Infinity) {
-      return modelConfig;
-    }
-
-    // Check usage in the last minute
-    const usageCount = await prisma.modelUsage.count({
-      where: {
-        modelConfig: { // Filter through modelConfig
-          model: { // Then through model
-            providerId: provider.id
-          }
-        },
-        createdAt: { gte: oneMinuteAgo }, // Use createdAt instead of timestamp
-      },
-    });
-
-    // If usage is *under* the limit, this model is available
-    if (usageCount < rpm) {
-      return modelConfig; // This is a valid model
-    }
-  }
-
-  // If we looped through all models and all are rate-limited
-  throw new Error(`All preferred models for role ${role.name} are rate-limited or failed.`);
+  throw new Error(`No models available for role ${roleId}`);
 }
 
 /**

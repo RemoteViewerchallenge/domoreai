@@ -7,7 +7,6 @@ import { vfsRouter } from './vfs.router.js';
 import { modelRouter } from './model.router.js';
 import { dataRefinementRouter } from './dataRefinement.router.js';
 import { apiExplorerRouter } from './apiExplorer.router.js';
-import { agentRouter } from './agent.router.js';
 import { orchestratorRouter } from './orchestrator.router.js';
 import { orchestrationManagementRouter } from './orchestrationManagement.router.js';
 import { usageRouter } from './usage.router.js';
@@ -31,7 +30,6 @@ export const appRouter = createTRPCRouter({
   model: modelRouter,
   dataRefinement: dataRefinementRouter,
   apiExplorer: apiExplorerRouter,
-  agent: agentRouter,
   context: contextRouter,
   orchestrator: orchestratorRouter,
   orchestrationManagement: orchestrationManagementRouter,

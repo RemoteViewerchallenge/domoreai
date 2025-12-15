@@ -1,6 +1,7 @@
 import { IAgentConfigRepository } from "../interfaces/IAgentConfigRepository.js";
 import { prisma } from "../db.js";
-import { Role, Model, ModelConfig } from "@prisma/client";
+import { Role, Model, Prisma } from "@prisma/client";
+import type { ModelDef } from "../interfaces/IAgentConfigRepository.js";
 
 export class PrismaAgentConfigRepository implements IAgentConfigRepository {
   async getRole(roleId: string): Promise<Role | null> {
@@ -19,7 +20,7 @@ export class PrismaAgentConfigRepository implements IAgentConfigRepository {
     });
   }
 
-  async createModel(modelDef: any): Promise<Model> {
+  async createModel(modelDef: ModelDef): Promise<Model> {
     return prisma.model.create({
       data: {
         modelId: modelDef.id,
@@ -27,40 +28,21 @@ export class PrismaAgentConfigRepository implements IAgentConfigRepository {
         name: modelDef.name || modelDef.id,
         costPer1k: modelDef.costPer1k ?? 0,
         isFree: modelDef.isFree ?? false,
-        providerData: modelDef.providerData ?? {},
+        providerData: (modelDef.providerData ?? {}) as any,
         specs: {
             contextWindow: modelDef.contextWindow ?? 4096,
             hasVision: modelDef.hasVision ?? false,
             hasReasoning: modelDef.hasReasoning ?? false,
             hasCoding: modelDef.hasCoding ?? false,
             lastUpdated: new Date().toISOString()
-        }
+        } as any
       }
     });
   }
 
-  async getModelConfig(modelId: string, roleId: string): Promise<ModelConfig | null> {
-    return prisma.modelConfig.findFirst({
-      where: {
-        modelId: modelId,
-        roles: { some: { id: roleId } }
-      }
-    });
-  }
 
-  async createModelConfig(data: { modelId: string, providerId: string, roleId: string, temperature: number, maxTokens: number }): Promise<ModelConfig> {
-    return prisma.modelConfig.create({
-      data: {
-        modelId: data.modelId,
-        providerId: data.providerId,
-        roles: { connect: { id: data.roleId } },
-        temperature: data.temperature,
-        maxTokens: data.maxTokens
-      }
-    });
-  }
 
-  async createRole(data: any): Promise<Role> {
+  async createRole(data: Prisma.RoleCreateInput): Promise<Role> {
       return prisma.role.create({ data });
   }
 }

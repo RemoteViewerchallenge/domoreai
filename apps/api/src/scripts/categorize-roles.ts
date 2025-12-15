@@ -91,10 +91,7 @@ async function categorizeRoles() {
       await prisma.role.update({
         where: { id: role.id },
         data: {
-          category: newCategory,
-          minContext: 30000, // Set minContext to 30000 as requested
-          // Ensure maxContext is still high enough
-          maxContext: role.maxContext && role.maxContext > 30000 ? role.maxContext : 128000
+          categoryString: newCategory,
         }
       });
       

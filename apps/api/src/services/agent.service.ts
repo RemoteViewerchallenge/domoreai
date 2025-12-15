@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { AgentRuntime } from './AgentRuntime.js';
-import { createVolcanoAgent, type CardAgentState } from './AgentFactory.js';
+import { type IAgent } from "../interfaces/IAgent.js";
+import { type CardAgentState } from "../types.js";
+import { createVolcanoAgent, VolcanoAgent } from "./AgentFactory.js";
 import { ProviderManager } from './ProviderManager.js';
 import { prisma } from '../db.js';
 import { getBestModel, recordModelFailure, recordProviderFailure } from './modelManager.service.js';

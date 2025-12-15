@@ -6,6 +6,7 @@ interface AgentData {
   name: string;
   description: string;
   tools: string[];
+  category?: string;
   systemPrompt: string;
 }
 
@@ -41,12 +42,14 @@ function parseMarkdownAgent(content: string): AgentData {
 
   const name = parseFrontmatterField('name') as string;
   const description = parseFrontmatterField('description') as string;
+  const category = parseFrontmatterField('category') as string;
   const tools = parseFrontmatterField('tools') as string[];
 
   return {
     name,
     description,
     tools,
+    category: category || 'Uncategorized',
     systemPrompt: body,
   };
 }
@@ -166,6 +169,15 @@ export async function ingestAgentLibrary(
           agentData.systemPrompt
         );
 
+        // Manage RoleCategory
+        const categoryName = agentData.category || 'Uncategorized';
+        // Upsert permissionless, assuming name is unique
+        const category = await prisma.roleCategory.upsert({
+            where: { name: categoryName },
+            update: {},
+            create: { name: categoryName }
+        });
+
         // Check if role already exists
         const existing = await prisma.role.findUnique({
           where: { name: agentData.name },
@@ -178,25 +190,12 @@ export async function ingestAgentLibrary(
             data: {
               basePrompt: agentData.systemPrompt,
               tools: filteredTools,
-              needsReasoning,
-              defaultTemperature: 0.7,
-            },
-          });
-          stats.updated++;
-        } else {
-          // Create new role
-          await prisma.role.create({
-            data: {
-              name: agentData.name,
-              basePrompt: agentData.systemPrompt,
-              tools: filteredTools,
-              needsReasoning,
-              defaultTemperature: 0.7,
-              defaultMaxTokens: 2048,
-              defaultTopP: 1.0,
-              defaultFrequencyPenalty: 0.0,
-              defaultPresencePenalty: 0.0,
-            },
+              category: { connect: { id: category.id } },
+              categoryString: categoryName,
+              metadata: {
+                needsReasoning: needsReasoning
+              }, 
+            } as any,
           });
           stats.created++;
           createdNames.add(agentData.name);

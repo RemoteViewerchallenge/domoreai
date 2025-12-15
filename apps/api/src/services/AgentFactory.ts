@@ -226,10 +226,6 @@ export class AgentFactoryService implements IAgentFactory {
                 name: gw.name || 'General Worker',
                 category: gw.category || 'Utility',
                 basePrompt: gw.basePrompt || 'You are a versatile AI assistant.',
-                minContext: gw.minContext ?? null,
-                maxContext: gw.maxContext ?? null,
-                needsReasoning: gw.needsReasoning ?? false,
-                needsCoding: gw.needsCoding ?? false,
                 tools: gw.tools || [],
             });
             role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
@@ -249,8 +245,8 @@ export class AgentFactoryService implements IAgentFactory {
       throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
     }
 
-    let modelConfig: any;
-    let model: any;
+      let model: any;
+      let effectiveConfig: { modelId: string; temperature?: number; maxTokens?: number } = { modelId: '' };
 
     // 2. Model Resolution Strategy
     if (!cardConfig.isLocked || !cardConfig.modelId) {
@@ -261,8 +257,12 @@ export class AgentFactoryService implements IAgentFactory {
         throw new Error("Orchestrator failed to select a model for this agent.");
       }
 
-      modelConfig = bestModel;
       model = bestModel.model;
+      effectiveConfig = {
+          modelId: bestModel.modelId,
+          temperature: bestModel.temperature,
+          maxTokens: bestModel.maxTokens
+      };
     } else {
       // STRATEGY B: Manual/Locked
       const allModels = await this.providerManager.getAllModels();
@@ -279,15 +279,12 @@ export class AgentFactoryService implements IAgentFactory {
 
       if (requestedProviderId) {
          model = await this.configRepo.getModel(requestedProviderId, requestedModelId);
-      } else {
-         // Try to find model by ID across all providers if providerId is unknown
-           // Optimization: Skip valid check if we can't find it.
       }
 
       // Quick Fix for "model not found" when it strictly exists in DB but not cache
       if (!model && (cardConfig.modelId)) {
-           // Attempt to find by just modelId? (AgentConfigRepository doesn't support generic find)
-           // Assuming user provided valid input.
+           // We can't query reliably without providerId in current Repo structure,
+           // but let's assume if we are here, something is wrong or we skip.
       }
 
       if (!modelDef && !model) {
@@ -299,31 +296,24 @@ export class AgentFactoryService implements IAgentFactory {
           console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
 
           try {
-              model = await this.configRepo.createModel(modelDef);
+              model = await this.configRepo.createModel(modelDef as any);
               console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
           } catch (createError) {
                console.error(`[AgentFactory] JIT Creation failed:`, createError);
                throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
           }
       }
-
-      // Find or Create ModelConfig
-      modelConfig = await this.configRepo.getModelConfig(model.id, cardConfig.roleId);
-
-      if (!modelConfig) {
-          // Create a new config for this role
-          modelConfig = await this.configRepo.createModelConfig({
-              modelId: model.id,
-              providerId: model.providerId,
-              roleId: cardConfig.roleId,
-              temperature: cardConfig.temperature,
-              maxTokens: cardConfig.maxTokens
-          });
-      }
+      
+      // Found the model, now set config
+      effectiveConfig = {
+          modelId: model.id,
+          temperature: cardConfig.temperature,
+          maxTokens: cardConfig.maxTokens
+      };
     }
 
     // 3. Configure & Validate Parameters
-    const [safeParams, _adjustments] = await ModelConfigurator.configure(model, role, modelConfig);
+    const [safeParams, _adjustments] = await ModelConfigurator.configure(model, role, effectiveConfig);
 
     // 4. Initialize Provider
     const provider = this.providerManager.getProvider(model.providerId);
@@ -359,7 +349,7 @@ export class AgentFactoryService implements IAgentFactory {
       provider,
       basePrompt,
       {
-        apiModelId: modelConfig.modelId,
+        apiModelId: effectiveConfig.modelId,
         temperature: safeParams.temperature ?? 0.7,
         maxTokens: safeParams.max_tokens ?? 2048
       },
