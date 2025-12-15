@@ -195,10 +195,28 @@ export async function ingestAgentLibrary(
               metadata: {
                 needsReasoning: needsReasoning
               }, 
-            } as any,
+            } as import('@prisma/client').Prisma.RoleUpdateInput,
           });
-          stats.created++;
+          stats.updated++;
           createdNames.add(agentData.name);
+        } else {
+           // Create new role
+           await prisma.role.create({
+             data: {
+               name: agentData.name,
+               basePrompt: agentData.systemPrompt,
+               tools: filteredTools,
+               category: { connect: { id: category.id } },
+               categoryString: categoryName,
+               metadata: {
+                 needsReasoning: needsReasoning,
+                 minContext: 4096,
+                 maxContext: 128000
+               },
+             } as import('@prisma/client').Prisma.RoleCreateInput,
+           });
+           stats.created++;
+           createdNames.add(agentData.name);
         }
 
         console.log(`✓ Ingested role: ${agentData.name}`);

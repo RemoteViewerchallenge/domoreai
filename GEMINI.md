@@ -107,14 +107,12 @@ After these changes, rebuild the API (`pnpm run build`) and restart the server. 
 ## `AGENTS.md`
 
 - **Location:** `/`
-- **Purpose:** This file provides instructions for AI agents working in the repository. It outlines the project philosophy, coding conventions, and best practices.
+- **Location:** `/`
+- **Purpose:** This file provides technical constraints and links to the core strategic protocols in `docs/STRATEGY_AND_RULES.md`.
 - **Core Functions:**
-  - Defines the "Exhaustive Fallbacks" system philosophy.
-  - Sets rules for modularity, naming, and documentation.
-  - Enforces strict TypeScript rules.
-  - Provides guidelines for error handling, async patterns, logging, testing, and security.
-  - Includes the "Golden Rule" for code simplicity.
-  - Specifies the location of the MCP server config.
+  - Enforces database safety ("No data loss").
+  - Defines build, package, and container rules.
+  - points agents to the "Zero-Burn" and "Cell Division" strategies.
 
 ---
 

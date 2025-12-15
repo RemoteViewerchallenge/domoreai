@@ -39,6 +39,21 @@ model Model {
   modelId      String  @map("model_id")
   name         String  @map("model_name")
 
+  // [NEW] Fast filtering for Orchestrator
+  // e.g. ["text", "vision", "audio_input", "speech_generation", "embedding"]
+  // defaulted to ["text"] so agents can start working immediately.
+  capabilities String[] @default(["text"]) 
+
+  // [NEW] Flexible Pricing Configuration
+  // "costPer1k" is kept for legacy text compatibility, but this JSON 
+  // allows multi-modal pricing:
+  // { 
+  //   "image": { "standard": 0.004, "hd": 0.012 }, 
+  //   "audio_in": { "per_minute": 0.006 },
+  //   "embedding": { "per_1k_tokens": 0.0001 }
+  // }
+  pricingConfig Json?    @map("pricing_config")
+
   // THE TRIPLE LAYER SYSTEM
   // 1. Raw Data: Exactly what the API sent us. Never touched by us.
   providerData Json    @default("{}") @map("provider_data")
@@ -59,6 +74,7 @@ model Model {
 
   // Relations
   modelUsage   ModelUsage[]
+  knowledgeVectors KnowledgeVector[]
   
   @@unique([providerId, modelId])
   @@map("model_registry")
@@ -122,6 +138,11 @@ model RoleCategory {
   id        String   @id @default(cuid())
   name      String   @unique
   order     Int      @default(0)
+  
+  parentId  String?
+  parent    RoleCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  RoleCategory[] @relation("CategoryHierarchy")
+
   roles     Role[]
   
   createdAt DateTime @default(now())
@@ -141,10 +162,22 @@ model ModelUsage {
   userId         String
   modelId        String
   roleId         String
-  promptTokens   Int?
+  // Usage Metrics
+  promptTokens     Int?
   completionTokens Int?
-  cost           Float
-  metadata       Json?
+  cost             Float
+  
+  // [NEW] Universal Meter
+  // Stores non-token usage metrics found in headers or calculated by the agent.
+  // e.g. { "images_processed": 2, "audio_seconds": 45, "vector_dimensions": 1536 }
+  usageMetrics     Json?     @default("{}") @map("usage_metrics")
+  
+  // [CHANGE] explicitly document that this JSON contains the raw headers
+  // e.g. { "x-ratelimit-remaining": "50", "x-ratelimit-reset": "16999999" }
+  responseHeaders  Json?     @map("response_headers") 
+
+  // General metadata (errors, finish_reason, etc.)
+  metadata         Json?
 
   // Relations
   model          Model       @relation(fields: [modelId], references: [id])
@@ -228,6 +261,18 @@ model WorkOrderCard {
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   relativePath String   @default(".") // Path relative to Workspace root
   
+  // [NEW] Context Intelligence
+  // We store the calculated "weight" of this card's scope here.
+  // Agents populate this. If null, it means "needs analysis."
+  contextStats   Json? 
+  // Example data shape:
+  // { 
+  //   "fileSize": 10240, 
+  //   "estimatedTokens": 2500, 
+  //   "fileCount": 5, 
+  //   "lastAnalyzedAt": "2023-10-27T10:00:00Z" 
+  // }
+
   // Execution Context
   isRemote    Boolean  @default(false)
   sshConfigId String?  // Optional relation to saved SSH configs (if we persist them)
@@ -284,6 +329,12 @@ model Job {
 
   roleId      String?  // The role responsible for this job
   role        Role?    @relation(fields: [roleId], references: [id])
+
+  // [NEW] Hierarchy for "Cell Division"
+  // Allows a "Lead" job to own several "Worker" jobs
+  parentJobId    String?
+  parentJob      Job?      @relation("JobHierarchy", fields: [parentJobId], references: [id])
+  childJobs      Job[]     @relation("JobHierarchy")
 
   // --- Execution Flow ---
   // For sequential jobs, this points to the job that must be completed first.
@@ -505,4 +556,30 @@ model ComponentRole {
   updatedAt   DateTime @updatedAt
 
   @@unique([cardId, component])
+}
+
+// A generic table to store embeddings linked to any entity (file, job, memory)
+model KnowledgeVector {
+  id          String   @id @default(cuid())
+  
+  // What does this vector represent?
+  entityType  String   // "file", "memory", "role_description"
+  entityId    String   // The ID of the file/memory
+  
+  // Which model generated this? (Critical for knowing if we can compare them)
+  modelId     String
+  model       Model    @relation(fields: [modelId], references: [id])
+  
+  // The actual vector data. 
+  // In standard Prisma, we often use Unsupported("vector") 
+  // or store as Float[] if using a JS-side vector search initially.
+  // For "incomplete data" phase, storing as Float[] is safest/easiest 
+  // until you lock in pgvector.
+  vector      Float[]  
+  
+  dimensions  Int      // e.g., 1536
+  
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
 }
