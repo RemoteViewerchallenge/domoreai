@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
-import { Button } from './ui/Button.js';
+import { Button } from './ui/button.js';
 import { Icon } from './ui/Icon.js';
 import { Panel } from './ui/Panel.js';
 

@@ -60,4 +60,93 @@ export class GitService {
       });
     }
   }
+  
+  async createGhostBranch(vfsToken: string, taskId: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      const branchName = `volcano/task-${taskId}`;
+      
+      // Ensure we are on main and up to date
+      await git.checkout('main');
+      await git.pull();
+      
+      // Create and checkout new branch
+      await git.checkoutLocalBranch(branchName);
+      
+      return branchName;
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Create Ghost Branch failed: ${error.message}`,
+      });
+    }
+  }
+
+  async checkoutBranch(vfsToken: string, branchName: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      await git.checkout(branchName);
+      return { success: true, branch: branchName };
+    } catch (error: any) {
+       throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Checkout Branch failed: ${error.message}`,
+      });
+    }
+  }
+
+  async ratifyBranch(vfsToken: string, branchName: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      
+      // Validate branch name
+      if (!branchName.startsWith('volcano/')) {
+        throw new Error('Can only ratify volcano/* branches');
+      }
+
+      await git.checkout('main');
+      await git.pull();
+      
+      // Squash merge
+      await git.merge([branchName, '--squash']);
+      
+      // Commit the squash
+      await git.commit(`Ratified: ${branchName}`);
+      
+      // Push changes
+      await git.push('origin', 'main');
+      
+      // Delete local branch
+      await git.deleteLocalBranch(branchName);
+
+      return { success: true, ratified: branchName };
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Ratify Branch failed: ${error.message}`,
+      });
+    }
+  }
+
+  async getBranches(vfsToken: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      const branchSummary = await git.branch();
+      
+      // Filter for volcano branches + main
+      const interestingBranches = branchSummary.all.filter(b => 
+        b === 'main' || b.startsWith('volcano/')
+      );
+
+      return {
+        all: interestingBranches,
+        current: branchSummary.current
+      };
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Get Branches failed: ${error.message}`,
+      });
+    }
+  }
 }

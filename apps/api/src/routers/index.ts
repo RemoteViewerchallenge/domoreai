@@ -16,6 +16,7 @@ import { projectRouter } from './project.router.js';
 import { contextRouter } from './context.router.js';
 import { workspaceRouter } from './workspace.router.js';
 import { codeGraphRouter } from './codeGraph.router.js';
+import { volcanoRouter } from './volcano.router.js';
 
 export const appRouter = createTRPCRouter({
   project: projectRouter,
@@ -35,6 +36,7 @@ export const appRouter = createTRPCRouter({
   usage: usageRouter,
   browser: browserRouter,
   workspace: workspaceRouter,
+  volcano: volcanoRouter,
 });
 
 export type AppRouter = typeof appRouter;
