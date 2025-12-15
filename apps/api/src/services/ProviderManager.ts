@@ -1,23 +1,28 @@
-import { eq } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
-import { db, prisma } from '../db.js';
-import { providerConfigs, modelRegistry } from '../db/schema.js';
 import { decrypt, encrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
+import { IProviderManager } from '../interfaces/IProviderManager.js';
+import { IProviderRepository } from '../interfaces/IProviderRepository.js';
+import { ProviderRepository } from '../repositories/ProviderRepository.js';
 
-export class ProviderManager {
-  private static providers: Map<string, BaseLLMProvider> = new Map();
-  private static unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
+export class ProviderManager implements IProviderManager {
+  private providers: Map<string, BaseLLMProvider> = new Map();
+  private unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
   // NEW: Store metadata for logging and filtering
-  private static providerMetadata: Map<string, { label: string; type: string }> = new Map();
+  private providerMetadata: Map<string, { label: string; type: string }> = new Map();
 
-  public static markUnhealthy(providerId: string, cooldownSeconds: number) {
+  private repository: IProviderRepository;
+
+  constructor(repository?: IProviderRepository) {
+      this.repository = repository || new ProviderRepository();
+  }
+
+  public markUnhealthy(providerId: string, cooldownSeconds: number) {
     this.unhealthyProviders.set(providerId, Date.now() + cooldownSeconds * 1000);
     console.warn(`[ProviderManager] Marked ${providerId} as unhealthy. Cooldown for ${cooldownSeconds}s.`);
   }
 
-  public static isHealthy(providerId: string): boolean {
+  public isHealthy(providerId: string): boolean {
       const cooldownEndTime = this.unhealthyProviders.get(providerId);
       if (!cooldownEndTime) {
           return true;
@@ -30,14 +35,14 @@ export class ProviderManager {
       return false;
   }
 
-  static async initialize() {
+  async initialize() {
     // 1. AUTO-BOOTSTRAP FROM ENV (The "Free Labor" Fix)
     // This checks your .env file and inserts them into the DB if missing
     await this.bootstrapFromEnv();
 
     // 2. Load from DB
     try {
-      const configs = await db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
+      const configs = await this.repository.getEnabledProviderConfigs();
       
       this.providers.clear();
       this.providerMetadata.clear(); // Clear metadata
@@ -69,8 +74,7 @@ export class ProviderManager {
     }
   }
 
-  private static async bootstrapFromEnv() {
-    const { v4: uuidv4 } = await import('uuid');
+  private async bootstrapFromEnv() {
     const mappings = [
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },
@@ -82,9 +86,7 @@ export class ProviderManager {
       const key = process.env[map.env];
       if (key) {
         // Check if already exists to avoid duplicates
-        const existing = await db.query.providerConfigs.findFirst({
-           where: eq(providerConfigs.label, map.label)
-        });
+        const existing = await this.repository.findProviderConfigByLabel(map.label);
 
         if (!existing) {
            console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
@@ -93,7 +95,7 @@ export class ProviderManager {
            const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
            const now = new Date();
-           await db.insert(providerConfigs).values({
+           await this.repository.createProviderConfig({
              id: stableId,
              label: map.label,
              type: map.type,
@@ -108,7 +110,7 @@ export class ProviderManager {
     }
   }
 
-  static getProvider(id: string): BaseLLMProvider | undefined {
+  getProvider(id: string): BaseLLMProvider | undefined {
     // Allow lookup by "type" as well if ID fails (e.g. "google")
     if (this.providers.has(id)) return this.providers.get(id);
     
@@ -119,11 +121,11 @@ export class ProviderManager {
     return undefined;
   }
   
-  static hasProvider(partialId: string): boolean {
+  hasProvider(partialId: string): boolean {
       return Array.from(this.providers.keys()).some(k => k.includes(partialId));
   }
 
-  static async getAllModels(): Promise<LLMModel[]> {
+  async getAllModels(): Promise<LLMModel[]> {
     const allModels: LLMModel[] = [];
     for (const provider of this.providers.values()) {
       try {
@@ -140,7 +142,7 @@ export class ProviderManager {
    * Syncs all discovered models to the Drizzle tables.
    * Splits data between Registry (lookup) and Provider Tables (details).
    */
-  static async syncModelsToRegistry() {
+  async syncModelsToRegistry() {
     console.log('[ProviderManager] Starting Registry Sync (Unified)...');
 
     for (const [providerId, provider] of this.providers.entries()) {
@@ -164,34 +166,9 @@ export class ProviderManager {
         const models = snapshot.rawData as LLMModel[];
         console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}.`);
 
-        // NOTE: Raw JSON file export can be re-enabled here if needed.
-        // Data is already saved to RawDataLake database (see snapshotAndFlatten below)
-        // If you need to export models to JSON, use the Data Refinement UI instead
-        /*
-        try {
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-          const filename = `${providerType}_models_${timestamp}.json`;
-          const dataDir = join(process.cwd(), 'apps', 'api', 'data', 'raw_models');
-          await mkdir(dataDir, { recursive: true });
-          const filepath = join(dataDir, filename);
-          console.log(`[ProviderManager] 📝 Saving ${models.length} models to: ${filepath}`);
-          await writeFile(filepath, JSON.stringify(models, null, 2), 'utf8');
-          console.log(`[Provider Manager] ✅ Successfully saved ${models.length} records to: ${filename}`);
-        } catch (fileErr) {
-          console.error(`[ProviderManager] ❌ FAILED TO SAVE FILE:`, fileErr);
-        }
-        */
-
         // The snapshot is already created by RawModelService. We just need to flatten.
         // We pass the snapshot ID to ensure we use the exact data that was saved.
         await this.flattenSnapshot(snapshot.id, providerType, models);
-
-        // 2. Apply provider-specific filters AFTER saving raw data
-        // if (providerType === 'openrouter') {
-        //     const originalCount = models.length;
-        //     models = models.filter(m => m.id.endsWith(':free'));
-        //     console.log(`[Registry Sync] Filtered OpenRouter: Kept ${models.length} free models (dropped ${originalCount - models.length})`);
-        // }
 
         if (models.length === 0) {
           console.warn(`[ProviderManager] No models to sync for ${providerLabel} after filtering`);
@@ -222,7 +199,7 @@ export class ProviderManager {
             hasCoding: m.hasCoding || false
           };
 
-          await prisma.model.upsert({
+          await this.repository.upsertModel({
             where: {
               providerId_modelId: {
                 providerId: providerId,
@@ -268,7 +245,7 @@ export class ProviderManager {
    * Helper to flatten provider data from a snapshot into a dynamic table.
    * The snapshotting part is now handled by RawModelService.
    */
-  private static async flattenSnapshot(snapshotId: string, providerType: string, models: any[]) {
+  private async flattenSnapshot(snapshotId: string, providerType: string, models: any[]) {
     // Flatten into a dynamic table. This is the critical step.
     // Table name convention: "{providerType}_models" (e.g. google_models)
     try {
@@ -291,7 +268,7 @@ export class ProviderManager {
    * Auto-detects a local Ollama instance and registers it as a provider.
    * This allows "zero-config" usage of local models.
    */
-  private static async detectLocalOllama() {
+  private async detectLocalOllama() {
     const ollamaHost = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
     const providerId = 'ollama-local';
 
@@ -307,10 +284,10 @@ export class ProviderManager {
             console.log(`[ProviderManager] ✅ Auto-detected local Ollama at ${ollamaHost}.`);
 
             // Ensure the provider config exists in the database.
-            const existing = await db.query.providerConfigs.findFirst({ where: eq(providerConfigs.id, providerId) });
+            const existing = await this.repository.findProviderConfigById(providerId);
             if (!existing) {
               const now = new Date();
-              await db.insert(providerConfigs).values({
+              await this.repository.createProviderConfig({
                 id: providerId,
                 label: 'Ollama (Local)',
                 type: 'ollama',
@@ -331,5 +308,41 @@ export class ProviderManager {
         // Silent failure - Ollama just isn't running
         // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
     }
+  }
+
+  // --- STATIC FACADE ---
+  // Uses the default repository implementation for backward compatibility
+  private static instance = new ProviderManager();
+
+  public static getInstance() {
+      return this.instance;
+  }
+
+  public static markUnhealthy(providerId: string, cooldownSeconds: number) {
+      this.instance.markUnhealthy(providerId, cooldownSeconds);
+  }
+
+  public static isHealthy(providerId: string): boolean {
+      return this.instance.isHealthy(providerId);
+  }
+
+  static async initialize() {
+      await this.instance.initialize();
+  }
+
+  static getProvider(id: string) {
+      return this.instance.getProvider(id);
+  }
+
+  static hasProvider(partialId: string) {
+      return this.instance.hasProvider(partialId);
+  }
+
+  static async getAllModels(): Promise<LLMModel[]> {
+      return this.instance.getAllModels();
+  }
+
+  static async syncModelsToRegistry() {
+      await this.instance.syncModelsToRegistry();
   }
 }
