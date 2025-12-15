@@ -74,7 +74,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // Agent Configuration (inherits from role, can be overridden per card)
   const [agentConfig, setAgentConfig] = useState<CardAgentState>(() => {
     return {
-      roleId: roleId || null,
+      roleId: roleId || "",
       modelId: null,
       isLocked: false,
       temperature: 0.7,
@@ -246,7 +246,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         
         initializedRef.current = id;
     };
-    init();
+    void init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, currentPath]);
 
@@ -417,7 +417,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           {viewMode === 'settings' && (
             <AgentSettings 
               config={{ ...agentConfig, adjustedParameters }}
-              availableRoles={roles?.map(r => ({ id: r.id, name: r.name, category: r.category })) || []}
+              availableRoles={roles?.map(r => ({ id: r.id, name: r.name, category: r.category || '' })) || []}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               availableModels={models?.map((m: any) => ({
                   id: m.modelId,
@@ -470,8 +470,8 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
               <FileExplorer 
                 files={files} 
                 currentPath={currentPath}
-                onNavigate={navigate}
-                onCreateFolder={mkdir}
+                onNavigate={(p) => void navigate(p)}
+                onCreateFolder={(p) => void mkdir(p)}
                 onRefresh={refresh}
                 onLoadChildren={loadChildren}
                 onEmbedDir={() => {
@@ -615,12 +615,12 @@ User Question: ${prompt}
               <FileExplorer 
                 files={files}
                 currentPath={currentPath}
-                onNavigate={navigate}
-                onCreateFolder={mkdir}
+                onNavigate={(p) => void navigate(p)}
+                onCreateFolder={(p) => void mkdir(p)}
                 onRefresh={refresh}
                 onLoadChildren={loadChildren}
                 onSelect={(path) => {
-                  handleAttachFile(path);
+                  void handleAttachFile(path);
                 }}
                 className="h-full"
               />

@@ -13,7 +13,7 @@ type ElementType = 'container' | 'button' | 'text' | 'input' | 'card';
 interface UIElement {
   id: string;
   type: ElementType;
-  props: Record<string, any>;
+  props: Record<string, string | undefined>;
   children?: UIElement[];
   classes: string;
 }
@@ -69,7 +69,7 @@ export const InterfaceBuilderPage = () => {
 
     const newEl: UIElement = {
       id: Math.random().toString(36).substr(2, 9),
-      type: type as ElementType,
+      type: type,
       classes: def.defaultClasses,
       props: { ...def.defaultProps },
       children: type === 'container' || type === 'card' ? [] : undefined
@@ -86,7 +86,7 @@ export const InterfaceBuilderPage = () => {
     setSelectedId(newEl.id);
   };
 
-  const updateSelected = (key: string, value: any) => {
+  const updateSelected = (key: string, value: string) => {
     if (!selectedId) return;
     setElements(prev => prev.map(el => {
       if (el.id === selectedId) {
@@ -245,7 +245,7 @@ export const InterfaceBuilderPage = () => {
                     <label className="text-xs font-bold text-zinc-400">Text Content</label>
                     <input 
                       type="text" 
-                      value={activeElement.props.text}
+                      value={activeElement.props.text || ''}
                       onChange={(e) => updateSelected('text', e.target.value)}
                       className="bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-white focus:border-indigo-500 outline-none"
                     />

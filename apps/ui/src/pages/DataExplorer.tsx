@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { trpc } from '../utils/trpc.js';
 import { 
   Database, Table, Plus, Minimize2, Maximize2, 
   Sparkles, Link2, Download, Upload, Trash2, 
   Film, FileAudio, FileText, Image, Zap, X, Save, FolderOpen,
-  Code, Layout as LayoutIcon, Grid, Eye, PlayCircle, FileCode, Archive
+  Code, Layout as LayoutIcon, Grid, Eye, PlayCircle, FileCode, Archive, RefreshCw
 } from 'lucide-react';
-import { Layout } from '../components/Layout.js';
 import { AIContextButton } from '../components/AIContextButton.js';
 
 const FutureDataExplorer = () => {
@@ -24,6 +24,7 @@ const FutureDataExplorer = () => {
   };
 
   const [activeTab, setActiveTab] = useState('data');
+  // ... state ...
   const [nodes, setNodes] = useState([
     {
       id: 'node1',
@@ -83,6 +84,23 @@ const FutureDataExplorer = () => {
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [previewAsset, setPreviewAsset] = useState(null);
   const canvasRef = useRef(null);
+  
+  // Track 2 Mutation Hook
+  const utils = trpc.useContext();
+  const importModelsMutation = trpc.ingestion.importModels.useMutation();
+  const importRolesMutation = trpc.ingestion.importRoles.useMutation();
+
+  const handleSync = async () => {
+    try {
+        const [models, roles] = await Promise.all([
+          importModelsMutation.mutateAsync(),
+          importRolesMutation.mutateAsync()
+        ]);
+        alert(`Sync Complete!\nModels: ${models.count}\nRoles: ${roles.count}`);
+    } catch (e: any) {
+        alert(`Sync Failed: ${e.message}`);
+    }
+  };
 
   const handleMouseDown = (e, nodeId) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
@@ -407,8 +425,7 @@ const FutureDataExplorer = () => {
   );
 
   return (
-    <Layout activePage="data">
-      <div className="h-full w-full flex flex-col overflow-hidden font-sans" style={{ backgroundColor: colors.bg }}>
+    <div className="h-full w-full flex flex-col overflow-hidden font-sans" style={{ backgroundColor: colors.bg }}>
       
       <div 
         className="h-14 flex items-center justify-between px-4 border-b"
@@ -421,20 +438,32 @@ const FutureDataExplorer = () => {
           </div>
         </div>
 
-        <button 
-          onClick={() => setShowAIPanel(!showAIPanel)}
-          className="flex items-center gap-2 px-4 py-2 rounded font-bold text-xs animate-pulse"
-          style={{ backgroundColor: colors.primary, color: 'white', boxShadow: `0 0 20px ${colors.primary}50` }}
-        >
-          <Sparkles size={14} /> AI ASSISTANT {connections.length > 0 && `(${connections.length})`}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* TRACK 2: Sync Memory Button */}
+          <button 
+             onClick={handleSync}
+             className="flex items-center gap-2 px-3 py-2 rounded font-bold text-xs transition-colors hover:bg-white/10"
+             style={{ color: colors.textMuted }}
+             title="Sync Models & Roles from Disk"
+          >
+             <RefreshCw size={14} /> SYNC MEMORY
+          </button>
+
+          <button 
+            onClick={() => setShowAIPanel(!showAIPanel)}
+            className="flex items-center gap-2 px-4 py-2 rounded font-bold text-xs animate-pulse"
+            style={{ backgroundColor: colors.primary, color: 'white', boxShadow: `0 0 20px ${colors.primary}50` }}
+          >
+            <Sparkles size={14} /> AI ASSISTANT {connections.length > 0 && `(${connections.length})`}
+          </button>
+        </div>
       </div>
 
       <div className="flex-none flex items-center gap-1 px-4 py-2 border-b" style={{ backgroundColor: colors.bgCard, borderColor: colors.border }}>
         {[
           { id: 'data', icon: Database, label: 'Data Canvas' },
           { id: 'assets', icon: FolderOpen, label: 'Asset Library' },
-          { id: 'dashboard', icon: Layout, label: 'Dashboard' }
+          { id: 'dashboard', icon: LayoutIcon, label: 'Dashboard' }
         ].map(tab => {
           const Icon = tab.icon;
           return (
@@ -629,7 +658,6 @@ Example prompts:
         </div>
       </div>
       </div>
-    </Layout>
   );
 };
 

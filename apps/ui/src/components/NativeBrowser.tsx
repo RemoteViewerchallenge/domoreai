@@ -21,9 +21,15 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
 
   useEffect(() => {
     // Check for Electron
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    if (userAgent.includes('electron')) {
+    // @ts-expect-error process is injected by Electron
+    if (window.process?.type === 'renderer') {
       setIsElectron(true);
+    } else {
+        // Fallback or secondary check
+       const userAgent = window.navigator.userAgent.toLowerCase();
+       if (userAgent.includes('electron')) {
+         setIsElectron(true);
+       }
     }
   }, []);
 
@@ -54,6 +60,19 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
     }
   };
 
+  const [currentUrl, setCurrentUrl] = useState(url);
+  const [inputUrl, setInputUrl] = useState(url);
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      let target = inputUrl;
+      if (!target.startsWith('http')) {
+        target = `https://${target}`;
+      }
+      setCurrentUrl(target);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full h-full bg-zinc-900 overflow-hidden rounded-md border border-zinc-800">
       {/* Browser Toolbar */}
@@ -68,8 +87,14 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
           <RotateCw className="w-4 h-4" />
         </Button>
         
-        <div className="flex-1 bg-zinc-900 rounded px-3 py-1 text-xs text-zinc-300 font-mono truncate">
-          {url}
+        <div className="flex-1">
+          <input 
+            className="w-full bg-zinc-900 rounded px-3 py-1 text-xs text-zinc-300 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-transparent focus:border-emerald-500/50 transition-all"
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={(e) => e.target.select()}
+          />
         </div>
       </div>
 

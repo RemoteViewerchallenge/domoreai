@@ -9,6 +9,7 @@ import {
 
 
 // --- Types (Strictly Typed for Performance) ---
+/* eslint-disable react/prop-types */
 interface InspectorProps {
   selectedNodeId: string | null;
   nodeType: 'ui' | 'api' | 'data';

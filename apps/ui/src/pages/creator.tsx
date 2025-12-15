@@ -7,7 +7,7 @@ export default function CreatorStudio() {
   const [activeTab, setActiveTab] = useState<'roles' | 'orchestrations'>('roles');
 
   return (
-    <div className="flex-1 w-full bg-[var(--color-background)] text-[var(--color-text)] flex flex-col overflow-hidden font-mono">
+    <div className="flex-1 w-full h-full bg-[var(--color-background)] text-[var(--color-text)] flex flex-col overflow-hidden font-mono">
       {/* Tab Switcher Header */}
       <div className="flex-none h-10 border-b border-[var(--color-border)] bg-[var(--color-background-secondary)] flex items-center justify-center px-4">
 

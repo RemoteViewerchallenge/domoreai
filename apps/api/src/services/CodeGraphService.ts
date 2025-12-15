@@ -8,14 +8,19 @@ const __dirname = path.dirname(__filename);
 export interface GraphNode {
   id: string;
   label: string;
-  type: 'file' | 'directory';
+  type: 'file' | 'directory' | 'superNode';
   roleId: string; // 'api', 'service', 'db', 'config'
   parentId?: string;
   imports: string[];
   path: string;
   data?: {
       department: string;
+      label?: string;      // ReactFlow needs label in data often
+      type?: string;       // ReactFlow needs type in data often
+      roleId?: string;
+      filePath?: string;
   };
+  position: { x: number; y: number; };
 }
 
 export class CodeGraphService {
@@ -40,7 +45,7 @@ export class CodeGraphService {
     const nodes: GraphNode[] = [];
     
     // Scan specific backend targets only
-    const targets = ['apps/api/src', 'packages/api-contract/src', 'apps/api/prisma'];
+    const targets = ['apps/api/src', 'apps/ui/src', 'packages/api-contract/src', 'apps/api/prisma'];
     
     for (const target of targets) {
         const targetPath = path.join(root, target);
@@ -65,10 +70,18 @@ export class CodeGraphService {
           type: 'directory',
           roleId: 'folder',
           path: fullPath,
-          imports: []
+          imports: [],
+          position: { x: 0, y: 0 },
+          data: {
+              label: entry.name,
+              type: 'folder',
+              roleId: 'folder',
+              filePath: fullPath,
+              department: 'folder'
+          }
         });
         await this.scanDir(fullPath, root, nodes);
-      } else if (/\.(ts|prisma|json|sql)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.map')) {
+      } else if (/\.(ts|tsx|prisma|json|sql)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.map')) {
         
         const imports: string[] = [];
         let role = 'config';
@@ -77,6 +90,9 @@ export class CodeGraphService {
         if (entry.name.includes('router')) role = 'api';
         else if (entry.name.includes('service')) role = 'service';
         else if (entry.name.endsWith('.prisma')) role = 'db';
+        else if (fullPath.includes('/pages/')) role = 'page';
+        else if (/^[A-Z]/.test(entry.name)) role = 'component'; // React Components usually start with Capital
+        else if (entry.name.startsWith('use')) role = 'hook';
         
         // Parse Imports for TS files
         if (entry.name.endsWith('.ts')) {
@@ -94,17 +110,29 @@ export class CodeGraphService {
             }
         }
 
+        // Department Detection
+        let department = 'backend'; // Default to backend
+        if (fullPath.includes('apps/ui')) department = 'frontend';
+        else if (fullPath.includes('apps/api') || fullPath.includes('packages/api-contract')) department = 'backend';
+        
+        if (role === 'db') department = 'database';
+
         nodes.push({
           id: fullPath,
           label: entry.name,
-          type: 'file',
+          type: 'superNode', // Use superNode for custom rendering
           roleId: role,
           parentId: path.dirname(fullPath),
           imports,
           path: fullPath,
           data: {
-              department: role === 'api' ? 'backend' : role === 'db' ? 'database' : 'frontend'
-          }
+              department: department,
+              label: entry.name,
+              type: role,
+              roleId: role,
+              filePath: fullPath
+          },
+          position: { x: 0, y: 0 }
         });
       }
     }

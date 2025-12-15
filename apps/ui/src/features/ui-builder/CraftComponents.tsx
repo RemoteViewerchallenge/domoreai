@@ -166,3 +166,50 @@ CraftButton.craft = {
         variant: 'primary'
     }
 };
+
+// =============================================================================
+// 5. MOSAIC LAYOUT COMPONENT
+// =============================================================================
+
+import { Mosaic, MosaicWindow } from 'react-mosaic-component';
+import 'react-mosaic-component/react-mosaic-component.css';
+
+export const CraftMosaicLayout = () => {
+    const { connectors: { connect, drag } } = useNode();
+    
+    return (
+        <div 
+            ref={(ref) => { connect(drag(ref as HTMLElement)); }}
+            className="w-full h-[400px] border border-zinc-700 bg-zinc-900 overflow-hidden"
+        >
+            <div className="h-6 bg-zinc-800 border-b border-zinc-700 px-2 text-[10px] font-bold text-zinc-400 flex items-center">
+               LAYOUT ENGINE (MOSAIC)
+            </div>
+            <div className="h-[calc(100%-24px)] w-full">
+               <Mosaic<string>
+                  renderTile={(id, path) => (
+                    <MosaicWindow<string> path={path} title={`Window ${id}`}>
+                        <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">
+                          {id} Content
+                        </div>
+                    </MosaicWindow>
+                  )}
+                  initialValue={{
+                    direction: 'row',
+                    first: 'A',
+                    second: {
+                      direction: 'column',
+                      first: 'B',
+                      second: 'C',
+                    },
+                  }}
+               />
+            </div>
+        </div>
+    );
+};
+
+CraftMosaicLayout.craft = {
+    displayName: 'Layout Engine',
+    props: {}
+};

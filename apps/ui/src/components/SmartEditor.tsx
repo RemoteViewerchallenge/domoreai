@@ -32,14 +32,14 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: strin
 
   // Keep Tiptap content synced if content prop changes externally (e.g. AI writes)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && !editor.isDestroyed && content !== editor.getHTML()) {
       editor.commands.setContent(content); 
     }
   }, [content, editor]);
 
   // Handle Cmd+Enter to Run
   useEffect(() => {
-    if (!editor || !onRun) return;
+    if (!editor || editor.isDestroyed || !onRun) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Enter' && event.shiftKey) {
@@ -49,10 +49,14 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: strin
     };
 
     // Safely access DOM
-    if (editor.view && editor.view.dom) {
-      const dom = editor.view.dom;
-      dom.addEventListener('keydown', handleKeyDown);
-      return () => dom.removeEventListener('keydown', handleKeyDown);
+    try {
+      if (!editor.isDestroyed && editor.view?.dom) {
+        const dom = editor.view.dom;
+        dom.addEventListener('keydown', handleKeyDown);
+        return () => dom.removeEventListener('keydown', handleKeyDown);
+      }
+    } catch (e) {
+      console.warn("SmartEditor: Error attaching keydown listener", e);
     }
   }, [editor, onRun]);
 

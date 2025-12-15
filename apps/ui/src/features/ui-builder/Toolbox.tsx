@@ -1,5 +1,5 @@
 import { useEditor } from '@craftjs/core';
-import { CraftButton, CraftContainer, CraftText, CraftUniversalDataGrid } from './CraftComponents.js';
+import { CraftButton, CraftContainer, CraftText, CraftUniversalDataGrid, CraftMosaicLayout } from './CraftComponents.js';
 
 export const Toolbox = () => {
   const { connectors } = useEditor();
@@ -22,7 +22,7 @@ export const Toolbox = () => {
 
         {/* Text */}
         <div 
-          ref={(ref) => connectors.create(ref as HTMLElement, <CraftText text="Hello World" fontSize={16} />)}
+          ref={(ref) => connectors.create(ref as HTMLElement, <CraftText text="Hello World" fontSize={16} color="#ffffff" />)}
           className="bg-zinc-800 p-3 rounded cursor-move hover:bg-zinc-700 transition-colors border border-transparent hover:border-zinc-600 flex items-center gap-2"
         >
           <div className="w-4 h-4 text-zinc-400 font-serif font-bold">T</div>
@@ -48,6 +48,21 @@ export const Toolbox = () => {
              <div className="bg-zinc-800" /> <div className="bg-zinc-800" />
           </div>
           <span className="text-sm text-zinc-300">Data Grid</span>
+        </div>
+
+        {/* Layout Engine */}
+        <div 
+          ref={(ref) => connectors.create(ref as HTMLElement, <CraftMosaicLayout />)}
+          className="bg-zinc-800 p-3 rounded cursor-move hover:bg-zinc-700 transition-colors border border-transparent hover:border-zinc-600 flex items-center gap-2"
+        >
+          <div className="w-4 h-4 border border-zinc-500 flex flex-col">
+             <div className="flex-1 border-b border-zinc-500" />
+             <div className="flex-1 flex">
+                <div className="flex-1 border-r border-zinc-500" />
+                <div className="flex-1" />
+             </div>
+          </div>
+          <span className="text-sm text-zinc-300">Layout Engine</span>
         </div>
       </div>
     </div>

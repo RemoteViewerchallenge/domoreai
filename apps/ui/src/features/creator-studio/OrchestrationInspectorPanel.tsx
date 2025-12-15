@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { OrchestrationStep, RoleConfig } from './types.js';
-import { Settings, Users, Workflow } from 'lucide-react';
+import { Settings, Workflow } from 'lucide-react';
 
 interface InspectorPanelProps {
   selectedStep: OrchestrationStep | null;
@@ -12,10 +12,7 @@ interface InspectorPanelProps {
 
 export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   selectedStep,
-  availableRoles,
   onUpdateStep,
-  onCreateRole,
-  onUpdateRole
 }) => {
   const [activeTab, setActiveTab] = useState<'flow' | 'role'>('flow');
   

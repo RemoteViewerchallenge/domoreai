@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "desktop": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "desktop": "concurrently \"vite\" \"pnpm --filter api run dev\" \"wait-on tcp:5173 tcp:4000 && electron .\"",
     "build": "vite build",
     "lint": "eslint -c eslint.config.mjs .",
     "lint:fix": "eslint -c eslint.config.mjs . --fix",
@@ -26,6 +26,7 @@
     "@tiptap/starter-kit": "^3.11.0",
     "@trpc/client": "^10.45.2",
     "@trpc/react-query": "^10.45.2",
+    "@vscode/codicons": "^0.0.44",
     "@xyflow/react": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

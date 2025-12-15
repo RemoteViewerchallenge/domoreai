@@ -6,15 +6,15 @@ import { useHotkeys } from '../hooks/useHotkeys.js';
 import { ThemeEditorSidebar } from '../components/appearance/ThemeEditorSidebar.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
-import { trpc } from '../utils/trpc.js'; // Import trpc
+import { trpc } from '../utils/trpc.js';
 
-export default function WorkSpace() {
+export default function ExecutiveOffice() {
   const { theme, setTheme } = useTheme();
   const { columns, showSidebar, setSidebarOpen } = useWorkspaceStore();
-  const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
+  const { data: roles } = trpc.role.list.useQuery(); 
   const availableRoles = roles || [];
-  // Use the first available roleId if present, else empty string
   const defaultRoleId = availableRoles[0]?.id || '';
+  
   const [cards, setCards] = useState([
     { id: '1', roleId: defaultRoleId, column: 0 },
     { id: '2', roleId: defaultRoleId, column: 0 },
@@ -25,10 +25,8 @@ export default function WorkSpace() {
   ]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
-
   const { setColumnFocus } = useColumnFocus(columns);
 
-  // Redistribute cards when columns change
   useEffect(() => {
     setCards(prevCards => 
       prevCards.map((card, index) => ({
@@ -38,7 +36,6 @@ export default function WorkSpace() {
     );
   }, [columns]);
 
-  // Group cards by column
   const cardsByColumn: { [key: number]: typeof cards } = {};
   for (let i = 0; i < columns; i++) {
     cardsByColumn[i] = cards.filter(card => card.column === i);
@@ -50,7 +47,7 @@ export default function WorkSpace() {
       return;
     }
     const newId = String(Date.now());
-    const newRoleId = availableRoles[0].id; // Assign the ID of the first available role
+    const newRoleId = availableRoles[0].id;
     setCards(prev => [...prev, { id: newId, roleId: newRoleId, column: columnIndex }]);
   };
 
@@ -63,7 +60,6 @@ export default function WorkSpace() {
     }
   };
 
-  // Hotkeys for card selection (1-9)
   useHotkeys(
     Array.from({ length: 9 }).map((_, i) => ({
       id: `select-card-${i + 1}`,
@@ -72,13 +68,10 @@ export default function WorkSpace() {
     })),
     Array.from({ length: 9 }).reduce<Record<string, () => void>>((acc, _, i) => {
       acc[`Select Card ${i + 1}`] = () => {
-        // Find the card with this "visual index" (1-based flat index)
-        // We iterate columns and cards to find the Nth card
         let count = 0;
         for (let col = 0; col < columns; col++) {
           const colCards = cardsByColumn[col] || [];
           if (count + colCards.length > i) {
-            // Found the column
             const cardIdx = i - count;
             scrollToCardIndex(col, cardIdx);
             return;
@@ -91,10 +84,8 @@ export default function WorkSpace() {
   );
 
   return (
-    <div className="flex flex-col flex-1 h-full w-full bg-[var(--color-background)] text-[var(--color-text)] overflow-hidden font-mono">
-      {/* Main Content Area */}
+    <div className="flex flex-col flex-1 w-full bg-[var(--color-background)] text-[var(--color-text)] overflow-hidden font-mono">
       <div className="flex-1 flex overflow-hidden">
-        {/* Main Grid - Columns */}
         <div className="flex-1 flex gap-0 overflow-hidden">
           {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
@@ -106,7 +97,6 @@ export default function WorkSpace() {
               key={columnIndex}
               className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] last:border-r-0"
             >
-              {/* Single Header Bar - Only if there are cards above current */}
               {currentFocusIndex > 0 && (
                 <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
                   <div className="flex items-center gap-0.5 flex-wrap justify-center">
@@ -124,16 +114,15 @@ export default function WorkSpace() {
                 </div>
               )}
 
-              {/* Current Focused Card */}
               <div className="flex-1 min-h-0 overflow-hidden">
                 {currentCard ? (
-                  <div
-                    id={`card-${currentCard.id}`}
-                    className="h-full"
-                    onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
-                  >
-                    <SwappableCard id={currentCard.id} roleId={currentCard.roleId} />
-                  </div>
+                    <div
+                      id={`card-${currentCard.id}`}
+                      className="h-full"
+                      onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
+                    >
+                      <SwappableCard id={currentCard.id} roleId={currentCard.roleId} />
+                    </div>
                 ) : (
                   <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
                     No cards in this column
@@ -141,7 +130,6 @@ export default function WorkSpace() {
                 )}
               </div>
 
-              {/* Single Footer Bar */}
               <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
                 {columnCards.length > 0 ? (
                   <div className="h-full flex items-center justify-between px-3">

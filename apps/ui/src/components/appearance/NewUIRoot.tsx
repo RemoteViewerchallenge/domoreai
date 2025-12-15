@@ -1,21 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
-import { Command } from 'cmdk';
 
 import { NewUIThemeProvider, useNewUITheme } from './NewUIThemeProvider.js';
 import { buildCssVariablesFromTheme } from '../../design-system/cssVariables.js';
 import { ThemeEditorSidebar } from './ThemeEditorSidebar.js';
-import { DebugThemeBanner } from '../DebugThemeBanner.js'; // Import the banner
+
 import type { Theme } from '../../theme/types.js';
 import type { DesignTheme } from '../../design-system/types.js';
 
-// ... (keep keyMap and adaptThemeToDesignTheme as is) ...
 const keyMap = {
   TOGGLE_THEME_EDITOR: 'ctrl+e',
 };
 
 const adaptThemeToDesignTheme = (theme: Theme): DesignTheme => {
-    const getColor = (c: any) => (typeof c === 'object' && c !== null && 'value' in c) ? c.value : c;
+    const getColor = (c: unknown) => (typeof c === 'object' && c !== null && 'value' in c) ? (c as { value: string }).value : c as string;
     return {
         colors: {
             primary: getColor(theme.colors.primary),
@@ -36,7 +34,7 @@ const adaptThemeToDesignTheme = (theme: Theme): DesignTheme => {
         },
         typography: {
             fontFamilyUi: 'system',
-            fontFamilyMono: 'JetBrains Mono, monospace',
+            fontFamilyMono: 'mono',
             baseSize: theme.visual.fontSize,
             secondarySize: theme.visual.fontSize * 0.85,
         },
@@ -70,9 +68,6 @@ const NewUIInternal: React.FC<{ children?: React.ReactNode }> = ({ children }) =
         className="w-full h-full bg-[var(--color-background)] text-[var(--color-text)] font-mono flex relative overflow-hidden transition-colors duration-300"
         style={cssVariables as React.CSSProperties}
       >
-        {/* DEBUG BANNER - REMOVE WHEN FIXED */}
-        <DebugThemeBanner />
-
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col h-full w-full relative z-0">
             {children}
