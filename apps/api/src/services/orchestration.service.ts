@@ -338,13 +338,15 @@ export class OrchestrationService {
           console.warn(`[Orchestration] No role assigned for step "${step.name}". Using fallback role "${role.name}".`);
         }
 
-        // Create agent for this role
+          // Create agent for this role
+          const roleMetadata = (role.metadata as any) || {};
+
         const agent = await createVolcanoAgent({
           roleId: role.id,
           modelId: null, // Let orchestrator pick best model
           isLocked: false,
-          temperature: role.defaultTemperature || 0.7,
-          maxTokens: role.defaultMaxTokens || 2048,
+          temperature: roleMetadata.defaultTemperature || 0.7,
+          maxTokens: roleMetadata.defaultMaxTokens || 2048,
         });
 
         const prompt = typeof stepInput === 'string' ? stepInput : JSON.stringify(stepInput);

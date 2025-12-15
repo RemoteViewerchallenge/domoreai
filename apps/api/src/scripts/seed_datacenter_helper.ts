@@ -17,21 +17,7 @@ Your capabilities include:
 - Automated backup procedures before schema changes
 
 Always prioritize data safety - create backups before making destructive changes, validate queries before execution, and ensure data integrity.`,
-      needsReasoning: true,
-      needsCoding: true,
-      needsTools: true,
-      needsUncensored: true,
-      tools: ['postgres', 'filesystem', 'search_codebase'],
-      category: 'Infrastructure & Operations',
-      minContext: 128000,
-      maxContext: 1000000,
-      allowedDirectories: [
-        'apps/api/db_backups',
-        'apps/api/prisma',
-        'packages/common',
-        'apps/api/src',
-        'apps/ui/src'
-      ]
+      categoryString: 'Infrastructure & Operations',
     },
     create: {
       name: 'Datacenter Helper',
@@ -47,21 +33,8 @@ Your capabilities include:
 - Automated backup procedures before schema changes
 
 Always prioritize data safety - create backups before making destructive changes, validate queries before execution, and ensure data integrity.`,
-      needsReasoning: true,
-      needsCoding: true,
-      needsTools: true,
-      needsUncensored: true,
       tools: ['postgres', 'filesystem', 'search_codebase'],
-      category: 'Infrastructure & Operations',
-      minContext: 128000,
-      maxContext: 1000000,
-      allowedDirectories: [
-        'apps/api/db_backups',
-        'apps/api/prisma',
-        'packages/common',
-        'apps/api/src',
-        'apps/ui/src'
-      ]
+      categoryString: 'Infrastructure & Operations',
     }
   });
   console.log('✅ Datacenter Helper role created or updated.');

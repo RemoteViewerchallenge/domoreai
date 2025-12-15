@@ -24,17 +24,8 @@ async function fixRoles() {
       const updates: any = {};
       let needsUpdate = false;
 
-      // A. Fix Context Window
-      // User asked for "36000 and above". We'll set a safe high default if it's low or missing.
-      if (!role.maxContext || role.maxContext < 36000) {
-        updates.maxContext = 128000; // Set to 128k to be safe and "above 36000"
-        needsUpdate = true;
-      }
-      // Ensure minContext is set
-      if (role.minContext === null || role.minContext === undefined) {
-        updates.minContext = 0;
-        needsUpdate = true;
-      }
+      // A. Fix Context Window (Removed feature)
+      // if (!role.maxContext || role.maxContext < 36000) { ... }
 
       // B. Fix Tools (Add research_browser)
       const currentTools = role.tools || [];
@@ -44,8 +35,8 @@ async function fixRoles() {
       }
 
       // C. Fix Category (for UI Grouping)
-      if (!role.category) {
-        updates.category = 'General';
+      if (!role.categoryString) {
+        updates.categoryString = 'General';
         needsUpdate = true;
       }
 

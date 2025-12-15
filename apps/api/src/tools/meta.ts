@@ -62,24 +62,13 @@ export const metaTools: SandboxTool[] = [
         data: {
           name: args.name,
           basePrompt: args.basePrompt,
-          minContext: args.contextLimits?.minContext,
-          maxContext: args.contextLimits?.maxContext,
-          needsVision: args.capabilities?.needsVision || false,
-          needsReasoning: args.capabilities?.needsReasoning || false,
-          needsCoding: args.capabilities?.needsCoding || false,
-          needsTools: args.capabilities?.needsTools || false,
-          needsJson: args.capabilities?.needsJson || false,
-          needsUncensored: args.capabilities?.needsUncensored || false,
           tools: args.tools || [],
-          defaultTemperature: args.hyperparameters?.temperature || 0.7,
-          defaultMaxTokens: args.hyperparameters?.maxTokens || 2048,
-          defaultTopP: args.hyperparameters?.topP || 1.0,
         },
       });
 
       return [{
         type: 'text',
-        text: `✅ Role "${role.name}" created successfully.\nID: ${role.id}\nCapabilities: ${JSON.stringify(args.capabilities)}`,
+        text: `✅ Role "${role.name}" created successfully.\nID: ${role.id}`,
       }];
     },
   },
@@ -97,10 +86,6 @@ export const metaTools: SandboxTool[] = [
           id: true,
           name: true,
           basePrompt: true,
-          needsVision: true,
-          needsReasoning: true,
-          needsCoding: true,
-          needsTools: true,
           tools: true,
         },
         orderBy: { name: 'asc' },
@@ -124,7 +109,6 @@ export const metaTools: SandboxTool[] = [
           type: 'object',
           properties: {
             basePrompt: { type: 'string' },
-            capabilities: { type: 'object' },
             tools: { type: 'array', items: { type: 'string' } },
           },
         },
@@ -136,12 +120,6 @@ export const metaTools: SandboxTool[] = [
         where: { id: args.roleId },
         data: {
           basePrompt: args.updates.basePrompt,
-          needsVision: args.updates.capabilities?.needsVision,
-          needsReasoning: args.updates.capabilities?.needsReasoning,
-          needsCoding: args.updates.capabilities?.needsCoding,
-          needsTools: args.updates.capabilities?.needsTools,
-          needsJson: args.updates.capabilities?.needsJson,
-          needsUncensored: args.updates.capabilities?.needsUncensored,
           tools: args.updates.tools,
         },
       });

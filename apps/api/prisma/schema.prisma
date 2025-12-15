@@ -22,8 +22,7 @@ model ProviderConfig {
   updatedAt   DateTime @updatedAt
   models      Model[]
   
-  // Keep existing relation
-  modelConfigs ModelConfig[]
+
 }
 
 // -----------------------------------------------------------------
@@ -56,9 +55,11 @@ model Model {
 
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Keep existing relation
-  modelConfigs ModelConfig[]
 
+
+  // Relations
+  modelUsage   ModelUsage[]
+  
   @@unique([providerId, modelId])
   @@map("model_registry")
 }
@@ -94,118 +95,42 @@ model ProviderFailure {
 // Stores the Roles for your agents
 // -----------------------------------------------------------------
 model Role {
-  id          String @id @default(cuid())
-  name        String @unique
-  category    String?
-  basePrompt  String @db.Text
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  basePrompt  String   @db.Text
+  tools       String[] @default([]) // Array of tool names
+  categoryString String? @map("category")
   
-  // Role Parameters (for the "fiddler")
-  minContext  Int?
-  maxContext  Int?
+  // Relations
+  categoryId  String?
+  category    RoleCategory? @relation(fields: [categoryId], references: [id])
   
-  // Feature Booleans
-  needsVision    Boolean @default(false)
-  needsReasoning Boolean @default(false)
-  needsCoding    Boolean @default(false)
-  
-  // NEW: Role requirements
-  needsTools     Boolean @default(false)
-  needsJson      Boolean @default(false)
-  needsUncensored Boolean @default(false)
-  needsImageGeneration Boolean @default(false) // NEW: Requirement for image generation // NEW: Requirement for uncensored model
-
-  // Tools Configuration
-  tools                    String[] @default([]) // Array of tool names (e.g. ["git", "postgres"])
-
-  // Misc - Flexible storage for template merging, memory config, etc.
+  // Role Parameters
+  // No hyperparameters on Role anymore - managed by metadata or defaults
   metadata    Json?    @default("{}")
 
-  // TODO: Add Tool & Task relations later
-  preferredModels ModelConfig[] @relation("PreferredModels")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  // This is the other side of the `role` relation in `ModelUsage`.
-  modelUsage      ModelUsage[]
-
-  // Relation to jobs this role can be assigned to
+  // Relations
+  modelUsage  ModelUsage[]
   jobs        Job[]
-
-  // Hardcoded Model Override (bypasses dynamic selection for this role only)
-  hardcodedModelId     String? // e.g., "gpt-4", "claude-3-opus"
-  hardcodedProviderId  String? // e.g., provider config ID
 }
 
-// -----------------------------------------------------------------
-// RoleTemplate: stores optional, shareable role defaults and internal settings
-// so that `Role` remains a light-weight descriptor and non-critical
-// configuration can be managed separately and shared across roles.
-// -----------------------------------------------------------------
-model RoleTemplate {
-  id          String   @id @default(cuid())
-  name        String?  // Optional human label
-
-  // Core prompt (optional override)
-  basePrompt  String?  @db.Text
-
-  // Fault handling / tuning
-  faultTemperature Float?
-
-  // Default Hyperparameters
-  defaultMaxTokens         Int?
-  defaultTopP              Float?
-  defaultFrequencyPenalty  Float?
-  defaultPresencePenalty   Float?
-  defaultStop              Json?
-  defaultSeed              Int?
-  defaultResponseFormat    Json?
-
-  // Terminal Security + misc
-  terminalRestrictions     Json?
-  criteria                 Json?
-  tools                    String[] @default([])
-
-  // Personality / domain
-  tone           String?
-  domainKnowledge String[] @default([])
-
-  // Hardcoded overrides
-  hardcodedModelId     String?
-  hardcodedProviderId  String?
-
-  // Virtual FS / plugin config
-  vfsConfig Json?
-
+model RoleCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  roles     Role[]
+  
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// -----------------------------------------------------------------
-// Stores the configuration for a specific model within a role
-// This allows for role-specific overrides or settings for a model
-// -----------------------------------------------------------------
-model ModelConfig {
-  id         String @id @default(cuid())
-  createdAt  DateTime @default(now())
 
-  // --- Relation to Model ---
-  modelId    String
-  model      Model    @relation(fields: [modelId], references: [id])
 
-  // --- Relation to Provider (for convenience/denormalization) ---
-  providerId String
-  provider   ProviderConfig @relation(fields: [providerId], references: [id])
 
-  // --- Role-specific settings for this model ---
-  // e.g., max tokens, temperature, etc.
-  // These would override global model settings for this specific role
-  maxTokens  Int?
-  temperature Float?
-
-  // NEW: Store parameters that were auto-adjusted/ignored 
-  adjustedParameters Json?
-
-  // --- Relations ---
-  roles      Role[]       @relation("PreferredModels")
-  modelUsage ModelUsage[]
-}
 
 // -----------------------------------------------------------------
 // Stores the usage logs for models
@@ -214,7 +139,7 @@ model ModelUsage {
   id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
   userId         String
-  modelConfigId  String
+  modelId        String
   roleId         String
   promptTokens   Int?
   completionTokens Int?
@@ -222,7 +147,7 @@ model ModelUsage {
   metadata       Json?
 
   // Relations
-  modelConfig    ModelConfig @relation(fields: [modelConfigId], references: [id])
+  model          Model       @relation(fields: [modelId], references: [id])
   role           Role        @relation(fields: [roleId], references: [id])
 }
 

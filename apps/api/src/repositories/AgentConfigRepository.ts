@@ -1,23 +1,25 @@
 import { prisma } from '../db.js';
+import type { ModelDef } from '../interfaces/IAgentConfigRepository.js';
+import type { Role, Model } from '@prisma/client';
 
 export class AgentConfigRepository {
-  static async getRole(roleId: string) {
+  static async getRole(roleId: string): Promise<Role | null> {
     return prisma.role.findUnique({ where: { id: roleId } });
   }
 
-  static async getEffectiveRole(roleId: string) {
+  static async getEffectiveRole(roleId: string): Promise<Role | null> {
     const role = await this.getRole(roleId);
     if (!role) return null;
-    return role as any;
+    return role;
   }
 
-  static async getModel(providerId: string, modelId: string) {
+  static async getModel(providerId: string, modelId: string): Promise<Model | null> {
     return prisma.model.findUnique({
       where: { providerId_modelId: { providerId, modelId } }
     });
   }
 
-  static async createModel(modelDef: any) {
+  static async createModel(modelDef: ModelDef): Promise<Model> {
     return prisma.model.create({
       data: {
         modelId: modelDef.id,
@@ -26,36 +28,17 @@ export class AgentConfigRepository {
         // Pack transient/spec fields into the specs JSON
         costPer1k: modelDef.costPer1k ?? 0,
         isFree: modelDef.isFree ?? false,
-        providerData: modelDef.providerData ?? {},
+        providerData: (modelDef.providerData ?? {}) as any,
         specs: {
             contextWindow: modelDef.contextWindow ?? 4096,
             hasVision: modelDef.hasVision ?? false,
             hasReasoning: modelDef.hasReasoning ?? false,
             hasCoding: modelDef.hasCoding ?? false,
             lastUpdated: new Date().toISOString()
-        }
+        } as any
       }
     });
   }
 
-  static async getModelConfig(modelId: string, roleId: string) {
-    return prisma.modelConfig.findFirst({
-      where: {
-        modelId: modelId,
-        roles: { some: { id: roleId } }
-      }
-    });
-  }
 
-  static async createModelConfig(data: { modelId: string, providerId: string, roleId: string, temperature: number, maxTokens: number }) {
-    return prisma.modelConfig.create({
-      data: {
-        modelId: data.modelId,
-        providerId: data.providerId,
-        roles: { connect: { id: data.roleId } },
-        temperature: data.temperature,
-        maxTokens: data.maxTokens
-      }
-    });
-  }
 }

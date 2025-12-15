@@ -1,5 +1,5 @@
 import { prisma } from '../db.js';
-import { Model, ModelConfig, Role, Prisma } from '@prisma/client';
+import { Model, Role, Prisma } from '@prisma/client';
 
 type CompletionParams = {
   temperature?: number;
@@ -15,7 +15,7 @@ export class ModelConfigurator {
   static async configure(
     model: Model,
     role: Role,
-    config: ModelConfig
+    config: { temperature?: number | null; maxTokens?: number | null }
   ): Promise<[CompletionParams, Record<string, any>]> {
     
     // Read JSON specs layer for capabilities and supported parameters
@@ -25,21 +25,23 @@ export class ModelConfigurator {
 
     const adjustments: Record<string, { original: any, reason: string }> = {};
 
-    // 1. Start with Role Defaults (template fields override role fields when present)
+    // 1. Start with Role Defaults
+    // Role fields were removed from schema. Use metadata or hard defaults.
+    const roleMetadata = (role.metadata as any) || {};
     const roleDefaults: any = {
-      defaultTemperature: (role as any).defaultTemperature,
-      defaultMaxTokens: (role as any).defaultMaxTokens
+      defaultTemperature: roleMetadata.defaultTemperature, 
+      defaultMaxTokens: roleMetadata.defaultMaxTokens
     };
 
     const finalParams: CompletionParams = {
-        temperature: roleDefaults.defaultTemperature ?? role.defaultTemperature ?? 0.7,
-        max_tokens: roleDefaults.defaultMaxTokens ?? role.defaultMaxTokens ?? contextWindow, // Fallback if contextWindow is null
+        temperature: roleDefaults.defaultTemperature ?? 0.7,
+        max_tokens: roleDefaults.defaultMaxTokens ?? contextWindow, 
     };
 
-    // 2. Overrides from ModelConfig
+    // 2. Overrides from Config (manual or dynamic choice)
     const overrides: Record<string, any> = {
-        temperature: (config as any).temperature,
-        maxTokens: (config as any).maxTokens, // Note: using camelCase here to match ModelConfig fields
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
     };
 
     // 3. Merge and Validate
@@ -55,7 +57,7 @@ export class ModelConfigurator {
         } else {
             adjustments[key] = {
                 original: value,
-                reason: `Parameter '${key}' is not supported by model ${model.modelId}. Value ignored.`
+                reason: `Parameter '${key}' is not supported by model ${model.modelId || 'unknown'}. Value ignored.`
             };
 
             // AUTO-CORRECTION: If max_tokens is too high, cap it to contextWindow
@@ -71,16 +73,9 @@ export class ModelConfigurator {
         }
     }
     
-    // 4. Save adjustments back to ModelConfig (if any)
-    if (Object.keys(adjustments).length > 0) {
-        await prisma.modelConfig.update({
-            where: { id: config.id },
-            data: { 
-                adjustedParameters: adjustments as Prisma.InputJsonValue,
-            } as any
-        });
-    }
+    // 4. (Removed) Save adjustments back to ModelConfig
 
     return [finalParams, adjustments];
   }
 }
+
