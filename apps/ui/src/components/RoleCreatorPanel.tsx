@@ -2,509 +2,283 @@ import React, { useState, useMemo } from 'react';
 import { trpc } from '../utils/trpc.js';
 import DualRangeSlider from './DualRangeSlider.js';
 import { RoleModelOverride } from './RoleModelOverride.js';
-import { Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
+import { 
+  Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, 
+  ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, MoreVertical, Edit2, Plus 
+} from 'lucide-react';
 import { useEffect } from 'react';
 
-interface Role {
-  id: string;
-  name: string;
-  basePrompt: string;
-  category: string; // Ensure category is always a string
-  minContext?: number | null;
-  maxContext?: number | null;
-  needsVision: boolean;
-  needsReasoning: boolean;
-  needsCoding: boolean;
-  needsTools: boolean;
-  needsJson: boolean;
-  needsUncensored: boolean;
-  needsImageGeneration?: boolean;
-  tools?: string[];
-  defaultTemperature?: number | null;
-  defaultMaxTokens?: number | null;
-  defaultTopP?: number | null;
-  defaultFrequencyPenalty?: number | null;
-  defaultPresencePenalty?: number | null;
-  defaultStop?: unknown;
-  defaultSeed?: number | null;
-  defaultResponseFormat?: unknown;
-  terminalRestrictions?: unknown;
-  criteria?: unknown;
-  orchestrationConfig?: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number } | unknown;
-  memoryConfig?: { useProjectMemory: boolean; readOnly: boolean } | unknown;
-}
+// ... (Interfaces remain same)
 
-interface RoleCreatorPanelProps {
-  className?: string;
-}
+// ... RoleCreatorPanel component start ...
 
-const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) => {
-  const utils = trpc.useContext();
-  const { data: roles } = trpc.role.list.useQuery();
-  
-  // Fetch Active Registry Data (Schema + Rows)
-  const { data: registrySchema } = trpc.orchestrator.getActiveRegistrySchema.useQuery();
-  const { data: registryData } = trpc.orchestrator.getActiveRegistryData.useQuery();
-  const { data: toolsList } = trpc.orchestrator.listTools.useQuery();
+// ... (existing hooks) ...
 
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const { data: categories, refetch: refetchCategories } = trpc.role.listCategories.useQuery();
+  const createCategoryMutation = trpc.role.createCategory.useMutation({ onSuccess: () => refetchCategories() });
+  const updateCategoryMutation = trpc.role.updateCategory.useMutation({ onSuccess: () => refetchCategories() });
+  const deleteCategoryMutation = trpc.role.deleteCategory.useMutation({ onSuccess: () => refetchCategories() });
+  const moveRoleMutation = trpc.role.moveRoleToCategory.useMutation({ onSuccess: () => { utils.role.list.invalidate(); } });
 
-  const createRoleMutation = trpc.role.create.useMutation({
-    onSuccess: () => {
-        utils.role.list.invalidate();
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-    },
-    onError: () => setSaveStatus('error')
-  });
-  const updateRoleMutation = trpc.role.update.useMutation({
-    onSuccess: () => {
-        utils.role.list.invalidate();
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-    },
-    onError: () => setSaveStatus('error')
-  });
-  const deleteRoleMutation = trpc.role.delete.useMutation({
-    onSuccess: () => utils.role.list.invalidate(),
-  });
-  const generatePromptMutation = trpc.role.generatePrompt.useMutation();
-  const updateToolExamplesMutation = trpc.orchestrator.updateToolExamples.useMutation();
-  const runDoctorMutation = trpc.model.runDoctor.useMutation();
+  const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryParentId, setNewCategoryParentId] = useState<string | null>(null);
+  const [tempCategoryName, setTempCategoryName] = useState('');
 
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    basePrompt: '',
-    category: '', // Add category to formData
-    minContext: 0,
-    maxContext: 128000,
-    needsVision: false,
-    needsReasoning: false,
-    needsCoding: false,
-    needsTools: false,
-    needsJson: false,
-    needsUncensored: false,
-    needsImageGeneration: false,
-    tools: [] as string[],
-    defaultTemperature: 0.7,
-    defaultMaxTokens: 2048,
-    defaultTopP: 1.0,
-    defaultFrequencyPenalty: 0.0,
-    defaultPresencePenalty: 0.0,
-    defaultStop: [] as string[],
-    defaultSeed: undefined as number | undefined,
-    defaultResponseFormat: 'text' as 'text' | 'json_object',
-    terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] } as { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    criteria: {} as Record<string, any>,
-    orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined as string | undefined, minPassScore: 80 },
-    memoryConfig: { useProjectMemory: false, readOnly: false },
-  });
-
-  const [leftTab, setLeftTab] = useState<'params' | 'toolPrompts'>('params');
-  const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments'>('capabilities');
-  
-  const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
-  const [isNewCategory, setIsNewCategory] = useState<boolean>(false);
-
-  // Helper to extract category name safely
-  const getCategoryName = (role: any): string => {
-    if (role.category && typeof role.category === 'object' && 'name' in role.category) {
-        return role.category.name || 'Uncategorized';
-    }
-    if (role.categoryString) return role.categoryString;
-    if (typeof role.category === 'string') return role.category;
-    return 'Uncategorized';
-  };
-
-  const uniqueCategories = useMemo(() => {
-    const categories = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (roles as any[])?.forEach(role => {
-       categories.add(getCategoryName(role));
-    });
-    return Array.from(categories).filter(Boolean).sort();
-  }, [roles]);
-
-  // Memoize grouped roles for performance and to ensure categories are processed consistently
-  const groupedRoles = useMemo(() => {
-    if (!roles) return {};
-    const groups: Record<string, Role[]> = {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (roles as any[])?.forEach(role => {
-      const category = getCategoryName(role);
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(role as Role);
-    });
-    // Sort roles within each category alphabetically
-    Object.keys(groups).forEach(category => {
-      groups[category].sort((a, b) => a.name.localeCompare(b.name));
-    });
-    return groups;
-  }, [roles]);
-
-  // Memoize the currently selected role object for passing to child components
-  const selectedRole = useMemo(() => {
-    if (!selectedRoleId || !roles) return null;
-    return (roles as Role[]).find(r => r.id === selectedRoleId);
-  }, [selectedRoleId, roles]);
-
-  // ... (useEffect removed) ...
-
-  // ... (Tasks 1 & 2) ...
-
-  // --- DYNAMIC LOGIC ---
-
-  // 1. Calculate Min/Max for Numeric Columns
-  const columnStats = useMemo(() => {
-    if (!registryData?.rows || !registrySchema?.columns) return {};
-    const stats: Record<string, { min: number, max: number }> = {};
+  // Tree Construction
+  const categoryTree = useMemo(() => {
+    if (!categories) return [];
     
-    registrySchema.columns.forEach(col => {
-      const isNumber = ['integer', 'int', 'bigint', 'numeric', 'real', 'double precision'].includes(col.type);
-      if (isNumber) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const values = registryData.rows.map((r: any) => Number(r[col.name])).filter(n => !isNaN(n));
-        if (values.length > 0) {
-          stats[col.name] = { min: Math.min(...values), max: Math.max(...values) };
-        }
-      }
-    });
-    return stats;
-  }, [registryData, registrySchema]);
-
-  // 2. Filter Models based on Criteria AND Capabilities
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['chat']);
-
-  const filteredModels = useMemo(() => {
-    if (!registryData?.rows) return [];
-    // Remove all type-based filtering: show all models
+    const map = new Map<string, any>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return registryData.rows.filter((row: any) => {
-      // Check standard context window
-      const contextCol = Object.keys(row).find(k => k.includes('context') || k.includes('window'));
-      if (contextCol) {
-        const val = Number(row[contextCol]);
-        if (val < (formData.minContext || 0) || val > (formData.maxContext || 128000)) return false;
-      }
-
-      // Check Capabilities (Explicit Mapping)
-      if (formData.needsVision && (row['is_vision'] === false || row['vision'] === false || row['is_multimodal'] === false)) return false;
-      if (formData.needsReasoning && row['is_reason'] === false) return false;
-      if (formData.needsCoding && row['is_code'] === false) return false;
-      if (formData.needsTools && row['supports_tools'] === false) return false;
-      if (formData.needsJson && row['supports_json'] === false) return false;
-      if (formData.needsUncensored && row['is_uncensored'] === false) return false;
-
-      // Image Generation Check
-      const hasImageGen = row['has_image_generation'] === true || row['is_image_generation'] === true || row['is_gen'] === true;
-      if (formData.needsImageGeneration && !hasImageGen) return false;
-      if (!formData.needsImageGeneration && hasImageGen) return false;
-
-      // Check Dynamic Criteria (Sliders)
-      for (const [key, value] of Object.entries(formData.criteria)) {
-        if (value === undefined || value === null) continue;
-        if (typeof value === 'boolean' && value === true) {
-          if (!row[key]) return false;
-        }
-        if (Array.isArray(value) && value.length === 2) {
-          const rowVal = Number(row[key]);
-          if (rowVal < value[0] || rowVal > value[1]) return false;
-        }
-      }
-      return true;
-    });
-  }, [registryData, formData, selectedTypes]);
-
-  // 3. Datacenter Breakdown
-  const datacenterBreakdown = useMemo(() => {
-    const stats: Record<string, { matched: number, total: number }> = {};
+    const roots: any[] = [];
     
-    // Initialize totals
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registryData?.rows.forEach((row: any) => {
-       const datacenter = row.provider_name || row.data_source || row.provider_id || row.provider || 'Unknown';
-       if (!stats[datacenter]) stats[datacenter] = { matched: 0, total: 0 };
-       stats[datacenter].total++;
+    // Initialize map
+    categories.forEach(cat => {
+      map.set(cat.id, { ...cat, children: [], roles: [] });
     });
 
-    // Calculate matched
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    filteredModels.forEach((m: any) => {
-      const datacenter = m.provider_name || m.data_source || m.provider_id || m.provider || 'Unknown';
-      if (stats[datacenter]) stats[datacenter].matched++;
-    });
-
-    return stats;
-  }, [registryData, filteredModels]);
-
-  const handleSave = () => {
-    setSaveStatus('saving');
-    if (selectedRoleId) {
-      updateRoleMutation.mutate({
-        id: selectedRoleId,
-        name: formData.name,
-        basePrompt: formData.basePrompt,
-        category: formData.category || 'Uncategorized',
-        minContext: formData.minContext,
-        maxContext: formData.maxContext,
-        needsVision: formData.needsVision,
-        needsReasoning: formData.needsReasoning,
-        needsCoding: formData.needsCoding,
-        needsTools: formData.needsTools,
-        needsJson: formData.needsJson,
-        needsUncensored: formData.needsUncensored,
-        // needsImageGeneration: formData.needsImageGeneration, // Removed as it's not in the schema yet
-        tools: formData.tools,
-        defaultTemperature: formData.defaultTemperature,
-        defaultMaxTokens: formData.defaultMaxTokens,
-        defaultTopP: formData.defaultTopP,
-        defaultFrequencyPenalty: formData.defaultFrequencyPenalty,
-        defaultPresencePenalty: formData.defaultPresencePenalty,
-        defaultStop: formData.defaultStop,
-        defaultSeed: formData.defaultSeed,
-        defaultResponseFormat: formData.defaultResponseFormat,
-        terminalRestrictions: formData.terminalRestrictions,
-        criteria: formData.criteria,
-        orchestrationConfig: formData.orchestrationConfig,
-        memoryConfig: formData.memoryConfig,
-      });
-    } else {
-      createRoleMutation.mutate({
-        ...formData,
-        category: formData.category || 'Uncategorized',
+    // Place Roles
+    const uncategorizedRoles: Role[] = [];
+    if (roles) {
+      roles.forEach(role => {
+        const catId = (role as any).categoryId;
+         if (catId && map.has(catId)) {
+           map.get(catId).roles.push(role);
+         } else {
+           uncategorizedRoles.push(role);
+         }
       });
     }
-  };
 
-  const handleMagicGenerate = async () => {
-    if (!formData.name) {
-        alert("Please enter a role name first.");
-        return;
-    }
-    try {
-        const result = await generatePromptMutation.mutateAsync({
-            name: formData.name,
-            category: formData.category,
-            capabilities: {
-                vision: formData.needsVision,
-                reasoning: formData.needsReasoning,
-                coding: formData.needsCoding,
-                tools: formData.needsTools,
-            }
-        });
-        if (result) {
-            setFormData(prev => ({ ...prev, basePrompt: result }));
-        }
-    } catch (error) {
-        console.error("Failed to generate prompt:", error);
-        alert("Failed to generate prompt. Please try again.");
-    }
-  };
-
-  const handleSelectRole = async (role: Role) => {
-    setSelectedRoleId(role.id);
-    const tools = role.tools || [];
-    
-    // Set isNewCategory based on if the role has a category
-    setIsNewCategory(!role.category);
-
-    setFormData({
-      name: role.name,
-      basePrompt: role.basePrompt,
-      category: (role.category as any)?.name || (typeof role.category === 'string' ? role.category : '') || '',
-      minContext: role.minContext || 0, // Added minContext
-      maxContext: role.maxContext || 128000, // Added maxContext
-      needsVision: role.needsVision,
-      needsReasoning: role.needsReasoning,
-      needsCoding: role.needsCoding,
-      needsTools: role.needsTools || false,
-      needsJson: role.needsJson || false,
-      needsUncensored: role.needsUncensored || false,
-      needsImageGeneration: role.needsImageGeneration || false,
-      tools: tools,
-      defaultTemperature: role.defaultTemperature || 0.7,
-      defaultMaxTokens: role.defaultMaxTokens || 2048,
-      defaultTopP: role.defaultTopP || 1.0,
-      defaultFrequencyPenalty: role.defaultFrequencyPenalty || 0.0,
-      defaultPresencePenalty: role.defaultPresencePenalty || 0.0,
-      defaultStop: Array.isArray(role.defaultStop) ? role.defaultStop : [],
-      defaultSeed: role.defaultSeed || undefined,
-      defaultResponseFormat: (role.defaultResponseFormat as 'text' | 'json_object') || 'text',
-      terminalRestrictions: (role.terminalRestrictions && typeof role.terminalRestrictions === 'object' && !Array.isArray(role.terminalRestrictions)) 
-        ? role.terminalRestrictions as { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] }
-        : { mode: 'blacklist', commands: ['rm', 'sudo'] },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      criteria: (role.criteria as Record<string, any>) || {},
-      orchestrationConfig: (role.orchestrationConfig && typeof role.orchestrationConfig === 'object') ? {
-        requiresCheck: (role.orchestrationConfig as any).requiresCheck || false,
-        minPassScore: (role.orchestrationConfig as any).minPassScore || 80,
-        judgeRoleId: (role.orchestrationConfig as any).judgeRoleId
-      } : { requiresCheck: false, judgeRoleId: undefined, minPassScore: 80 },
-      memoryConfig: (role.memoryConfig && typeof role.memoryConfig === 'object') ? {
-        useProjectMemory: (role.memoryConfig as any).useProjectMemory || false,
-        readOnly: (role.memoryConfig as any).readOnly || false
-      } : { useProjectMemory: false, readOnly: false },
+    // Build Hierarchy
+    categories.forEach(cat => {
+      if (cat.parentId && map.has(cat.parentId)) {
+        map.get(cat.parentId).children.push(map.get(cat.id));
+      } else {
+        roots.push(map.get(cat.id));
+      }
     });
 
-    // Fetch prompts for all tools
-    const newToolPrompts: Record<string, string> = {};
-    for (const toolName of tools) {
-        if (toolName === 'meta') continue;
-        try {
-            const result = await utils.orchestrator.getToolExamples.fetch({ toolName });
-            if (result && result.content) {
-                newToolPrompts[toolName] = result.content;
-            }
-        } catch (err) {
-            console.error(`Failed to fetch prompt for tool ${toolName}:`, err);
-        }
-    }
-    setToolPrompts(newToolPrompts);
-  };
+    return { roots, uncategorizedRoles };
+  }, [categories, roles]);
 
-  // Helper to render dynamic inputs
-  const renderDynamicInputs = () => {
-    if (!registrySchema?.columns) return null;
-
-    // Columns explicitly handled by other UI elements or ignored
-    const handledOrIgnored = [
-      'id', 'name', 'model_id', 'provider_id', 'created_at', 'updated_at', 
-      'context_length', 'context_window', // Main slider
-      'is_vision', 'is_code', 'is_reason', 'supports_tools', 'supports_json', 'is_uncensored', // Capabilities
-      'max_rpm', 'max_tpm', 'max_rpd', 'max_output_tokens', 'data_source', // Ignored
-      'param_status', 'is_code_unk', 'is_reason_unk', 'underlying_provider', 'supported_params', 'has_image_generation', 'param_size_status', 'is_coding_unknown', 'is_reasoning_unknown', 'is_gen', 'is_free', 'supports_rag', // Ignored/Unknown
-      'rate_limited', 'rate_limits_known', 'rate_limit_rpm', 'rate_limit_tpm', 'is_open_source', 'cost_tier', 'model_name', 'provider', 'type', 'vision', 'is_multimodal' // New Schema Ignored for Sliders
-    ];
+  // Recursive Category Renderer
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderCategory = (node: any, level = 0) => {
+    const isExpanded = openCategories[node.id] !== false; // Default open
     
-    // We specifically want sliders for these if they exist
-    const sliderColumns = ['param_size', 'cost', 'risk_conf'];
-    
-    const dynamicColumns = registrySchema.columns.filter(col => 
-      !handledOrIgnored.includes(col.name.toLowerCase()) || sliderColumns.includes(col.name.toLowerCase())
-    );
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.add('bg-blue-900/50');
+    };
 
-    if (dynamicColumns.length === 0) return null;
+    const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('bg-blue-900/50');
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('bg-blue-900/50');
+      const roleId = e.dataTransfer.getData('roleId');
+      if (roleId) {
+        moveRoleMutation.mutate({ roleId, categoryId: node.id });
+      }
+    };
 
     return (
-      <div className="space-y-4">
-        {dynamicColumns.map((col) => {
-          const isNumber = ['integer', 'int', 'bigint', 'numeric', 'real', 'double precision'].includes(col.type);
-          
-          if (isNumber) {
-            const stats = columnStats[col.name] || { min: 0, max: 100 };
-            const currentVal = (formData.criteria[col.name] as [number, number]) || [stats.min, stats.max];
+      <div key={node.id} className="select-none">
+        <div 
+          className={`flex items-center justify-between group p-1 hover:bg-[var(--color-background-secondary)]/80 rounded transition-colors pl-${level * 4}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+            <div className="flex items-center gap-1 overflow-hidden flex-1">
+                <button 
+                  onClick={() => setOpenCategories(prev => ({ ...prev, [node.id]: !isExpanded }))}
+                  className="p-0.5 hover:bg-[var(--color-primary)]/20 rounded text-[var(--color-text-muted)]"
+                >
+                  {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
+                {editingCategory?.id === node.id ? (
+                  <input 
+                    autoFocus
+                    value={tempCategoryName}
+                    onChange={(e) => setTempCategoryName(e.target.value)}
+                    onBlur={() => setEditingCategory(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        updateCategoryMutation.mutate({ id: node.id, name: tempCategoryName });
+                        setEditingCategory(null);
+                      }
+                    }}
+                    className="bg-black text-[var(--color-text)] px-1 py-0.5 text-[10px] w-full border border-blue-500 rounded"
+                  />
+                ) : (
+                  <span 
+                    className="font-bold text-[var(--color-text)] text-[10px] truncate cursor-pointer flex items-center gap-1"
+                    onDoubleClick={() => {
+                        setEditingCategory({ id: node.id, name: node.name });
+                        setTempCategoryName(node.name);
+                    }}
+                  >
+                    {isExpanded ? <FolderOpen size={10} className="text-yellow-500" /> : <Folder size={10} className="text-yellow-500" />}
+                    {node.name}
+                  </span>
+                )}
+            </div>
+            
+            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button 
+                   title="Add Subcategory"
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setIsCreatingCategory(true);
+                     setNewCategoryParentId(node.id);
+                     setTempCategoryName('');
+                   }}
+                   className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]"
+                 >
+                   <Plus size={10} />
+                 </button>
+                 <button 
+                   title="Rename"
+                   onClick={(e) => { 
+                      e.stopPropagation();
+                      setEditingCategory({ id: node.id, name: node.name });
+                      setTempCategoryName(node.name);
+                   }}
+                   className="p-1 text-[var(--color-text-muted)] hover:text-blue-400"
+                 >
+                   <Edit2 size={10} />
+                 </button>
+                 <button 
+                   title="Delete"
+                   onClick={(e) => { 
+                      e.stopPropagation();
+                      if(confirm('Delete category? Roles will be uncategorized.')) {
+                        deleteCategoryMutation.mutate({ id: node.id });
+                      }
+                   }}
+                   className="p-1 text-[var(--color-text-muted)] hover:text-red-400"
+                 >
+                   <Trash2 size={10} />
+                 </button>
+            </div>
+        </div>
 
-            return (
-              <div key={col.name} className="border border-[var(--color-border)] p-2 bg-[var(--color-background-secondary)]/50 rounded">
-                 <DualRangeSlider
-                  min={stats.min}
-                  max={stats.max}
-                  step={stats.max > 1000 ? 100 : (stats.max < 10 ? 0.01 : 1)}
-                  value={currentVal}
-                  onChange={(val) => setFormData({
-                    ...formData,
-                    criteria: { ...formData.criteria, [col.name]: val }
-                  })}
-                  label={col.name.replace(/_/g, ' ')}
-                />
-              </div>
-            );
-          }
-          return null;
-        })}
+        {isExpanded && (
+          <div className={`pl-2 border-l border-[var(--color-border)] ml-1`}>
+             {/* Creating New Subcategory Input */}
+             {isCreatingCategory && newCategoryParentId === node.id && (
+                <div className="pl-4 p-1">
+                   <input 
+                    autoFocus
+                    placeholder="New Folder..."
+                    value={tempCategoryName}
+                    onChange={(e) => setTempCategoryName(e.target.value)}
+                    onBlur={() => setIsCreatingCategory(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && tempCategoryName.trim()) {
+                        createCategoryMutation.mutate({ name: tempCategoryName, parentId: node.id });
+                        setIsCreatingCategory(false);
+                      }
+                    }}
+                    className="bg-black text-[var(--color-text)] px-1 py-0.5 text-[10px] w-full border border-green-500 rounded"
+                  />
+                </div>
+             )}
+             
+             {/* Subcategories */}
+             {node.children?.map((child: any) => renderCategory(child, level + 1))}
+             
+             {/* Roles */}
+             {node.roles?.map((role: Role) => (
+                <div
+                  key={role.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('roleId', role.id);
+                  }}
+                  onClick={() => { void handleSelectRole(role); }}
+                  className={`flex items-center gap-1 p-1 pl-2 cursor-pointer hover:bg-[var(--color-background-secondary)] transition-colors rounded ${
+                    selectedRoleId === role.id ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  <Brain size={10} />
+                  <span className="truncate text-[10px]">{role.name}</span>
+                </div>
+             ))}
+          </div>
+        )}
       </div>
     );
   };
-
-  return (
-    <div className={`flex bg-[var(--color-background)] text-[var(--color-text)] font-mono text-xs h-full ${className}`}>
-      {/* Sidebar List */}
-      <div className="w-48 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
-        <div className="p-2 border-b border-[var(--color-border)] flex justify-between items-center">
-          <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider">Roles (v2)</span>
-          <button 
-            onClick={() => {
-              // TODO: Implement loading from URL
-              console.log("Load from URL clicked");
-            }}
-            className="px-2 py-0.5 bg-blue-500/30 border border-blue-500 text-blue-300 hover:bg-blue-500/50 hover:text-white transition-all uppercase text-[10px] font-bold"
-          >
-            Load from URL
-          </button>
-          <button 
-            onClick={() => {
-              setSelectedRoleId(null);
-              setIsNewCategory(true); // Always start with new category input for new roles
-              setFormData({
-                name: '',
-                basePrompt: '',
-                category: '', // Empty category for new roles
-                minContext: 0,
-                maxContext: 128000,
-                needsVision: false,
-                needsReasoning: false,
-                needsCoding: false,
-                needsTools: false,
-                needsJson: false,
-                needsUncensored: false,
-                needsImageGeneration: false,
-                tools: [],
-                defaultTemperature: 0.7,
-                defaultMaxTokens: 2048,
-                defaultTopP: 1.0,
-                defaultFrequencyPenalty: 0.0,
-                defaultPresencePenalty: 0.0,
-                defaultStop: [],
-                defaultSeed: undefined,
-                defaultResponseFormat: 'text',
-                terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] },
-                criteria: {},
-                orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined, minPassScore: 80 },
-                memoryConfig: { useProjectMemory: false, readOnly: false },
-              });
-            }}
-            className="px-2 py-0.5 bg-[var(--color-secondary)]/30 border border-[var(--color-secondary)] text-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/50 hover:text-white transition-all uppercase text-[10px] font-bold"
-          >
-            + New
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {Object.entries(groupedRoles).map(([category, rolesInCategory]) => (
-            <div key={category} className="border-b border-[var(--color-border)] last:border-b-0">
-              <button
-                onClick={() => {
-                    console.log('Toggling category:', category);
-                    setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
-                }}
-                className="flex justify-between items-center w-full p-2 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-secondary)]/70 transition-colors"
-              >
-                <span className="font-bold text-[var(--color-primary)] uppercase tracking-wider text-[10px]">{category}</span>
-                {openCategories[category] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              {openCategories[category] && (
-                <div>
-                  {rolesInCategory.map((role) => (
-                    <div
-                      key={role.id}
-                      onClick={() => { void handleSelectRole(role); }}
-                      className={`p-2 pl-4 cursor-pointer hover:bg-[var(--color-background-secondary)] transition-colors ${
-                        selectedRoleId === role.id ? 'bg-[var(--color-primary)]/20 border-l-2 border-l-[var(--color-primary)]' : 'border-l-2 border-l-transparent'
-                      }`}
-                    >
-                      <div className="font-bold text-[var(--color-text)] truncate">{role.name}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+ 
+  // ... Sidebar replacement ...
+  /* 
+    I will replace this block:
+      <div className="w-48 bg-[var(--color-background-secondary)] ...">
+        ...
       </div>
+    
+    with:
+      <div className="w-48 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
+         <div className="p-2 border-b border-[var(--color-border)] flex justify-between items-center">
+            ... New Heading ...
+            <button onClick={() => { setIsCreatingCategory(true); setNewCategoryParentId(null); setTempCategoryName(''); }}>
+               <Plus size={14} />
+            </button>
+         </div>
+         <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {isCreatingCategory && newCategoryParentId === null && (
+                 <input 
+                    autoFocus
+                    placeholder="New Root Folder..."
+                    value={tempCategoryName}
+                    onChange={(e) => setTempCategoryName(e.target.value)}
+                    onBlur={() => setIsCreatingCategory(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && tempCategoryName.trim()) {
+                        createCategoryMutation.mutate({ name: tempCategoryName, parentId: undefined });
+                        setIsCreatingCategory(false);
+                      }
+                    }}
+                    className="bg-black text-[var(--color-text)] px-1 py-0.5 text-[10px] w-full border border-green-500 rounded mb-2"
+                  />
+            )}
+            
+            {categoryTree.roots.map((node) => renderCategory(node))}
+
+            // Uncategorized
+            <div className="mt-4 pt-2 border-t border-[var(--color-border)]">
+               <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase mb-1 px-1">Uncategorized</div>
+               {categoryTree.uncategorizedRoles.map((role) => (
+                  <div
+                  key={role.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('roleId', role.id);
+                  }}
+                  onClick={() => { void handleSelectRole(role); }}
+                  className={`flex items-center gap-1 p-1 pl-2 cursor-pointer hover:bg-[var(--color-background-secondary)] transition-colors rounded ${
+                    selectedRoleId === role.id ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  <Brain size={10} />
+                  <span className="truncate text-[10px]">{role.name}</span>
+                </div>
+               ))}
+            </div>
+         </div>
+      </div>
+  */
+
 
       {/* Main Editor Area - 2 Columns */}
       <div className="flex-1 flex overflow-hidden">
