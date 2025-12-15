@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { decrypt, encrypt } from '../utils/encryption.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
@@ -76,7 +75,6 @@ export class ProviderManager implements IProviderManager {
   }
 
   private async bootstrapFromEnv() {
-    const { v4: uuidv4 } = await import('uuid');
     const mappings = [
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },

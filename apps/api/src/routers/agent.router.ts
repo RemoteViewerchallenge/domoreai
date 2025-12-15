@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { AgentRuntime } from '../services/AgentRuntime.js';
 import { createVolcanoAgent } from '../services/AgentFactory.js';
-import type { CardAgentState } from '../services/AgentFactory.js';
+import type { CardAgentState } from '../types.js';
 import { ProviderManager } from '../services/ProviderManager.js';
 
 import { prisma } from '../db.js';

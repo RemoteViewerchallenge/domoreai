@@ -185,7 +185,7 @@ export class AgentFactoryService implements IAgentFactory {
 
   async createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
     // 1. Load Role Configuration
-    let rawRole = await this.configRepo.getRole(cardConfig.roleId);
+    const rawRole = await this.configRepo.getRole(cardConfig.roleId);
     let role: ExtendedRole | null = null;
     
     if (rawRole) {
@@ -230,8 +230,6 @@ export class AgentFactoryService implements IAgentFactory {
                 maxContext: gw.maxContext ?? null,
                 needsReasoning: gw.needsReasoning ?? false,
                 needsCoding: gw.needsCoding ?? false,
-                defaultTemperature: gw.defaultTemperature ?? 0.5,
-                defaultMaxTokens: gw.defaultMaxTokens ?? 2048,
                 tools: gw.tools || [],
             });
             role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
@@ -368,7 +366,7 @@ export class AgentFactoryService implements IAgentFactory {
       role.id,
       this.providerManager,
       this.configRepo,
-      orchestrationConfig as any
+      orchestrationConfig
     );
   }
 }
