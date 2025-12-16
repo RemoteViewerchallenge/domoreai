@@ -14,6 +14,8 @@ import { ProviderManager } from './services/ProviderManager.js';
 import { autoLoadRawJsonFiles } from './services/RawJsonLoader.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
 import { scheduler } from './services/JobScheduler.js';
+import { backupService } from './services/BackupService.js';
+import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 
 // Initialize Telemetry
 if (process.env.VOLCANO_TELEMETRY_ENABLED === 'true') {
@@ -93,12 +95,71 @@ async function startServer() {
     });
   });
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`API server listening at http://localhost:${port}`);
+    
+    // Display free model inventory
+    try {
+      const { prisma } = await import('./db.js');
+      const allModels = await prisma.model.findMany({
+        select: {
+          id: true,
+          name: true,
+          providerId: true,
+          isFree: true
+        }
+      });
+      
+      const freeModels = allModels.filter(m => m.isFree);
+      const freeByProvider = freeModels.reduce((acc, m) => {
+        const provider = m.providerId;
+        acc[provider] = (acc[provider] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      console.log(`
+┌────────────────────────────────────────┐
+│  🚀 C.O.R.E. API Started              │
+├────────────────────────────────────────┤
+│  Total Models: ${String(allModels.length).padEnd(23)}│
+│  ✅ Free Models: ${String(freeModels.length).padEnd(21)}│
+${Object.entries(freeByProvider).map(([provider, count]) => 
+  `│     - ${provider}: ${String(count).padEnd(26 - provider.length)}│`
+).join('\n')}
+│                                        │
+│  💰 Zero-Burn Mode: ACTIVE            │
+└────────────────────────────────────────┘
+      `);
+    } catch (err) {
+      console.warn('Could not fetch model inventory:', err);
+    }
+
+    // Start background services
+    console.log('\n🔧 Starting background services...');
+    
+    // Start automatic backup service
+    try {
+      await backupService.start();
+    } catch (err) {
+      console.warn('⚠️ Backup service failed to start:', err);
+    }
+
+    // Start persistent model doctor
+    try {
+      await persistentModelDoctor.start();
+    } catch (err) {
+      console.warn('⚠️ Persistent model doctor failed to start:', err);
+    }
   });
+
 
   const gracefulShutdown = (signal: string) => {
     console.log(`\n${signal} received. Shutting down gracefully...`);
+    
+    // Stop background services first
+    backupService.stop();
+    persistentModelDoctor.stop();
+    
     server.close(async () => {
       console.log('HTTP server closed.');      
       wsService.close(); // Assuming WebSocketService has a .close() method

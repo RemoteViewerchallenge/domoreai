@@ -240,17 +240,29 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     });
     
     // Load tool prompts if needed
-    if (role.tools) {
+    console.log('[RoleCreator] Loading tool prompts for role:', role.name, 'Tools:', role.tools);
+    if (role.tools && role.tools.length > 0) {
         const prompts: Record<string, string> = {};
         for (const tool of role.tools) {
             try {
+               console.log(`[RoleCreator] Fetching examples for tool: ${tool}`);
                const result = await utils.orchestrator.getToolExamples.fetch({ toolName: tool });
+               console.log(`[RoleCreator] Result for ${tool}:`, result);
                if (result && result.content) {
                    prompts[tool] = result.content;
+                   console.log(`[RoleCreator] ✅ Loaded prompt for ${tool} (${result.content.length} chars)`);
+               } else {
+                   console.warn(`[RoleCreator] ⚠️ No content found for tool: ${tool}`);
                }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(`[RoleCreator] ❌ Failed to load prompt for ${tool}:`, e); 
+            }
         }
+        console.log('[RoleCreator] Final tool prompts:', Object.keys(prompts));
         setToolPrompts(prompts);
+    } else {
+        console.log('[RoleCreator] No tools assigned to this role');
+        setToolPrompts({});
     }
     setSaveStatus('idle');
   };
