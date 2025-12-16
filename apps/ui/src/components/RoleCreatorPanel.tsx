@@ -4,31 +4,20 @@ import DualRangeSlider from './DualRangeSlider.js';
 import { RoleModelOverride } from './RoleModelOverride.js';
 import { 
   Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, 
-  ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, MoreVertical, Edit2, Plus 
+  ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, Edit2, Plus 
 } from 'lucide-react';
-import { useEffect } from 'react';
 
 interface RoleCreatorPanelProps {
   className?: string;
 }
 
 const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) => {
-
-// ... (existing hooks) ...
-
-  const { data: categories, refetch: refetchCategories, isLoading: categoriesLoading, error: categoriesError } = trpc.role.listCategories.useQuery();
-  const createCategoryMutation = trpc.role.createCategory.useMutation({ onSuccess: () => refetchCategories() });
-  const updateCategoryMutation = trpc.role.updateCategory.useMutation({ onSuccess: () => refetchCategories() });
-  const deleteCategoryMutation = trpc.role.deleteCategory.useMutation({ onSuccess: () => refetchCategories() });
-  const moveRoleMutation = trpc.role.moveRoleToCategory.useMutation({ onSuccess: () => { utils.role.list.invalidate(); } });
-
+  // State declarations
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategoryParentId, setNewCategoryParentId] = useState<string | null>(null);
   const [tempCategoryName, setTempCategoryName] = useState('');
   const [isNewCategory, setIsNewCategory] = useState<boolean>(false);
-
-  // State for form data
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -58,65 +47,136 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined as string | undefined, minPassScore: 80 },
     memoryConfig: { useProjectMemory: false, readOnly: false },
   });
-
   const [leftTab, setLeftTab] = useState<'params' | 'toolPrompts'>('params');
   const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments'>('capabilities');
-  
   const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  
-  // Selection Handlers
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
+  // tRPC hooks
+  const utils = trpc.useContext();
+  const { data: categories, refetch: refetchCategories, isLoading: categoriesLoading, error: categoriesError } = trpc.role.listCategories.useQuery();
+  const { data: roles, isLoading: rolesLoading } = trpc.role.list.useQuery();
   const { data: registryData } = trpc.orchestrator.getActiveRegistryData.useQuery();
-
-  const filteredModels = useMemo(() => {
-    if (!registryData) return [];
-    // Filter logic if needed, currently just returning all
-    return Object.values(registryData.models).flat(); 
-  }, [registryData]);
-
-  const datacenterBreakdown = useMemo(() => {
-    // Mock breakdown for now if precise data structure isn't available
-    return {} as Record<string, { matched: number; total: number }>; 
-  }, []);
-
+  const { data: toolsList } = trpc.orchestrator.listTools.useQuery();
+  
+  // Mutations
+  const createCategoryMutation = trpc.role.createCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const updateCategoryMutation = trpc.role.updateCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const deleteCategoryMutation = trpc.role.deleteCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const moveRoleMutation = trpc.role.moveRoleToCategory.useMutation({ onSuccess: () => { void utils.role.list.invalidate(); } });
   const createRoleMutation = trpc.role.create.useMutation({
     onSuccess: () => {
-        utils.role.list.invalidate();
+        void utils.role.list.invalidate();
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
     },
     onError: () => setSaveStatus('error')
   });
-
   const updateRoleMutation = trpc.role.update.useMutation({
     onSuccess: () => {
-        utils.role.list.invalidate();
+        void utils.role.list.invalidate();
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
     },
     onError: () => setSaveStatus('error')
   });
-
   const deleteRoleMutation = trpc.role.delete.useMutation({
-    onSuccess: () => utils.role.list.invalidate(),
+    onSuccess: () => void utils.role.list.invalidate(),
   });
-
   const generatePromptMutation = trpc.role.generatePrompt.useMutation({
     onSuccess: (data) => {
         setFormData(prev => ({ ...prev, basePrompt: data }));
     }
   });
-
   const updateToolExamplesMutation = trpc.orchestrator.updateToolExamples.useMutation();
   const runDoctorMutation = trpc.model.runDoctor.useMutation();
 
-  const { data: toolsList } = trpc.orchestrator.listTools.useQuery();
+  // Helper to extract category name safely - MUST be defined before useMemo
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getCategoryName = (role: any): string => {
+    if (role.category && typeof role.category === 'object' && 'name' in role.category) {
+        return role.category.name || 'Uncategorized';
+    }
+    if (role.categoryString) return role.categoryString;
+    if (typeof role.category === 'string') return role.category;
+    return 'Uncategorized';
+  };
 
-  const utils = trpc.useContext();
-  const { data: roles, isLoading: rolesLoading } = trpc.role.list.useQuery();
+  // useMemo hooks - MUST be before early returns
+  const filteredModels = useMemo(() => {
+    if (!registryData) return [];
+    // Access the actual data structure from registryData
+    if (Array.isArray(registryData)) return registryData;
+    if (registryData && typeof registryData === 'object') {
+      // Handle if it's {tableName, rows} structure
+      if ('rows' in registryData && Array.isArray(registryData.rows)) return registryData.rows;
+      // Handle if it's {models: {...}} structure
+      if ('models' in registryData && registryData.models) {
+        if (Array.isArray(registryData.models)) return registryData.models;
+        if (typeof registryData.models === 'object') return Object.values(registryData.models).flat();
+      }
+    }
+    return [];
+  }, [registryData]);
+
+  const datacenterBreakdown = useMemo(() => {
+    return {} as Record<string, { matched: number; total: number }>;
+  }, []);
+
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (roles as any[])?.forEach(role => {
+       categories.add(getCategoryName(role));
+    });
+    return Array.from(categories).filter(Boolean).sort();
+  }, [roles]);
+
   const selectedRole = useMemo(() => roles?.find((r: any) => r.id === selectedRoleId), [roles, selectedRoleId]);
+
+  const categoryTree = useMemo(() => {
+    if (!categories) return { roots: [], uncategorizedRoles: [] };
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = new Map<string, any>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const roots: any[] = [];
+    
+    // Initialize map
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categories.forEach((cat: any) => {
+      map.set(cat.id, { ...cat, children: [], roles: [] });
+    });
+
+    // Place Roles
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const uncategorizedRoles: any[] = [];
+    if (roles) {
+      roles.forEach(role => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const catId = (role as any).categoryId;
+         if (catId && map.has(catId)) {
+           map.get(catId).roles.push(role);
+         } else {
+           uncategorizedRoles.push(role);
+         }
+      });
+    }
+
+    // Build Hierarchy
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categories.forEach((cat: any) => {
+      if (cat.parentId && map.has(cat.parentId)) {
+        map.get(cat.parentId).children.push(map.get(cat.id));
+      } else {
+        roots.push(map.get(cat.id));
+      }
+    });
+
+    return { roots, uncategorizedRoles };
+  }, [categories, roles]);
 
   // Loading state
   if (categoriesLoading || rolesLoading) {
@@ -142,24 +202,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     );
   }
 
-  // Helper to extract category name safely
-  const getCategoryName = (role: any): string => {
-    if (role.category && typeof role.category === 'object' && 'name' in role.category) {
-        return role.category.name || 'Uncategorized';
-    }
-    if (role.categoryString) return role.categoryString;
-    if (typeof role.category === 'string') return role.category;
-    return 'Uncategorized';
-  };
-
-  const uniqueCategories = useMemo(() => {
-    const categories = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (roles as any[])?.forEach(role => {
-       categories.add(getCategoryName(role));
-    });
-    return Array.from(categories).filter(Boolean).sort();
-  }, [roles]);
+  // NOTE: getCategoryName and useMemo hooks moved above early returns to comply with Rules of Hooks
 
   // Handler for selecting a role
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,7 +233,10 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       terminalRestrictions: role.terminalRestrictions || { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] },
       criteria: (role.criteria) || {},
       orchestrationConfig: (role.orchestrationConfig) || { requiresCheck: false, judgeRoleId: undefined, minPassScore: 80 },
-      memoryConfig: (role.memoryConfig as unknown) || { useProjectMemory: false, readOnly: false },
+      memoryConfig: {
+        useProjectMemory: role.memoryConfig?.useProjectMemory ?? false,
+        readOnly: role.memoryConfig?.readOnly ?? false,
+      },
     });
     
     // Load tool prompts if needed
@@ -255,43 +301,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
       return null; // Placeholder as implementation was complex and might be redundant or can be restored later if needed
   };
 
-  // Tree Construction
-  const categoryTree = useMemo(() => {
-    if (!categories) return { roots: [], uncategorizedRoles: [] };
-    
-    const map = new Map<string, any>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const roots: any[] = [];
-    
-    // Initialize map
-    categories.forEach((cat: any) => {
-      map.set(cat.id, { ...cat, children: [], roles: [] });
-    });
-
-    // Place Roles
-    const uncategorizedRoles: any[] = [];
-    if (roles) {
-      roles.forEach(role => {
-        const catId = (role as any).categoryId;
-         if (catId && map.has(catId)) {
-           map.get(catId).roles.push(role);
-         } else {
-           uncategorizedRoles.push(role);
-         }
-      });
-    }
-
-    // Build Hierarchy
-    categories.forEach((cat: any) => {
-      if (cat.parentId && map.has(cat.parentId)) {
-        map.get(cat.parentId).children.push(map.get(cat.id));
-      } else {
-        roots.push(map.get(cat.id));
-      }
-    });
-
-    return { roots, uncategorizedRoles };
-  }, [categories, roles]);
+  // NOTE: categoryTree useMemo moved above early returns to comply with Rules of Hooks
 
   // Recursive Category Renderer
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -44,10 +44,24 @@ export class AssessmentService {
     Return ONLY the new prompt text.
     `;
 
-    // Use a smart model
+    // Use a smart model - Dynamic Selection
     const models = await ProviderManager.getAllModels();
-    const smartModel = models.find(m => m.id.includes('gpt-4') || m.id.includes('claude-3') || m.id.includes('gemini-1.5-pro')) || models[0];
-    if (!smartModel) return;
+    
+    // [NEW] Dynamic Resilience
+    // 1. Look for models explicitly tagged with 'reasoning' or 'smart' (future-proofing)
+    // 2. Fallback to models that are NOT free (assuming paid = smarter)
+    // 3. Fallback to the largest context window
+    const smartModel = models.find(m => m.capabilities?.includes('reasoning')) 
+      || models.find(m => (m.costPer1k || 0) > 0) // Heuristic: Paid models are usually "smarter"
+      || models.sort((a, b) => ((b.specs?.contextWindow || 0) - (a.specs?.contextWindow || 0)))[0] // Fallback: Biggest brain
+      || models[0];
+
+    if (!smartModel) {
+      console.error('[AssessmentService] No capable models found for assessment.');
+      return;
+    }
+
+    console.log(`🧠 Assessment Service selected: ${smartModel.id} (Cost: $${smartModel.costPer1k || 0}/1k)`);
 
     const provider = ProviderManager.getProvider(smartModel.providerId);
     if (!provider) return;
