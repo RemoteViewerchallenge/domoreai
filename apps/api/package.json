@@ -13,7 +13,9 @@
     "lint": "eslint -c eslint.config.mjs . --max-warnings=999",
     "lint:fix": "eslint -c eslint.config.mjs . --fix",
     "db:backup": "tsx backup_providers.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "ingest:models": "tsx src/scripts/ingest_models_robust.ts",
+    "ingest:models:custom": "tsx src/scripts/ingest_models_robust.ts"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

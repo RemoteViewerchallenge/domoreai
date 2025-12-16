@@ -102,14 +102,32 @@ export class ToolDocumenter {
   private static async generateDocumentation(serverName: string, tools: Tool[]): Promise<string> {
     const docs: string[] = [];
 
-    // We'll try to get a smart model to generate examples
+    // [NEW] Strategic Selection
+    // Documentation is a "Heavy Context" task. We need big windows.
     let model = null;
     try {
         const allModels = await ProviderManager.getAllModels();
-        // Prefer a smart model for docs generation
-        model = allModels.find(m => m.id.includes('claude-3-5') || m.id.includes('gpt-4') || m.id.includes('gemini-1.5-pro'));
+        
+        // 1. Filter for models with > 32k context
+        // 2. Sort by Cost (Free first) -> Then by Context Size (Descending)
+        const capableModels = allModels
+            .filter(m => ((m.specs?.contextWindow || 0) >= 32000))
+            .sort((a, b) => {
+                // Primary Sort: Cost (Ascending) - prioritize Free
+                if ((a.costPer1k || 0) !== (b.costPer1k || 0)) return (a.costPer1k || 0) - (b.costPer1k || 0);
+                // Secondary Sort: Context (Descending) - get the biggest window available for that price
+                return ((b.specs?.contextWindow || 0) - (a.specs?.contextWindow || 0));
+            });
+
+        model = capableModels[0] || allModels[0];
+
+        if (model) {
+            console.log(`📚 Tool Documenter using: ${model.id} (Context: ${model.specs?.contextWindow || 'unknown'})`);
+        } else {
+            console.warn("⚠️ No suitable model found for Tool Documentation. Defaulting to system fallback.");
+        }
     } catch (e) {
-        // Ignore
+        console.warn('[ToolDocumenter] Failed to load models for smart documentation:', e);
     }
 
     for (const tool of tools) {
