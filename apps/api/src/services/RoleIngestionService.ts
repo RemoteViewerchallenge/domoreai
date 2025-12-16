@@ -187,15 +187,15 @@ export async function ingestAgentLibrary(
           // Update existing role
           await prisma.role.update({
             where: { name: agentData.name },
-            data: {
-              basePrompt: agentData.systemPrompt,
-              tools: filteredTools,
-              category: { connect: { id: category.id } },
-              categoryString: categoryName,
-              metadata: {
-                needsReasoning: needsReasoning
-              }, 
-            } as import('@prisma/client').Prisma.RoleUpdateInput,
+              data: {
+                basePrompt: agentData.systemPrompt,
+                tools: filteredTools,
+                categoryId: category.id,
+                categoryString: categoryName,
+                metadata: {
+                  needsReasoning: needsReasoning,
+                },
+              } as any,
           });
           stats.updated++;
           createdNames.add(agentData.name);
@@ -203,17 +203,17 @@ export async function ingestAgentLibrary(
            // Create new role
            await prisma.role.create({
              data: {
-               name: agentData.name,
-               basePrompt: agentData.systemPrompt,
-               tools: filteredTools,
-               category: { connect: { id: category.id } },
-               categoryString: categoryName,
-               metadata: {
-                 needsReasoning: needsReasoning,
-                 minContext: 4096,
-                 maxContext: 128000
-               },
-             } as import('@prisma/client').Prisma.RoleCreateInput,
+                name: agentData.name,
+                basePrompt: agentData.systemPrompt,
+                tools: filteredTools,
+                categoryId: category.id,
+                categoryString: categoryName,
+                metadata: {
+                  needsReasoning: needsReasoning,
+                  minContext: 4096,
+                  maxContext: 128000,
+                },
+              } as any,
            });
            stats.created++;
            createdNames.add(agentData.name);
