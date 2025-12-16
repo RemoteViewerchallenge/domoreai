@@ -183,6 +183,96 @@ export class AgentFactoryService implements IAgentFactory {
     private configRepo: IAgentConfigRepository
   ) {}
 
+  /**
+   * Create an agent with a specific corporate tier
+   * 
+   * @param cardConfig - Base agent configuration
+   * @param tier - Corporate tier: "Executive", "Manager", or "Worker"
+   * @returns Configured VolcanoAgent with tier-appropriate model
+   */
+  async createVolcanoAgentWithTier(
+    cardConfig: CardAgentState,
+    tier: 'Executive' | 'Manager' | 'Worker' = 'Worker'
+  ): Promise<VolcanoAgent> {
+    // Override the model selection based on tier
+    const tierConfig = { ...cardConfig, isLocked: false };
+    
+    // Get tier-appropriate model
+    const bestModel = await this.getModelForTier(cardConfig.roleId, tier);
+    
+    if (bestModel) {
+      tierConfig.modelId = bestModel.modelId;
+      tierConfig.temperature = bestModel.temperature;
+      tierConfig.maxTokens = bestModel.maxTokens;
+      tierConfig.isLocked = true; // Lock to the tier-selected model
+    }
+    
+    return this.createVolcanoAgent(tierConfig);
+  }
+
+  /**
+   * Get the best model for a given tier
+   * 
+   * Tier mapping:
+   * - Executive: High-cost, powerful models (o1-preview, claude-opus, gpt-4-turbo)
+   * - Manager: Mid-tier models (gpt-4o, claude-sonnet, gemini-pro)
+   * - Worker: Low-cost, fast models (gpt-4o-mini, gemini-flash, llama-3-8b)
+   */
+  private async getModelForTier(
+    roleId: string,
+    tier: 'Executive' | 'Manager' | 'Worker'
+  ): Promise<{ modelId: string; providerId: string; temperature?: number; maxTokens?: number } | null> {
+    const { prisma } = await import('../db.js');
+    
+    // Define tier cost thresholds (cost per 1k tokens)
+    const tierThresholds = {
+      Executive: { min: 0.01, max: 1.0 },    // $0.01+ per 1k tokens
+      Manager: { min: 0.001, max: 0.01 },    // $0.001-$0.01 per 1k tokens
+      Worker: { min: 0, max: 0.001 }         // $0-$0.001 per 1k tokens (includes free)
+    };
+    
+    const threshold = tierThresholds[tier];
+    
+    try {
+      // Find the best model within the tier's cost range
+      const model = await prisma.model.findFirst({
+        where: {
+          isActive: true,
+          costPer1k: {
+            gte: threshold.min,
+            lte: threshold.max
+          },
+          capabilities: {
+            has: 'text' // At minimum, must support text
+          }
+        },
+        orderBy: [
+          { costPer1k: tier === 'Executive' ? 'desc' : 'asc' }, // Executive wants most expensive, others want cheapest
+        ],
+        include: {
+          provider: true
+        }
+      });
+      
+      if (!model) {
+        console.warn(`[AgentFactory] No model found for tier ${tier}. Falling back to default selection.`);
+        return null;
+      }
+      
+      console.log(`[AgentFactory] Selected ${tier} tier model: ${model.modelId} (${model.provider.label}) @ $${model.costPer1k}/1k`);
+      
+      return {
+        modelId: model.id,
+        providerId: model.providerId,
+        temperature: tier === 'Executive' ? 0.3 : tier === 'Manager' ? 0.5 : 0.7,
+        maxTokens: tier === 'Executive' ? 4096 : tier === 'Manager' ? 2048 : 1024
+      };
+    } catch (error) {
+      console.error(`[AgentFactory] Error selecting model for tier ${tier}:`, error);
+      return null;
+    }
+  }
+
   async createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
     // 1. Load Role Configuration
     const rawRole = await this.configRepo.getRole(cardConfig.roleId);

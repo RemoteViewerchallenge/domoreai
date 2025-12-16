@@ -439,6 +439,10 @@ model Orchestration {
   // Steps in this orchestration (ordered)
   steps       OrchestrationStep[]
   
+  // [NEW] Sub-Orchestration Support (Reverse Relation)
+  // Steps that use this orchestration as a sub-orchestration
+  usedBySteps OrchestrationStep[] @relation("SubOrchestrations")
+  
   // Execution history
   executions  OrchestrationExecution[]
   
@@ -470,7 +474,24 @@ model OrchestrationStep {
   // roleName        String?
   
   // Control flow
-  stepType        String   @default("sequential") // "sequential", "parallel", "conditional", "loop"
+  stepType        String   @default("sequential") // "sequential", "parallel", "conditional", "loop", "sub_orchestration"
+  
+  // [NEW] Sub-Orchestration Support (Russian Doll Nesting)
+  // When stepType is "sub_orchestration", this points to another Orchestration to execute
+  subOrchestrationId String?
+  subOrchestration   Orchestration? @relation("SubOrchestrations", fields: [subOrchestrationId], references: [id], onDelete: SetNull)
+  
+  // [NEW] Confidence & Quality Control
+  // Minimum confidence score required for this step's output (0.0 - 1.0)
+  minConfidence   Float?   @default(0.8)
+  // Actual confidence score from the last execution (populated by ConfidenceAgent)
+  lastConfidence  Float?
+  
+  // [NEW] Corporate Tier / Rank for Model Selection
+  // "Executive" = expensive, powerful models (o1-preview, claude-opus)
+  // "Manager" = mid-tier models (gpt-4o, claude-sonnet)
+  // "Worker" = cheap, fast models (gpt-4o-mini, gemini-flash)
+  tier            String?  @default("Worker") // "Executive", "Manager", "Worker"
   
   // Conditional logic (JSON schema)
   condition       Json?    // e.g., { "field": "output.confidence", "operator": ">", "value": 0.8 }

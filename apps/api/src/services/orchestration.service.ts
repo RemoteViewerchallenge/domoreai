@@ -212,6 +212,17 @@ export class OrchestrationService {
     const stepLogs: any[] = [];
 
     try {
+      // 🧠 INTELLIGENCE LAYER: Recall relevant past executions (Librarian)
+      const { LibrarianService } = await import('./LibrarianService.js');
+      const taskDescription = typeof input === 'string' ? input : JSON.stringify(input);
+      const memories = await LibrarianService.recall(taskDescription, 3);
+      
+      // Inject memories into context
+      if (memories.length > 0) {
+        LibrarianService.injectMemories(context, memories);
+        console.log(`[Orchestration] 📚 Injected ${memories.length} memories from Librarian`);
+      }
+
       // Group steps by parallel execution
       const stepGroups = this.groupStepsByExecution(orchestration.steps);
 
@@ -277,6 +288,29 @@ export class OrchestrationService {
           output: context,
         },
       });
+
+      // ⚖️ INTELLIGENCE LAYER: Evaluate execution quality (Judge)
+      const { AssessmentService } = await import('./AssessmentService.js');
+      console.log('[Orchestration] ⚖️  Triggering Judge evaluation...');
+      
+      // Run evaluation in background (don't block)
+      AssessmentService.evaluateExecution(executionId)
+        .then(async (assessment) => {
+          console.log(`[Orchestration] Judge score: ${assessment.score}, Passed: ${assessment.passed}`);
+          
+          // 📚 INTELLIGENCE LAYER: Store as Golden Record if high quality (Librarian)
+          if (assessment.passed && assessment.score >= 0.7) {
+            await LibrarianService.storeGoldenRecord(
+              executionId,
+              assessment.score,
+              orchestration.tags
+            );
+          }
+        })
+        .catch((error) => {
+          console.error('[Orchestration] Judge evaluation failed:', error);
+        });
+
     } catch (error: any) {
       // Mark as failed
       await prisma.orchestrationExecution.update({
@@ -309,6 +343,41 @@ export class OrchestrationService {
     // Prepare input
     const stepInput = this.applyInputMapping(step, context);
 
+    // [NEW] Check for Sub-Orchestration (Russian Doll Nesting)
+    if (step.stepType === 'sub_orchestration' && step.subOrchestrationId) {
+      console.log(`[Orchestration] Executing sub-orchestration: ${step.subOrchestrationId}`);
+      
+      try {
+        // Recursively execute the sub-orchestration
+        const subExecution = await this.executeOrchestration(
+          step.subOrchestrationId,
+          stepInput,
+          roleAssignments
+        );
+        
+        return {
+          stepId: step.id,
+          stepName: step.name,
+          status: subExecution.status === 'completed' ? 'completed' : 'failed',
+          stepInput,
+          stepOutput: subExecution.output,
+          subExecutionId: subExecution.id,
+          duration: Date.now() - startTime,
+          attempts: 1,
+        };
+      } catch (error: any) {
+        return {
+          stepId: step.id,
+          stepName: step.name,
+          status: 'failed',
+          stepInput,
+          error: `Sub-orchestration failed: ${error.message}`,
+          duration: Date.now() - startTime,
+          attempts: 1,
+        };
+      }
+    }
+
     // Retry logic
     for (let attempt = 0; attempt <= step.maxRetries; attempt++) {
       try {
@@ -338,24 +407,89 @@ export class OrchestrationService {
           console.warn(`[Orchestration] No role assigned for step "${step.name}". Using fallback role "${role.name}".`);
         }
 
-          // Create agent for this role
-          const roleMetadata = (role.metadata as any) || {};
+        // Create agent for this role
+        const roleMetadata = (role.metadata as any) || {};
 
-        const agent = await createVolcanoAgent({
-          roleId: role.id,
-          modelId: null, // Let orchestrator pick best model
-          isLocked: false,
-          temperature: roleMetadata.defaultTemperature || 0.7,
-          maxTokens: roleMetadata.defaultMaxTokens || 2048,
-        });
+        // [NEW] Tier-based Agent Creation
+        const tier = (step.tier as 'Executive' | 'Manager' | 'Worker') || 'Worker';
+        
+        let agent;
+        if (tier !== 'Worker') {
+          // Use tier-based creation for Executive/Manager
+          const { AgentFactoryService } = await import('./AgentFactory.js');
+          const { ProviderManager } = await import('./ProviderManager.js');
+          const { PrismaAgentConfigRepository } = await import('../repositories/PrismaAgentConfigRepository.js');
+          
+          const factory = new AgentFactoryService(
+            ProviderManager.getInstance(),
+            new PrismaAgentConfigRepository()
+          );
+          
+          agent = await factory.createVolcanoAgentWithTier({
+            roleId: role.id,
+            modelId: null,
+            isLocked: false,
+            temperature: roleMetadata.defaultTemperature || 0.7,
+            maxTokens: roleMetadata.defaultMaxTokens || 2048,
+          }, tier);
+          
+          console.log(`[Orchestration] Created ${tier} tier agent for step "${step.name}"`);
+        } else {
+          // Standard worker agent
+          agent = await createVolcanoAgent({
+            roleId: role.id,
+            modelId: null, // Let orchestrator pick best model
+            isLocked: false,
+            temperature: roleMetadata.defaultTemperature || 0.7,
+            maxTokens: roleMetadata.defaultMaxTokens || 2048,
+          });
+        }
 
         const prompt = typeof stepInput === 'string' ? stepInput : JSON.stringify(stepInput);
 
-        // Execute with timeout
-        const output = await this.executeWithTimeout(
-          agent.generate(prompt),
-          step.timeout || 300000 // Default 5 minutes
-        );
+        // [NEW] Confidence-based Execution
+        const minConfidence = step.minConfidence ?? 0.8;
+        let output: string;
+        let confidence = 1.0;
+        
+        if (minConfidence > 0 && minConfidence < 1.0) {
+          // Use ConfidenceAgent wrapper
+          const { confidenceAgent } = await import('./ConfidenceAgent.js');
+          
+          const result = await this.executeWithTimeout(
+            confidenceAgent.executeWithConfidence(
+              {
+                roleId: role.id,
+                modelId: null,
+                isLocked: false,
+                temperature: roleMetadata.defaultTemperature || 0.7,
+                maxTokens: roleMetadata.defaultMaxTokens || 2048,
+              },
+              prompt,
+              { minConfidence }
+            ),
+            step.timeout || 300000 // Default 5 minutes
+          );
+          
+          output = result.output;
+          confidence = result.confidence;
+          
+          console.log(`[Orchestration] Step "${step.name}" completed with confidence ${confidence.toFixed(2)}`);
+        } else {
+          // Standard execution without confidence checking
+          output = await this.executeWithTimeout(
+            agent.generate(prompt),
+            step.timeout || 300000 // Default 5 minutes
+          );
+        }
+
+        // Update step's last confidence score
+        if (confidence !== 1.0) {
+          await prisma.orchestrationStep.update({
+            where: { id: step.id },
+            data: { lastConfidence: confidence }
+          }).catch(err => console.warn('[Orchestration] Failed to update lastConfidence:', err));
+        }
 
         return {
           stepId: step.id,
@@ -363,6 +497,8 @@ export class OrchestrationService {
           status: 'completed',
           stepInput,
           stepOutput: output,
+          confidence,
+          tier,
           duration: Date.now() - startTime,
           attempts: attempt + 1,
         };
