@@ -27,6 +27,11 @@
     --input: var(--color-border);
     --ring: var(--color-primary);
     
+    /* Map additional utility colors */
+    --surface: var(--color-background-secondary);
+    --text-muted: var(--color-text-secondary);
+    --accent: var(--color-accent);
+    
     --radius: 0.5rem;
   }
 
@@ -52,4 +57,31 @@
   background-color: rgba(9, 9, 11, 0.95) !important;
   border-left: 1px solid var(--color-primary);
   z-index: 9999;
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-background);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-background);
 }
