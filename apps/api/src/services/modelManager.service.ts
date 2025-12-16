@@ -62,47 +62,83 @@ export async function logUsage(data: RawProviderOutput) {
 }
 
 /**
- * The "Brain" for model selection.
- * Finds the best, non-rate-limited model for a given role.
+ * Selects a model from the model_registry based on Role criteria.
+ * Uses Ghost Records pattern: only considers active models.
+ * Supports "Exhaustive Fallback" by excluding failed models/providers.
  */
-/**
- * Selects a model from the ACTIVE REGISTRY based on Role criteria.
- * Supports "Exhaustive Fallback" by excluding failed models (not providers).
- * This allows other models from the same provider to remain active.
- */
-import fs from 'fs';
-import path from 'path';
-
-// Helper to load models from JSON at runtime
-function loadModelsFromJson() {
-  // Use import.meta.url for ESM compatibility
-  const url = new URL('../../latest_models/models.json', import.meta.url);
-  try {
-    const raw = fs.readFileSync(url, 'utf-8');
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('Failed to load models from JSON:', e);
-    return [];
-  }
-}
-
 export async function selectModelFromRegistry(roleId: string, failedModels: string[] = [], failedProviders: string[] = []) {
-  // Load models from JSON instead of DB
-  const allModels = loadModelsFromJson();
-  // Exclude failed models/providers
-  const candidates = allModels.filter((m: any) =>
-    (!failedModels.includes(m.model_id || m.modelId || m.id)) &&
-    (!failedProviders.includes(m.provider || m.providerId))
-  );
-  if (candidates.length === 0) return null;
-  // Pick random for load balancing
-  const selected = candidates[Math.floor(Math.random() * candidates.length)];
-  return {
-    modelId: selected.model_id || selected.modelId || selected.id,
-    internalId: selected.id || selected.model_id || selected.modelId,
-    providerId: selected.provider || selected.providerId,
-    ...selected
-  };
+  try {
+    // Fetch the role to get its criteria
+    const role = await prisma.role.findUnique({
+      where: { id: roleId }
+    });
+
+    if (!role) {
+      console.warn(`Role ${roleId} not found`);
+      return null;
+    }
+
+    // Parse metadata for capabilities
+    const metadata = (role.metadata as any) || {};
+    const capabilities = metadata.capabilities || [];
+
+    // Build query filters
+    const whereClause: any = {
+      isActive: true, // Ghost Records: only active models
+      provider: {
+        isEnabled: true // Only enabled providers
+      },
+      // Exclude failed models and providers
+      NOT: [
+        ...(failedModels.length > 0 ? [{ modelId: { in: failedModels } }] : []),
+        ...(failedProviders.length > 0 ? [{ providerId: { in: failedProviders } }] : [])
+      ]
+    };
+
+    // Add capability filters if specified
+    if (capabilities.length > 0) {
+      whereClause.capabilities = {
+        hasSome: capabilities
+      };
+    }
+
+    // Fetch candidate models
+    const candidates = await prisma.model.findMany({
+      where: whereClause,
+      include: {
+        provider: true
+      },
+      orderBy: [
+        { isFree: 'desc' }, // Prefer free models (Zero-Burn)
+        { lastSeenAt: 'desc' }, // Recently seen models first
+      ],
+      take: 100 // Limit for performance
+    });
+
+    if (candidates.length === 0) {
+      console.warn(`No active models found for role ${roleId}`);
+      return null;
+    }
+
+    // Pick random for load balancing
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    console.log(`✅ Selected model: ${selected.provider.label}/${selected.name} (source: ${selected.source}, free: ${selected.isFree})`);
+
+    return {
+      modelId: selected.modelId,
+      internalId: selected.id,
+      providerId: selected.providerId,
+      name: selected.name,
+      isFree: selected.isFree,
+      source: selected.source,
+      provider: selected.provider,
+      specs: selected.specs,
+    };
+  } catch (error) {
+    console.error('Failed to select model from registry:', error);
+    return null;
+  }
 }
 
 /**

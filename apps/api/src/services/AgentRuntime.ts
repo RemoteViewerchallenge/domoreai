@@ -139,7 +139,13 @@ export class AgentRuntime {
   }
 
   private async init(requestedTools: string[], _roleId?: string) {
-    this.client = await CodeModeUtcpClient.create();
+    try {
+      this.client = await CodeModeUtcpClient.create();
+    } catch (error) {
+      console.warn('[AgentRuntime] Failed to create UTCP client:', error);
+      console.log('[AgentRuntime] Proceeding without tool support (simple chat mode)');
+      return;
+    }
 
     // ONLY setup tools if explicitly requested
     if (requestedTools.length === 0) {
@@ -158,12 +164,19 @@ export class AgentRuntime {
     const nativeToolNames = ['read_file', 'write_file', 'list_files', 'browse', 'research.web_scrape', 'analysis.complexity'];
     const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t) && t !== 'meta');
     
+    let mcpTools: ToolDefinition[] = [];
+    
     if (serverNames.length > 0) {
-        await mcpOrchestrator.prepareEnvironment(serverNames); 
+      try {
+        await mcpOrchestrator.prepareEnvironment(serverNames);
+        // 2. Get Dynamic Tools from MCP servers
+        mcpTools = await mcpOrchestrator.getToolsForSandbox();
+      } catch (mcpError) {
+        console.warn('[AgentRuntime] MCP connection failed:', mcpError);
+        console.log('[AgentRuntime] Proceeding with native tools only');
+        // Continue without MCP tools - don't crash the entire agent
+      }
     }
-
-    // 2. Get Dynamic Tools
-    const mcpTools = await mcpOrchestrator.getToolsForSandbox();
     
     // 3. Register "system" namespace with Native, MCP, and optionally Meta tools
     const nativeTools = this.getNativeTools().filter(t => 
@@ -178,16 +191,21 @@ export class AgentRuntime {
       toolsToRegister.push(...metaTools);
     }
 
-    await this.client.registerManual({
-      name: 'system',
-      call_template_type: 'local',
-      tools: toolsToRegister
-    } as unknown as CallTemplate); // Cast to CallTemplate
-    
-    // 5. Load Tool Documentation
-    await this.loadToolDocs(requestedTools);
-    
-    console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
+    try {
+      await this.client.registerManual({
+        name: 'system',
+        call_template_type: 'local',
+        tools: toolsToRegister
+      } as unknown as CallTemplate); // Cast to CallTemplate
+      
+      // 5. Load Tool Documentation
+      await this.loadToolDocs(requestedTools);
+      
+      console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
+    } catch (registerError) {
+      console.warn('[AgentRuntime] Failed to register tools:', registerError);
+      console.log('[AgentRuntime] Agent will run without tool support');
+    }
   }
 
   private getNativeTools(): ToolDefinition[] {

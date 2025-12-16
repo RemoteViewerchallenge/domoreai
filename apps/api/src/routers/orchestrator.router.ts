@@ -58,19 +58,58 @@ export const orchestratorRouter = createTRPCRouter({
 
   getActiveRegistryData: protectedProcedure
     .query(async ({ ctx }) => {
-      // 1. Get Active Table
-      const config = await ctx.prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
-      const tableName = config?.activeTableName || 'unified_models';
-
-      // 2. Fetch Data
+      // Fetch models from the Prisma model_registry table
+      // This replaces the old raw SQL query approach
       try {
-        const rows = await ctx.prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "${tableName}" LIMIT 2000` // Cap at 2000 for performance
-        );
-        return { tableName, rows };
+        const models = await ctx.prisma.model.findMany({
+          where: {
+            isActive: true, // Only show active models (Ghost Records pattern)
+          },
+          include: {
+            provider: {
+              select: {
+                id: true,
+                label: true,
+                type: true,
+                isEnabled: true,
+              }
+            }
+          },
+          orderBy: [
+            { isFree: 'desc' }, // Free models first
+            { lastSeenAt: 'desc' }, // Recently seen models first
+          ],
+          take: 2000 // Cap at 2000 for performance
+        });
+
+        // Transform to a format the UI expects
+        const rows = models.map(model => ({
+          id: model.id,
+          provider_id: model.providerId,
+          provider_label: model.provider.label,
+          provider_type: model.provider.type,
+          provider_enabled: model.provider.isEnabled,
+          model_id: model.modelId,
+          model_name: model.name,
+          capabilities: model.capabilities,
+          is_free: model.isFree,
+          cost_per_1k: model.costPer1k,
+          is_active: model.isActive,
+          source: model.source,
+          first_seen_at: model.firstSeenAt,
+          last_seen_at: model.lastSeenAt,
+          specs: model.specs,
+          provider_data: model.providerData,
+          pricing_config: model.pricingConfig,
+        }));
+
+        return { 
+          tableName: 'model_registry', 
+          rows 
+        };
       } catch (error) {
-        console.error("Failed to fetch registry data:", error);
-        return { tableName, rows: [] };
+        console.error("Failed to fetch models from registry:", error);
+        return { tableName: 'model_registry', rows: [] };
       }
     }),
 

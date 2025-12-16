@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -48,7 +48,9 @@ export class UnifiedIngestionService {
   
   /**
    * Ingests all model JSON files from the latest_models directory
-   * Uses provider-specific mappings to normalize diverse JSON schemas
+   * TWO-PHASE APPROACH:
+   * 1. Save raw JSON to RawDataLake (The "Bag") - prevents data loss
+   * 2. Process into Model table with normalization
    */
   static async ingestAllModels(modelsDir?: string): Promise<void> {
     const targetDir = modelsDir || path.join(process.cwd(), 'latest_models');
@@ -62,12 +64,14 @@ export class UnifiedIngestionService {
     }
 
     console.log(`🚀 Starting Unified Ingestion from ${targetDir}...`);
+    console.log(`📋 Phase 1: Saving raw data to RawDataLake (The Bag)\n`);
 
+    // PHASE 1: Save all raw JSON to RawDataLake
+    const rawRecords: Array<{ id: string; provider: string; fileName: string }> = [];
+    
     for (const file of files) {
-      // Only process JSON files
       if (!file.endsWith('.json')) continue;
 
-      // Detect Provider from Filename (e.g., "google_models_...")
       const providerMatch = file.match(/^(google|openrouter|groq|ollama|mistral)/);
       if (!providerMatch) {
         console.log(`⏭️  Skipping ${file} - no provider pattern match`);
@@ -75,31 +79,73 @@ export class UnifiedIngestionService {
       }
       
       const providerName = providerMatch[1];
-      const mapping = MAPPINGS[providerName] || MAPPINGS['openrouter']; // Fallback
-      
-      console.log(`📦 Ingesting ${providerName} from ${file}...`);
       
       try {
         const content = await fs.readFile(path.join(targetDir, file), 'utf-8');
-        const rawModels = JSON.parse(content) as RawModelData[] | { data: RawModelData[] };
+        const rawData = JSON.parse(content);
         
-        // Handle both array and wrapped structures (Groq sometimes wraps in { data: [] })
-        const modelList = Array.isArray(rawModels) ? rawModels : ((rawModels as { data?: RawModelData[] }).data || []);
+        // Save to RawDataLake (The Bag)
+        const record = await prisma.rawDataLake.create({
+          data: {
+            provider: providerName,
+            fileName: file,
+            rawData: rawData as Prisma.JsonObject,
+            processed: false
+          }
+        });
+        
+        rawRecords.push({ id: record.id, provider: providerName, fileName: file });
+        console.log(`  💾 Saved ${file} to RawDataLake (ID: ${record.id})`);
+      } catch (error) {
+        console.error(`  ❌ Failed to save ${file} to RawDataLake:`, error);
+      }
+    }
 
-        if (modelList.length === 0) {
-          console.log(`⚠️  No models found in ${file}`);
+    console.log(`\n📋 Phase 2: Processing ${rawRecords.length} raw records into Model table\n`);
+
+    // PHASE 2: Process each raw record into Model table
+    let totalIngested = 0;
+    let totalSkipped = 0;
+
+    for (const { id, provider, fileName } of rawRecords) {
+      try {
+        // Fetch the raw record
+        const rawRecord = await prisma.rawDataLake.findUnique({
+          where: { id }
+        });
+
+        if (!rawRecord) {
+          console.warn(`  ⚠️  Raw record ${id} not found`);
           continue;
         }
 
-        // Find or create the provider config
-        const providerConfig = await this.ensureProviderConfig(providerName);
+        const rawData = rawRecord.rawData as any;
+        const mapping = MAPPINGS[provider] || MAPPINGS['openrouter'];
+        
+        // Handle both array and wrapped structures
+        const modelList = Array.isArray(rawData) ? rawData : (rawData.data || rawData.models || []);
+
+        if (modelList.length === 0) {
+          console.log(`  ⚠️  No models in ${fileName} (provider may have returned empty list)`);
+          // Mark as processed even if empty - we don't want to retry forever
+          await prisma.rawDataLake.update({
+            where: { id },
+            data: { processed: true }
+          });
+          continue;
+        }
+
+        console.log(`📦 Processing ${provider} from ${fileName} (${modelList.length} models)...`);
+
+        // Find or create provider config
+        const providerConfig = await this.ensureProviderConfig(provider);
 
         let ingestedCount = 0;
         let skippedCount = 0;
 
         for (const raw of modelList) {
           try {
-            await this.ingestSingleModel(raw, providerConfig.id, providerName, mapping);
+            await this.ingestSingleModel(raw, providerConfig.id, provider, mapping);
             ingestedCount++;
           } catch (error) {
             console.error(`    ❌ Failed to ingest model:`, error);
@@ -107,13 +153,24 @@ export class UnifiedIngestionService {
           }
         }
 
-        console.log(`    ✅ Ingested ${ingestedCount} models, skipped ${skippedCount} from ${file}`);
+        // Mark as processed
+        await prisma.rawDataLake.update({
+          where: { id },
+          data: { processed: true }
+        });
+
+        console.log(`    ✅ Ingested ${ingestedCount} models, skipped ${skippedCount} from ${fileName}`);
+        totalIngested += ingestedCount;
+        totalSkipped += skippedCount;
       } catch (error) {
-        console.error(`[UnifiedIngestion] Failed to process ${file}:`, error);
+        console.error(`[UnifiedIngestion] Failed to process raw record ${id}:`, error);
       }
     }
     
-    console.log("✅ Ingestion Complete. Agents ready to spawn.");
+    console.log(`\n✅ Ingestion Complete!`);
+    console.log(`   Total Ingested: ${totalIngested}`);
+    console.log(`   Total Skipped: ${totalSkipped}`);
+    console.log(`   Agents ready to spawn.\n`);
   }
 
   /**
@@ -163,6 +220,7 @@ export class UnifiedIngestionService {
 
   /**
    * Ingests a single model from raw provider data
+   * Uses Ghost Records pattern: updates lastSeenAt, preserves source
    */
   private static async ingestSingleModel(
     raw: RawModelData,
@@ -212,24 +270,29 @@ export class UnifiedIngestionService {
 
     const isMultimodal = this.detectMultimodal(raw);
     
-    const specs = {
+    const specs: Prisma.JsonObject = {
       contextWindow: contextWindow,
       maxOutput: maxOutput,
       isMultimodal: isMultimodal,
-      pricing: mapping.pricingPath ? this.resolvePath(raw, mapping.pricingPath) : {}
+      pricing: mapping.pricingPath ? (this.resolvePath(raw, mapping.pricingPath) as Prisma.JsonValue) : {}
     };
 
     // Determine capabilities
     const capabilities = this.extractCapabilities(raw, isMultimodal);
 
-    // Extract pricing
-    const costPer1k = this.extractCostPer1k(raw, providerName);
-    const isFree = costPer1k === 0;
+    // Extract pricing with strict free model detection
+    const isFree = this.isModelFree(providerName, raw);
+    const costPer1k = isFree ? 0 : this.extractCostPer1k(raw, providerName);
 
     // Extract pricing config for multi-modal support
     const pricingConfig = this.extractPricingConfig(raw, providerName);
 
-    // 4. Upsert into DB (Preserving Raw Data!)
+    // 4. GHOST RECORDS PATTERN: Upsert with timestamp tracking
+    // - Update lastSeenAt on every ingestion (proves the model still exists)
+    // - Preserve source if already exists (don't overwrite INFERENCE/MANUAL with INDEX)
+    // - Set isActive=true (model is confirmed alive)
+    const now = new Date();
+    
     await prisma.model.upsert({
       where: { 
         providerId_modelId: {
@@ -240,22 +303,31 @@ export class UnifiedIngestionService {
       update: {
         name,
         specs,
-        providerData: raw, // <--- CRITICAL: Never lose the original data
+        providerData: raw as Prisma.JsonObject, // <--- CRITICAL: Never lose the original data
         capabilities,
         costPer1k,
         isFree,
-        pricingConfig: pricingConfig || undefined
+        pricingConfig: pricingConfig as Prisma.JsonObject | undefined,
+        // GHOST RECORDS: Update tracking fields
+        lastSeenAt: now,        // Confirm this model is still alive
+        isActive: true,         // Re-activate if it was marked inactive
+        // Note: We do NOT update 'source' - preserve INFERENCE/MANUAL discoveries
       },
       create: {
         providerId: providerId,
         modelId: modelId,
         name: name,
         specs,
-        providerData: raw,
+        providerData: raw as Prisma.JsonObject,
         capabilities,
         costPer1k,
         isFree,
-        pricingConfig: pricingConfig || undefined
+        pricingConfig: pricingConfig as Prisma.JsonObject | undefined,
+        // GHOST RECORDS: Initialize tracking fields
+        source: 'INDEX',        // This came from the provider's official list
+        firstSeenAt: now,
+        lastSeenAt: now,
+        isActive: true,
       }
     });
   }
@@ -320,9 +392,75 @@ export class UnifiedIngestionService {
   }
 
   /**
+   * Helper to detect if a model is TRULY free
+   * This is strict to avoid false positives that could lead to unexpected charges
+   */
+  private static isModelFree(providerName: string, raw: RawModelData): boolean {
+    // Local models are always free
+    if (providerName === 'ollama' || providerName === 'local') {
+      return true;
+    }
+    
+    // OpenRouter: Check if both prompt and completion pricing are exactly 0
+    if (providerName === 'openrouter') {
+      if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
+        const pricing = raw.pricing as Record<string, unknown>;
+        const promptVal = pricing.prompt;
+        const completionVal = pricing.completion;
+        const prompt = parseFloat(typeof promptVal === 'string' || typeof promptVal === 'number' ? String(promptVal) : '999');
+        const completion = parseFloat(typeof completionVal === 'string' || typeof completionVal === 'number' ? String(completionVal) : '999');
+        return prompt === 0 && completion === 0;
+      }
+      return false;
+    }
+    
+    // Google: Flash models are typically free-tier eligible
+    // This is a heuristic until we get real pricing data
+    if (providerName === 'google') {
+      const nameVal = raw.name;
+      const displayNameVal = raw.displayName;
+      const id = (typeof nameVal === 'string' ? nameVal : '').toLowerCase();
+      const displayName = (typeof displayNameVal === 'string' ? displayNameVal : '').toLowerCase();
+      
+      // Flash models are generally free, but experimental 8b might have limits
+      const hasFreePattern = (id.includes('flash') || displayName.includes('flash')) && !id.includes('8b');
+      
+      // Also check explicit isFree flag if present
+      if ('isFree' in raw && typeof raw.isFree === 'boolean') {
+        return raw.isFree;
+      }
+      
+      return hasFreePattern;
+    }
+
+    // Groq: Currently offers free tier for many models
+    if (providerName === 'groq') {
+      // Groq doesn't always include pricing in the API response
+      // Check if pricing exists and is 0, otherwise assume not free (conservative)
+      if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
+        const pricing = raw.pricing as Record<string, unknown>;
+        if ('prompt' in pricing) {
+          const promptVal = pricing.prompt;
+          return parseFloat(typeof promptVal === 'string' || typeof promptVal === 'number' ? String(promptVal) : '999') === 0;
+        }
+      }
+      // Conservative: if no pricing info, assume not free
+      return false;
+    }
+
+    // Default: assume NOT free for safety
+    return false;
+  }
+
+  /**
    * Extracts cost per 1k tokens (normalized for prompt tokens)
    */
   private static extractCostPer1k(raw: RawModelData, providerName: string): number {
+    // Use strict free checker first
+    if (this.isModelFree(providerName, raw)) {
+      return 0;
+    }
+
     // OpenRouter format
     if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
       const pricing = raw.pricing as Record<string, unknown>;
@@ -333,19 +471,14 @@ export class UnifiedIngestionService {
       }
     }
 
-    // Google/others - often free or need to check separately
-    if ('isFree' in raw && raw.isFree === true) {
-      return 0;
-    }
-
-    // Default: assume unknown pricing
+    // Default: unknown pricing (conservative: treat as paid)
     return 0;
   }
 
   /**
    * Extracts comprehensive pricing configuration for multi-modal models
    */
-  private static extractPricingConfig(raw: RawModelData, providerName: string): Record<string, unknown> | null {
+  private static extractPricingConfig(raw: RawModelData, _providerName: string): Record<string, unknown> | null {
     if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
       return raw.pricing as Record<string, unknown>;
     }

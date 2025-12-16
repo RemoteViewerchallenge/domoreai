@@ -68,16 +68,38 @@ model Model {
   isFree       Boolean @default(false) @map("is_free")
   costPer1k    Float?  @map("cost_per_1k")
 
+  // ---------------------------------------------------------
+  // GHOST RECORDS PATTERN: Track model discovery & lifecycle
+  // ---------------------------------------------------------
+  // Use this to filter the UI. If 'false', show with a warning.
+  isActive     Boolean @default(true) @map("is_active")
+  
+  // Where did this model come from?
+  // 'INDEX' = Found in the provider's official JSON list
+  // 'INFERENCE' = Successfully used in a chat/job, so we auto-added it
+  // 'MANUAL' = You added it by hand because you know it exists
+  source       ModelSource @default(INDEX)
+  
+  // Critical for cleaning up dead models later without deleting valid ones immediately
+  firstSeenAt  DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+
   updatedAt    DateTime @updatedAt @map("updated_at")
-
-
 
   // Relations
   modelUsage   ModelUsage[]
   knowledgeVectors KnowledgeVector[]
   
   @@unique([providerId, modelId])
+  @@index([providerId, lastSeenAt])
   @@map("model_registry")
+}
+
+// Enum for tracking model discovery source
+enum ModelSource {
+  INDEX      // Found in provider's official list
+  INFERENCE  // Discovered during successful runtime usage
+  MANUAL     // Manually added by user
 }
 
 // Persisted model failure counts to avoid retrying known-broken models across restarts
@@ -187,12 +209,18 @@ model ModelUsage {
 // -----------------------------------------------------------------
 // Raw Data Lake
 // Stores raw API responses before they are processed into Models
+// This is the "Bag" that prevents data loss from provider API glitches
 // -----------------------------------------------------------------
 model RawDataLake {
   id         String   @id @default(cuid())
-  provider   String   // e.g. "openrouter", "vertex"
+  provider   String   // e.g. "google", "openrouter", "groq"
+  fileName   String?  // e.g. "google_models_2025-12-06T07-15-03.json"
   rawData    Json     // The exact JSON returned by the provider's list models endpoint
   ingestedAt DateTime @default(now())
+  processed  Boolean  @default(false) // Track if this has been normalized into Model table
+  
+  @@index([provider, processed])
+  @@index([ingestedAt])
 }
 
 model FlattenedTable {
@@ -556,6 +584,30 @@ model ComponentRole {
   updatedAt   DateTime @updatedAt
 
   @@unique([cardId, component])
+}
+
+// -----------------------------------------------------------------
+// File Ingestion and Vector Storage
+// -----------------------------------------------------------------
+
+// Tracks file content hashes to avoid re-indexing unchanged files
+model FileIndex {
+  filePath    String   @id
+  contentHash String
+  updatedAt   DateTime @updatedAt
+}
+
+// Stores vector embeddings for semantic search
+// Note: Using JSON string for vector storage until pgvector extension is enabled
+model VectorEmbedding {
+  id          String   @id
+  vector      String   @db.Text // JSON string representation of the vector
+  content     String   @db.Text // The chunk of text this vector represents
+  filePath    String
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  
+  @@index([filePath])
 }
 
 // A generic table to store embeddings linked to any entity (file, job, memory)
