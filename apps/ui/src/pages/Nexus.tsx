@@ -45,10 +45,11 @@ const ZONES: NexusZone[] = [
     icon: Cpu,
     color: '#3b82f6', // Blue
     nodes: [
-      { title: 'Creator Studio', path: '/creator', icon: Code, description: 'Visual node-based logic and UI builder.', color: '#3b82f6' },
-      { title: 'Interface Builder', path: '/interface-builder', icon: Layout, description: 'Drag-and-drop frontend construction.', color: '#60a5fa' },
-      { title: 'SuperNode Canvas', path: '/supernodes', icon: Zap, description: 'Advanced agentic workflows and automation.', color: '#93c5fd' },
-      { title: 'Adaptive Workspace', path: '/adaptive', icon: Globe, description: 'Context-aware dynamic environment.', color: '#2563eb' },
+      { title: 'Focus Workspace', path: '/focus', icon: Zap, description: 'Distraction-free code editor with AI assistance.', color: '#3b82f6' },
+      { title: 'Creator Studio', path: '/creator', icon: Code, description: 'Visual node-based logic and UI builder.', color: '#60a5fa' },
+      { title: 'Interface Builder', path: '/interface-builder', icon: Layout, description: 'Drag-and-drop frontend construction.', color: '#93c5fd' },
+      { title: 'SuperNode Canvas', path: '/supernodes', icon: Zap, description: 'Advanced agentic workflows and automation.', color: '#2563eb' },
+      { title: 'Adaptive Workspace', path: '/adaptive', icon: Globe, description: 'Context-aware dynamic environment.', color: '#1d4ed8' },
     ]
   },
   {
