@@ -15,6 +15,8 @@ import CorePage from './pages/CorePage.js';
 import SettingsPage from './pages/SettingsPage.js';
 import DbBrowserPage from './pages/DbBrowserPage.js';
 import FileLocationPage from './pages/FileLocationPage.js';
+import FactoryPage from './pages/FactoryPage.js';
+import AdaptiveWorkspace from './pages/AdaptiveWorkspace.js';
 
 function App() {
   return (
@@ -29,12 +31,14 @@ function App() {
             <Route element={<UnifiedLayout />}>
               <Route path="/" element={<FocusWorkspace />} />
               <Route path="/workspace/:id" element={<WorkSpace />} />
+              <Route path="/workspace/adaptive" element={<AdaptiveWorkspace />} />
               <Route path="/focus" element={<FocusWorkspace />} />
               <Route path="/data" element={<FutureDataExplorer />} />
               <Route path="/db" element={<DbBrowserPage />} />
               <Route path="/creator" element={<CreatorFactory />} />
               <Route path="/coore" element={<CorePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/factory" element={<FactoryPage />} />
               
               {/* 404 */}
               <Route path="*" element={

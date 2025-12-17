@@ -7,43 +7,20 @@ import 'reactflow/dist/style.css';
 import SuperNode from '../features/creator-studio/nodes/SuperNode.js';
 import { trpc } from '../utils/trpc.js';
 import { VisualInspectorPanel } from '../features/creator-studio/InspectorPanel.js';
-import { Layers, Server, Layout, Database, Filter, Settings, PenTool, Network } from 'lucide-react';
+import { Layers, Server, Layout, Database, Filter, Settings, Network, Users } from 'lucide-react';
 import { NewUIThemeProvider, useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 
-// Craft.js Imports
-import { Editor, Frame, Element, useEditor } from '@craftjs/core';
-import { COMPONENT_REGISTRY } from '../craft-registry.js';
-import { CraftContainer, CraftText } from '../features/ui-builder/CraftComponents.js'; // Keep specific imports for initial template
-import { Toolbox } from '../features/ui-builder/Toolbox.js';
-import { SettingsPanel } from '../features/ui-builder/SettingsPanel.js';
+// Imported Components
+import RoleCreatorPanel from '../components/RoleCreatorPanel.js';
+import { AIContextButton } from '../components/AIContextButton.js';
 
 const nodeTypes = {
   superNode: SuperNode,
 };
 
-
-const SaveLayoutButton = () => {
-  const { query } = useEditor();
-
-  const handleSave = () => {
-    const json = query.serialize();
-    console.log('Saved Layout JSON:', json);
-    alert('Layout saved to console!');
-  };
-
-  return (
-    <button 
-      onClick={handleSave}
-      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm"
-    >
-      Save Layout
-    </button>
-  );
-};
-
 const CreatorStudioContent = () => {
-  // Mode State
-  const [viewMode, setViewMode] = useState<'graph' | 'builder'>('graph');
+  // Mode State: Default is 'roles'
+  const [viewMode, setViewMode] = useState<'roles' | 'graph'>('roles');
 
   // Graph State
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -57,8 +34,7 @@ const CreatorStudioContent = () => {
   // Theme State
   useNewUITheme();
 
-  // Fetch Graph
-
+  // Fetch Graph (Only when in graph mode)
   const { data, isLoading } = trpc.codeGraph.getGraph.useQuery({
     division,
     showOrphans
@@ -68,10 +44,8 @@ const CreatorStudioContent = () => {
 
   useEffect(() => {
     if (data && viewMode === 'graph') {
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setNodes(data.nodes as any);
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setEdges(data.edges as any);
     }
@@ -95,24 +69,28 @@ const CreatorStudioContent = () => {
   );
 
   return (
-    <div className="h-full w-full bg-[var(--color-background)] flex flex-col relative overflow-hidden">
+    <div className="h-full w-full bg-[var(--color-background)] flex flex-col relative overflow-hidden font-sans">
       
       {/* 1. HEADER BAR */}
-      <div className="flex-none h-10 border-b border-[var(--color-border)] bg-[var(--color-background)] flex items-center justify-between px-4 z-10">
+      <div className="flex-none h-12 border-b border-[var(--color-border)] bg-[var(--color-background)] flex items-center justify-between px-4 z-10">
          <div className="flex items-center gap-2 h-full">
             {/* Mode Switcher */}
             <div className="flex items-center bg-zinc-900 rounded p-0.5 border border-zinc-700 mr-4">
                <button 
-                  onClick={() => setViewMode('graph')}
-                  className={`px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors ${viewMode === 'graph' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  onClick={() => setViewMode('roles')}
+                  className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors ${
+                      viewMode === 'roles' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                >
-                  <Network size={12} /> Graph
+                  <Users size={12} /> Roles
                </button>
                <button 
-                  onClick={() => setViewMode('builder')}
-                  className={`px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors ${viewMode === 'builder' ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  onClick={() => setViewMode('graph')}
+                  className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase flex items-center gap-1.5 transition-colors ${
+                      viewMode === 'graph' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                >
-                  <PenTool size={12} /> Factory
+                  <Network size={12} /> Graph
                </button>
             </div>
 
@@ -129,7 +107,8 @@ const CreatorStudioContent = () => {
 
          {/* Right Controls */}
          <div className="flex items-center gap-2">
-            {viewMode === 'builder' && <SaveLayoutButton />}
+            <AIContextButton context={viewMode === 'roles' ? "Role Creation & Agent Logic" : "Codebase Graph Architecture"} size="sm" />
+            
             {viewMode === 'graph' && (
                 <>
                     <button 
@@ -150,6 +129,13 @@ const CreatorStudioContent = () => {
 
       <div className="flex-1 flex overflow-hidden">
         
+        {/* ROLES VIEW (Primary) */}
+        {viewMode === 'roles' && (
+            <div className="flex-1 overflow-hidden relative">
+                <RoleCreatorPanel className="h-full w-full" />
+            </div>
+        )}
+
         {/* GRAPH VIEW */}
         {viewMode === 'graph' && (
             <>
@@ -205,48 +191,8 @@ const CreatorStudioContent = () => {
             </>
         )}
 
-        {/* BUILDER VIEW */}
-        {viewMode === 'builder' && (
-            // Editor is now wrapping the whole component, so we just render the inner content
-            <div className="flex w-full h-full bg-[#1e1e20]">
-                {/* Toolbox */}
-                <Toolbox />
-
-                {/* Canvas Area */}
-                <div className="flex-1 flex flex-col items-center p-8 overflow-y-auto bg-[url('/grid-pattern.svg')]">
-                    <div className="w-full max-w-[1200px] min-h-[800px] bg-zinc-900 border border-zinc-800 shadow-xl rounded-lg overflow-hidden">
-                            <Frame>
-                            <Element 
-                                is={CraftContainer} 
-                                canvas 
-                                background="#09090b" 
-                                padding={40}
-                                custom={{ displayName: 'App Root' }}
-                            >
-                                <CraftText text="Welcome to The Factory" fontSize={24} color="#e4e4e7" />
-                                <Element is={CraftContainer} canvas background="#18181b" padding={20}>
-                                    <CraftText text="Drag components here..." fontSize={14} color="#a1a1aa" />
-                                </Element>
-                            </Element>
-                            </Frame>
-                    </div>
-                </div>
-
-                {/* Settings Panel */}
-                <SettingsPanel />
-            </div>
-        )}
-
       </div>
     </div>
-  );
-};
-
-const CreatorStudioWrapped = () => {
-  return (
-    <Editor resolver={COMPONENT_REGISTRY}>
-      <CreatorStudioContent />
-    </Editor>
   );
 };
 
@@ -254,7 +200,7 @@ export default function CreatorStudio() {
   return (
      <NewUIThemeProvider>
        <ReactFlowProvider>
-         <CreatorStudioWrapped />
+         <CreatorStudioContent />
        </ReactFlowProvider>
      </NewUIThemeProvider>
   );
