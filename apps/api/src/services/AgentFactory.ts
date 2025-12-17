@@ -415,7 +415,26 @@ export class AgentFactoryService implements IAgentFactory {
     let basePrompt: string;
     
     try {
-      // Use PromptFactory to assemble the prompt with memory
+      // Fetch Constitution settings (Global Rules)
+      let constitution: { codeRules?: string; glossary?: Record<string, string> } | undefined;
+      
+      // Try to get the workspace ID from the card config or find the first workspace
+      const { prisma } = await import('../db.js');
+      const workspace = await prisma.workspace.findFirst({
+        select: {
+          codeRules: true,
+          glossary: true,
+        },
+      });
+      
+      if (workspace) {
+        constitution = {
+          codeRules: workspace.codeRules || undefined,
+          glossary: (workspace.glossary as Record<string, string>) || undefined,
+        };
+      }
+
+      // Use PromptFactory to assemble the prompt with memory and Constitution
       const lessonProvider = new PrismaLessonProvider();
       const promptFactory = new PromptFactory(lessonProvider);
 
@@ -426,7 +445,8 @@ export class AgentFactoryService implements IAgentFactory {
           cardConfig.userGoal || '',
           memoryConfig,
           role.tools,
-          cardConfig.projectPrompt
+          cardConfig.projectPrompt,
+          constitution // Inject Constitution here
       );
     } catch (error) {
       console.warn(`[AgentFactory] PromptFactory failed for role \"${role.name}\". Falling back to simple role prompt load.`, error);

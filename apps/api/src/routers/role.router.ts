@@ -3,7 +3,7 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
-import { ingestAgentLibrary } from "../services/RoleIngestionService.js";
+import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -393,6 +393,16 @@ Return ONLY the system prompt, no additional commentary.`;
         console.log('[PromptGen] 📋 Falling back to template generation');
         return generateTemplatePrompt(name, goal, category, capabilities);
       }
+    }),
+
+  onboardProject: publicProcedure
+    .input(z.object({ rootPath: z.string() }))
+    .mutation(async ({ input }) => {
+      const stats = await onboardProject(input.rootPath, prisma);
+      return {
+        message: "Project onboarding complete",
+        ...stats,
+      };
     }),
 
 });
