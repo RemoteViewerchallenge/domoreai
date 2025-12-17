@@ -199,4 +199,51 @@ export const vfsRouter = createTRPCRouter({
          });
        }
     }),
+
+     // 6. Start File Watcher
+     startFileWatcher: publicProcedure
+      .input(z.object({ 
+        path: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+         try {
+           const { fileWatcherService } = await import('../services/FileWatcherService.js');
+           await fileWatcherService.startWatching(input.path);
+           return { success: true, message: 'File watcher started' };
+        } catch (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to start file watcher',
+          });
+        }
+     }),
+
+     // 7. Stop File Watcher
+     stopFileWatcher: publicProcedure
+      .mutation(async () => {
+         try {
+           const { fileWatcherService } = await import('../services/FileWatcherService.js');
+           await fileWatcherService.stopWatching();
+           return { success: true, message: 'File watcher stopped' };
+        } catch (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to stop file watcher',
+          });
+        }
+     }),
+
+     // 8. Get File Watcher Status
+     getFileWatcherStatus: publicProcedure
+      .query(async () => {
+         try {
+           const { fileWatcherService } = await import('../services/FileWatcherService.js');
+           return fileWatcherService.getStatus();
+        } catch (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: error instanceof Error ? error.message : 'Failed to get watcher status',
+          });
+        }
+     }),
 });

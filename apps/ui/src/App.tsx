@@ -14,6 +14,7 @@ import CreatorFactory from './pages/CreatorStudio.js';
 import CorePage from './pages/CorePage.js';
 import SettingsPage from './pages/SettingsPage.js';
 import DbBrowserPage from './pages/DbBrowserPage.js';
+import FileLocationPage from './pages/FileLocationPage.js';
 
 function App() {
   return (
@@ -21,8 +22,12 @@ function App() {
       <FileSystemProvider>
         <ErrorBoundary>
           <Routes>
+            {/* Initialization Page (optional, accessible via Settings or direct link) */}
+            <Route path="/initialize" element={<FileLocationPage />} />
+            
+            {/* Main Application Routes */}
             <Route element={<UnifiedLayout />}>
-              <Route path="/" element={<WorkSpace />} />
+              <Route path="/" element={<FocusWorkspace />} />
               <Route path="/workspace/:id" element={<WorkSpace />} />
               <Route path="/focus" element={<FocusWorkspace />} />
               <Route path="/data" element={<FutureDataExplorer />} />

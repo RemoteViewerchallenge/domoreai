@@ -16,6 +16,7 @@ The monorepo contains the core components:
 - **Lootbox Architecture:** Decouples "Thinking" (LLM) from "Acting" (Tools). The API signals intent, and the external Lootbox service executes the tool.
 - **Virtual File System (VFS):** A sandboxed environment for agents to read/write code without risking the host machine.
 - **Language Server Protocol (LSP):** Pipes a real TypeScript Language Server to the UI, allowing agents to "see" code errors and structure.
+- **Corporate Recruiter:** Automatically scans your project's `package.json` files, identifies departments (Frontend, Backend), and creates specialized AI roles with tech-stack-specific system prompts. See [`docs/CORPORATE_RECRUITER.md`](docs/CORPORATE_RECRUITER.md) for details.
 
 ## Services
 

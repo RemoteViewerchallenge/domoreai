@@ -1,4 +1,89 @@
 
+
 > api@1.0.0 build /home/guy/mono/apps/api
 > tsc -b
 
+[96msrc/examples/ghost-records-integration.ts[0m:[93m7[0m:[93m39[0m - [91merror[0m[90m TS2307: [0mCannot find module './services/ModelDiscoveryService.js' or its corresponding type declarations.
+
+[7m7[0m import { ModelDiscoveryService } from './services/ModelDiscoveryService.js';
+[7m [0m [91m                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/examples/ghost-records-integration.ts[0m:[93m75[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ path: string[]; sort: string; }' is not assignable to type 'SortOrder | undefined'.
+
+[7m75[0m       { specs: { path: ['contextWindow'], sort: 'desc' } }
+[7m  [0m [91m        ~~~~~[0m
+
+  [96m../../node_modules/.pnpm/@prisma+client@5.19.1_prisma@5.19.1/node_modules/.prisma/client/index.d.ts[0m:[93m32615[0m:[93m5[0m
+    [7m32615[0m     specs?: SortOrder
+    [7m     [0m [96m    ~~~~~[0m
+    The expected type comes from property 'specs' which is declared here on type 'ModelOrderByWithRelationInput'
+
+[96msrc/examples/ghost-records-integration.ts[0m:[93m104[0m:[93m53[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; label: string; type: string; apiKey: string; baseURL: string | null; isEnabled: boolean; requestsPerMinute: number | null; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ baseURL?: string | undefined; apiKey: string; }'.
+  Types of property 'baseURL' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+
+[7m104[0m     const models = await fetchModelsFromProviderAPI(provider);
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+[96msrc/examples/ghost-records-integration.ts[0m:[93m157[0m:[93m44[0m - [91merror[0m[90m TS7006: [0mParameter 'm' implicitly has an 'any' type.
+
+[7m157[0m     recentlyInactive: recentlyInactive.map(m => ({
+[7m   [0m [91m                                           ~[0m
+
+[96msrc/services/AgentFactory.ts[0m:[93m205[0m:[93m7[0m - [91merror[0m[90m TS2322: [0mType 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+[7m205[0m       tierConfig.temperature = bestModel.temperature;
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/AgentFactory.ts[0m:[93m206[0m:[93m7[0m - [91merror[0m[90m TS2322: [0mType 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+
+[7m206[0m       tierConfig.maxTokens = bestModel.maxTokens;
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/ConfidenceAgent.ts[0m:[93m2[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../providers/ProviderManager.js' or its corresponding type declarations.
+
+[7m2[0m import { ProviderManager } from '../providers/ProviderManager.js';
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/MetaRouter.ts[0m:[93m41[0m:[93m7[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; name: string; description: string | null; tags: string[]; }[]' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+  Type '{ id: string; name: string; description: string | null; tags: string[]; }' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }'.
+    Types of property 'description' are incompatible.
+      Type 'string | null' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+
+[7m41[0m       availableOrchestrations = await prisma.orchestration.findMany({
+[7m  [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/MetaRouter.ts[0m:[93m53[0m:[93m9[0m - [91merror[0m[90m TS18048: [0m'availableOrchestrations' is possibly 'undefined'.
+
+[7m53[0m     if (availableOrchestrations.length === 0) {
+[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/MetaRouter.ts[0m:[93m107[0m:[93m69[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[] | undefined' is not assignable to parameter of type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+  Type 'undefined' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+
+[7m107[0m     const routingPrompt = this.createRoutingPrompt(taskDescription, availableOrchestrations);
+[7m   [0m [91m                                                                    ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/MetaRouter.ts[0m:[93m148[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'availableOrchestrations' is possibly 'undefined'.
+
+[7m148[0m         const orchestration = availableOrchestrations.find(
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/services/Surveyor.ts[0m:[93m304[0m:[93m22[0m - [91merror[0m[90m TS2322: [0mType 'null' is not assignable to type 'InputJsonValue | JsonNullValueFilter | FieldRef<"Model", "Json"> | undefined'.
+
+[7m304[0m           { specs: { equals: null } }
+[7m   [0m [91m                     ~~~~~~[0m
+
+[96msrc/services/Surveyor.ts[0m:[93m314[0m:[93m40[0m - [91merror[0m[90m TS2551: [0mProperty 'provider' does not exist on type '{ id: string; providerId: string; modelId: string; name: string; capabilities: string[]; pricingConfig: JsonValue; providerData: JsonValue; aiData: JsonValue; ... 7 more ...; updatedAt: Date; }'. Did you mean 'providerId'?
+
+[7m314[0m       const specs = this.inspect(model.provider.type, model.modelId);
+[7m   [0m [91m                                       ~~~~~~~~[0m
+
+
+Found 13 errors.
+
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

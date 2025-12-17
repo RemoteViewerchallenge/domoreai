@@ -184,4 +184,34 @@ export const orchestratorRouter = createTRPCRouter({
         throw new Error(`Failed to update tool examples: ${e instanceof Error ? e.message : String(e)}`);
       }
     }),
+
+  dispatch: publicProcedure
+    .input(z.object({ 
+      prompt: z.string(),
+      contextId: z.string().optional(),
+      roleId: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Log the dispatch request
+      console.log(`🚀 [Orchestrator] Dispatching command:`, {
+        prompt: input.prompt.substring(0, 100),
+        contextId: input.contextId,
+        roleId: input.roleId,
+      });
+
+      // For now, return a simple acknowledgment
+      // In a full implementation, this would:
+      // 1. Select the appropriate role (or use provided roleId)
+      // 2. Create an orchestration execution
+      // 3. Execute the steps
+      // 4. Return the result
+      
+      return {
+        success: true,
+        message: 'Command dispatched successfully',
+        executionId: `exec_${Date.now()}`,
+        prompt: input.prompt,
+        contextId: input.contextId,
+      };
+    }),
 });

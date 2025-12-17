@@ -272,6 +272,11 @@ model Workspace {
   name      String
   rootPath  String   // Local path on the host machine
   systemPrompt String? @db.Text
+  
+  // Constitution: Global Rules for Agents
+  codeRules String?  @db.Text // Code style rules and conventions (e.g., "Always use FlyonUI", "No Git Diffs - Use Branches")
+  glossary  Json?    @default("{}") // Key-value pairs for project-specific terminology (e.g., {"SuperNode": "A file visualizer"})
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

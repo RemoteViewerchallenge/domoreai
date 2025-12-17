@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor } from 'lucide-react';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
+import { ConstitutionSettings } from '../components/settings/ConstitutionSettings.js';
 import { useTheme } from '../hooks/useTheme.js';
 
 interface Hotkey {
@@ -30,7 +31,7 @@ const COLOR_SCHEMES_STORAGE_KEY = 'core-color-schemes';
 const SELECTED_SCHEME_STORAGE_KEY = 'core-selected-scheme';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'appearance' | 'hotkeys' | 'workspace'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'hotkeys' | 'workspace' | 'constitution'>('appearance');
   const { theme, setTheme, resetToDefault } = useTheme();
 
   // Load hotkeys from localStorage
@@ -270,6 +271,19 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <Monitor size={14} />
               Workspace
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('constitution')}
+            className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-all ${
+              activeTab === 'constitution'
+                ? 'bg-[var(--color-primary)] text-black shadow-[var(--glow-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-background)]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              ⚖️
+              Constitution
             </div>
           </button>
         </div>
@@ -626,6 +640,11 @@ export default function SettingsPage() {
           {/* WORKSPACE TAB */}
           {activeTab === 'workspace' && (
             <WorkspaceSettings />
+          )}
+
+          {/* CONSTITUTION TAB */}
+          {activeTab === 'constitution' && (
+            <ConstitutionSettings />
           )}
 
         </div>

@@ -118,4 +118,54 @@ export const projectRouter = createTRPCRouter({
       console.log('Deleting project:', input);
       return { status: 'ok', message: 'Project delete placeholder' };
     }),
+
+  /**
+   * Get Constitution settings (Code Rules and Glossary) for a workspace
+   */
+  getConstitution: publicProcedure
+    .input(z.object({ workspaceId: z.string() }))
+    .query(async ({ input }) => {
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: {
+          codeRules: true,
+          glossary: true,
+        },
+      });
+      
+      return {
+        codeRules: workspace?.codeRules || '',
+        glossary: workspace?.glossary || {},
+      };
+    }),
+
+  /**
+   * Update Constitution settings (Code Rules and Glossary) for a workspace
+   */
+  updateConstitution: publicProcedure
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        codeRules: z.string().optional(),
+        glossary: z.record(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { workspaceId, codeRules, glossary } = input;
+      
+      const updated = await prisma.workspace.update({
+        where: { id: workspaceId },
+        data: {
+          ...(codeRules !== undefined && { codeRules }),
+          ...(glossary !== undefined && { glossary }),
+          updatedAt: new Date(),
+        },
+      });
+      
+      return {
+        success: true,
+        codeRules: updated.codeRules,
+        glossary: updated.glossary,
+      };
+    }),
 });

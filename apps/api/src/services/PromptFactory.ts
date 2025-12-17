@@ -46,8 +46,23 @@ export class PromptFactory {
     userQuery: string, 
     memoryConfig?: { useProjectMemory: boolean },
     tools?: string[],
-    projectPrompt?: string
+    projectPrompt?: string,
+    constitution?: { codeRules?: string; glossary?: Record<string, string> }
   ): Promise<string> {
+    // 0. Constitution Layer (Global Rules - Highest Priority)
+    let constitutionSection = '';
+    if (constitution) {
+      if (constitution.codeRules) {
+        constitutionSection += `\n## ⚖️ CONSTITUTION - CODE RULES (MUST FOLLOW)\n${constitution.codeRules}\n`;
+      }
+      if (constitution.glossary && Object.keys(constitution.glossary).length > 0) {
+        const glossaryEntries = Object.entries(constitution.glossary)
+          .map(([key, value]) => `- **${key}**: ${value}`)
+          .join('\n');
+        constitutionSection += `\n## 📖 GLOSSARY - PROJECT TERMINOLOGY\n${glossaryEntries}\n`;
+      }
+    }
+
     // 1. Load the role's base prompt from markdown
     const rolePrompt = await loadRolePrompt(role);
 
@@ -119,7 +134,8 @@ ${toolExamples}
     // 4. Project Specific Prompt
     const projectSection = projectPrompt ? `\n## 🏗️ PROJECT CONTEXT & GUIDELINES\n${projectPrompt}\n` : '';
 
-    return `${rolePrompt}\n${projectSection}\n${memoryBlock}${toolSection}`;
+    // Constitution comes FIRST to ensure it's always visible and enforced
+    return `${constitutionSection}${rolePrompt}\n${projectSection}\n${memoryBlock}${toolSection}`;
   }
 
   private extractKeywords(query: string): string[] {
