@@ -4,7 +4,11 @@ import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js
 import { IProviderManager } from '../interfaces/IProviderManager.js';
 import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
-import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL } from '../config/constants.js';
+import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
+
+interface RawSnapshotData extends LLMModel {
+    [key: string]: unknown;
+}
 
 export class ProviderManager implements IProviderManager {
   private providers: Map<string, BaseLLMProvider> = new Map();
@@ -117,7 +121,7 @@ export class ProviderManager implements IProviderManager {
     
     // Fallback: Find first provider of this type
     for (const [_, p] of this.providers) {
-        if ((p as any).id === id || (p as any).id.includes(id)) return p;
+        if (p.id === id || p.id.includes(id)) return p;
     }
     return undefined;
   }
@@ -176,15 +180,15 @@ export class ProviderManager implements IProviderManager {
           continue;
         }
 
-        const uniqueModels = new Map<string, LLMModel>();
-        models.forEach(m => uniqueModels.set(m.id, m));
+        const uniqueModels = new Map<string, RawSnapshotData>();
+        models.forEach(m => uniqueModels.set(m.id, m as RawSnapshotData));
 
         // 3. Log with readable name
         console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
 
         for (const m of uniqueModels.values()) {
           // Defensive: Extract model ID from various possible fields
-          const modelId = m.id || m.model || m.name;
+          const modelId = (m.id || m.model || m.name) as string;
           if (!modelId) {
             console.warn(`[Registry Sync] Skipping model with no ID:`, m);
             continue;
@@ -213,7 +217,7 @@ export class ProviderManager implements IProviderManager {
               name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
-              providerData: m as any, // Store full raw model object
+              providerData: m as RawSnapshotData, // Store full raw model object
               specs: specs as any,
               aiData: {} as any
             },
@@ -221,7 +225,7 @@ export class ProviderManager implements IProviderManager {
               name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
-              providerData: m as any, // Store full raw model object
+              providerData: m as RawSnapshotData, // Store full raw model object
               specs: specs as any
             }
           });
@@ -276,9 +280,11 @@ export class ProviderManager implements IProviderManager {
     // If already configured in DB, skip auto-detection to respect user config
     if (this.providers.has(providerId)) return;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);
     try {
         // A simple fetch to the root endpoint is enough to see if Ollama is running.
-        const response = await fetch(ollamaHost);
+        const response = await fetch(ollamaHost, { signal: controller.signal });
         const text = await response.text();
 
         if (response.ok && text.includes('Ollama is running')) {
@@ -308,6 +314,8 @@ export class ProviderManager implements IProviderManager {
     } catch (e) {
         // Silent failure - Ollama just isn't running
         // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
+    } finally {
+        clearTimeout(timeoutId);
     }
   }
 
