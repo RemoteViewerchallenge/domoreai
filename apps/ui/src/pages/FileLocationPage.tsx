@@ -10,6 +10,7 @@ type OnboardingStep = 'idle' | 'scanning' | 'recruiting' | 'indexing' | 'complet
 export default function FileLocationPage() {
   const navigate = useNavigate();
   const [workspaceRoot, setWorkspaceRoot] = useState<string>('');
+  const [projectRoot, setProjectRoot] = useState<string>('');
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('idle');
   const [error, setError] = useState<string>('');
 
@@ -18,6 +19,8 @@ export default function FileLocationPage() {
       setOnboardingStep('complete');
       // Save to localStorage
       localStorage.setItem(STORAGE_KEY, workspaceRoot);
+      localStorage.setItem('core_project_root', projectRoot);
+
       // Redirect after a brief success message
       setTimeout(() => {
         navigate('/focus');
@@ -40,6 +43,12 @@ export default function FileLocationPage() {
     } else {
       // Default to common workspace location
       setWorkspaceRoot('/home/guy/mono');
+    }
+
+    // Check if project root exists
+    const savedProject = localStorage.getItem('core_project_root');
+    if (savedProject) {
+        setProjectRoot(savedProject);
     }
   }, []);
 
@@ -131,6 +140,24 @@ export default function FileLocationPage() {
             />
             <p className="text-xs text-[var(--color-text-secondary)]">
               Enter the absolute path to your project directory
+            </p>
+          </div>
+
+          {/* Project Working Directory Input */}
+           <div className="space-y-2">
+            <label className="block text-xs font-bold text-[var(--color-text-secondary)] uppercase">
+              Project Working Directory (Optional)
+            </label>
+            <input
+              type="text"
+              value={projectRoot}
+              onChange={(e) => setProjectRoot(e.target.value)}
+              disabled={isLoading}
+              placeholder="Optional: Specific project subfolder"
+              className="w-full bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] text-sm px-4 py-3 rounded font-mono focus:border-[var(--color-primary)] focus:outline-none disabled:opacity-50"
+            />
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Specific subfolder for project execution
             </p>
           </div>
 
