@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -29,7 +29,7 @@ function App() {
             
             {/* Main Application Routes */}
             <Route element={<UnifiedLayout />}>
-              <Route path="/" element={<FocusWorkspace />} />
+              <Route path="/" element={<Navigate to="/workspace/main" replace />} />
               <Route path="/workspace/:id" element={<WorkSpace />} />
               <Route path="/workspace/adaptive" element={<AdaptiveWorkspace />} />
               <Route path="/focus" element={<FocusWorkspace />} />

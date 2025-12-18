@@ -4,9 +4,9 @@ import {
   MoreHorizontal, ChevronUp, ChevronDown, Play, Maximize2 
 } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
-import { useWorkspaceStore } from '../stores/workspaceStore.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { NewUIThemeProvider } from '../components/appearance/NewUIThemeProvider.js';
-import { SwappableCard } from '../components/SwappableCard.js';
+import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { AIContextButton } from '../components/AIContextButton.js';
 import { cn } from '@/lib/utils.js';
 
@@ -55,31 +55,24 @@ const MiniCard = ({ title, active, onClick }: { title: string, active?: boolean,
 // --- MAIN PAGE ---
 
 export default function AdaptiveWorkspace() {
-    // START: 3 Columns by default as requested
-    const [numColumns, setNumColumns] = useState(3);
+    // START: Use store for columns and cards
+    const { columns, setColumns, cards, addCard } = useWorkspaceStore();
     
     // FETCH REAL DATA
     const { data: roles } = trpc.role.list.useQuery();
     
-    // MOCK CARD STATE (Ideally this comes from a store or DB per workspace)
-    // We map this to the "Main/Immediate/Distant" logic
-    const [cards, setCards] = useState<CardData[]>([
-        { id: '1', roleId: '', column: 0, type: 'terminal', title: 'Terminal: Server' },
-        { id: '2', roleId: '', column: 0, type: 'editor', title: 'App.tsx' },
-        { id: '3', roleId: '', column: 1, type: 'browser', title: 'Localhost: 3000' },
-        { id: '4', roleId: '', column: 2, type: 'editor', title: 'server.ts' },
-        { id: '5', roleId: '', column: 2, type: 'terminal', title: 'Terminal: Worker' },
-    ]);
-
     // Track focused card index per column
     const [columnFocus, setColumnFocus] = useState<Record<number, number>>({ 0: 0, 1: 0, 2: 0 });
+
+    // Track focused card index per column
+
 
     // --- LOGIC ---
 
     const getColumnCards = (colIndex: number) => cards.filter(c => c.column === colIndex);
 
-    const handleAddColumn = () => setNumColumns(prev => Math.min(prev + 1, 5));
-    const handleRemoveColumn = () => setNumColumns(prev => Math.max(prev - 1, 1));
+    const handleAddColumn = () => setColumns(Math.min(columns + 1, 5));
+    const handleRemoveColumn = () => setColumns(Math.max(columns - 1, 1));
     
     const setFocus = (colIndex: number, cardIndex: number) => {
         setColumnFocus(prev => ({ ...prev, [colIndex]: cardIndex }));
@@ -106,16 +99,16 @@ export default function AdaptiveWorkspace() {
                      <div className="flex items-center gap-2">
                          <AIContextButton context="Workspace (Adaptive)" size="sm" />
                          <div className="flex bg-zinc-900 rounded p-0.5 border border-zinc-800">
-                            <button onClick={() => setNumColumns(1)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", numColumns === 1 && "bg-zinc-700 text-white")}>1</button>
-                            <button onClick={() => setNumColumns(2)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", numColumns === 2 && "bg-zinc-700 text-white")}>2</button>
-                            <button onClick={() => setNumColumns(3)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", numColumns === 3 && "bg-zinc-700 text-white")}>3</button>
+                            <button onClick={() => setColumns(1)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", columns === 1 && "bg-zinc-700 text-white")}>1</button>
+                            <button onClick={() => setColumns(2)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", columns === 2 && "bg-zinc-700 text-white")}>2</button>
+                            <button onClick={() => setColumns(3)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", columns === 3 && "bg-zinc-700 text-white")}>3</button>
                          </div>
                      </div>
                 </div>
 
                 {/* 2. MAIN GRID */}
                 <div className="flex-1 flex overflow-hidden p-0.5 gap-0.5 bg-zinc-950">
-                    {Array.from({ length: numColumns }).map((_, colIndex) => {
+                    {Array.from({ length: columns }).map((_, colIndex) => {
                         const colCards = getColumnCards(colIndex);
                         const focusIndex = columnFocus[colIndex] || 0;
                         const mainCard = colCards[focusIndex];
@@ -126,7 +119,7 @@ export default function AdaptiveWorkspace() {
                                     index={colIndex} 
                                     onAdd={handleAddColumn} 
                                     onRemove={handleRemoveColumn} 
-                                    canRemove={numColumns > 1} 
+                                    canRemove={columns > 1} 
                                 />
                                 
                                 {/* STACK VIEW: Top Minis (Immediate Previous) */}
@@ -135,7 +128,7 @@ export default function AdaptiveWorkspace() {
                                          {colCards.slice(0, focusIndex).map((card, i) => (
                                              <MiniCard 
                                                 key={card.id} 
-                                                title={card.title} 
+                                                title={card.title || 'Agent Card'} 
                                                 onClick={() => setFocus(colIndex, i)} 
                                              />
                                          ))}
@@ -146,11 +139,8 @@ export default function AdaptiveWorkspace() {
                                 <div className="flex-1 relative bg-zinc-900 overflow-hidden">
                                     {mainCard ? (
                                         <SwappableCard 
-                                            cardId={mainCard.id}
+                                            id={mainCard.id}
                                             roleId={mainCard.roleId || (roles?.[0]?.id ?? '')}
-                                            columnId={colIndex}
-                                            isFocused={true}
-                                            onFocus={() => {}}
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center text-zinc-700">
@@ -158,7 +148,7 @@ export default function AdaptiveWorkspace() {
                                                 <MoreHorizontal size={24} className="mx-auto mb-2 opacity-50" />
                                                 <span className="text-[10px] uppercase font-bold tracking-widest">Empty Slot</span>
                                                 <button 
-                                                    onClick={() => setCards(p => [...p, { id: Date.now().toString(), roleId: '', column: colIndex, type: 'editor', title: 'New Card' }])}
+                                                    onClick={() => addCard({ id: Date.now().toString(), roleId: roles?.[0]?.id || '', column: colIndex })}
                                                     className="mt-2 text-[10px] text-blue-500 hover:text-blue-400 block mx-auto"
                                                 >
                                                     + Spawn Agent
@@ -174,9 +164,9 @@ export default function AdaptiveWorkspace() {
                                          {colCards.slice(focusIndex + 1).map((card, i) => (
                                              <MiniCard 
                                                 key={card.id} 
-                                                title={card.title} 
+                                                title={card.title || 'Agent Card'} 
                                                 onClick={() => setFocus(colIndex, focusIndex + 1 + i)} 
-                                             />
+                                            />
                                          ))}
                                      </div>
                                 )}

@@ -221,7 +221,7 @@ export class AgentFactoryService implements IAgentFactory {
   private async getModelForTier(
     roleId: string,
     tier: 'Executive' | 'Manager' | 'Worker'
-  ): Promise<{ modelId: string; providerId: string; temperature?: number; maxTokens?: number } | null> {
+  ): Promise<{ modelId: string; providerId: string; temperature: number; maxTokens: number } | null> {
     const { prisma } = await import('../db.js');
     
     // Define tier cost thresholds (cost per 1k tokens)

@@ -1,5 +1,5 @@
 import { AgentFactoryService } from './AgentFactory.js';
-import { ProviderManager } from '../providers/ProviderManager.js';
+import { ProviderManager } from "./ProviderManager.js";
 import { PrismaAgentConfigRepository } from '../repositories/PrismaAgentConfigRepository.js';
 import type { CardAgentState } from '../types.js';
 

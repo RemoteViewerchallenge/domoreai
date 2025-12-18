@@ -7,19 +7,20 @@ import XtermTerminal from '../XtermTerminal.js';
 import BrowserCard from '../BrowserCard.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
-import useIngestStore from '../../stores/ingest.store.js';
-import { SimpleErrorModal } from '../SimpleErrorModal.js';
-import useWebSocketStore from '../../stores/websocket.store.js';
-import { getNeonColorForPath, NEON_BUTTON_COLORS } from '../../utils/neonTheme.js';
-import { CardAgentPrompt } from './CardAgentPrompt.js';
-import { CardCustomButtons } from './CardCustomButtons.js';
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { useTheme } from '../../hooks/useTheme.js';
+import { NEON_BUTTON_COLORS, getNeonColorForPath } from '../../utils/neonTheme.js';
+import useIngestStore from '../../stores/ingest.store.js';
+import useWebSocketStore from '../../stores/websocket.store.js';
+import { SimpleErrorModal } from '../SimpleErrorModal.js';
+import { CardAgentPrompt } from './CardAgentPrompt.js'; 
+import { CardCustomButtons } from './CardCustomButtons.js';
 
-type ComponentType = 'editor' | 'code' | 'browser' | 'terminal';
+// ... (imports)
+
+type ComponentType = 'editor' | 'code' | 'browser' | 'terminal' | 'preview';
 
 interface RoleWithPreferredModels {
-  id: string;
-  name: string;
   preferredModels?: {
     model?: {
       modelId: string;
@@ -30,17 +31,27 @@ interface RoleWithPreferredModels {
 
 export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
   const { theme } = useTheme();
-  // Use per-card VFS state instead of global context
+  const updateCard = useWorkspaceStore(state => state.updateCard);
+
   const { 
     files, 
-    createFile, 
-    readFile, 
     currentPath, 
-    mkdir, 
     navigateTo: navigate, 
-    refresh,
-    loadChildren 
+    mkdir, 
+    refresh, 
+    loadChildren, 
+    readFile, 
+    writeFile, 
+    createFile 
   } = useCardVFS(id);
+
+  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [content, setContent] = useState<string>('');
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  
+  const wsStatus = useWebSocketStore(state => state.status);
+  const wsActions = useWebSocketStore(state => state.actions);
+  const storeLogs = useWebSocketStore(state => state.messages.map(m => m.message));
   
   // Component Type State (for the main view switcher)
   const [type, setType] = useState<ComponentType>('editor');
@@ -48,22 +59,14 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // View State (Editor vs File Tree vs Settings)
   const [viewMode, setViewMode] = useState<'editor' | 'files' | 'settings'>('editor');
   
-  // File State
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [content, setContent] = useState('');
-  const [showAttachModal, setShowAttachModal] = useState(false);
-  const { messages: storeLogs, actions: wsActions, status: wsStatus } = useWebSocketStore();
-  
-  // Connect to WS on mount
-  useEffect(() => {
-      if (wsStatus === 'disconnected') {
-          wsActions.connect('dummy-token'); // In real app, get token from auth
-      }
-  }, [wsStatus, wsActions]);
-
   // Title State
   const [cardTitle, setCardTitle] = useState(new Date().toLocaleString());
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  // Sync to Store
+  useEffect(() => {
+    updateCard(id, { title: cardTitle, type: type });
+  }, [id, cardTitle, type]); // updateCard is stable from Zustand, no need to include
 
   // Fetch available roles for the settings panel
   const { data: roles } = trpc.role.list.useQuery();
@@ -86,11 +89,13 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   });
 
   // Always select a role: if none is set, pick the first available role and keep it until changed by user
+  const hasSetInitialRole = useRef(false);
   useEffect(() => {
-    if (roles && roles.length > 0 && !agentConfig.roleId) {
+    if (roles && roles.length > 0 && !agentConfig.roleId && !hasSetInitialRole.current) {
       setAgentConfig(prev => ({ ...prev, roleId: roles[0].id }));
+      hasSetInitialRole.current = true;
     }
-  }, [roles, agentConfig.roleId]);
+  }, [roles, agentConfig.roleId]); // Now safe to include agentConfig.roleId with the ref guard
 
   // Compute adjusted parameters for the current selection
   const currentRole = roles?.find(r => r.id === agentConfig.roleId);

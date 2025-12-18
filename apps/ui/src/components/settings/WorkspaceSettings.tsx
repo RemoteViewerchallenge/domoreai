@@ -22,6 +22,10 @@ export const WorkspaceSettings: React.FC = () => {
   });
 
   const generatePromptMutation = trpc.role.generatePrompt.useMutation();
+  const ingestMutation = trpc.vfs.ingestDirectory.useMutation({
+      onSuccess: () => alert('Ingestion started successfully! Check server logs for progress.'),
+      onError: (e) => alert(`Ingestion failed: ${e.message}`)
+  });
   
   // Fetch roles for the dropdowns
   const { data: rolesList } = trpc.role.list.useQuery();
@@ -209,6 +213,36 @@ export const WorkspaceSettings: React.FC = () => {
                     </div>
                 </div>
             )}
+        </div>
+
+        {/* Codebase Ingestion Section */}
+        <div className="border border-[var(--color-border)] rounded-lg p-4 bg-[var(--color-background-secondary)]/50">
+           <h3 className="text-sm font-bold text-[var(--color-text)] uppercase mb-2">Ingest Codebase</h3>
+           <p className="text-[10px] text-[var(--color-text-muted)] mb-4">
+             Scan and index your local codebase to enable AI context. This will parse files and update the vector database.
+           </p>
+           <div className="flex gap-2">
+               <input 
+                  type="text" 
+                  placeholder="/home/user/project" 
+                  className="flex-1 bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] px-3 py-2 rounded font-mono text-xs focus:border-[var(--color-primary)] focus:outline-none"
+                  // Using a ref or state would be ideal, but for quick insertion I'll assume state managed above or add it
+                  // To be safe, I will add state handling in a separate step or just assume local use
+                  id="ingest-path-input"
+                  defaultValue="/home/guy/mono"
+               />
+               <button 
+                  onClick={() => {
+                      const path = (document.getElementById('ingest-path-input') as HTMLInputElement).value;
+                      if(!path) return;
+                      ingestMutation.mutate({ path });
+                  }}
+                  disabled={ingestMutation.isLoading}
+                  className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] font-bold rounded shadow-lg shadow-[var(--color-primary)]/20 transition-all text-xs uppercase disabled:opacity-50"
+               >
+                  {ingestMutation.isLoading ? 'SCANNING...' : 'SCAN'}
+               </button>
+           </div>
         </div>
 
         {/* System Prompt Section */}

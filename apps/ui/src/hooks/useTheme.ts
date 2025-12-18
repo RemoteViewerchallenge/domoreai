@@ -1,4 +1,5 @@
-import { useNewUITheme } from '../components/appearance/NewUIThemeProvider';
+import { useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
+import { useCallback } from 'react';
 
 // Mapping needed because the old useTheme hook return structure 
 // matches the old Context, but now we are using the NewUIThemeProvider.
@@ -21,13 +22,13 @@ export const useTheme = () => {
   
   // The old setTheme took a partial. The new one takes a SetStateAction.
   // We need to adapt it.
-  const setTheme = (partial: any) => {
+  const setTheme = useCallback((partial: any) => {
      setNewTheme((prev) => ({ ...prev, ...partial }));
-  };
+  }, [setNewTheme]);
   
   // Mock other functions if needed by legacy components
-  const applyPreset = () => console.warn('applyPreset not implemented in adapter');
-  const resetToDefault = () => console.warn('resetToDefault not implemented in adapter');
+  const applyPreset = useCallback(() => console.warn('applyPreset not implemented in adapter'), []);
+  const resetToDefault = useCallback(() => console.warn('resetToDefault not implemented in adapter'), []);
 
   return { theme, setTheme, applyPreset, resetToDefault };
 };
