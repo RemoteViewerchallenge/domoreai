@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { Plus } from 'lucide-react';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
@@ -10,33 +10,35 @@ import { trpc } from '../utils/trpc.js'; // Import trpc
 
 export default function WorkSpace() {
   const { theme, setTheme } = useTheme();
-  const { columns, showSidebar, setSidebarOpen } = useWorkspaceStore();
+  const { columns, showSidebar, setSidebarOpen, cards, setCards, addCard } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
   const availableRoles = roles || [];
   // Use the first available roleId if present, else empty string
   const defaultRoleId = availableRoles[0]?.id || '';
-  const [cards, setCards] = useState([
-    { id: '1', roleId: defaultRoleId, column: 0 },
-    { id: '2', roleId: defaultRoleId, column: 0 },
-    { id: '3', roleId: defaultRoleId, column: 1 },
-    { id: '4', roleId: defaultRoleId, column: 1 },
-    { id: '5', roleId: defaultRoleId, column: 2 },
-    { id: '6', roleId: defaultRoleId, column: 2 },
-  ]);
+  
+  // No local cards state anymore!
+  // const [cards, setCards] = useState(...) -> Removed
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
 
   const { setColumnFocus } = useColumnFocus(columns);
 
-  // Redistribute cards when columns change
+  const prevColumnsRef = useRef(columns);
+  
+  // Redistribute cards when columns change - Done in store or effect?
+  // Let's keep this effect but update store
   useEffect(() => {
-    setCards(prevCards => 
-      prevCards.map((card, index) => ({
-        ...card,
-        column: index % columns
-      }))
-    );
-  }, [columns]);
+    // Only redistribute if columns actually changed
+    if (prevColumnsRef.current !== columns) {
+      const newCards = cards.map((card, index) => ({
+          ...card,
+          column: index % columns
+      }));
+      setCards(newCards);
+      prevColumnsRef.current = columns;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns]); // Only run when columns changes, not when cards changes
 
   // Group cards by column
   const cardsByColumn: { [key: number]: typeof cards } = {};
@@ -51,7 +53,7 @@ export default function WorkSpace() {
     }
     const newId = String(Date.now());
     const newRoleId = availableRoles[0].id; // Assign the ID of the first available role
-    setCards(prev => [...prev, { id: newId, roleId: newRoleId, column: columnIndex }]);
+    addCard({ id: newId, roleId: newRoleId, column: columnIndex });
   };
 
   const scrollToCardIndex = (columnIndex: number, cardIndex: number) => {

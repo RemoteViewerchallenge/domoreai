@@ -301,7 +301,7 @@ export class Surveyor {
       where: {
         OR: [
           { specs: { equals: {} } },
-          { specs: { equals: null } }
+          { specs: { equals: null as any } }
         ]
       },
       include: { provider: true }
@@ -311,7 +311,7 @@ export class Surveyor {
     let unknown = 0;
 
     for (const model of models) {
-      const specs = this.inspect(model.provider.type, model.modelId);
+      const specs = this.inspect((model as any).provider.type, model.modelId);
       
       if (specs) {
         // Update the model with surveyed specs

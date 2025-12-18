@@ -1,0 +1,33 @@
+
+> api@1.0.0 build /home/guy/mono/apps/api
+> tsc -b
+
+src/examples/ghost-records-integration.ts(7,39): error TS2307: Cannot find module './services/ModelDiscoveryService.js' or its corresponding type declarations.
+src/examples/ghost-records-integration.ts(75,9): error TS2322: Type '{ path: string[]; sort: string; }' is not assignable to type 'SortOrder | undefined'.
+src/examples/ghost-records-integration.ts(104,53): error TS2345: Argument of type '{ id: string; label: string; type: string; apiKey: string; baseURL: string | null; isEnabled: boolean; requestsPerMinute: number | null; createdAt: Date; updatedAt: Date; }' is not assignable to parameter of type '{ baseURL?: string | undefined; apiKey: string; }'.
+  Types of property 'baseURL' are incompatible.
+    Type 'string | null' is not assignable to type 'string | undefined'.
+      Type 'null' is not assignable to type 'string | undefined'.
+src/examples/ghost-records-integration.ts(157,44): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/services/AgentFactory.ts(205,7): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/services/AgentFactory.ts(206,7): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/services/ConfidenceAgent.ts(2,33): error TS2307: Cannot find module '../providers/ProviderManager.js' or its corresponding type declarations.
+src/services/FileWatcherService.ts(16,20): error TS2503: Cannot find namespace 'chokidar'.
+src/services/FileWatcherService.ts(51,29): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/services/FileWatcherService.ts(52,32): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/services/FileWatcherService.ts(55,32): error TS7006: Parameter 'filePath' implicitly has an 'any' type.
+src/services/FileWatcherService.ts(57,31): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/services/MetaRouter.ts(41,7): error TS2322: Type '{ id: string; name: string; description: string | null; tags: string[]; }[]' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+  Type '{ id: string; name: string; description: string | null; tags: string[]; }' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }'.
+    Types of property 'description' are incompatible.
+      Type 'string | null' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+src/services/MetaRouter.ts(53,9): error TS18048: 'availableOrchestrations' is possibly 'undefined'.
+src/services/MetaRouter.ts(107,69): error TS2345: Argument of type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[] | undefined' is not assignable to parameter of type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+  Type 'undefined' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+src/services/MetaRouter.ts(148,31): error TS18048: 'availableOrchestrations' is possibly 'undefined'.
+src/services/Surveyor.ts(304,22): error TS2322: Type 'null' is not assignable to type 'InputJsonValue | JsonNullValueFilter | FieldRef<"Model", "Json"> | undefined'.
+src/services/Surveyor.ts(314,40): error TS2551: Property 'provider' does not exist on type '{ id: string; providerId: string; modelId: string; name: string; capabilities: string[]; pricingConfig: JsonValue; providerData: JsonValue; aiData: JsonValue; ... 7 more ...; updatedAt: Date; }'. Did you mean 'providerId'?
+ ELIFECYCLE  Command failed with exit code 1.

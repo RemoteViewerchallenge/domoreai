@@ -1,4 +1,4 @@
-import chokidar from 'chokidar';
+import * as chokidar from 'chokidar';
 import * as path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
@@ -48,13 +48,13 @@ class FileWatcherService {
     });
 
     // File added or changed
-    this.watcher.on('add', (filePath) => this.handleFileChange(filePath, 'added'));
-    this.watcher.on('change', (filePath) => this.handleFileChange(filePath, 'changed'));
+    this.watcher.on('add', (filePath: string) => this.handleFileChange(filePath, 'added'));
+    this.watcher.on('change', (filePath: string) => this.handleFileChange(filePath, 'changed'));
     
     // File deleted
-    this.watcher.on('unlink', (filePath) => this.handleFileDelete(filePath));
+    this.watcher.on('unlink', (filePath: string) => this.handleFileDelete(filePath));
 
-    this.watcher.on('error', (error) => {
+    this.watcher.on('error', (error: any) => {
       console.error('[FileWatcher] ❌ Error:', error);
     });
 

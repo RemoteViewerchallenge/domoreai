@@ -1,20 +1,19 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { z } from 'zod';
 
 const execAsync = promisify(exec);
+
+const ExecuteInputSchema = z.object({
+  command: z.string().describe('The bash command to run'),
+  cwd: z.string().optional().describe('Optional working directory (relative to repo root)')
+});
 
 export const terminalTools = {
   execute: {
     name: 'terminal_execute',
     description: 'EXECUTE: Run a bash command in the project root.\n\nRULES:\n1. You are in a secure environment.\n2. Output (stdout/stderr) is captured and returned to you.\n3. Use this to run tests, install packages (npm install), or manage git.\n4. Do NOT run interactive commands (like `top` or `nano`).\n5. Commands run with a 30s timeout; long-running tasks should be broken into smaller steps.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        command: { type: 'string', description: 'The bash command to run' },
-        cwd: { type: 'string', description: 'Optional working directory (relative to repo root)' }
-      },
-      required: ['command']
-    },
+    inputSchema: ExecuteInputSchema,
     handler: async ({ command, cwd }: { command: string; cwd?: string }) => {
       try {
         console.log(`[Terminal] 💻 Executing: ${command}`);
