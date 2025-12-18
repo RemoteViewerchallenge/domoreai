@@ -63,7 +63,18 @@ export class ComplexityRouter {
     reasoning.push('Detected specializations: ' + specs.join(', '));
 
     // --- THE NEW ROUTING LOGIC (Zero-Burn) ---
-    let recommendedModel = 'gpt-4o-mini'; // Default safe fallback
+    let recommendedModel = (await prisma.model.findFirst({
+      where: { capabilities: { has: 'fallback' } }
+    }))?.id;
+
+    if (!recommendedModel) {
+      const fallback = await prisma.model.findFirst({
+        where: { capabilities: { has: 'text' } },
+        orderBy: { costPer1k: 'asc' }
+      });
+      if (fallback) recommendedModel = fallback.id;
+      else throw new Error("No models available in database for fallback.");
+    }
 
     try {
       // Helper to find best free model with capability

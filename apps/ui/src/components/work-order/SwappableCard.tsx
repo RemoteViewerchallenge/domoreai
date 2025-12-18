@@ -4,7 +4,7 @@ import SmartEditor from '../SmartEditor.js';
 import { FileExplorer } from '../FileExplorer.js'; 
 import { useCardVFS } from '../../hooks/useCardVFS.js';
 import XtermTerminal from '../XtermTerminal.js';
-import BrowserCard from '../BrowserCard.js';
+import { BrowserCard } from '../BrowserCard.js';
 import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js';
 import { trpc } from '../../utils/trpc.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
