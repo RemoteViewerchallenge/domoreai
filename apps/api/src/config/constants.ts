@@ -26,3 +26,6 @@ export const ENCRYPTION_KEY_LENGTH = 64;
 // External URLs
 export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
 export const GROQ_API_URL = 'https://api.groq.com/openai/v1';
+
+export const DEFAULT_FETCH_TIMEOUT_MS = 2000;
+export const DEFAULT_FALLBACK_MODEL = 'gpt-3.5-turbo';
