@@ -61,3 +61,6 @@ agents/*.md
 # Build artifacts that shouldn't be in source directories
 apps/api/list_tables.*
 !/apps/api/list_tables.ts
+
+# Database backups (timestamped SQL dumps and metadata)
+apps/api/backups/
