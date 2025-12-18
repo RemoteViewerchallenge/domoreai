@@ -31,6 +31,14 @@ interface RoleWithPreferredModels {
 
 export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
   const { theme } = useTheme();
+
+  // ✅ PRIMITIVE SELECTORS (Prevents Loops)
+  const storedTitle = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.title, [id]));
+  const storedType = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.type, [id]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const storedTargetDir = useWorkspaceStore(useCallback(s => (s.cards.find(c => c.id === id)?.metadata as any)?.targetDir, [id]));
+  const storedMetadata = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.metadata, [id]));
+
   const updateCard = useWorkspaceStore(state => state.updateCard);
 
   const { 
@@ -53,26 +61,53 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   const wsActions = useWebSocketStore(state => state.actions);
   const storeLogs = useWebSocketStore(state => state.messages.map(m => m.message));
   
-  // Component Type State (for the main view switcher)
-  const [type, setType] = useState<ComponentType>('editor');
+  // Component Type State
+  const [type, setType] = useState<ComponentType>((storedType as ComponentType) || 'editor');
+
+  // Helper to sync type changes to store immediately
+  const handleSetType = useCallback((newType: ComponentType) => {
+      setType(newType);
+      if (newType !== storedType) {
+          updateCard(id, { type: newType });
+      }
+  }, [id, storedType, updateCard]);
 
   // View State (Editor vs File Tree vs Settings)
   const [viewMode, setViewMode] = useState<'editor' | 'files' | 'settings'>('editor');
   
-  // Title State
-  const [cardTitle, setCardTitle] = useState(new Date().toLocaleString());
-  const [hasGenerated, setHasGenerated] = useState(false);
+  // Title State - Default to "New Task"
+  const [cardTitle, setCardTitle] = useState(storedTitle || "New Task");
 
-  // Sync to Store
-  useEffect(() => {
-    updateCard(id, { title: cardTitle, type: type });
-  }, [id, cardTitle, type]); // updateCard is stable from Zustand, no need to include
+  // Target Directory State - Default to "./src"
+  const [targetDir, setTargetDir] = useState((storedTargetDir as string) || "./src");
+
+  // Track if we have auto-renamed this card yet
+  const hasRunOnce = useRef(!!storedTitle && storedTitle !== "New Task");
+
+  // Removed useEffect for cardTitle sync to strictly prevent loops.
+  // Title is updated via handleRunAgent (auto-rename).
+
+  // Removed useEffect for targetDir sync to strictly prevent loops.
+  // TargetDir is updated via onBlur.
+
+  // Handle Target Directory Change (Persist on Blur)
+  const handleTargetDirBlur = () => {
+    if (targetDir !== storedMetadata?.targetDir) {
+        updateCard(id, {
+            metadata: {
+                ...(storedMetadata || {}),
+                targetDir
+            }
+        });
+    }
+  };
 
   // Fetch available roles for the settings panel
-  const { data: roles } = trpc.role.list.useQuery();
+  // Disable retry to prevent rapid loop if backend down
+  const { data: roles } = trpc.role.list.useQuery(undefined, { retry: 1 });
   
   // Fetch available models for the settings panel
-  const { data: models } = trpc.model.list.useQuery();
+  const { data: models } = trpc.model.list.useQuery(undefined, { retry: 1 });
 
   // Agent Configuration (inherits from role, can be overridden per card)
   const [agentConfig, setAgentConfig] = useState<CardAgentState>(() => {
@@ -89,13 +124,15 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   });
 
   // Always select a role: if none is set, pick the first available role and keep it until changed by user
+  // Wrapped with strict checks and removing if it causes issues.
+  // For now, I'll keep it but ensure it doesn't run if roles undefined.
   const hasSetInitialRole = useRef(false);
   useEffect(() => {
     if (roles && roles.length > 0 && !agentConfig.roleId && !hasSetInitialRole.current) {
       setAgentConfig(prev => ({ ...prev, roleId: roles[0].id }));
       hasSetInitialRole.current = true;
     }
-  }, [roles, agentConfig.roleId]); // Now safe to include agentConfig.roleId with the ref guard
+  }, [roles, agentConfig.roleId]);
 
   // Compute adjusted parameters for the current selection
   const currentRole = roles?.find(r => r.id === agentConfig.roleId);
@@ -120,7 +157,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
             });
         });
         // Automatically switch to terminal to show what happened
-        setType('terminal');
+        handleSetType('terminal');
       }
 
       if (data.result) {
@@ -132,8 +169,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
           
           // Heuristic: If result looks like a URL, switch to browser
           if (data.result.trim().startsWith('http')) {
-             setType('browser');
-             // TODO: Pass URL to browser if needed, currently browser manages own state
+             handleSetType('browser');
           }
       }
 
@@ -188,10 +224,13 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
     }
 
     // Auto-title on first run
-    if (!hasGenerated) {
-        const summary = prompt.slice(0, 25) + (prompt.length > 25 ? '...' : '');
-        setCardTitle(summary);
-        setHasGenerated(true);
+    if (!hasRunOnce.current) {
+        // First 30 chars
+        const cleanName = prompt.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30).trim() || "New Task";
+        setCardTitle(cleanName);
+        hasRunOnce.current = true;
+        // Immediate update to store
+        updateCard(id, { title: cleanName });
     }
 
     startSessionMutation.mutate({
@@ -203,8 +242,9 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
       },
       userGoal: prompt,
       cardId: id,
+      context: { targetDir }
     });
-  }, [content, agentConfig, startSessionMutation, id, isAiWorking, hasGenerated]);
+  }, [content, agentConfig, startSessionMutation, id, isAiWorking, updateCard, targetDir]);
 
   // Handle file attachment
   const handleAttachFile = useCallback(async (filePath: string) => {
@@ -272,7 +312,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
         <button
             key={item.id}
             onClick={() => {
-            setType(item.id as ComponentType);
+            handleSetType(item.id as ComponentType);
             setViewMode('editor');
             }}
             className={`p-1 rounded ${type === item.id ? 'bg-[var(--color-background-secondary)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'}`}
@@ -420,6 +460,17 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
 
           {/* SETTINGS VIEW */}
           {viewMode === 'settings' && (
+            <div className="flex flex-col h-full w-full bg-zinc-950">
+              <div className="px-3 pt-3 pb-0">
+                  <label className="text-[10px] uppercase text-[var(--color-text-secondary)] font-bold mb-1 block">Target Directory</label>
+                  <input
+                      value={targetDir}
+                      onChange={(e) => setTargetDir(e.target.value)}
+                      onBlur={handleTargetDirBlur}
+                      placeholder="./src"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-zinc-700"
+                  />
+              </div>
             <AgentSettings 
               config={{ ...agentConfig, adjustedParameters }}
               availableRoles={roles?.map(r => ({ 
@@ -447,6 +498,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                 onNavigate: (path) => navigate(path)
               }}
             />
+            </div>
           )}
   
           {/* EDITOR / CODE VIEW */}
@@ -517,11 +569,7 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   
         </div>
         
-        {/* Status Footer - HIDDEN IN UNIVERSAL MODE (To respect "full height" and new design?)
-            Wait, prompt says "hide its own 'File Path / Title' header". Does not mention footer.
-            However, UniversalCardWrapper has its own footer? No, it has front/back faces.
-            I will KEEP the footer for now as it contains AI status and CardCustomButtons.
-        */}
+        {/* Status Footer */}
         <div className="flex-none p-2 bg-[var(--color-background-secondary)] border-t border-[var(--color-border)]">
           {/* Single Row - Status Info and Action Buttons */}
           <div className="flex gap-2 justify-between items-center px-1 text-[10px]">
@@ -579,7 +627,7 @@ User Question: ${prompt}
                 onExecute={(button) => {
                   if (button.action === 'command') {
                     wsActions.sendMessage({ command: button.actionData });
-                    setType('terminal');
+                    handleSetType('terminal');
                   } else if (button.action === 'url') {
                     window.open(button.actionData, '_blank');
                   } else if (button.action === 'agent') {

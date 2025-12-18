@@ -134,7 +134,11 @@ export default function WorkSpace() {
                     className="h-full"
                     onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
                   >
-                    <SwappableCard id={currentCard.id} roleId={currentCard.roleId} />
+                    <SwappableCard
+                      key={currentCard.id}
+                      id={currentCard.id}
+                      roleId={currentCard.roleId}
+                    />
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
