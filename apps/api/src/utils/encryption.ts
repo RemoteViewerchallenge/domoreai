@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { ConfigurationError } from '../errors/AppErrors.js';
+import { ENCRYPTION_KEY_LENGTH } from '../config/constants.js';
 
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16; // For AES, this is always 16
@@ -7,8 +9,8 @@ const IV_LENGTH = 16; // For AES, this is always 16
 // We expect a 32-byte key, represented as a 64-character hex string
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
 
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-  throw new Error(
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== ENCRYPTION_KEY_LENGTH) {
+  throw new ConfigurationError(
     'FATAL: ENCRYPTION_KEY is missing or invalid (must be 64 hex chars). Application cannot start safely.'
   );
 }

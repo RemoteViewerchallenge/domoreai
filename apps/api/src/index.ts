@@ -16,9 +16,10 @@ import { createVolcanoTelemetry } from 'volcano-sdk';
 import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
 import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
+import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, ENCRYPTION_KEY_LENGTH, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
 
 // Initialize Telemetry
-if (process.env.VOLCANO_TELEMETRY_ENABLED === 'true') {
+if (process.env.VOLCANO_TELEMETRY_ENABLED === VOLCANO_TELEMETRY_ENABLED) {
   createVolcanoTelemetry({
     serviceName: process.env.OTEL_SERVICE_NAME,
     endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
@@ -31,10 +32,10 @@ if (process.env.VOLCANO_TELEMETRY_ENABLED === 'true') {
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
-  const port = 4000;
+  const port = API_PORT;
 
   const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
-  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== ENCRYPTION_KEY_LENGTH) {
     console.error(
       'FATAL: ENCRYPTION_KEY is not set or is not a 64-character hex string. Please set a strong 32-byte key (as 64 hex chars) in your environment variables.'
     );
@@ -47,7 +48,7 @@ async function startServer() {
 
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGIN,
     })
   );
   app.use(express.json());
@@ -96,7 +97,7 @@ async function startServer() {
   });
 
   server.listen(port, async () => {
-    console.log(`API server listening at http://localhost:${port}`);
+    console.log(`API server listening at ${API_HOST}:${port}`);
     
     // Display free model inventory
     try {

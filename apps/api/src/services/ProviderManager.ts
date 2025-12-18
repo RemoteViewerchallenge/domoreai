@@ -4,6 +4,7 @@ import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js
 import { IProviderManager } from '../interfaces/IProviderManager.js';
 import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
+import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL } from '../config/constants.js';
 
 export class ProviderManager implements IProviderManager {
   private providers: Map<string, BaseLLMProvider> = new Map();
@@ -78,8 +79,8 @@ export class ProviderManager implements IProviderManager {
     const mappings = [
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },
-      { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: 'https://openrouter.ai/api/v1' },
-      { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: 'https://api.groq.com/openai/v1' }
+      { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: OPENROUTER_API_URL },
+      { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: GROQ_API_URL }
     ];
 
     for (const map of mappings) {
@@ -269,8 +270,8 @@ export class ProviderManager implements IProviderManager {
    * This allows "zero-config" usage of local models.
    */
   private async detectLocalOllama() {
-    const ollamaHost = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
-    const providerId = 'ollama-local';
+    const ollamaHost = process.env.OLLAMA_HOST || OLLAMA_DEFAULT_HOST;
+    const providerId = OLLAMA_PROVIDER_ID;
 
     // If already configured in DB, skip auto-detection to respect user config
     if (this.providers.has(providerId)) return;
