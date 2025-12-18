@@ -1,0 +1,8 @@
+
+> api@1.0.0 build /home/guy/mono/apps/api
+> tsc -b
+
+src/services/MetaRouter.ts(105,69): error TS2345: Argument of type '{ id: string; name: string; description?: string | null | undefined; tags: string[]; }[] | undefined' is not assignable to parameter of type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+  Type 'undefined' is not assignable to type '{ id: string; name: string; description?: string | undefined; tags: string[]; }[]'.
+src/services/MetaRouter.ts(146,31): error TS18048: 'availableOrchestrations' is possibly 'undefined'.
+ ELIFECYCLE  Command failed with exit code 1.

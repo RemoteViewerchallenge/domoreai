@@ -65,7 +65,7 @@ export const UnifiedMenuBar = () => {
 
         <div className="h-4 w-px bg-[var(--color-border)] mx-1" />
 
-        <NavItem icon={Layout} label="Workspace" path="/workspace/adaptive" active={isActive('/workspace')} />
+        <NavItem icon={Layout} label="Workspace" path="/workspace/main" active={isActive('/workspace')} />
         <NavItem icon={Database} label="Data" path="/data" active={isActive('/data')} />
         <NavItem icon={Network} label="Creator" path="/creator" active={isActive('/creator')} />
         <NavItem icon={PenTool} label="Factory" path="/factory" active={isActive('/factory')} />

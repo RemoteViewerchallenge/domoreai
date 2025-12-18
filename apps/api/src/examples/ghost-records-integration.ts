@@ -4,7 +4,7 @@
  * This shows how to track model discoveries during agent execution
  */
 
-import { ModelDiscoveryService } from './services/ModelDiscoveryService.js';
+import { ModelDiscoveryService } from '../services/ModelDiscoveryService.js';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -70,9 +70,7 @@ export async function selectBestModel(
     },
     orderBy: [
       // Prefer recently-seen models
-      { lastSeenAt: 'desc' },
-      // Then by context window
-      { specs: { path: ['contextWindow'], sort: 'desc' } }
+      { lastSeenAt: 'desc' }
     ]
   });
 
@@ -101,7 +99,10 @@ export async function refreshProviderModels(providerId: string) {
     }
 
     // Fetch models from provider API
-    const models = await fetchModelsFromProviderAPI(provider);
+    const models = await fetchModelsFromProviderAPI({
+          ...provider,
+          baseURL: provider.baseURL ?? undefined
+        });
 
     if (models.length === 0) {
       console.warn(`⚠️  ${provider.label} returned 0 models`);

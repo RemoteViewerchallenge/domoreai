@@ -149,16 +149,16 @@ export const DbNodeCanvas = () => {
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <div className="text-[10px] text-zinc-500 font-bold px-2 py-1 uppercase">Postgres Tables</div>
-            {tables?.map((table) => (
+            {tables?.map((table: any) => (
                 <div 
-                    key={table}
+                    key={table.name}
                     draggable
-                    onDragStart={(e) => e.dataTransfer.setData('application/reactflow/table', table)}
-                    onClick={(e) => addTableToCanvas(table, e as any)}
+                    onDragStart={(e) => e.dataTransfer.setData('application/reactflow/table', table.name)}
+                    onClick={(e) => addTableToCanvas(table.name, e as any)}
                     className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-move group transition-colors border border-transparent hover:border-zinc-700/50"
                 >
                     <TableIcon size={12} className="text-zinc-500 group-hover:text-blue-400" />
-                    <span className="text-xs text-zinc-300 group-hover:text-white">{table}</span>
+                    <span className="text-xs text-zinc-300 group-hover:text-white">{table.name}</span>
                     <Plus size={10} className="ml-auto opacity-0 group-hover:opacity-100 text-zinc-500" />
                 </div>
             ))}
