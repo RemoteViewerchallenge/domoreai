@@ -1,21 +1,33 @@
 import * as crypto from 'crypto';
+import { ConfigurationError } from '../errors/AppErrors.js';
+import { ENCRYPTION_KEY_LENGTH } from '../config/constants.js';
 
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16; // For AES, this is always 16
 
-// Get the encryption key from environment variables
-// We expect a 32-byte key, represented as a 64-character hex string
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
+export class CryptoError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CryptoError';
+  }
+}
 
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-  throw new Error(
-    'FATAL: ENCRYPTION_KEY is missing or invalid (must be 64 hex chars). Application cannot start safely.'
-  );
+function getEncryptionKey(): string {
+  // Get the encryption key from environment variables
+  // We expect a 32-byte key, represented as a 64-character hex string
+  const key = process.env.ENCRYPTION_KEY || '';
+
+  if (!key || key.length !== ENCRYPTION_KEY_LENGTH) {
+    throw new ConfigurationError(
+      'FATAL: ENCRYPTION_KEY is missing or invalid (must be 64 hex chars). Application cannot start safely.'
+    );
+  }
+  return key;
 }
 
 function getKeyBuffer(): Buffer {
   // Key is guaranteed valid by the check above
-  return Buffer.from(ENCRYPTION_KEY, 'hex');
+  return Buffer.from(getEncryptionKey(), 'hex');
 }
 
 export function encrypt(text: string): string {

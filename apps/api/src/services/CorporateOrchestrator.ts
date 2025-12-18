@@ -1,5 +1,6 @@
 import { prisma } from '../db.js';
 import { GitService } from './git.service.js';
+import { JobDispatchError } from '../errors/AppErrors.js';
 import { TRPCError } from '@trpc/server';
 
 export class CorporateOrchestrator {
@@ -49,10 +50,9 @@ export class CorporateOrchestrator {
         };
 
     } catch (error: unknown) {
-        throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: `Dispatch Crew failed: ${error instanceof Error ? error.message : String(error)}`
-        });
+        throw new JobDispatchError(
+            `Dispatch Crew failed: ${error instanceof Error ? error.message : String(error)}`
+        );
     }
   }
 
