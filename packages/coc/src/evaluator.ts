@@ -1,4 +1,4 @@
-import { config } from './config';
+import { config } from './config.js';
 // simple seeded random for deterministic mock behavior
 function seededRandom(seedStr: string) {
   let h = 2166136261 >>> 0;

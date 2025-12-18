@@ -172,7 +172,7 @@ export class ToolDocumenter {
 
       if (model) {
         try {
-            const provider = ProviderManager.getProvider(model.providerId);
+            const provider = ProviderManager.getProvider(model.providerId || '');
             if (provider) {
                 const prompt = `
                 You are an expert TypeScript developer.

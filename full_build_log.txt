@@ -1,0 +1,102 @@
+
+> mono-repo@1.0.0 build /home/guy/mono
+> turbo run build
+
+turbo 2.6.3
+
+• Packages in scope: @domoreai/coc, @repo/agents, @repo/api-contract, @repo/common, @repo/eslint-config, @repo/mcp-server-vfs, @repo/typescript-config, @repo/voice-input, api, ui
+• Running build in 10 packages
+• Remote caching disabled
+@domoreai/coc:build: cache hit, replaying logs fc9210e93fbf81e5
+@domoreai/coc:build: 
+@domoreai/coc:build: 
+@domoreai/coc:build: > @domoreai/coc@0.1.0 build /home/guy/mono/packages/coc
+@domoreai/coc:build: > tsc -p tsconfig.json
+@domoreai/coc:build: 
+@repo/voice-input:build: cache hit, replaying logs aad37ca135a86f87
+@repo/voice-input:build: 
+@repo/voice-input:build: 
+@repo/voice-input:build: > @repo/voice-input@1.0.0 build /home/guy/mono/apps/voice-input
+@repo/voice-input:build: > tsc
+@repo/voice-input:build: 
+@repo/common:build: cache hit, replaying logs 3d9319fdbb6b3d94
+@repo/common:build: 
+@repo/common:build: 
+@repo/common:build: > @repo/common@1.0.0 build /home/guy/mono/packages/common
+@repo/common:build: > tsc
+@repo/common:build: 
+@repo/mcp-server-vfs:build: cache hit, replaying logs d4c8822225c6081c
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: 
+@repo/mcp-server-vfs:build: > @repo/mcp-server-vfs@1.0.0 build /home/guy/mono/packages/mcp-server-vfs
+@repo/mcp-server-vfs:build: > tsc
+@repo/mcp-server-vfs:build: 
+@repo/api-contract:build: cache hit, replaying logs 0eada1428a35086d
+@repo/api-contract:build: 
+@repo/api-contract:build: > @repo/api-contract@1.0.0 build /home/guy/mono/packages/api-contract
+@repo/api-contract:build: > tsc
+@repo/api-contract:build: 
+api:build: cache miss, executing 28b977444e3ac9f3
+ui:build: cache hit, replaying logs 0a7601674935259c
+ui:build: 
+ui:build: 
+ui:build: > ui@0.0.0 build /home/guy/mono/apps/ui
+ui:build: > vite build
+ui:build: 
+ui:build: [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+ui:build: [2K[1Gtransforming (1) [2mindex.html[22[2K[1Gtransforming (3) [2msrc/main.tsx[/*! 🚀 flyonui 2.4.1 */
+ui:build: [2K[1Gtransforming (7) [2m../../node_mod[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (46) [2m../../node_mo[2K[1Gtransforming (99) [2m../../node_mo[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (104) [2m../../node_m
+ui:build: /grid-pattern.svg referenced in /grid-pattern.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+ui:build: [2K[1Gtransforming (173) [2m../../node_m[2K[1Gtransforming (190) [2m../../node_m[2K[1Gtransforming (1178) [2m../../node_[2K[1Gtransforming (1184) [2m../../node_[2K[1Gtransforming (1861) [2m../../node_[2K[1Gtransforming (1891) [2m../../node_[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (2013) [2m../../node_[2K[1G[2K[1G[2K[1Gtransforming (2026) [2m../../node_[2K[1Gtransforming (2055) [2m../../node_[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (2292) [2m../../node_[2K[1Gtransforming (2321) [2m../../node_[2K[1G[2K[1G[2K[1Gtransforming (2453) [2m../../node_[2K[1G[2K[1Gtransforming (2607) [2m../../node_[2K[1Gtransforming (2630) [2m../../node_[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1Gtransforming (2769) [2m../../node_[2K[1Gtransforming (2986) [2m../../node_[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[2K[1G[32m✓[39m 3171 modules transformed.
+ui:build: [2K[1Grendering chunks (1)...[2K[1Grendering chunks (2)...[2K[1G[2K[1Gcomputing gzip size (0)...[2K[1Gcomputing gzip size (1)...[2K[1Gcomputing gzip size (2)...[2K[1Gcomputing gzip size (3)...[2K[1Gcomputing gzip size (4)...[2K[1G[2mdist/[22m[32mindex.html                              [39m[1m[2m    0.45 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+ui:build: [2mdist/[22m[2massets/[22m[32mcodicon-BYm2YbZ6.ttf             [39m[1m[2m  123.19 kB[22m[1m[22m
+ui:build: [2mdist/[22m[2massets/[22m[35mindex-Dk5dl9I3.css               [39m[1m[2m  218.95 kB[22m[1m[22m[2m │ gzip:  36.29 kB[22m
+ui:build: [2mdist/[22m[2massets/[22m[36mCompactRoleSelector-DpT_jOaB.js  [39m[1m[2m    3.13 kB[22m[1m[22m[2m │ gzip:   1.29 kB[22m
+ui:build: [2mdist/[22m[2massets/[22m[36mindex-Dzz-PirA.js                [39m[1m[33m1,784.50 kB[39m[22m[2m │ gzip: 520.85 kB[22m
+ui:build: [33m
+ui:build: (!) Some chunks are larger than 500 kB after minification. Consider:
+ui:build: - Using dynamic import() to code-split the application
+ui:build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+ui:build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+ui:build: [32m✓ built in 9.54s[39m
+api:build: 
+api:build: > api@1.0.0 build /home/guy/mono/apps/api
+api:build: > tsc -b
+api:build: 
+api:build: src/routers/llm.router.ts(59,13): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/routers/llm.router.ts(70,58): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/routers/llm.router.ts(93,58): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/routers/llm.router.ts(106,17): error TS2322: Type 'unknown' is not assignable to type 'string'.
+api:build: src/routers/llm.router.ts(133,17): error TS2322: Type 'unknown' is not assignable to type 'string'.
+api:build: src/services/AgentFactory.ts(371,49): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+api:build: src/services/AssessmentService.ts(56,57): error TS2339: Property 'includes' does not exist on type '{}'.
+api:build: src/services/AssessmentService.ts(57,27): error TS2365: Operator '>' cannot be applied to types '{}' and 'number'.
+api:build: src/services/AssessmentService.ts(58,43): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/AssessmentService.ts(58,75): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/AssessmentService.ts(68,50): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/services/ToolDocumenter.ts(114,37): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/ToolDocumenter.ts(117,71): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+api:build: src/services/ToolDocumenter.ts(117,92): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+api:build: src/services/ToolDocumenter.ts(119,35): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/ToolDocumenter.ts(119,67): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/ToolDocumenter.ts(125,89): error TS2339: Property 'contextWindow' does not exist on type '{}'.
+api:build: src/services/ToolDocumenter.ts(175,58): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/services/modelManager.service.ts(63,9): error TS2322: Type '{ [key: string]: unknown; }' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+api:build:   Type '{ [key: string]: unknown; }' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 20 more.
+api:build: src/services/provider.service.ts(43,38): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+api:build: src/services/provider.service.ts(92,13): error TS2769: No overload matches this call.
+api:build:   Overload 2 of 2, '(values: { modelId: string | SQL<unknown> | Placeholder<string, any>; providerId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<...> | undefined; ... 6 more ...; specs?: unknown; }[]): PgInsertBase<...>', gave the following error.
+api:build:     Object literal may only specify known properties, and 'id' does not exist in type '{ modelId: string | SQL<unknown> | Placeholder<string, any>; providerId: string | SQL<unknown> | Placeholder<string, any>; id?: string | SQL<unknown> | Placeholder<...> | undefined; ... 6 more ...; specs?: unknown; }[]'.
+api:build: src/services/provider.service.ts(106,15): error TS2322: Type '{}' is not assignable to type 'boolean | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+api:build: src/services/provider.service.ts(107,15): error TS2322: Type '{}' is not assignable to type 'number | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+api:build:  ELIFECYCLE  Command failed with exit code 1.
+api:build: ERROR: command finished with error: command (/home/guy/mono/apps/api) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+api#build: command (/home/guy/mono/apps/api) /home/guy/.nvm/versions/node/v22.20.0/bin/pnpm run build exited (1)
+
+ Tasks:    6 successful, 7 total
+Cached:    6 cached, 7 total
+  Time:    10.748s 
+Failed:    api#build
+
+ ERROR  run failed: command  exited (1)
+ ELIFECYCLE  Command failed with exit code 1.

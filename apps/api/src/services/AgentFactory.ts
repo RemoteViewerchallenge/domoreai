@@ -367,7 +367,7 @@ export class AgentFactoryService implements IAgentFactory {
       const requestedModelId = modelDef?.id || cardConfig.modelId;
       const requestedProviderId = modelDef?.providerId; // Might be undefined if not in cache
 
-      if (requestedProviderId) {
+      if (requestedProviderId && requestedModelId) {
          model = await this.configRepo.getModel(requestedProviderId, requestedModelId);
       }
 

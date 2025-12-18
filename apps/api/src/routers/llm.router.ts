@@ -56,7 +56,7 @@ llmRouter.post('/chat/completions', async (req, res) => {
     for (const model of candidates) {
         // a. Check Rate Limit (Pre-flight)
         const allowed = await UsageCollector.checkAndIncrementRateLimit(
-            model.providerConfigId, 
+            model.providerConfigId || '', 
             model.limitRequestRate || 1000, // Default to high limit if not set
             model.limitWindow || 60
         );
@@ -67,7 +67,7 @@ llmRouter.post('/chat/completions', async (req, res) => {
         }
 
         try {
-            const provider = ProviderManager.getProvider(model.providerConfigId);
+            const provider = ProviderManager.getProvider(model.providerConfigId || '');
             if (!provider) {
                 console.warn(`Provider ${model.provider} not active, skipping.`);
                 continue;
@@ -90,7 +90,7 @@ llmRouter.post('/chat/completions', async (req, res) => {
 
             // Update Dynamic Limits (Smart Rate Limiting)
             if (headers && Object.keys(headers).length > 0) {
-                await UsageCollector.updateDynamicLimits(model.providerConfigId, headers);
+                await UsageCollector.updateDynamicLimits(model.providerConfigId || '', headers);
             }
 
             const duration = Date.now() - start;
@@ -103,7 +103,7 @@ llmRouter.post('/chat/completions', async (req, res) => {
             // c. Log Success (Post-flight)
             UsageCollector.logRequest({
                 modelId: model.id,
-                providerConfigId: model.providerConfigId,
+                providerConfigId: model.providerConfigId || '',
                 tokensIn,
                 tokensOut,
                 status: 'SUCCESS',
@@ -130,7 +130,7 @@ llmRouter.post('/chat/completions', async (req, res) => {
             // Log Failure
             UsageCollector.logRequest({
                 modelId: model.id,
-                providerConfigId: model.providerConfigId,
+                providerConfigId: model.providerConfigId || '',
                 tokensIn: 0,
                 tokensOut: 0,
                 status: 'FAILURE',

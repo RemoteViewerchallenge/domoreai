@@ -40,7 +40,7 @@ export class ProviderService {
 
     return models.map((model) => ({
       ...model,
-      providerLabel: providerMap.get(model.providerId) || model.providerId,
+      providerLabel: providerMap.get(model.providerId || '') || model.providerId || 'unknown',
     }));
   }
 
@@ -80,10 +80,10 @@ export class ProviderService {
         if (!modelId) return;
 
         const specs = {
-          contextWindow: model.contextWindow,
-          hasVision: model.hasVision,
-          hasReasoning: model.hasReasoning || false,
-          hasCoding: model.hasCoding || false,
+          contextWindow: model.specs?.contextWindow,
+          hasVision: model.specs?.hasVision,
+          hasReasoning: model.specs?.hasReasoning || false,
+          hasCoding: model.specs?.hasCoding || false,
         };
 
         // Consolidated upsert into modelRegistry

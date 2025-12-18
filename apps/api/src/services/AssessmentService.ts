@@ -65,7 +65,7 @@ export class AssessmentService {
 
     console.log(`🧠 Assessment Service selected: ${smartModel.id} (Cost: $${smartModel.costPer1k || 0}/1k)`);
 
-    const provider = ProviderManager.getProvider(smartModel.providerId);
+    const provider = ProviderManager.getProvider(smartModel.providerId || '');
     if (!provider) return;
 
     const newPrompt = await provider.generateCompletion({

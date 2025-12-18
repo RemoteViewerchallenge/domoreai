@@ -60,7 +60,7 @@ export async function logUsage(data: RawProviderOutput) {
 
         // This is the "escape hatch."
         // All leftover fields are stored in the Json blob.
-        metadata: metadata,
+        metadata: metadata as any,
       },
     });
     console.log('Usage log created:', newLog.id);

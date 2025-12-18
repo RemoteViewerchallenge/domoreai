@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import { StrategyEngine } from './StrategyEngine';
-import { config, isMock, TRACE_DIR } from './config';
-import { Bandit } from './bandit';
-import { TaskQueue, Task } from './task-queue';
-import { eventBus } from './event-bus';
+import { StrategyEngine } from './StrategyEngine.js';
+import { config, isMock, TRACE_DIR } from './config.js';
+import { Bandit } from './bandit.js';
+import { TaskQueue, Task } from './task-queue.js';
+import { eventBus } from './event-bus.js';
+import { fileURLToPath } from 'url';
 
 // ensure out dirs exist
 fs.mkdirSync(TRACE_DIR, { recursive: true });
@@ -34,9 +35,9 @@ export function parseSpec(input: any) {
 async function buildComponents() {
   if (isMock()) {
     // local mocks
-    const { Retriever } = await import('./retriever');
-    const { Evaluator } = await import('./evaluator');
-    const { ModelRegistry } = await import('./model-registry');
+    const { Retriever } = await import('./retriever.js');
+    const { Evaluator } = await import('./evaluator.js');
+    const { ModelRegistry } = await import('./model-registry.js');
     return {
       retriever: new Retriever(),
       evaluator: new Evaluator(),
@@ -46,10 +47,12 @@ async function buildComponents() {
     // attempt to load prod modules; if missing, error loudly (no silent fallback)
     try {
       // dynamic requires so missing prod files fail here
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const ProdRegistry = require('./prod/model-registry').default;
-      const ProdRetriever = require('./prod/retriever').default;
-      const ProdEvaluator = require('./prod/evaluator').default;
+      // @ts-ignore
+      const ProdRegistry = (await import('./prod/model-registry.js')).default;
+      // @ts-ignore
+      const ProdRetriever = (await import('./prod/retriever.js')).default;
+      // @ts-ignore
+      const ProdEvaluator = (await import('./prod/evaluator.js')).default;
       return {
         retriever: new ProdRetriever(),
         evaluator: new ProdEvaluator(),
@@ -173,7 +176,7 @@ function renderPrompt(templateId: string | null | undefined, ctx: any) {
 }
 
 // CLI smoke-run
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async () => {
     console.log(`COC starting (mode=${config.mode}). Traces -> ${TRACE_FILE}`);
     const sampleSpecPath = path.resolve(process.cwd(), 'agents', 'scenarios', 'sample_happy.json');
