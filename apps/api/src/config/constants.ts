@@ -1,0 +1,28 @@
+
+// Server Configuration
+export const API_PORT = 4000;
+export const API_HOST = 'http://localhost';
+export const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
+
+// Telemetry
+export const VOLCANO_TELEMETRY_ENABLED = 'true';
+
+// WebSocket
+export const WS_RECONNECT_INTERVAL = 1000;
+
+// Provider Manager
+export const PROVIDER_COOLDOWN_SECONDS = 300; // 5 minutes default
+export const OLLAMA_DEFAULT_HOST = 'http://127.0.0.1:11434';
+export const OLLAMA_PROVIDER_ID = 'ollama-local';
+
+// Model Defaults
+export const DEFAULT_MODEL_TEMP = 0.7;
+export const DEFAULT_MAX_TOKENS = 2048;
+export const DEFAULT_MODEL_TAKE_LIMIT = 100;
+
+// Encryption
+export const ENCRYPTION_KEY_LENGTH = 64;
+
+// External URLs
+export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
+export const GROQ_API_URL = 'https://api.groq.com/openai/v1';
