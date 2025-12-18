@@ -17,6 +17,9 @@ export const startSessionSchema = z.object({
   }),
   userGoal: z.string().min(1, 'User goal/prompt is required'),
   cardId: z.string(),
+  context: z.object({
+    targetDir: z.string().optional(),
+  }).optional(),
 });
 
 export type StartSessionInput = z.infer<typeof startSessionSchema>;
@@ -36,7 +39,7 @@ Constraints:
 
 export class AgentService {
   async startSession(input: StartSessionInput) {
-    const { roleId, modelConfig, userGoal, cardId } = input;
+    const { roleId, modelConfig, userGoal, cardId, context } = input;
 
     try {
       // 1.5 Fetch Workspace Prompt
@@ -46,6 +49,12 @@ export class AgentService {
       });
       const projectPrompt = card?.systemPrompt || undefined;
 
+      // Prepend context if available
+      let finalUserGoal = userGoal;
+      if (context?.targetDir) {
+          finalUserGoal = `Context: Target Directory: ${context.targetDir}\n\n${userGoal}`;
+      }
+
       // 1. Create the agent configuration
       const agentConfig: CardAgentState = {
         roleId,
@@ -53,7 +62,7 @@ export class AgentService {
         isLocked: !!modelConfig.modelId, // Lock if model is explicitly provided
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
-        userGoal, // Pass user goal for memory injection
+        userGoal: finalUserGoal, // Pass user goal for memory injection
         projectPrompt,
       };
 
