@@ -14,6 +14,13 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AIContextButton } from './AIContextButton.js';
 
+interface NavItemProps {
+  icon: React.ElementType;
+  label: string;
+  path: string;
+  active: boolean;
+}
+
 export const UnifiedMenuBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,7 +30,7 @@ export const UnifiedMenuBar = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', ctrlKey: true }));
   };
 
-  const NavItem = ({ icon: Icon, label, path, active }: any) => (
+  const NavItem = ({ icon: Icon, label, path, active }: NavItemProps) => (
     <button
       onClick={() => navigate(path)}
       className={`relative group flex items-center gap-2 px-3 py-1.5 rounded-sm transition-all duration-200 ${
