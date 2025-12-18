@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Briefcase, Code, Shield, Sparkles, User } from 'lucide-react';
 import { cn } from '@/lib/utils.js';
-import { trpc } from '@/lib/trpc';
+import { trpc } from '../utils/trpc.js';
 
 type CompactRoleSelectorProps = {
   onSelect?: (roleId: string) => void;

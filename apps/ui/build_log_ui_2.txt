@@ -1,0 +1,23 @@
+
+> ui@0.0.0 build /home/guy/mono/apps/ui
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+/*! 🚀 flyonui 2.4.1 */
+
+/grid-pattern.svg referenced in /grid-pattern.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+✓ 3166 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.45 kB │ gzip:   0.29 kB
+dist/assets/codicon-BYm2YbZ6.ttf               123.19 kB
+dist/assets/index-Dk5dl9I3.css                 218.95 kB │ gzip:  36.29 kB
+dist/assets/CompactRoleSelector-DY3B9CEp.js      3.13 kB │ gzip:   1.29 kB
+dist/assets/index-2HjnHvYh.js                1,775.72 kB │ gzip: 518.40 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.50s

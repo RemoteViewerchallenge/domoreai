@@ -92,6 +92,13 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   });
   const updateToolExamplesMutation = trpc.orchestrator.updateToolExamples.useMutation();
   const runDoctorMutation = trpc.model.runDoctor.useMutation();
+  const ingestLibraryMutation = trpc.role.ingestLibrary.useMutation({
+      onSuccess: (data) => {
+          alert(data.message);
+          void utils.role.list.invalidate();
+          void refetchCategories();
+      }
+  });
 
   // Helper to extract category name safely - MUST be defined before useMemo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -477,10 +484,24 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
        {/* Sidebar */}
        <div className="w-48 bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0">
           <div className="p-2 border-b border-[var(--color-border)] flex justify-between items-center">
-             <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Categories</span>
-             <button onClick={() => { setIsCreatingCategory(true); setNewCategoryParentId(null); setTempCategoryName(''); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-success)]">
-                <Plus size={14} />
-             </button>
+             <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Categories ({roles?.length || 0})</span>
+             <div className="flex gap-1">
+                 <button 
+                    onClick={() => {
+                        if(confirm('Ingest default agent library? This may create duplicates if run twice.')) {
+                            ingestLibraryMutation.mutate();
+                        }
+                    }} 
+                    title="Ingest Standard Library"
+                    disabled={ingestLibraryMutation.isLoading}
+                    className="text-[var(--color-text-muted)] hover:text-[var(--color-primary)] disabled:opacity-50"
+                 >
+                    <Database size={14} className={ingestLibraryMutation.isLoading ? "animate-spin" : ""} />
+                 </button>
+                 <button onClick={() => { setIsCreatingCategory(true); setNewCategoryParentId(null); setTempCategoryName(''); }} className="text-[var(--color-text-muted)] hover:text-[var(--color-success)]">
+                    <Plus size={14} />
+                 </button>
+             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
              {isCreatingCategory && newCategoryParentId === null && (

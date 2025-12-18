@@ -32,25 +32,23 @@ export class MetaRouter {
    */
   static async routeTask(
     taskDescription: string,
-    availableOrchestrations?: Array<{ id: string; name: string; description?: string; tags: string[] }>
+    availableOrchestrations?: Array<{ id: string; name: string; description?: string | null; tags: string[] }>
   ): Promise<RoutingDecision> {
     console.log(`[MetaRouter] 🚦 Routing task: "${taskDescription.substring(0, 100)}..."`);
 
     // 1. Load available orchestrations if not provided
-    if (!availableOrchestrations) {
-      availableOrchestrations = await prisma.orchestration.findMany({
-        where: { isActive: true },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          tags: true
-        }
-      });
-    }
+    const orchestrations = availableOrchestrations || await prisma.orchestration.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        tags: true
+      }
+    });
 
     // 2. If no orchestrations available, fallback to single agent
-    if (availableOrchestrations.length === 0) {
+    if (orchestrations.length === 0) {
       console.log('[MetaRouter] No orchestrations available, falling back to single agent');
       return {
         orchestrationTemplate: null,
@@ -104,7 +102,7 @@ Return your decision as a JSON object with this structure:
     }
 
     // 4. Create the routing prompt
-    const routingPrompt = this.createRoutingPrompt(taskDescription, availableOrchestrations);
+    const routingPrompt = this.createRoutingPrompt(taskDescription, orchestrations);
 
     // 5. Create router agent
     const routerAgent = await createVolcanoAgent({
@@ -145,7 +143,7 @@ Return your decision as a JSON object with this structure:
       // 7. Find the orchestration ID if a template was selected
       let orchestrationId: string | undefined;
       if (decision.orchestrationName && !decision.fallbackToSingleAgent) {
-        const orchestration = availableOrchestrations.find(
+        const orchestration = orchestrations.find(
           o => o.name.toLowerCase() === decision.orchestrationName.toLowerCase()
         );
         orchestrationId = orchestration?.id;
@@ -190,7 +188,7 @@ Return your decision as a JSON object with this structure:
    */
   private static createRoutingPrompt(
     taskDescription: string,
-    orchestrations: Array<{ id: string; name: string; description?: string; tags: string[] }>
+    orchestrations: Array<{ id: string; name: string; description?: string | null; tags: string[] }>
   ): string {
     const orchestrationList = orchestrations.map((o, i) => 
       `${i + 1}. ${o.name}
