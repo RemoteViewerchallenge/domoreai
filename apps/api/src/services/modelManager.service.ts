@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-// import type { RawProviderOutput } from './modelManager.mocks.ts';
+import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
 
 // Define a basic interface for the expected data structure.
 interface RawProviderOutput {
@@ -11,7 +11,16 @@ interface RawProviderOutput {
     completion_tokens: number;
   };
   cost?: number;
-  [key: string]: any; // Allow for other unknown properties
+  [key: string]: unknown; // Using unknown instead of any
+}
+
+// Define interface for ModelSelectionResult
+export interface ModelSelectionResult {
+  modelId: string;
+  providerId: string;
+  model: unknown; // Using unknown as it could be a Prisma model or a mocked object
+  temperature: number;
+  maxTokens: number;
 }
 
 // This would be your singleton Prisma client, passed in or imported
@@ -23,6 +32,7 @@ const prisma = new PrismaClient();
  * It uses the "rest" operator to catch all unknown fields.
  */
 export async function logUsage(data: RawProviderOutput) {
+  // Validate basic requirements before use if needed, or rely on destructuring
   // 1. Destructure the *known* fields and capture the "rest"
   const {
     modelId,
@@ -112,7 +122,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
         { isFree: 'desc' }, // Prefer free models (Zero-Burn)
         { lastSeenAt: 'desc' }, // Recently seen models first
       ],
-      take: 100 // Limit for performance
+      take: DEFAULT_MODEL_TAKE_LIMIT // Limit for performance
     });
 
     if (candidates.length === 0) {
@@ -146,7 +156,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
  * Finds the best, non-rate-limited model for a given role.
  * UPDATED: Uses Dynamic Registry first, falls back to legacy preferredModels.
  */
-export async function getBestModel(roleId?: string, failedModels: string[] = [], failedProviders: string[] = []) {
+export async function getBestModel(roleId?: string, failedModels: string[] = [], failedProviders: string[] = []): Promise<ModelSelectionResult | null> {
   // If a roleId wasn't provided, fall back to selecting any enabled model.
   if (!roleId) {
     const fallback = await prisma.model.findFirst({
@@ -158,12 +168,10 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
       modelId: fallback.modelId,
       providerId: fallback.providerId,
       model: fallback,
-      temperature: 0.7,
-      maxTokens: 2048,
-    } as any;
+      temperature: DEFAULT_MODEL_TEMP,
+      maxTokens: DEFAULT_MAX_TOKENS,
+    };
   }
-
-
 
   // 1. Try Dynamic Registry
   try {
@@ -186,8 +194,8 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
           providerId: strictModel.providerId,
           model: strictModel,
           // Mock config values
-          temperature: 0.7,
-          maxTokens: 2048
+          temperature: DEFAULT_MODEL_TEMP,
+          maxTokens: DEFAULT_MAX_TOKENS
         };
       }
       
@@ -202,8 +210,8 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
             providerId: dynamicModel.providerId,
             provider: { id: dynamicModel.providerId, type: (dynamicModel.providerId as string)?.split('-')[0] || 'unknown' } // Mock provider
         },
-        temperature: 0.7,
-        maxTokens: 2048
+        temperature: DEFAULT_MODEL_TEMP,
+        maxTokens: DEFAULT_MAX_TOKENS
       };
     }
   } catch (e: unknown) {
@@ -230,8 +238,8 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
           modelId: fallbackModel.modelId,
           providerId: fallbackModel.providerId,
           model: fallbackModel,
-          temperature: 0.7,
-          maxTokens: 2048
+          temperature: DEFAULT_MODEL_TEMP,
+          maxTokens: DEFAULT_MAX_TOKENS
       };
   }
 

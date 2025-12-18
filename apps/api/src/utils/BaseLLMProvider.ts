@@ -1,6 +1,6 @@
 export interface LLMModel {
   id: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Message {

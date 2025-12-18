@@ -1,122 +1,19 @@
 import { CodeModeUtcpClient } from '@utcp/code-mode';
-import { CallTemplateSerializer, CommunicationProtocol, CallTemplate, IUtcpClient, Tool } from '@utcp/sdk';
-import { z } from 'zod';
-import { terminalTools } from '../tools/terminal.js';
+import { CallTemplateSerializer, CallTemplate, CommunicationProtocol } from '@utcp/sdk';
 import { createFsTools } from '../tools/filesystem.js';
-import { browserTools } from '../tools/browser.js';
-import { webScraperTool } from '../tools/webScraper.js';
-import { complexityTool } from '../tools/complexityTool.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
 import { metaTools } from '../tools/meta.js';
-import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
-import { vfsSessionService } from './vfsSession.service.js';
 import { contextManager } from './ContextManager.js';
-
-// --- Local Protocol Implementation ---
-
-const LocalCallTemplateSchema = z.object({
-  call_template_type: z.literal('local'),
-  name: z.string(),
-  tools: z.array(z.any()).optional().default([]),
-}).passthrough();
-
-// Define types for Tool Definition
-interface ToolDefinition {
-  name: string;
-  description?: string;
-  input_schema?: Record<string, unknown>;
-  inputs?: Record<string, unknown>;
-  outputs?: Record<string, unknown>;
-  tags?: string[];
-  handler?: (args: unknown) => unknown;
-}
-
-interface ManualCallTemplate extends CallTemplate {
-  name: string;
-  tools?: ToolDefinition[];
-  call_template_type: string; // Must be string, not optional
-}
-
-class LocalCallTemplateSerializer extends CallTemplateSerializer {
-  toDict(obj: CallTemplate) { return obj as unknown as Record<string, unknown>; }
-  validateDict(obj: unknown) { return LocalCallTemplateSchema.parse(obj); }
-}
-
-class LocalCommunicationProtocol extends CommunicationProtocol {
-  private handlers = new Map<string, (args: unknown) => unknown>();
-
-  async registerManual(client: IUtcpClient, manualCallTemplate: CallTemplate) {
-    const template = manualCallTemplate as ManualCallTemplate;
-    const tools: Tool[] = [];
-    const prefix = template.name;
-
-    for (const toolDef of template.tools || []) {
-      // Ensure tool name is fully qualified if not already
-      const fullToolName = toolDef.name.includes('.') ? toolDef.name : `${prefix}.${toolDef.name}`;
-      
-      // Store handler
-      if (toolDef.handler) {
-        this.handlers.set(fullToolName, toolDef.handler);
-      }
-
-      tools.push({
-        name: fullToolName,
-        description: toolDef.description || '',
-        inputs: toolDef.input_schema || toolDef.inputs || {},
-        outputs: toolDef.outputs || {},
-        tags: toolDef.tags || [],
-        tool_call_template: {
-            call_template_type: 'local',
-            name: prefix
-        }
-      });
-    }
-    
-    // Satisfy async requirement
-    await Promise.resolve();
-
-    return {
-      success: true,
-      manual: {
-        utcp_version: '1.0.0',
-        manual_version: '1.0.0',
-        tools: tools
-      },
-      manualCallTemplate: template as unknown as CallTemplate,
-      errors: []
-    };
-  }
-
-  async deregisterManual(client: IUtcpClient, manualCallTemplate: CallTemplate) {
-      const template = manualCallTemplate as ManualCallTemplate;
-      // Cleanup handlers for this manual
-      const prefix = template.name;
-      for (const key of this.handlers.keys()) {
-          if (key.startsWith(prefix + '.')) {
-              this.handlers.delete(key);
-          }
-      }
-      // Satisfy async requirement
-      await Promise.resolve();
-  }
-
-  async callTool(client: IUtcpClient, toolName: string, args: unknown) {
-    const handler = this.handlers.get(toolName);
-    if (!handler) {
-        throw new Error(`No local handler found for tool ${toolName}`);
-    }
-    return await handler(args);
-  }
-
-  async *callToolStreaming(client: IUtcpClient, toolName: string, args: unknown) {
-      // For now, just yield the result of callTool as a single chunk
-      const result = await this.callTool(client, toolName, args);
-      yield result;
-  }
-}
+import { LocalCommunicationProtocol, LocalCallTemplateSerializer, ToolDefinition } from './protocols/LocalProtocol.js';
+import { getNativeTools } from './tools/NativeToolsRegistry.js';
+import { loadToolDocs } from './tools/ToolDocumentationLoader.js';
 
 // Register the protocol globally (idempotent)
 CallTemplateSerializer.registerCallTemplate('local', new LocalCallTemplateSerializer());
+
+interface IClientWithProtocolRegistry {
+  _registeredCommProtocols: Map<string, CommunicationProtocol>;
+}
 
 export class AgentRuntime {
   private client!: CodeModeUtcpClient;
@@ -155,8 +52,8 @@ export class AgentRuntime {
 
     // INJECT LOCAL PROTOCOL INSTANCE INTO THIS CLIENT
     const localProtocol = new LocalCommunicationProtocol();
-    // @ts-expect-error - accessing private/internal map
-    this.client._registeredCommProtocols.set('local', localProtocol);
+    // Use an interface cast to bypass access restriction on private property in a typesafe manner
+    (this.client as unknown as IClientWithProtocolRegistry)._registeredCommProtocols.set('local', localProtocol);
     
     // 1. Initialize Orchestrator & Load Servers
     // We assume requestedTools contains server names like 'git', 'postgres'
@@ -170,7 +67,9 @@ export class AgentRuntime {
       try {
         await mcpOrchestrator.prepareEnvironment(serverNames);
         // 2. Get Dynamic Tools from MCP servers
-        mcpTools = await mcpOrchestrator.getToolsForSandbox();
+        const tools = await mcpOrchestrator.getToolsForSandbox();
+        // Convert to ToolDefinition compatible format
+        mcpTools = tools as unknown as ToolDefinition[];
       } catch (mcpError) {
         console.warn('[AgentRuntime] MCP connection failed:', mcpError);
         console.log('[AgentRuntime] Proceeding with native tools only');
@@ -179,7 +78,7 @@ export class AgentRuntime {
     }
     
     // 3. Register "system" namespace with Native, MCP, and optionally Meta tools
-    const nativeTools = this.getNativeTools().filter(t => 
+    const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t =>
         requestedTools.includes(t.name)
     );
 
@@ -188,7 +87,7 @@ export class AgentRuntime {
     
     if (requestedTools.includes('meta')) {
       console.log('[AgentRuntime] Meta-tools requested - adding role and orchestration management tools');
-      toolsToRegister.push(...metaTools);
+      toolsToRegister.push(...metaTools as unknown as ToolDefinition[]);
     }
 
     try {
@@ -199,118 +98,13 @@ export class AgentRuntime {
       } as unknown as CallTemplate); // Cast to CallTemplate
       
       // 5. Load Tool Documentation
-      await this.loadToolDocs(requestedTools);
+      this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
       
       console.log(`[AgentRuntime] Registered ${toolsToRegister.length} tools: ${nativeTools.length} native, ${mcpTools.length} MCP${requestedTools.includes('meta') ? ', ' + metaTools.length + ' meta' : ''}`);
     } catch (registerError) {
       console.warn('[AgentRuntime] Failed to register tools:', registerError);
       console.log('[AgentRuntime] Agent will run without tool support');
     }
-  }
-
-  private getNativeTools(): ToolDefinition[] {
-     return [
-        { 
-            name: 'read_file', 
-            handler: async (args: unknown) => this.fsTools.readFile(args as { path: string }),
-            description: 'Read a file',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    path: { type: 'string' }
-                },
-                required: ['path']
-            }
-        },
-        { 
-            name: 'write_file', 
-            handler: async (args: unknown) => this.fsTools.writeFile(args as { path: string; content: string }),
-            description: 'Write to a file',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    path: { type: 'string' },
-                    content: { type: 'string' }
-                },
-                required: ['path', 'content']
-            }
-        },
-        { 
-            name: 'list_files', 
-            handler: async (args: unknown) => this.fsTools.listFiles(args as { path: string }),
-            description: 'List files in a directory',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    path: { type: 'string' }
-                },
-                required: ['path']
-            }
-        },
-        { 
-            name: 'browse', 
-            handler: async (args: unknown) => browserTools.fetchPage(args as { url: string }),
-            description: 'Fetch a web page',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    url: { type: 'string' }
-                },
-                required: ['url']
-            }
-        },
-        {
-          name: webScraperTool.name,
-          handler: async (args: unknown) => webScraperTool.handler(args as { url: string }),
-          description: webScraperTool.description,
-          input_schema: webScraperTool.input_schema
-        },
-        {
-          name: complexityTool.name,
-          handler: async (args: unknown) => complexityTool.handler(args as { taskDescription: string }),
-          description: complexityTool.description,
-          input_schema: complexityTool.input_schema
-        },
-        {
-            name: 'terminal_execute',
-            handler: async (args: unknown) => {
-                // delegate to the centralized terminal tool implementation
-                // terminalTools.execute.handler expects { command, cwd }
-                return await (terminalTools.execute.handler as any)(args as any);
-            },
-            description: terminalTools.execute.description,
-            input_schema: terminalTools.execute.inputSchema as unknown as Record<string, unknown>
-        },
-        {
-            name: 'search_codebase',
-            handler: async (args: unknown) => {
-                const typedArgs = args as { query: string };
-                const fs = await vfsSessionService.getProvider({ provider: 'local', rootPath: this.rootPath });
-                return searchCodebase(fs, typedArgs.query);
-            },
-            description: 'Search the codebase for a string',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    query: { type: 'string' }
-                },
-                required: ['query']
-            }
-        },
-        {
-            name: 'list_files_tree',
-            handler: async () => {
-                const fs = await vfsSessionService.getProvider({ provider: 'local', rootPath: this.rootPath });
-                return listFilesTree(fs, '/');
-            },
-            description: 'List files in a tree structure',
-            input_schema: {
-                type: 'object',
-                properties: {},
-                required: []
-            }
-        }
-     ];
   }
 
   async runAgentLoop(userGoal: string, llmCallback: (prompt: string) => Promise<string>) {
@@ -388,50 +182,5 @@ ${this.toolDocs}
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
     // Delegate to the provided agent/provider
     return agent.generate(finalPrompt);
-  }
-
-  private async loadToolDocs(tools: string[]) {
-      const docs: string[] = [];
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
-      // Resolve path to .domoreai/tools
-      let rootDir = process.cwd();
-      if (rootDir.endsWith('apps/api')) {
-          rootDir = path.resolve(rootDir, '../../');
-      }
-      const toolsDir = path.join(rootDir, '.domoreai/tools');
-
-      const nativeTools = this.getNativeTools();
-
-      for (const tool of tools) {
-          // 1. Native Tools
-          const nativeTool = nativeTools.find(t => t.name === tool);
-          if (nativeTool) {
-              docs.push(`### Tool: \`system.${nativeTool.name}\``);
-              docs.push(`**Description:** ${nativeTool.description}`);
-              docs.push('**Signature:**');
-              docs.push('```typescript');
-              // Simplified signature generation
-              const props = nativeTool.input_schema?.properties || {};
-              const args = Object.entries(props).map(([k, v]) => `${k}: ${(v).type}`).join(', ');
-              docs.push(`await system.${nativeTool.name}({ ${args} })`);
-              docs.push('```');
-              docs.push('---');
-              continue;
-          }
-
-          // 2. MCP Tools (Server Names)
-          // We assume the tool string IS the server name for MCP tools in this context
-          // (AgentRuntime init receives server names)
-          try {
-              const content = await fs.readFile(path.join(toolsDir, `${tool}_examples.md`), 'utf-8');
-              docs.push(content);
-          } catch (e) {
-              // Ignore if no doc found
-          }
-      }
-      
-      this.toolDocs = docs.join('\n\n');
   }
 }
