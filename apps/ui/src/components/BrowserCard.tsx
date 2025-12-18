@@ -8,8 +8,26 @@ import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock } from 'lucide-react';
  * Wraps functionality in the UniversalCardWrapper.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const WebView = 'webview' as any;
+// Define WebView props for type safety
+interface WebViewProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> {
+    src?: string;
+    allowpopups?: boolean;
+    webpreferences?: string;
+    useragent?: string;
+    partition?: string;
+    preload?: string;
+    httpreferrer?: string;
+    nodeintegration?: boolean;
+    plugins?: boolean;
+    disablewebsecurity?: boolean;
+    allowfullscreen?: boolean;
+    autosize?: string;
+    popups?: boolean;
+    // Electron specific props usually lowercased when used as attributes in JSX,
+    // but React expects camelCase for some standard ones. webview uses custom attributes.
+}
+
+const WebView = 'webview' as unknown as React.FC<WebViewProps>;
 
 const isElectron = () => {
   return typeof window !== 'undefined' &&
@@ -57,32 +75,32 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
 
   // Settings Panel Content
   const settingsContent = (
-    <div className="space-y-6 text-zinc-300">
+    <div className="space-y-6 text-foreground">
       
       {/* Active Role - Mocked for visual */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Role</label>
-        <div className="p-3 bg-zinc-800 rounded border border-zinc-700 flex items-center justify-between">
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Role</label>
+        <div className="p-3 bg-muted rounded border border-border flex items-center justify-between">
             <span>Research Agent (GPT-4)</span>
-            <span className="text-xs text-zinc-500">▼</span>
+            <span className="text-xs text-muted-foreground">▼</span>
         </div>
       </div>
 
       {/* Debugging */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Debugging</label>
-        <div className="p-3 bg-zinc-800/50 rounded border border-zinc-700 space-y-3">
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Debugging</label>
+        <div className="p-3 bg-muted/50 rounded border border-border space-y-3">
             <div className="flex items-center gap-3">
                 <input 
                     type="checkbox" 
                     id="debug-toggle" 
                     checked={showDebugView} 
                     onChange={e => setShowDebugView(e.target.checked)}
-                    className="w-4 h-4 accent-purple-500 bg-zinc-700 border-zinc-600 rounded focus:ring-purple-500 focus:ring-offset-0"
+                    className="w-4 h-4 accent-secondary bg-accent border-input rounded focus:ring-secondary focus:ring-offset-0"
                 />
                 <div>
-                    <label htmlFor="debug-toggle" className="block text-sm font-medium text-zinc-200">Show Agent&apos;s &quot;Research Browser&quot; Stream</label>
-                    <p className="text-xs text-zinc-500">Enable this only if the Agent is stuck or for debugging remote browsing.</p>
+                    <label htmlFor="debug-toggle" className="block text-sm font-medium text-foreground">Show Agent&apos;s &quot;Research Browser&quot; Stream</label>
+                    <p className="text-xs text-muted-foreground">Enable this only if the Agent is stuck or for debugging remote browsing.</p>
                 </div>
             </div>
         </div>
@@ -90,23 +108,23 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
 
       {/* Options */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Options</label>
+        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Options</label>
         <div className="space-y-2">
-            <label className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded cursor-pointer transition-colors">
+            <label className="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer transition-colors">
                 <input 
                     type="checkbox" 
                     checked={blockAds} 
                     onChange={e => setBlockAds(e.target.checked)}
-                    className="w-4 h-4 accent-blue-500 rounded"
+                    className="w-4 h-4 accent-info rounded"
                 />
                 <span className="text-sm">Block Ads</span>
             </label>
-            <label className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded cursor-pointer transition-colors">
+            <label className="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer transition-colors">
                 <input 
                     type="checkbox" 
                     checked={mobileUA} 
                     onChange={e => setMobileUA(e.target.checked)}
-                    className="w-4 h-4 accent-blue-500 rounded"
+                    className="w-4 h-4 accent-info rounded"
                 />
                 <span className="text-sm">Mobile User Agent</span>
             </label>
@@ -125,16 +143,16 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
     >
         {/* Helper for non-Electron envs */}
         {!isElectron() && !showDebugView && (
-             <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-900/80 backdrop-blur-sm p-8">
-                <div className="bg-yellow-900/20 border border-yellow-700/50 p-6 rounded-lg max-w-md text-center">
-                    <h3 className="text-yellow-500 font-bold mb-2">Electron Required</h3>
-                    <p className="text-yellow-200/60 text-sm mb-4">
+             <div className="absolute inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm p-8">
+                <div className="bg-warning/20 border border-warning/50 p-6 rounded-lg max-w-md text-center">
+                    <h3 className="text-warning font-bold mb-2">Electron Required</h3>
+                    <p className="text-warning/60 text-sm mb-4">
                         The native browser view requires the Electron app. 
                         Enable &quot;Show Agent&apos;s Research Browser&quot; in settings to use the remote browser instead.
                     </p>
                     <button 
                         onClick={() => setShowDebugView(true)}
-                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black font-bold rounded transition-colors"
+                        className="px-4 py-2 bg-warning hover:bg-warning/80 text-black font-bold rounded transition-colors"
                     >
                         Switch to Remote Browser
                     </button>
@@ -142,27 +160,27 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
              </div>
         )}
 
-        <div className="flex flex-col w-full h-full bg-zinc-950">
+        <div className="flex flex-col w-full h-full bg-background">
              {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
              {!showDebugView && (
-                <div className="h-10 bg-zinc-950 flex items-center px-2 space-x-2 border-b border-zinc-800">
-                    <button onClick={handleBack} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border">
+                    <button onClick={handleBack} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowLeft size={16} />
                     </button>
-                    <button onClick={handleForward} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={handleForward} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
                         <ArrowRight size={16} />
                     </button>
-                    <button onClick={handleReload} className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
+                    <button onClick={handleReload} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
                         <RotateCw size={16} />
                     </button>
                     
                     {/* Address Input */}
                     <div className="flex-1 relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                             <Lock size={12} />
                         </div>
                         <input 
-                            className="w-full bg-zinc-900 text-zinc-200 text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
+                            className="w-full bg-card text-foreground text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
@@ -176,7 +194,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
             {/* BROWSER CONTENT */}
             <div className="flex-1 relative bg-white overflow-hidden">
                 {showDebugView ? (
-                    <div className="w-full h-full bg-zinc-900">
+                    <div className="w-full h-full bg-card">
                         <ResearchBrowser initialUrl={url} />
                     </div>
                 ) : (
@@ -196,5 +214,3 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
     </UniversalCardWrapper>
   );
 };
-
-export default BrowserCard;
