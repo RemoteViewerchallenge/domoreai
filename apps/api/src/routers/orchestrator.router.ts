@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
+import { nebulaTool } from '../tools/nebulaTool.js';
 
 export const orchestratorRouter = createTRPCRouter({
   getConfig: protectedProcedure.query(async ({ ctx }) => {
@@ -131,6 +132,11 @@ export const orchestratorRouter = createTRPCRouter({
         {
           name: 'search_codebase',
           description: 'Semantic search over the codebase using vector embeddings. Use this to find relevant code snippets or documentation.',
+          type: 'internal'
+        },
+        {
+          name: nebulaTool.name,
+          description: nebulaTool.description,
           type: 'internal'
         }
       ];

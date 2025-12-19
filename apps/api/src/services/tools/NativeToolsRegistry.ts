@@ -7,9 +7,16 @@ import { terminalTools } from '../../tools/terminal.js';
 import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
+import { nebulaTool } from '../../tools/nebulaTool.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
+        {
+            name: nebulaTool.name,
+            handler: nebulaTool.handler,
+            description: nebulaTool.description,
+            input_schema: nebulaTool.input_schema
+        },
         {
             name: 'read_file',
             handler: async (args: unknown) => fsTools.readFile(args as { path: string }),
