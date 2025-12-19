@@ -1,13 +1,10 @@
 import { z } from 'zod';
 import { db } from '../db.js';
 import { modelRegistry, providerConfigs, modelCapabilities } from '../db/schema.js';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { createVolcanoAgent } from './AgentFactory.js';
 import { webScraperTool } from '../tools/webScraper.js';
-import { v4 as uuidv4Import } from 'uuid';
-
-// Type-safe wrapper for uuid v4
-const uuidv4 = uuidv4Import as () => string;
+import { v4 as uuidv4 } from 'uuid';
 
 interface Agent {
   generate: (prompt: string) => Promise<string>;
@@ -26,9 +23,9 @@ interface ModelRecord {
   providerData: unknown;
   aiData: unknown;
   specs: unknown;
-  firstSeenAt: Date;
-  lastSeenAt: Date;
-  updatedAt: Date;
+  firstSeenAt: Date | null;
+  lastSeenAt: Date | null;
+  updatedAt: Date | null;
 }
 
 interface ProviderConfig {
@@ -285,48 +282,42 @@ export class ModelDoctor {
     }
   }
 
-  private async saveKnowledge(model: ModelRecord, data: Record<string, unknown> | null, source: string): Promise<void> {
-    if (!data) return;
-    
-    const modelAiData = (model.aiData as Record<string, unknown> | null) || {};
-    const aiData = { ...modelAiData, ...data, source, lastUpdated: new Date() };
-    
-    // 1. Update Core AI Data
-    await db.update(modelRegistry)
-      .set({ aiData, updatedAt: new Date() })
-      .where(and(eq(modelRegistry.providerId, model.providerId), eq(modelRegistry.modelId, model.modelId)));
+  private async saveKnowledge(model: ModelRecord, data: Record<string, unknown>, source: string) {
+    console.log(`[ModelDoctor] 💊 Healing ${model.modelId} with knowledge...`);
 
-    // 2. Sync to specialized Capabilities table
-    const modelId = model.modelId.toLowerCase();
-    const hasVision = (data.hasVision as boolean | undefined) || modelId.includes('vision') || modelId.includes('vl');
-    const hasTTS = (data.hasTTS as boolean | undefined) || modelId.includes('tts') || modelId.includes('speech') || modelId.includes('audio');
-    const hasImageGen = (data.hasImageGen as boolean | undefined) || modelId.includes('dall-e') || modelId.includes('midjourney') || modelId.includes('flux');
-    const isMultimodal = hasVision || hasTTS || hasImageGen || (data.isMultimodal as boolean | undefined) || modelId.includes('multi');
+    // 1. Update Persistent JSON (Layer 2)
+    const currentAiData = (model.aiData as Record<string, unknown>) || {};
+    await db.update(modelRegistry)
+      .set({ 
+        aiData: { ...currentAiData, ...data, source, lastUpdated: new Date() } 
+      })
+      .where(eq(modelRegistry.id, model.id));
+
+    // 2. Update Capability Index (Layer 3 - The New Table)
+    // We use "onConflictDoUpdate" (upsert)
+    const contextWindow = 'contextWindow' in data ? Number(data.contextWindow) : 4096;
+    const hasVision = 'hasVision' in data ? !!data.hasVision : false;
+    const hasAudioInput = 'hasAudio' in data ? !!data.hasAudio : false;
+
+    const caps = {
+      contextWindow: contextWindow || 4096,
+      hasVision,
+      hasAudioInput,
+      updatedAt: new Date()
+    };
 
     await db.insert(modelCapabilities)
       .values({
         id: uuidv4(),
         modelId: model.id,
-        contextWindow: (data.contextWindow as number | undefined) || 4096,
-        maxOutput: (data.maxOutput as number | undefined) || 4096,
-        hasVision: !!hasVision,
-        hasTTS: !!hasTTS,
-        hasImageGen: !!hasImageGen,
-        isMultimodal: !!isMultimodal,
-        updatedAt: new Date(),
+        ...caps
       })
       .onConflictDoUpdate({
-        target: [modelCapabilities.modelId],
-        set: {
-          contextWindow: (data.contextWindow as number | undefined) || 4096,
-          maxOutput: (data.maxOutput as number | undefined) || 4096,
-          hasVision: !!hasVision,
-          hasTTS: !!hasTTS,
-          hasImageGen: !!hasImageGen,
-          isMultimodal: !!isMultimodal,
-          updatedAt: new Date(),
-        }
+        target: modelCapabilities.modelId,
+        set: caps
       });
+      
+    console.log(`[ModelDoctor] ✅ Capability Index Updated.`);
   }
 
   private guessUrl(id: string, providerType?: string): string | null {

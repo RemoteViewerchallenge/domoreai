@@ -184,7 +184,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
       
       // Let's check if this provider/model exists in our strict DB to return a proper object
       const strictModel = await prisma.model.findUnique({
-        where: { providerId_modelId: { providerId: dynamicModel.providerId as string, modelId: dynamicModel.modelId as string } },
+        where: { providerId_modelId: { providerId: dynamicModel.providerId, modelId: dynamicModel.modelId } },
         include: { provider: true }
       });
 
@@ -208,7 +208,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
         model: {
             id: dynamicModel.modelId,
             providerId: dynamicModel.providerId,
-            provider: { id: dynamicModel.providerId, type: (dynamicModel.providerId as string)?.split('-')[0] || 'unknown' } // Mock provider
+            provider: { id: dynamicModel.providerId, type: (dynamicModel.providerId)?.split('-')[0] || 'unknown' } // Mock provider
         },
         temperature: DEFAULT_MODEL_TEMP,
         maxTokens: DEFAULT_MAX_TOKENS

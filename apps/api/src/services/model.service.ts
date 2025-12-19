@@ -101,7 +101,7 @@ export class ModelService {
 
   async mergeFromTable(sourceTableName: string, providerId?: string) {
     // A. Fetch Raw Data using Unsafe Query
-    const rows = await prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`) as any[];
+    const rows = await prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`);
     if (!rows.length) throw new Error(`Table ${sourceTableName} is empty.`);
 
     // B. Fetch Saved Mapping (if any)
@@ -158,7 +158,7 @@ export class ModelService {
 
   async listRefinedModels() {
     try {
-      const rows = await prisma.$queryRaw`SELECT * FROM "my_free_models"` as any[];
+      const rows = await prisma.$queryRaw`SELECT * FROM "my_free_models"`;
       return rows.map((row: any) => ({
         id: row.id || row.model_id || row.name,
         name: row.name || row.model_name || 'Unknown Model',
@@ -227,7 +227,7 @@ export class ModelService {
 
       const fullQuery = queries.join(' UNION ALL ');
 
-      const rows = await prisma.$queryRawUnsafe(fullQuery) as any[];
+      const rows = await prisma.$queryRawUnsafe(fullQuery);
 
       return rows.map((row: any) => ({
         id: row.id,

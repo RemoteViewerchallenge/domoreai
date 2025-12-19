@@ -194,7 +194,7 @@ export class ProviderManager implements IProviderManager {
             continue;
           }
 
-          const cost = m.costPer1k as number | undefined;
+          const cost = m.costPer1k;
           const isFree = m.isFree === true || (typeof cost === 'number' && cost === 0);
 
           const specs = {
@@ -217,7 +217,7 @@ export class ProviderManager implements IProviderManager {
               name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
-              providerData: m as RawSnapshotData, // Store full raw model object
+              providerData: m, // Store full raw model object
               specs: specs as any,
               aiData: {} as any
             },
@@ -225,7 +225,7 @@ export class ProviderManager implements IProviderManager {
               name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
-              providerData: m as RawSnapshotData, // Store full raw model object
+              providerData: m, // Store full raw model object
               specs: specs as any
             }
           });
