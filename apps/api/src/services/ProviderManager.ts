@@ -52,9 +52,33 @@ export class ProviderManager implements IProviderManager {
       this.providers.clear();
       this.providerMetadata.clear(); // Clear metadata
 
+      // Environment variable mappings for direct access
+      const envMappings: Record<string, string> = {
+        'google': 'GOOGLE_GENERATIVE_AI_API_KEY',
+        'mistral': 'MISTRAL_API_KEY',
+        'openrouter': 'OPENROUTER_API_KEY',
+        'groq': 'GROQ_API_KEY',
+        'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
+      };
+
       for (const config of configs) {
         try {
-          const apiKey = decrypt(config.apiKey);
+          // Try to use environment variable first (avoids decryption issues)
+          let apiKey: string;
+          const envVar = envMappings[config.type];
+          
+          if (config.type === 'ollama') {
+            // Ollama is local and doesn't need an API key
+            apiKey = process.env.OLLAMA_API_KEY || '';
+          } else if (envVar && process.env[envVar]) {
+            // Use environment variable directly
+            apiKey = process.env[envVar];
+            console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
+          } else {
+            // Fall back to decrypting from database
+            apiKey = decrypt(config.apiKey);
+          }
+          
           const provider = ProviderFactory.createProvider(config.type, {
             id: config.id,
             apiKey,

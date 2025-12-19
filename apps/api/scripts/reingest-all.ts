@@ -25,4 +25,7 @@ async function reingestModels() {
   }
 }
 
-reingestModels();
+reingestModels().catch((err) => {
+  console.error('Unhandled performance error:', err);
+  process.exit(1);
+});
