@@ -12,7 +12,7 @@ import { NewUIThemeProvider, useNewUITheme } from '../components/appearance/NewU
 
 // Imported Components
 import RoleCreatorPanel from '../components/RoleCreatorPanel.js';
-import { AIContextButton } from '../components/AIContextButton.js';
+import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 
 const nodeTypes = {
   superNode: SuperNode,
@@ -107,7 +107,7 @@ const OrganizationalStructureContent = () => {
 
          {/* Right Controls */}
          <div className="flex items-center gap-2">
-            <AIContextButton context={viewMode === 'roles' ? "Role Creation & Agent Logic" : "Codebase Graph Architecture"} size="sm" />
+            <SuperAiButton contextId={viewMode === 'roles' ? "Role Creation & Agent Logic" : "Codebase Graph Architecture"} />
             
             {viewMode === 'graph' && (
                 <>
