@@ -15,7 +15,7 @@ import { DepartmentNode } from '../features/volcano/DepartmentNode.js';
 import { trpc } from '../utils/trpc.js';
 import { Terminal, Send, ChevronUp, ChevronDown } from 'lucide-react';
 
-const elk = new (ELK as unknown as { new(): any })();
+const elk = new (ELK as unknown as { new(): { layout: (graph: unknown) => Promise<{ children?: { id: string; x: number; y: number }[] }> } })();
 
 const NODE_TYPES = {
   department: DepartmentNode,
@@ -33,7 +33,7 @@ const INITIAL_EDGES: Edge[] = [
   { id: 'e1-3', source: 'dept-3', target: 'dept-2' }, // Product -> Marketing
 ];
 
-export default function VolcanoBoardroom() {
+export default function CommandCenter() {
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -66,7 +66,7 @@ export default function VolcanoBoardroom() {
         const calculatedGraph = await elk.layout(graph);
         
         const calculatedNodes = INITIAL_NODES.map(node => {
-           const elkNode = calculatedGraph.children?.find((n: any) => n.id === node.id);
+           const elkNode = calculatedGraph.children?.find((n: { id: string }) => n.id === node.id);
            return {
              ...node,
              position: { x: elkNode?.x || 0, y: elkNode?.y || 0 }

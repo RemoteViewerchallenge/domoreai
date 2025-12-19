@@ -8,13 +8,11 @@ import { useTheme } from '../hooks/useTheme.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { trpc } from '../utils/trpc.js'; // Import trpc
 
-export default function WorkSpace() {
+export default function AgentWorkbench() {
   const { theme, setTheme } = useTheme();
   const { columns, showSidebar, setSidebarOpen, cards, setCards, addCard } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
   const availableRoles = roles || [];
-  // Use the first available roleId if present, else empty string
-  const defaultRoleId = availableRoles[0]?.id || '';
   
   // No local cards state anymore!
   // const [cards, setCards] = useState(...) -> Removed
