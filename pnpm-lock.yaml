@@ -507,12 +507,18 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      nanoid:
+        specifier: ^5.0.7
+        version: 5.1.6
       react:
         specifier: ^18.3.1
         version: 18.3.1
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -520,9 +526,9 @@ importers:
       '@types/react':
         specifier: ^18.3.26
         version: 18.3.26
-      typescript:
-        specifier: ^5.4.5
-        version: 5.9.3
+      tsx:
+        specifier: ^4.7.1
+        version: 4.20.6
 
   packages/typescript-config: {}
 
@@ -11065,7 +11071,8 @@ snapshots:
 
   ignore@7.0.5: {}
 
-  immer@11.0.1: {}
+  immer@11.0.1:
+    optional: true
 
   immer@9.0.21: {}
 
