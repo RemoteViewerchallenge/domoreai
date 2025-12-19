@@ -4,6 +4,7 @@ import { browserTools } from '../../tools/browser.js';
 import { webScraperTool } from '../../tools/webScraper.js';
 import { complexityTool } from '../../tools/complexityTool.js';
 import { terminalTools } from '../../tools/terminal.js';
+import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
 
@@ -104,6 +105,16 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                 return listFilesTree(fs, '/');
             },
             description: 'List files in a tree structure',
+            input_schema: {
+                type: 'object',
+                properties: {},
+                required: []
+            }
+        },
+        {
+            name: 'scan_ui_components',
+            handler: async () => getComponentRegistrySpec(),
+            description: 'Returns a list of available UI components and their import paths',
             input_schema: {
                 type: 'object',
                 properties: {},
