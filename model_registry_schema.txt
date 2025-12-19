@@ -1,0 +1,29 @@
+                                  Table "public.model_registry"
+     Column     |              Type              | Collation | Nullable |        Default         
+----------------+--------------------------------+-----------+----------+------------------------
+ id             | text                           |           | not null | 
+ provider_id    | text                           |           | not null | 
+ model_id       | text                           |           | not null | 
+ model_name     | text                           |           | not null | 
+ capabilities   | text[]                         |           |          | ARRAY['text'::text]
+ pricing_config | jsonb                          |           |          | 
+ provider_data  | jsonb                          |           | not null | '{}'::jsonb
+ ai_data        | jsonb                          |           | not null | '{}'::jsonb
+ specs          | jsonb                          |           | not null | '{}'::jsonb
+ is_free        | boolean                        |           | not null | false
+ cost_per_1k    | double precision               |           |          | 
+ updated_at     | timestamp(3) without time zone |           | not null | 
+ first_seen_at  | timestamp(3) without time zone |           | not null | CURRENT_TIMESTAMP
+ is_active      | boolean                        |           | not null | true
+ last_seen_at   | timestamp(3) without time zone |           | not null | CURRENT_TIMESTAMP
+ source         | "ModelSource"                  |           | not null | 'INDEX'::"ModelSource"
+Indexes:
+    "model_registry_pkey" PRIMARY KEY, btree (id)
+    "model_registry_provider_id_last_seen_at_idx" btree (provider_id, last_seen_at)
+    "model_registry_provider_id_model_id_key" UNIQUE, btree (provider_id, model_id)
+Foreign-key constraints:
+    "model_registry_provider_id_fkey" FOREIGN KEY (provider_id) REFERENCES "ProviderConfig"(id) ON UPDATE CASCADE ON DELETE CASCADE
+Referenced by:
+    TABLE ""KnowledgeVector"" CONSTRAINT "KnowledgeVector_modelId_fkey" FOREIGN KEY ("modelId") REFERENCES model_registry(id) ON UPDATE CASCADE ON DELETE RESTRICT
+    TABLE ""ModelUsage"" CONSTRAINT "ModelUsage_modelId_fkey" FOREIGN KEY ("modelId") REFERENCES model_registry(id) ON UPDATE CASCADE ON DELETE RESTRICT
+

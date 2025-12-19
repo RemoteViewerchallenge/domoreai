@@ -6,7 +6,7 @@ export const orchestratorRouter = createTRPCRouter({
     return ctx.prisma.orchestratorConfig.upsert({
       where: { id: 'global' },
       update: {},
-      create: { activeTableName: 'unified_models' }
+      create: { activeTableName: 'model_registry' }
     });
   }),
 
@@ -39,7 +39,7 @@ export const orchestratorRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       // 1. Get Active Table
       const config = await ctx.prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
-      const tableName = config?.activeTableName || 'unified_models';
+      const tableName = config?.activeTableName || 'model_registry';
 
       // 2. Get Columns
       try {

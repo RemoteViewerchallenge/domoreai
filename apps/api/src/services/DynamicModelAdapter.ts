@@ -26,10 +26,10 @@ export class DynamicModelAdapter {
   // You can change this config at runtime or load it from a DB settings table
   private static COLUMN_MAPPING = {
     id: 'model_id',
-    providerConfigId: 'config_id',
+    providerConfigId: 'provider_id',
     contextWindow: 'context_length',
-    cost: 'cost_per_token',
-    isFree: 'is_free_tier',
+    cost: 'cost_per_1k',
+    isFree: 'is_free',
     priority: 'priority',
     groupId: 'group_id',
     targetUsagePercent: 'target_usage_percent',

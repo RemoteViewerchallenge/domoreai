@@ -17,7 +17,7 @@ export const providerConfigs = pgTable('ProviderConfig', {
 
 export const orchestratorConfigs = pgTable('OrchestratorConfig', {
   id: text('id').primaryKey().default('global'),
-  activeTableName: text('activeTableName').default('unified_models').notNull(),
+  activeTableName: text('activeTableName').default('model_registry').notNull(),
   strategies: jsonb('strategies').default([]),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),

@@ -22,7 +22,7 @@ export interface SelectionCriteria {
   modelName?: string;    // e.g. "gpt-4"
   groupId?: string;      // e.g. "reasoning_models"
   maxCost?: number;
-  tableName?: string;    // Which Data Lake table to query (default: 'unified_models')
+  tableName?: string;    // Which Data Lake table to query (default: 'model_registry')
 }
 
 export interface SelectedModel extends DynamicModel {
@@ -39,7 +39,7 @@ export interface SelectedModel extends DynamicModel {
 export async function selectModel(criteria: SelectionCriteria): Promise<SelectedModel | null> {
   // 1. LOAD: Fetch all models
   const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
-  const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
+  const tableName = criteria.tableName || config?.activeTableName || 'model_registry';
   
   let candidates: DynamicModel[];
   try {
@@ -105,7 +105,7 @@ function createOnCompleteCallback(model: DynamicModel) {
 export async function selectCandidateModels(criteria: SelectionCriteria): Promise<DynamicModel[]> {
   // 1. LOAD: Fetch all models
   const config = await prisma.orchestratorConfig.findUnique({ where: { id: 'global' } });
-  const tableName = criteria.tableName || config?.activeTableName || 'unified_models';
+  const tableName = criteria.tableName || config?.activeTableName || 'model_registry';
   
   let candidates: DynamicModel[];
   try {
