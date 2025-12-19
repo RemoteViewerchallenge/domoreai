@@ -16,6 +16,7 @@ import DataCenter from './pages/DataCenter.js';
 import InterfaceStudio from './pages/InterfaceStudio.js';
 import Constitution from './pages/Constitution.js';
 import ThemeStudio from './pages/ThemeStudio.js';
+import NebulaBuilderPage from './pages/nebula-builder.js';
 
 // Sub-routes (if any specific ones remain)
 import FileLocationPage from './pages/FileLocationPage.js';
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/ui-studio" element={<InterfaceStudio />} />
               <Route path="/settings" element={<Constitution />} />
               <Route path="/theme-studio" element={<ThemeStudio />} />
+              <Route path="/nebula" element={<NebulaBuilderPage />} />
 
               {/* System & Legacy Support */}
               <Route path="/setup" element={<FileLocationPage />} />

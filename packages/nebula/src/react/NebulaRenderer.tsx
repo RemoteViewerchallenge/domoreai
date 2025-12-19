@@ -10,6 +10,11 @@ const Registry: Record<string, React.FC<any>> = {
       const Tag = (type === 'h1' ? 'h1' : type === 'h2' ? 'h2' : 'p') as keyof JSX.IntrinsicElements;
       return <Tag className={className}>{content}</Tag>
   },
+  Button: ({ children, className, variant, ...props }) => {
+      // Basic button implementation to satisfy simulation.
+      // In a real app, this should be injected or use a proper component library.
+      return <button className={`px-4 py-2 rounded font-medium transition-colors ${variant === 'outline' ? 'border bg-transparent hover:bg-neutral-100' : 'bg-blue-600 text-white hover:bg-blue-700'} ${className}`} {...props}>{children}</button>
+  }
 };
 
 interface RendererProps {
@@ -35,14 +40,17 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
 
   return (
     <Component {...node.props} className={combinedClasses} data-nebula-id={node.id}>
-      {node.children.map(childId => (
-        <NebulaRenderer
-          key={childId}
-          tree={tree}
-          nodeId={childId}
-          componentMap={componentMap}
-        />
-      ))}
+      {node.children.length > 0
+        ? node.children.map(childId => (
+            <NebulaRenderer
+              key={childId}
+              tree={tree}
+              nodeId={childId}
+              componentMap={componentMap}
+            />
+          ))
+        : node.props.children
+      }
     </Component>
   );
 };

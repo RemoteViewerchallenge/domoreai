@@ -21,6 +21,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-slot": "^1.2.4",
     "@repo/common": "workspace:*",
+    "@repo/nebula": "workspace:*",
     "@tanstack/react-query": "^4.36.1",
     "@tiptap/extension-placeholder": "^3.11.0",
     "@tiptap/react": "^3.11.0",
