@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { FileText, Code, FolderTree, Globe, Terminal, FileCode, Settings, Play, Paperclip, X } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import { FileExplorer } from '../FileExplorer.js'; 
@@ -29,17 +29,17 @@ interface RoleWithPreferredModels {
   }[];
 }
 
-export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) => {
+// 1. WRAP IN MEMO
+export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string }) => {
   const { theme } = useTheme();
 
-  // ✅ PRIMITIVE SELECTORS (Prevents Loops)
-  const storedTitle = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.title, [id]));
-  const storedType = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.type, [id]));
+  // 2. USE PRIMITIVE SELECTORS (Strings/undefined are stable references)
+  const storedTitle = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.title, [id]));
+  const storedType = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.type, [id]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const storedTargetDir = useWorkspaceStore(useCallback(s => (s.cards.find(c => c.id === id)?.metadata as any)?.targetDir, [id]));
-  const storedMetadata = useWorkspaceStore(useCallback(s => s.cards.find(c => c.id === id)?.metadata, [id]));
+  const storedMetadata = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.metadata as any, [id]));
 
-  const updateCard = useWorkspaceStore(state => state.updateCard);
+  const updateCard = useWorkspaceStore((state) => state.updateCard);
 
   const { 
     files, 
@@ -61,7 +61,9 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   const wsActions = useWebSocketStore(state => state.actions);
   const storeLogs = useWebSocketStore(state => state.messages.map(m => m.message));
   
-  // Component Type State
+  // 3. INITIALIZE STATE (Keep existing logic, just swap variable names)
+  const [cardTitle, setCardTitle] = useState(storedTitle || "New Task");
+  const [targetDir, setTargetDir] = useState(storedMetadata?.targetDir || "./src");
   const [type, setType] = useState<ComponentType>((storedType as ComponentType) || 'editor');
 
   // Helper to sync type changes to store immediately
@@ -75,32 +77,26 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
   // View State (Editor vs File Tree vs Settings)
   const [viewMode, setViewMode] = useState<'editor' | 'files' | 'settings'>('editor');
   
-  // Title State - Default to "New Task"
-  const [cardTitle, setCardTitle] = useState(storedTitle || "New Task");
+  // 4. FIX EFFECTS TO DEPEND ON PRIMITIVES ONLY
+  useEffect(() => {
+    // Only fire if local string differs from store string
+    if (storedTitle !== undefined && cardTitle !== storedTitle) {
+      const timeout = setTimeout(() => {
+        updateCard(id, { title: cardTitle });
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [cardTitle, storedTitle, id, updateCard]); // Dependencies are now strings, not objects
 
-  // Target Directory State - Default to "./src"
-  const [targetDir, setTargetDir] = useState((storedTargetDir as string) || "./src");
+  useEffect(() => {
+    // Strict check for metadata path
+    if (targetDir && storedMetadata?.targetDir !== targetDir) {
+       updateCard(id, { metadata: { ...storedMetadata, targetDir } });
+    }
+  }, [targetDir, storedMetadata?.targetDir, id, updateCard]); // Depend on the string property, not the object
 
   // Track if we have auto-renamed this card yet
   const hasRunOnce = useRef(!!storedTitle && storedTitle !== "New Task");
-
-  // Removed useEffect for cardTitle sync to strictly prevent loops.
-  // Title is updated via handleRunAgent (auto-rename).
-
-  // Removed useEffect for targetDir sync to strictly prevent loops.
-  // TargetDir is updated via onBlur.
-
-  // Handle Target Directory Change (Persist on Blur)
-  const handleTargetDirBlur = () => {
-    if (targetDir !== storedMetadata?.targetDir) {
-        updateCard(id, {
-            metadata: {
-                ...(storedMetadata || {}),
-                targetDir
-            }
-        });
-    }
-  };
 
   // Fetch available roles for the settings panel
   // Disable retry to prevent rapid loop if backend down
@@ -466,7 +462,6 @@ export const SwappableCard = ({ id, roleId }: { id: string; roleId?: string }) =
                   <input
                       value={targetDir}
                       onChange={(e) => setTargetDir(e.target.value)}
-                      onBlur={handleTargetDirBlur}
                       placeholder="./src"
                       className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-zinc-700"
                   />
@@ -692,4 +687,6 @@ User Question: ${prompt}
       )}
     </>
   );
-};
+});
+
+SwappableCard.displayName = 'SwappableCard';
