@@ -26,28 +26,26 @@ export default function App() {
     <NewUIRoot>
       <FileSystemProvider>
         <ErrorBoundary>
-          <UnifiedLayout>
-            <Routes>
-              {/* Core OS Routes */}
-              <Route path="/" element={<LaunchPad />} />
-              <Route path="/workbench" element={<AgentWorkbench />} />
-              <Route path="/workbench/:id" element={<AgentWorkbench />} />
-              <Route path="/command" element={<CommandCenter />} />
-              <Route path="/visualizer" element={<CodeVisualizer />} />
-              <Route path="/org-structure" element={<OrganizationalStructure />} />
-              <Route path="/datacenter" element={<DataCenter />} />
-              <Route path="/ui-studio" element={<InterfaceStudio />} />
-              <Route path="/settings" element={<Constitution />} />
-              <Route path="/theme-studio" element={<ThemeStudio />} />
-              <Route path="/nebula" element={<NebulaBuilderPage />} />
+          <Routes>
+            {/* Standalone Routes (No UnifiedLayout) */}
+            <Route path="/nebula" element={<NebulaBuilderPage />} />
 
-              {/* System & Legacy Support */}
-              <Route path="/setup" element={<FileLocationPage />} />
-              
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </UnifiedLayout>
+            {/* Core OS Routes (With UnifiedLayout) */}
+            <Route path="/" element={<UnifiedLayout><LaunchPad /></UnifiedLayout>} />
+            <Route path="/workbench" element={<UnifiedLayout><AgentWorkbench /></UnifiedLayout>} />
+            <Route path="/workbench/:id" element={<UnifiedLayout><AgentWorkbench /></UnifiedLayout>} />
+            <Route path="/command" element={<UnifiedLayout><CommandCenter /></UnifiedLayout>} />
+            <Route path="/visualizer" element={<UnifiedLayout><CodeVisualizer /></UnifiedLayout>} />
+            <Route path="/org-structure" element={<UnifiedLayout><OrganizationalStructure /></UnifiedLayout>} />
+            <Route path="/datacenter" element={<UnifiedLayout><DataCenter /></UnifiedLayout>} />
+            <Route path="/ui-studio" element={<UnifiedLayout><InterfaceStudio /></UnifiedLayout>} />
+            <Route path="/settings" element={<UnifiedLayout><Constitution /></UnifiedLayout>} />
+            <Route path="/theme-studio" element={<UnifiedLayout><ThemeStudio /></UnifiedLayout>} />
+            <Route path="/setup" element={<UnifiedLayout><FileLocationPage /></UnifiedLayout>} />
+            
+            {/* Catch-all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </ErrorBoundary>
       </FileSystemProvider>
     </NewUIRoot>
