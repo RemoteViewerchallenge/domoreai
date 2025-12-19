@@ -9,9 +9,11 @@ import type { NebulaTree } from '@repo/nebula';
 import MonacoEditor from '../components/MonacoEditor.js';
 import { Button } from '../components/ui/button.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
-import { Play, RotateCcw, Code, Eye } from 'lucide-react';
+import { Play, RotateCcw, Code, Eye, FolderTree, Brain as BrainIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.js';
 import { Textarea } from '../components/ui/textarea.js';
+import { FileExplorer } from '../components/FileExplorer.js';
+import { useCardVFS } from '../hooks/useCardVFS.js';
 
 // Initial Empty State
 const INITIAL_TREE: NebulaTree = {
@@ -33,8 +35,34 @@ const INITIAL_TREE: NebulaTree = {
 export default function NebulaBuilderPage() {
   const [tree, setTree] = useState<NebulaTree>(INITIAL_TREE);
   const [activeTab, setActiveTab] = useState('preview');
+  const [leftTab, setLeftTab] = useState<'brain' | 'vfs'>('vfs');
   const [importCode, setImportCode] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
+
+  // VFS Hook
+  const vfs = useCardVFS('nebula-builder');
+
+  // Logic to ingest a file from VFS
+  const ingestFile = async (path: string) => {
+    try {
+      if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) {
+        alert("Nebula Ingest only supports .tsx or .jsx files for now.");
+        return;
+      }
+
+      const content = await vfs.readFile(path);
+      const transformer = new AstTransformer();
+      const fragment = transformer.parse(content);
+      
+      if (fragment) {
+        ops.ingestTree('root', fragment);
+        alert(`Successfully ingested ${path}`);
+      }
+    } catch (err: unknown) {
+      console.error("Failed to ingest file:", err);
+      alert(`Error ingesting file: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   // Initialize the Engine
   // We use useMemo to ensure the Ops engine instance is stable
@@ -145,19 +173,49 @@ export default function NebulaBuilderPage() {
       {/* WORKSPACE */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* LEFT: The "Brain" (JSON Spec) */}
+        {/* LEFT: The "Brain" (JSON Spec) OR "VFS" (File Explorer) */}
         <div className="w-1/3 border-r flex flex-col bg-slate-950">
-          <div className="p-2 border-b border-white/10 text-xs font-mono text-muted-foreground flex justify-between">
-            <span>CURRENT_STATE.json</span>
-            <span className="text-green-500">Connected</span>
+          <div className="p-1 border-b border-white/10 bg-zinc-900 flex justify-center">
+             <Tabs value={leftTab} onValueChange={(val) => setLeftTab(val as any)}>
+                <TabsList className="bg-transparent h-8">
+                   <TabsTrigger value="vfs" className="text-[10px] py-1 h-6">
+                      <FolderTree className="w-3 h-3 mr-1" /> VFS LOADER
+                   </TabsTrigger>
+                   <TabsTrigger value="brain" className="text-[10px] py-1 h-6">
+                      <BrainIcon className="w-3 h-3 mr-1" /> JSON SPEC
+                   </TabsTrigger>
+                </TabsList>
+             </Tabs>
           </div>
-          <div className="flex-1 relative">
-             <MonacoEditor
-               value={JSON.stringify(tree, null, 2)}
-               language="json"
-               onChange={() => {}} // Read-only for now, bi-directional editing is Task 7
-               className="h-full w-full"
-             />
+
+          <div className="flex-1 relative overflow-hidden flex flex-col">
+             {leftTab === 'brain' ? (
+                <>
+                  <div className="p-2 border-b border-white/10 text-xs font-mono text-muted-foreground flex justify-between bg-zinc-950">
+                    <span>CURRENT_STATE.json</span>
+                    <span className="text-green-500">Connected</span>
+                  </div>
+                  <div className="flex-1 relative">
+                     <MonacoEditor
+                       value={JSON.stringify(tree, null, 2)}
+                       language="json"
+                       onChange={() => {}} // Read-only for now
+                       className="h-full w-full"
+                     />
+                  </div>
+                </>
+             ) : (
+                <FileExplorer 
+                  files={vfs.files}
+                  onSelect={(path) => { void ingestFile(path); }}
+                  currentPath={vfs.currentPath}
+                  onNavigate={vfs.navigateTo}
+                  onLoadChildren={vfs.loadChildren}
+                  onRefresh={() => { void vfs.refresh(); }}
+                  onCreateNode={(type, name) => { void vfs.createNode(type, name); }}
+                  className="h-full"
+                />
+             )}
           </div>
         </div>
 

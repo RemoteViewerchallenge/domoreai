@@ -38,8 +38,14 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
   const styleClasses = resolveStyles(node.style);
   const combinedClasses = cn(layoutClasses, styleClasses, node.props.className);
 
+  // Sanitize props: Prevent React from crashing if 'style' is a string (e.g. from ingested raw JSX)
+  const sanitizedProps = { ...node.props };
+  if (typeof sanitizedProps.style === 'string') {
+    delete sanitizedProps.style;
+  }
+
   return (
-    <Component {...node.props} className={combinedClasses} data-nebula-id={node.id}>
+    <Component {...sanitizedProps} className={combinedClasses} data-nebula-id={node.id}>
       {node.children.length > 0
         ? node.children.map(childId => (
             <NebulaRenderer
