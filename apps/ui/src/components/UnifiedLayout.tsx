@@ -1,21 +1,19 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { FloatingNavigation } from './FloatingNavigation.js';
+import { UnifiedMenuBar } from './UnifiedMenuBar.js';
 
-interface UnifiedLayoutProps {
-  children?: React.ReactNode;
-}
-
-export const UnifiedLayout = ({ children }: UnifiedLayoutProps) => {
+export const UnifiedLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="h-screen w-screen bg-[var(--color-background)] overflow-hidden relative font-sans text-[var(--color-text)]">
-      {/* THE MAIN CONTENT AREA */}
-      <div className="absolute inset-0 z-0">
-        {children || <Outlet />}
+    <div className="flex flex-col h-screen w-screen bg-zinc-950 text-white overflow-hidden selection:bg-purple-500/30">
+      {/* 1. Top Navigation Bar */}
+      <div className="flex-none z-50 relative shadow-md">
+        <UnifiedMenuBar />
       </div>
 
-      {/* THE FLOATING NAV ORB */}
-      <FloatingNavigation />
+      {/* 2. Main Content Area */}
+      <div className="flex-1 overflow-hidden relative flex flex-col">
+        {children}
+      </div>
+      
+      {/* 3. Global Overlays (Toasts, Modals) can go here */}
     </div>
   );
 };

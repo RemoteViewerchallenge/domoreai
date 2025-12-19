@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { 
-  Search, 
   Bell, 
   Cpu, 
   Database, 
@@ -25,10 +24,7 @@ export const UnifiedMenuBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // We need to trigger the global event for the Theme Editor
-  const toggleThemeEditor = () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', ctrlKey: true }));
-  };
+
 
   const NavItem = ({ icon: Icon, label, path, active }: NavItemProps) => (
     <button
@@ -97,9 +93,13 @@ export const UnifiedMenuBar = () => {
       {/* Right: Tools hardcoded to square buttons per request */}
       <div className="flex items-center gap-1">
         <button 
-            onClick={toggleThemeEditor}
-            className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 border border-transparent hover:border-[var(--color-accent)]/50 rounded-sm transition-all"
-            title="Open Theme Editor"
+            onClick={() => navigate('/theme-studio')}
+            className={`w-7 h-7 flex items-center justify-center border border-transparent rounded-sm transition-all ${
+              isActive('/theme-studio')
+                ? 'text-[var(--color-accent)] bg-[var(--color-accent)]/10 border-[var(--color-accent)]/50'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/50'
+            }`}
+            title="Theme Studio"
         >
             <Palette size={14} />
         </button>

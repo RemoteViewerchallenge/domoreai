@@ -1,129 +1,161 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Code, Globe, Terminal, Folder } from 'lucide-react';
+import { 
+  Code, Globe, Terminal, Play, Paperclip, Settings, 
+  X, ChevronRight 
+} from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
-import { FileExplorer } from '../FileExplorer.js';
+import MonacoEditor from '../MonacoEditor.js';
 import { useCardVFS } from '../../hooks/useCardVFS.js';
 import XtermTerminal from '../XtermTerminal.js';
 import { BrowserCard } from '../BrowserCard.js';
-import { SuperAiButton } from '../ui/SuperAiButton.js'; // The Universal Spark
-import { useWorkspaceStore } from '../../stores/workspace.store.js';
-import useWebSocketStore from '../../stores/websocket.store.js';
-import type { WorkspaceState, CardData } from '../../stores/workspace.store.js';
+import { SuperAiButton } from '../ui/SuperAiButton.js';
+import { FileExplorer } from '../FileExplorer.js';
+import { AgentSettings } from '../settings/AgentSettings.js'; // Ensure this import exists
 
-export const SwappableCard = memo(({ id }: { id: string; roleId?: string }) => {
-  const updateCard = useWorkspaceStore((state) => state.updateCard);
-  
-  // STABLE PRIMITIVE SELECTORS
-  const storedType = useWorkspaceStore(useCallback((s: WorkspaceState) => s.cards.find((c: CardData) => c.id === id)?.type, [id]));
-  
-  // VFS Hook
+export const SwappableCard = memo(({ id }: { id: string }) => {
   const { 
-    files, 
-    currentPath, 
-    navigateTo, 
-    refresh, 
-    loadChildren, 
-    createNode, 
-    ingestDirectory, 
-    readFile 
+    currentPath, navigateTo, readFile, writeFile, 
+    files, refresh, createNode, ingestDirectory, 
+    loadChildren 
   } = useCardVFS(id);
   
-  // WebSocket State for Terminal
-  const wsActions = useWebSocketStore(state => state.actions);
-  const storeMessages = useWebSocketStore(state => state.messages || []);
-
   // State
-  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [activeFile, setActiveFile] = useState<string>('');
   const [content, setContent] = useState<string>('');
-  const [type, setType] = useState<'editor' | 'terminal' | 'browser' | 'files'>((storedType as 'editor' | 'terminal' | 'browser' | 'files') || 'editor');
+  const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser'>('editor');
+  const [showFiles, setShowFiles] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
 
-  // Sync type with store
+  // Auto-detect code files
   useEffect(() => {
-    if (storedType && (storedType as 'editor' | 'terminal' | 'browser' | 'files') !== type) {
-      setType(storedType as 'editor' | 'terminal' | 'browser' | 'files');
+    if (activeFile.match(/\.(tsx?|jsx?|json|py|css|html)$/)) {
+        setEditorType('monaco');
+    } else {
+        setEditorType('smart');
     }
-  }, [storedType, type]);
+  }, [activeFile]);
 
-  const handleSetType = (newType: 'editor' | 'terminal' | 'browser' | 'files') => {
-    setType(newType);
-    updateCard(id, { type: newType });
-  };
+  // Load Content
+  useEffect(() => {
+    if (activeFile && viewMode === 'editor') {
+        readFile(activeFile).then(setContent).catch(() => setContent('')); 
+    }
+  }, [activeFile, readFile, viewMode]);
 
-  // Auto-Save / Auto-Commit Simulation
-  const handleContentChange = useCallback((newContent: string) => {
-      setContent(newContent);
-      // TODO: Debounce call to "trpc.git.commit" here for "Rule of Evolution"
-  }, []);
-
-  const handleFileSelect = async (path: string) => {
-    const fileContent = await readFile(path);
-    setActiveFile(path);
-    setContent(fileContent);
-    handleSetType('editor');
-  };
+  const handleSave = useCallback(async (val: string) => {
+      setContent(val);
+      if (activeFile) await writeFile(activeFile, val);
+  }, [activeFile, writeFile]);
 
   return (
-    <div className="flex flex-col h-full w-full rounded border border-zinc-800 overflow-hidden bg-zinc-950">
+    <div className="flex h-full w-full rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl relative group">
       
-      {/* Header: The "Spark" & Navigation */}
-      <div className="flex-none h-9 border-b border-zinc-800 flex items-center justify-between px-2 bg-zinc-900/50">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-           {/* Universal Spark - Knows this Card's Context */}
-           <SuperAiButton 
-              contextId={`card_${id}`} 
-              className="shadow-none border-none hover:bg-white/10"
-           />
-           
-           {/* Editable Path / Breadcrumb */}
-           <div className="flex items-center bg-black/40 rounded px-2 py-0.5 border border-zinc-800 max-w-[200px]">
-              <span className="text-[10px] text-zinc-500 font-mono mr-2">/</span>
-              <input 
-                className="bg-transparent text-xs text-zinc-300 focus:outline-none w-full font-mono"
-                value={activeFile || 'Untitled'}
-                onChange={(e) => setActiveFile(e.target.value)}
-                placeholder="filename..."
-              />
-           </div>
-        </div>
+      {/* 1. Persistent File Drawer */}
+      {showFiles && (
+          <div className="w-64 flex-none border-r border-zinc-800 flex flex-col bg-zinc-900/50">
+             <div className="p-2 border-b border-zinc-800 font-bold text-[10px] text-zinc-500 tracking-wider flex justify-between items-center">
+                <span>EXPLORER</span>
+                <button onClick={() => setShowFiles(false)}><X size={12}/></button>
+             </div>
+             <FileExplorer 
+                files={files} 
+                currentPath={currentPath}
+                onNavigate={navigateTo}
+                onSelect={setActiveFile}
+                onCreateNode={createNode}
+                onRefresh={refresh}
+                onEmbedDir={ingestDirectory}
+                onLoadChildren={loadChildren}
+             />
+          </div>
+      )}
 
-        {/* View Switcher */}
-        <div className="flex items-center gap-1 bg-zinc-900 rounded p-0.5 border border-zinc-800">
-           <button onClick={() => handleSetType('files')} className={`p-1 rounded ${type === 'files' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`} title="Explorer"><Folder size={12}/></button>
-           <button onClick={() => handleSetType('editor')} className={`p-1 rounded ${type === 'editor' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`} title="Editor"><Code size={12}/></button>
-           <button onClick={() => handleSetType('browser')} className={`p-1 rounded ${type === 'browser' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`} title="Browser"><Globe size={12}/></button>
-           <button onClick={() => handleSetType('terminal')} className={`p-1 rounded ${type === 'terminal' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`} title="Terminal"><Terminal size={12}/></button>
-        </div>
-      </div>
+      {/* 2. Main Work Area */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Header */}
+          <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-3 bg-zinc-900">
+             
+             {/* Left: Path & File Toggle */}
+             <div className="flex items-center gap-2 flex-1">
+                {!showFiles && (
+                    <button onClick={() => setShowFiles(true)} className="text-zinc-500 hover:text-white" title="Show Files">
+                        <ChevronRight size={14} />
+                    </button>
+                )}
+                <div className="flex items-center bg-black/40 rounded px-2 py-1 border border-zinc-800 flex-1 max-w-md">
+                    <span className="text-zinc-500 text-xs mr-2 font-mono">/</span>
+                    <input 
+                        value={activeFile} 
+                        onChange={(e) => setActiveFile(e.target.value)}
+                        className="bg-transparent text-xs text-white w-full outline-none font-mono"
+                        placeholder="Select or type filename..."
+                    />
+                </div>
+             </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 relative">
-         {type === 'files' && (
-            <FileExplorer 
-               files={files}
-               currentPath={currentPath}
-               onSelect={(p) => { void handleFileSelect(p); }}
-               onNavigate={navigateTo}
-               onRefresh={() => { void refresh(); }}
-               onLoadChildren={loadChildren}
-               onCreateNode={(t, n) => { void createNode(t, n); }}
-               onEmbedDir={(p) => { void ingestDirectory(p); }}
-            />
-         )}
-         {type === 'editor' && (
-            <SmartEditor 
-              fileName={activeFile || 'scratchpad.md'} 
-              content={content} 
-              onChange={handleContentChange} 
-            />
-         )}
-         {type === 'terminal' && (
-            <XtermTerminal 
-              logs={storeMessages} 
-              workingDirectory={currentPath} 
-              onInput={(d) => wsActions.sendMessage({ command: d })} 
-            />
-         )}
-         {type === 'browser' && <BrowserCard />}
+             {/* Right: Actions & Tools */}
+             <div className="flex items-center gap-2">
+                
+                {/* Run Agent Action */}
+                <button className="p-1.5 hover:bg-green-500/10 text-zinc-400 hover:text-green-400 rounded transition-colors" title="Run Agent">
+                    <Play size={14} />
+                </button>
+
+                {/* Attach File */}
+                <button className="p-1.5 hover:bg-white/10 text-zinc-400 hover:text-white rounded transition-colors" title="Attach Context">
+                    <Paperclip size={14} />
+                </button>
+
+                {/* Settings Toggle */}
+                <button 
+                    onClick={() => setShowSettings(!showSettings)}
+                    className={`p-1.5 rounded transition-colors ${showSettings ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-400 hover:text-white'}`}
+                    title="Agent Settings"
+                >
+                    <Settings size={14} />
+                </button>
+
+                <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
+
+                {/* View Switcher */}
+                <div className="flex bg-black/40 rounded p-0.5">
+                    <button onClick={() => setViewMode('editor')} className={`p-1.5 rounded ${viewMode === 'editor' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Code size={14}/></button>
+                    <button onClick={() => setViewMode('terminal')} className={`p-1.5 rounded ${viewMode === 'terminal' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Terminal size={14}/></button>
+                    <button onClick={() => setViewMode('browser')} className={`p-1.5 rounded ${viewMode === 'browser' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Globe size={14}/></button>
+                </div>
+             </div>
+          </div>
+
+          {/* Content Layer */}
+          <div className="flex-1 relative bg-black/50 overflow-hidden">
+             
+             {/* Settings Overlay */}
+             {showSettings && (
+                 <div className="absolute top-0 right-0 w-64 h-full bg-zinc-900 border-l border-zinc-800 z-20 overflow-y-auto shadow-2xl animate-in slide-in-from-right">
+                     <AgentSettings cardId={id} />
+                 </div>
+             )}
+
+             {/* Editor Layer */}
+             {viewMode === 'editor' && (
+                 editorType === 'monaco' 
+                 ? <MonacoEditor fileName={activeFile} content={content} onChange={handleSave} />
+                 : <SmartEditor fileName={activeFile} content={content} onChange={handleSave} />
+             )}
+             
+             {/* Tools */}
+             {viewMode === 'terminal' && <XtermTerminal workingDirectory={currentPath} />}
+             {viewMode === 'browser' && <BrowserCard />}
+
+             {/* THE SUPER AI BUTTON (Bottom Right, Absolute) */}
+             <div className="absolute bottom-4 right-4 z-50">
+                <SuperAiButton 
+                    contextId={`card_${id}_${viewMode}`} 
+                    className="shadow-2xl shadow-purple-500/20 hover:scale-105 transition-transform"
+                />
+             </div>
+          </div>
       </div>
     </div>
   );
