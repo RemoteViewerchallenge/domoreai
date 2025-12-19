@@ -9,12 +9,13 @@
     "build": "tsc"
   },
   "dependencies": {
-    "immer": "^11.0.1",
-    "nanoid": "^5.1.6",
+    "clsx": "^2.1.1",
+    "react": "^18.3.1",
+    "tailwind-merge": "^3.4.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "tsx": "^4.20.6",
+    "@types/react": "^18.3.26",
     "typescript": "^5.4.5"
   }
 }
