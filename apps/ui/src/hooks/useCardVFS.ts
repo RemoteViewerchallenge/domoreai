@@ -1,164 +1,122 @@
 import { useState, useEffect, useCallback } from 'react';
-import { trpc } from '../utils/trpc';
-import type { VFile } from '../stores/FileSystemTypes';
+import { trpc } from '../utils/trpc.js';
+import type { VFile } from '../stores/FileSystemTypes.js';
 
-/**
- * Per-card VFS hook that maintains independent directory state for each card
- */
 export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/mono') => {
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    // Load from localStorage first, then fall back to initialPath
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`core_card_vfs_${cardId}`);
-      if (saved) return saved;
-    }
-    return initialPath;
-  });
+  // State
+  const [currentPath, setCurrentPath] = useState<string>(initialPath);
+  const [provider, setProvider] = useState<'local' | 'ssh'>('local');
+  const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
+  
   const [files, setFiles] = useState<VFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   const utils = trpc.useUtils();
 
-  // Persist currentPath to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(`core_card_vfs_${cardId}`, currentPath);
-  }, [currentPath, cardId]);
-
-  /**
-   * Build a tree structure from flat file list
-   * This enables proper folder expansion in the UI
-   */
-  const buildTree = useCallback((flatFiles: Array<{ path: string; type: 'file' | 'directory' }>, basePath: string): VFile[] => {
-    const tree: VFile[] = [];
-    
-    for (const file of flatFiles) {
-      const relativePath = file.path.startsWith(basePath) 
-        ? file.path.slice(basePath.length).replace(/^\//, '')
-        : file.path;
-      
-      const parts = relativePath.split('/').filter(Boolean);
-      
-      if (parts.length === 0) continue;
-      
-      // For top-level items (no nested path)
-      if (parts.length === 1) {
-        tree.push({
-          path: file.path,
-          type: file.type,
-          children: file.type === 'directory' ? [] : undefined
-        });
-      }
-    }
-    
-    return tree;
+  // Helper: Build Tree
+  const buildTree = useCallback((flatFiles: { path: string; type: 'file' | 'directory'; size?: number }[]): VFile[] => {
+    return flatFiles.map(file => ({
+      path: file.path,
+      type: file.type,
+      size: file.size,
+      children: file.type === 'directory' ? [] : undefined
+    }));
   }, []);
 
+  // Actions
   const refresh = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const result = await utils.vfs.list.fetch({ 
         path: currentPath, 
-        provider: 'local',
+        provider, 
+        connectionId,
         cardId 
       });
-      
-      // Build tree structure from flat list
-      const treeFiles = buildTree(result as Array<{ path: string; type: 'file' | 'directory' }>, currentPath);
-      setFiles(treeFiles);
-    } catch (err: unknown) {
-      console.error('[useCardVFS] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to list files');
+      setFiles(buildTree(result as { path: string; type: 'file' | 'directory'; size?: number }[]));
+    } catch (err) {
+      console.error('VFS Error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [currentPath, utils, cardId, buildTree]);
+  }, [currentPath, provider, connectionId, cardId, utils, buildTree]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  const navigateTo = useCallback((path: string) => {
-    setCurrentPath(path);
-  }, []);
-
-  const readFile = useCallback(async (path: string): Promise<string> => {
-    try {
-      const result = await utils.vfs.read.fetch({ 
-        path, 
-        provider: 'local',
-        cardId 
-      });
-      return result.content;
-    } catch (err) {
-      console.error('[useCardVFS] Read error:', err);
-      return '';
-    }
-  }, [utils, cardId]);
-
-  const writeFile = useCallback(async (path: string, content: string): Promise<void> => {
-    try {
-      await utils.client.vfs.write.mutate({ 
-        path, 
-        content, 
-        provider: 'local',
-        cardId 
-      });
-      await refresh();
-    } catch (err) {
-      console.error('[useCardVFS] Write error:', err);
-      throw err;
-    }
-  }, [utils, cardId, refresh]);
-
-  const createFile = useCallback(async (path: string, initialContent = ''): Promise<void> => {
-    await writeFile(path, initialContent);
-  }, [writeFile]);
-
-  const mkdir = useCallback(async (path: string): Promise<void> => {
-    try {
-      await utils.client.vfs.mkdir.mutate({ 
-        path, 
-        provider: 'local',
-        cardId 
-      });
-      await refresh();
-    } catch (err) {
-      console.error('[useCardVFS] Mkdir error:', err);
-      throw err;
-    }
-  }, [utils, cardId, refresh]);
-
-  /**
-   * Load children for a directory (lazy loading)
-   */
-  const loadChildren = useCallback(async (dirPath: string): Promise<VFile[]> => {
+  // Load Children (Lazy)
+  const loadChildren = useCallback(async (path: string): Promise<VFile[]> => {
     try {
       const result = await utils.vfs.list.fetch({ 
-        path: dirPath, 
-        provider: 'local',
+        path, 
+        provider, 
+        connectionId,
         cardId 
       });
-      
-      return buildTree(result as Array<{ path: string; type: 'file' | 'directory' }>, dirPath);
+      return buildTree(result as { path: string; type: 'file' | 'directory'; size?: number }[]);
     } catch (err) {
-      console.error('[useCardVFS] Load children error:', err);
+      console.error('VFS Load Children Error:', err);
       return [];
     }
-  }, [utils, cardId, buildTree]);
+  }, [provider, connectionId, cardId, utils, buildTree]);
+
+  // Connect SSH
+  const connectSsh = useCallback(async (credentials: Record<string, unknown>) => {
+      const res = await utils.client.vfs.connectSsh.mutate(credentials as any);
+      setConnectionId(res.connectionId);
+      setProvider('ssh');
+      void refresh();
+  }, [utils, refresh]);
+
+  // Ingest (Embedding)
+  const ingestDirectory = useCallback(async (path: string) => {
+      alert(`Started embedding ingestion for: ${path}`);
+      await utils.client.vfs.ingestDirectory.mutate({
+          path,
+          provider,
+          connectionId,
+          cardId
+      });
+  }, [utils, provider, connectionId, cardId]);
+
+  // Transfer (Drag & Drop)
+  const transferFile = useCallback(async (source: string, dest: string, direction: 'upload' | 'download') => {
+      await utils.client.vfs.transferFile.mutate({
+          sourcePath: source,
+          destPath: dest,
+          direction,
+          connectionId: connectionId!
+      });
+      void refresh();
+  }, [utils, connectionId, refresh]);
+
+  // Create Node
+  const createNode = useCallback(async (type: 'file' | 'directory', name: string) => {
+      const fullPath = `${currentPath}/${name}`;
+      if (type === 'directory') {
+          await utils.client.vfs.mkdir.mutate({ path: fullPath, provider, connectionId, cardId });
+      } else {
+          await utils.client.vfs.write.mutate({ path: fullPath, content: '', provider, connectionId, cardId });
+      }
+      void refresh();
+  }, [currentPath, provider, connectionId, cardId, utils, refresh]);
+
+  // Initial Load
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return {
     files,
     currentPath,
+    provider,
     isLoading,
-    error,
-    navigateTo,
+    navigateTo: setCurrentPath,
     refresh,
-    readFile,
-    writeFile,
-    createFile,
-    mkdir,
-    loadChildren
+    loadChildren,
+    connectSsh,
+    ingestDirectory,
+    transferFile,
+    createNode,
+    readFile: async (path: string) => (await utils.vfs.read.fetch({ path, provider, connectionId, cardId })).content,
+    writeFile: async (path: string, content: string) => {
+        await utils.client.vfs.write.mutate({ path, content, provider, connectionId, cardId });
+        void refresh();
+    }
   };
 };

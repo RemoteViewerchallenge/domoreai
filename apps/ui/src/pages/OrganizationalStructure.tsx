@@ -18,7 +18,7 @@ const nodeTypes = {
   superNode: SuperNode,
 };
 
-const CreatorStudioContent = () => {
+const OrganizationalStructureContent = () => {
   // Mode State: Default is 'roles'
   const [viewMode, setViewMode] = useState<'roles' | 'graph'>('roles');
 
@@ -196,11 +196,11 @@ const CreatorStudioContent = () => {
   );
 };
 
-export default function CreatorStudio() {
+export default function OrganizationalStructure() {
   return (
      <NewUIThemeProvider>
        <ReactFlowProvider>
-         <CreatorStudioContent />
+         <OrganizationalStructureContent />
        </ReactFlowProvider>
      </NewUIThemeProvider>
   );

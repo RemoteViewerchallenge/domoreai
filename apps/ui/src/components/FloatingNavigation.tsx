@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, Database, Cpu, Layers, Settings, Menu, X, MonitorPlay } from 'lucide-react';
+import { LayoutGrid, Database, Cpu, Layers, Settings, Menu, X, Shield, Zap, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils.js';
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Workspace', icon: <LayoutGrid size={16} /> }, 
-  { path: '/focus', label: 'Focus Mode', icon: <MonitorPlay size={16} /> },
-  { path: '/data', label: 'Data Explorer', icon: <Database size={16} /> },
-  { path: '/creator', label: 'Creator Studio', icon: <Cpu size={16} /> },
-  { path: '/coore', label: 'System Core', icon: <Layers size={16} /> },
-  { path: '/settings', label: 'Settings', icon: <Settings size={16} /> },
+  { path: '/', label: 'LaunchPad', icon: <Layers size={16} /> }, 
+  { path: '/workbench', label: 'Workbench', icon: <LayoutGrid size={16} /> },
+  { path: '/command', label: 'Command', icon: <Monitor size={16} /> },
+  { path: '/visualizer', label: 'Visualizer', icon: <Zap size={16} /> },
+  { path: '/org-structure', label: 'Org Structure', icon: <Shield size={16} /> },
+  { path: '/datacenter', label: 'Data Center', icon: <Database size={16} /> },
+  { path: '/ui-studio', label: 'UI Studio', icon: <Cpu size={16} /> },
+  { path: '/settings', label: 'Constitution', icon: <Settings size={16} /> },
 ];
 
 export const FloatingNavigation = () => {

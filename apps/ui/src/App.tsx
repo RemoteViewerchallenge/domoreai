@@ -1,4 +1,4 @@
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
 import { FileSystemProvider } from './stores/FileSystemStore.js';
@@ -6,55 +6,46 @@ import { NewUIRoot } from './components/appearance/NewUIRoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { UnifiedLayout } from './components/UnifiedLayout.js';
 
-// Pages
-import WorkSpace from './pages/WorkSpace.js';
-import FocusWorkspace from './pages/FocusWorkspace.js';
-import FutureDataExplorer from './pages/DataExplorer.js';
-import CreatorFactory from './pages/CreatorStudio.js';
-import CorePage from './pages/CorePage.js';
-import SettingsPage from './pages/SettingsPage.js';
-import DbBrowserPage from './pages/DbBrowserPage.js';
-import FileLocationPage from './pages/FileLocationPage.js';
-import FactoryPage from './pages/FactoryPage.js';
-import AdaptiveWorkspace from './pages/AdaptiveWorkspace.js';
+// New Cooperative OS Pages
+import LaunchPad from './pages/LaunchPad.js';
+import AgentWorkbench from './pages/AgentWorkbench.js';
+import CommandCenter from './pages/CommandCenter.js';
+import CodeVisualizer from './pages/CodeVisualizer.js';
+import OrganizationalStructure from './pages/OrganizationalStructure.js';
+import DataCenter from './pages/DataCenter.js';
+import InterfaceStudio from './pages/InterfaceStudio.js';
+import Constitution from './pages/Constitution.js';
 
-function App() {
+// Sub-routes (if any specific ones remain)
+import FileLocationPage from './pages/FileLocationPage.js';
+
+export default function App() {
   return (
     <NewUIRoot>
       <FileSystemProvider>
         <ErrorBoundary>
-          <Routes>
-            {/* Initialization Page (optional, accessible via Settings or direct link) */}
-            <Route path="/initialize" element={<FileLocationPage />} />
-            
-            {/* Main Application Routes */}
-            <Route element={<UnifiedLayout />}>
-              <Route path="/" element={<Navigate to="/workspace/main" replace />} />
-              <Route path="/workspace/:id" element={<WorkSpace />} />
-              <Route path="/workspace/adaptive" element={<AdaptiveWorkspace />} />
-              <Route path="/focus" element={<FocusWorkspace />} />
-              <Route path="/data" element={<FutureDataExplorer />} />
-              <Route path="/db" element={<DbBrowserPage />} />
-              <Route path="/creator" element={<CreatorFactory />} />
-              <Route path="/coore" element={<CorePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/factory" element={<FactoryPage />} />
+          <UnifiedLayout>
+            <Routes>
+              {/* Core OS Routes */}
+              <Route path="/" element={<LaunchPad />} />
+              <Route path="/workbench" element={<AgentWorkbench />} />
+              <Route path="/workbench/:id" element={<AgentWorkbench />} />
+              <Route path="/command" element={<CommandCenter />} />
+              <Route path="/visualizer" element={<CodeVisualizer />} />
+              <Route path="/org-structure" element={<OrganizationalStructure />} />
+              <Route path="/datacenter" element={<DataCenter />} />
+              <Route path="/ui-studio" element={<InterfaceStudio />} />
+              <Route path="/settings" element={<Constitution />} />
+
+              {/* System & Legacy Support */}
+              <Route path="/setup" element={<FileLocationPage />} />
               
-              {/* 404 */}
-              <Route path="*" element={
-                <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">404</h1>
-                    <p>Page not found</p>
-                  </div>
-                </div>
-              } />
-            </Route>
-          </Routes>
+              {/* Catch-all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </UnifiedLayout>
         </ErrorBoundary>
       </FileSystemProvider>
     </NewUIRoot>
   );
 }
-
-export default App;

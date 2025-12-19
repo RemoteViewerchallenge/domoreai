@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
 import { VisualQueryBuilder } from './VisualQueryBuilder.js';
-import { AddDatacenterForm } from './AddDatacenterForm.js';
 import { 
   Database, Table, Trash2, Play, FileJson, 
-  Search, RefreshCw, Plus, Crown, Download, Upload 
+  RefreshCw, Crown, Download, Upload 
 } from 'lucide-react';
 
 interface TableItem {
@@ -13,12 +12,11 @@ interface TableItem {
   type: string;
 }
 
-export const DataNode: React.FC = () => {
+export const DatabaseBrowser: React.FC = () => {
   // --- STATE ---
   const [activeTable, setActiveTable] = useState<string | null>(null);
   const [showQuery, setShowQuery] = useState(false);
-  const [filterText, setFilterText] = useState('');
-  const [jsonViewerData, setJsonViewerData] = useState<any>(null);
+  const [jsonViewerData, setJsonViewerData] = useState<unknown>(null);
   const [showJsonViewer, setShowJsonViewer] = useState(false);
   const [showImportJsonModal, setShowImportJsonModal] = useState(false);
   const [pendingImportJson, setPendingImportJson] = useState<string | null>(null);
@@ -27,8 +25,8 @@ export const DataNode: React.FC = () => {
   const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
     onSuccess: (data) => {
       alert(`Successfully imported ${data.rowCount} rows into table "${data.tableName}".`);
-      refetchTables();
-      refetchData();
+      void refetchTables();
+      void refetchData();
     },
     onError: (error) => {
       alert(`Import failed: ${error.message}`);
@@ -37,7 +35,7 @@ export const DataNode: React.FC = () => {
 
   // --- API ---
   const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listAllTables.useQuery();
-  const { data: tableData, refetch: refetchData, isLoading: isTableDataLoading } = trpc.dataRefinement.getTableData.useQuery(
+  const { data: tableData, refetch: refetchData } = trpc.dataRefinement.getTableData.useQuery(
     { tableName: activeTable || '', limit: 1000 },
     { enabled: !!activeTable }
   );
@@ -126,19 +124,12 @@ export const DataNode: React.FC = () => {
     URL.revokeObjectURL(url);
   };
   
-  // 2. Manual Flatten (If needed)
-  const flattenMutation = trpc.dataRefinement.flattenRawData.useMutation({
-    onSuccess: (data) => {
-      refetchTables();
-      setActiveTable(data.tableName); // Jump to the new clean table
-    }
-  });
 
   // 3. Delete Table
   const deleteTableMutation = trpc.dataRefinement.deleteTable.useMutation({
     onSuccess: () => {
       setActiveTable(null);
-      refetchTables();
+      void refetchTables();
     }
   });
 
@@ -155,7 +146,7 @@ export const DataNode: React.FC = () => {
   // 5. Save Query Result
   const saveQueryMutation = trpc.dataRefinement.saveQueryResults.useMutation({
     onSuccess: (_data, vars) => {
-      refetchTables();
+      void refetchTables();
       setActiveTable(vars.newTableName);
       setShowQuery(false);
     }
@@ -166,7 +157,7 @@ export const DataNode: React.FC = () => {
   // 6. Create Table
   const createTableMutation = trpc.dataRefinement.createTable.useMutation({
     onSuccess: (_data, vars) => {
-      refetchTables();
+      void refetchTables();
       setActiveTable(vars.tableName);
     }
   });
@@ -186,7 +177,7 @@ export const DataNode: React.FC = () => {
   // 9. Delete Saved Query
   const deleteSavedQueryMutation = trpc.dataRefinement.deleteSavedQuery.useMutation({
     onSuccess: () => {
-      refetchSavedQueries();
+      void refetchSavedQueries();
     }
   });
 
@@ -199,9 +190,7 @@ export const DataNode: React.FC = () => {
   } = trpc.dataRefinement.listSavedQueries.useQuery();
 
   // Filter tables for sidebar
-  const filteredTables = tables?.filter((t: TableItem) => 
-    t.name.toLowerCase().includes(filterText.toLowerCase())
-  ) || [];
+  const filteredTables = tables || [];
   
   const regularTables = filteredTables.filter(t => t.name !== 'RawDataLake');
   const rawDataLakeTable = filteredTables.find(t => t.name === 'RawDataLake');
@@ -322,7 +311,7 @@ export const DataNode: React.FC = () => {
       {showImportJsonModal && (
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center">
           <div className="bg-zinc-900 rounded-lg p-4 w-full max-w-xl border border-zinc-800">
-            <h3 className="text-lg font-bold mb-2">Import JSON to "{activeTable}"</h3>
+            <h3 className="text-lg font-bold mb-2">Import JSON to &quot;{activeTable}&quot;</h3>
             <div className="text-sm text-zinc-400 mb-3">Choose import options. Use <span className="font-mono">Allow reserved</span> only if you understand the risks.</div>
             <div className="space-y-2 mb-4">
               <label className="flex items-center gap-2">
@@ -350,7 +339,7 @@ export const DataNode: React.FC = () => {
                   className="w-full p-2 rounded bg-zinc-800 border border-zinc-700 text-sm"
                 />
               </div>
-              <div className="text-xs text-zinc-500">Note: by default incoming <span className="font-mono">id</span> will be saved into <span className="font-mono">source_id</span>. Enable "Preserve incoming IDs" to use the incoming id as the table primary key.</div>
+              <div className="text-xs text-zinc-500">Note: by default incoming <span className="font-mono">id</span> will be saved into <span className="font-mono">source_id</span>. Enable &quot;Preserve incoming IDs&quot; to use the incoming id as the table primary key.</div>
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => { setShowImportJsonModal(false); setPendingImportJson(null); }} className="px-3 py-1 rounded bg-zinc-700 hover:bg-zinc-600">Cancel</button>
@@ -388,7 +377,7 @@ export const DataNode: React.FC = () => {
                )}
              </h2>
              {activeTable && (
-               <button onClick={() => refetchData()} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)]">
+               <button onClick={() => { void refetchData(); }} className="p-1 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)]">
                  <RefreshCw size={12} />
                </button>
              )}
@@ -407,7 +396,7 @@ export const DataNode: React.FC = () => {
 
                <>
                  <button
-                   onClick={() => handleExport()}
+                   onClick={() => { void handleExport(); }}
                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold shadow-lg"
                    title={`Export "${activeTable}" to a JSON file`}
                  >
@@ -525,12 +514,12 @@ export const DataNode: React.FC = () => {
                onSaveTable={(sql, name) => saveQueryMutation.mutate({ query: sql, newTableName: name })}
                onSaveQuery={(sql, name) => {
                  saveMigrationQueryMutation.mutate({ name, query: sql }, {
-                   onSuccess: () => refetchSavedQueries()
+                   onSuccess: () => { void refetchSavedQueries(); }
                  });
                }}
                savedQueries={savedQueries || []}
                onDeleteQuery={(name) => deleteSavedQueryMutation.mutate({ name })}
-               onRefreshSaved={() => refetchSavedQueries()}
+               onRefreshSaved={() => { void refetchSavedQueries(); }}
                isLoading={isLoadingSavedQueries}
                error={savedQueriesError}
              />

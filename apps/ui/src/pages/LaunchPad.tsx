@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Cpu, Layout, Database, Settings, 
-  Terminal, BarChart2, Layers, Globe, 
-  HardDrive, Shield, Zap, FileText,
-  Search, Code, Monitor, Server
+  BarChart2, Shield, Zap, FileText,
+  Monitor
 } from 'lucide-react';
 import { useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 
@@ -28,67 +27,38 @@ interface NexusZone {
 
 const ZONES: NexusZone[] = [
   {
-    id: 'strategy',
-    title: 'Strategy & Command',
-    description: 'High-level decision making and oversight.',
+    id: 'core',
+    title: 'Core Operations',
+    description: 'Primary work environments and system oversight.',
     icon: BarChart2,
     color: '#ef4444', // Red
     nodes: [
-      { title: 'Volcano Boardroom', path: '/boardroom', icon: Layers, description: 'Executive dashboard and KPI monitoring.', color: '#ef4444' },
-      { title: 'Executive Office', path: '/office', icon: Monitor, description: 'Personal command center for the lead.', color: '#f87171' },
+      { title: 'Agent Workbench', path: '/workbench', icon: Layout, description: 'The "Doing" grid. Where humans and agents work in Swappable Cards.', color: '#ef4444' },
+      { title: 'Command Center', path: '/command', icon: Monitor, description: 'High-level dispatch and strategy visualization.', color: '#f87171' },
+      { title: 'Code Visualizer', path: '/visualizer', icon: Zap, description: 'Live graph of the codebase and role ownership.', color: '#ef4444' },
     ]
   },
   {
-    id: 'creation',
-    title: 'Engineering & Fabrication',
-    description: 'Tools for building and modifying the system.',
+    id: 'specialized',
+    title: 'Specialized Studios',
+    description: 'Vertical tools for defining and building the system.',
     icon: Cpu,
     color: '#3b82f6', // Blue
     nodes: [
-      { title: 'Focus Workspace', path: '/focus', icon: Zap, description: 'Distraction-free code editor with AI assistance.', color: '#3b82f6' },
-      { title: 'Creator Studio', path: '/creator', icon: Code, description: 'Visual node-based logic and UI builder.', color: '#60a5fa' },
-      { title: 'Interface Builder', path: '/interface-builder', icon: Layout, description: 'Drag-and-drop frontend construction.', color: '#93c5fd' },
-      { title: 'SuperNode Canvas', path: '/supernodes', icon: Zap, description: 'Advanced agentic workflows and automation.', color: '#2563eb' },
-      { title: 'Adaptive Workspace', path: '/adaptive', icon: Globe, description: 'Context-aware dynamic environment.', color: '#1d4ed8' },
-    ]
-  },
-  {
-    id: 'data',
-    title: 'Data & Infrastructure',
-    description: 'Raw information processing and storage storage.',
-    icon: Database,
-    color: '#10b981', // Emerald
-    nodes: [
-      { title: 'Data Explorer', path: '/data', icon: Search, description: 'Analyze and visualize complex datasets.', color: '#10b981' },
-      { title: 'DB Browser', path: '/db-browser', icon: Server, description: 'Direct database management and table view.', color: '#34d399' },
-      { title: 'Data Centers', path: '/datacenters', icon: HardDrive, description: 'Manage physical and virtual storage nodes.', color: '#059669' },
-      { title: 'Unified Providers', path: '/providers', icon: Shield, description: 'External API and model provider config.', color: '#6ee7b7' },
+      { title: 'Organizational Structure', path: '/org-structure', icon: Shield, description: 'Defining roles, teams, and chains of command.', color: '#3b82f6' },
+      { title: 'Data Center', path: '/datacenter', icon: Database, description: 'SQL/JSON management and visual query building.', color: '#60a5fa' },
+      { title: 'Interface Studio', path: '/ui-studio', icon: Layout, description: 'Visual UI factory for building frontend layouts.', color: '#9d00ff' },
     ]
   },
   {
     id: 'system',
-    title: 'System & Utilities',
-    description: 'Configuration and maintenance tools.',
+    title: 'System & Governance',
+    description: 'The laws and configuration of the Operating System.',
     icon: Settings,
     color: '#a855f7', // Purple
     nodes: [
-      { title: 'Settings', path: '/settings', icon: Settings, description: 'Global application preferences.', color: '#a855f7' },
-      { title: 'File System', path: '/file-location', icon: FileText, description: 'VFS layout and file mapping.', color: '#c084fc' },
-      { title: 'Core Internals', path: '/coore', icon: Terminal, description: 'Underlying C.O.R.E. process viewer.', color: '#d8b4fe' },
-      { title: 'UI Showcase', path: '/ui-showcase', icon: Layout, description: 'Component library and design validation.', color: '#e9d5ff' },
-    ]
-  },
-  {
-    id: 'legacy',
-    title: 'Experimental & Legacy',
-    description: 'Older interfaces and development tools.',
-    icon: Terminal,
-    color: '#64748b', // Slate
-    nodes: [
-      { title: 'Legacy Workspace', path: '/workspace', icon: Layout, description: 'Original IDE-like workspace.', color: '#94a3b8' },
-      { title: 'Sidebar Customizer', path: '/customizer', icon: Settings, description: 'Customize the sidebar layout.', color: '#cbd5e1' },
-      { title: 'Smart Switch', path: '/workspace/smart-switch', icon: Zap, description: 'Fast context switching interface.', color: '#e2e8f0' },
-      { title: 'Engineering Adaptive', path: '/workspace/engineering', icon: Globe, description: 'Alias for Adaptive Workspace.', color: '#60a5fa' },
+      { title: 'Constitution', path: '/settings', icon: Settings, description: 'Global rules, themes, and system requirements.', color: '#a855f7' },
+      { title: 'System Setup', path: '/setup', icon: FileText, description: 'Initialization and environment mapping.', color: '#c084fc' },
     ]
   }
 ];
@@ -111,7 +81,7 @@ const itemVariants = {
   }
 };
 
-export const NexusPage: React.FC = () => {
+export const LaunchPad: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useNewUITheme();
   const animationsEnabled = theme.animations.enabled;
@@ -128,7 +98,7 @@ export const NexusPage: React.FC = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          C.O.R.E. Nexus
+          Cooperative OS LaunchPad
         </MotionH1>
         <MotionP 
           className="text-[var(--color-text-secondary)] text-lg"
@@ -136,7 +106,7 @@ export const NexusPage: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
         >
-          The central nervous system of your digital empire. Select a module to begin.
+          System Hub & Bootloader. The central nervous system of your digital empire.
         </MotionP>
       </div>
 
@@ -200,4 +170,4 @@ export const NexusPage: React.FC = () => {
   );
 };
 
-export default NexusPage;
+export default LaunchPad;

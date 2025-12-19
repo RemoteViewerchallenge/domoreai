@@ -47,7 +47,7 @@ const BackendNode = ({ data, selected }: { data: BackendNodeData; selected: bool
 const nodeTypes = { file: BackendNode };
 
 // --- 2. Main Canvas Logic ---
-const SuperNodeCanvasContent = () => {
+const CodeVisualizerContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedFile, setSelectedFile] = useState<{ path: string, label: string } | null>(null);
@@ -169,10 +169,10 @@ const SuperNodeCanvasContent = () => {
   );
 };
 
-export default function SuperNodeCanvas() {
+export default function CodeVisualizer() {
   return (
     <ReactFlowProvider>
-        <SuperNodeCanvasContent />
+        <CodeVisualizerContent />
     </ReactFlowProvider>
   );
 }
