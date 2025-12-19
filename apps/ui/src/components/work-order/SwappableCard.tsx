@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { FileText, Code, FolderTree, Globe, Terminal, FileCode, Settings, Play, Paperclip, X } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import { FileExplorer } from '../FileExplorer.js'; 
@@ -16,8 +16,6 @@ import { SimpleErrorModal } from '../SimpleErrorModal.js';
 import { CardAgentPrompt } from './CardAgentPrompt.js'; 
 import { CardCustomButtons } from './CardCustomButtons.js';
 
-// ... (imports)
-
 type ComponentType = 'editor' | 'code' | 'browser' | 'terminal' | 'preview';
 
 interface RoleWithPreferredModels {
@@ -29,15 +27,20 @@ interface RoleWithPreferredModels {
   }[];
 }
 
-// 1. WRAP IN MEMO
-export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string }) => {
+/**
+ * SwappableCard - A multi-modal workspace component that can switch between
+ * Editor, Code, Browser, and Terminal views.
+ * 
+ * Performance Note: Uses separate primitive selectors for card data from Zustand
+ * to prevent infinite render loops and unnecessary updates.
+ */
+export const SwappableCard = React.memo(({ id, roleId }: { id: string; roleId?: string }) => {
   const { theme } = useTheme();
 
-  // 2. USE PRIMITIVE SELECTORS (Strings/undefined are stable references)
+  // Select primitive values separately to ensure referential stability
   const storedTitle = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.title, [id]));
   const storedType = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.type, [id]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const storedMetadata = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.metadata as any, [id]));
+  const storedTargetDir = useWorkspaceStore(useCallback((s) => s.cards.find((c) => c.id === id)?.metadata?.targetDir, [id]));
 
   const updateCard = useWorkspaceStore((state) => state.updateCard);
 
@@ -59,14 +62,14 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
   
   const wsStatus = useWebSocketStore(state => state.status);
   const wsActions = useWebSocketStore(state => state.actions);
-  const storeLogs = useWebSocketStore(state => state.messages.map(m => m.message));
+  const storeLogs = useWebSocketStore(state => (state.messages || []).map(m => m.message));
   
-  // 3. INITIALIZE STATE (Keep existing logic, just swap variable names)
+  // Initialize state from store primitives
   const [cardTitle, setCardTitle] = useState(storedTitle || "New Task");
-  const [targetDir, setTargetDir] = useState(storedMetadata?.targetDir || "./src");
+  const [targetDir, setTargetDir] = useState(storedTargetDir || "./src");
   const [type, setType] = useState<ComponentType>((storedType as ComponentType) || 'editor');
 
-  // Helper to sync type changes to store immediately
+  // Helper to sync type changes to store immediately on user action
   const handleSetType = useCallback((newType: ComponentType) => {
       setType(newType);
       if (newType !== storedType) {
@@ -77,29 +80,32 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
   // View State (Editor vs File Tree vs Settings)
   const [viewMode, setViewMode] = useState<'editor' | 'files' | 'settings'>('editor');
   
-  // 4. FIX EFFECTS TO DEPEND ON PRIMITIVES ONLY
+  // Sync local title state to store with debounce
   useEffect(() => {
-    // Only fire if local string differs from store string
     if (storedTitle !== undefined && cardTitle !== storedTitle) {
       const timeout = setTimeout(() => {
         updateCard(id, { title: cardTitle });
       }, 500);
       return () => clearTimeout(timeout);
     }
-  }, [cardTitle, storedTitle, id, updateCard]); // Dependencies are now strings, not objects
+  }, [cardTitle, storedTitle, id, updateCard]);
 
+  // Sync local targetDir state to store with debounce
   useEffect(() => {
-    // Strict check for metadata path
-    if (targetDir && storedMetadata?.targetDir !== targetDir) {
-       updateCard(id, { metadata: { ...storedMetadata, targetDir } });
+    if (targetDir && storedTargetDir !== targetDir) {
+       const timeout = setTimeout(() => {
+         // Get latest metadata from store to avoid overwriting other fields
+         const currentMetadata = useWorkspaceStore.getState().cards.find(c => c.id === id)?.metadata;
+         updateCard(id, { metadata: { ...currentMetadata, targetDir } });
+       }, 500);
+       return () => clearTimeout(timeout);
     }
-  }, [targetDir, storedMetadata?.targetDir, id, updateCard]); // Depend on the string property, not the object
+  }, [targetDir, storedTargetDir, id, updateCard]);
 
   // Track if we have auto-renamed this card yet
   const hasRunOnce = useRef(!!storedTitle && storedTitle !== "New Task");
 
   // Fetch available roles for the settings panel
-  // Disable retry to prevent rapid loop if backend down
   const { data: roles } = trpc.role.list.useQuery(undefined, { retry: 1 });
   
   // Fetch available models for the settings panel
@@ -119,9 +125,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
     };
   });
 
-  // Always select a role: if none is set, pick the first available role and keep it until changed by user
-  // Wrapped with strict checks and removing if it causes issues.
-  // For now, I'll keep it but ensure it doesn't run if roles undefined.
+  // Always select a role: if none is set, pick the first available role 
   const hasSetInitialRole = useRef(false);
   useEffect(() => {
     if (roles && roles.length > 0 && !agentConfig.roleId && !hasSetInitialRole.current) {
@@ -132,7 +136,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
 
   // Compute adjusted parameters for the current selection
   const currentRole = roles?.find(r => r.id === agentConfig.roleId);
-  const currentModelConfig = (currentRole as unknown as RoleWithPreferredModels)?.preferredModels?.find((pm) => pm.model?.modelId === agentConfig.modelId);
+  const currentModelConfig = (currentRole as any)?.preferredModels?.find((pm: any) => pm.model?.modelId === agentConfig.modelId);
   const adjustedParameters = currentModelConfig?.adjustedParameters;
 
   // Error State
@@ -144,7 +148,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
       console.log('[Card] Agent session completed:', data);
       
       if (data.logs && data.logs.length > 0) {
-        // Add logs to store
         data.logs.forEach((msg: string) => {
             wsActions.addMessage({
                 timestamp: new Date().toISOString(),
@@ -152,18 +155,15 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
                 message: msg
             });
         });
-        // Automatically switch to terminal to show what happened
         handleSetType('terminal');
       }
 
       if (data.result) {
-          // Append the result to the editor content
           setContent(prev => {
               const newContent = prev + '\n\n' + data.result;
               return newContent;
           });
           
-          // Heuristic: If result looks like a URL, switch to browser
           if (data.result.trim().startsWith('http')) {
              handleSetType('browser');
           }
@@ -184,8 +184,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
   });
 
   const ingestDirectoryMutation = trpc.vfs.ingestDirectory.useMutation({
-    onMutate: async () => {
-    },
     onSuccess: () => {
       console.log('Ingestion started/completed successfully');
     },
@@ -200,7 +198,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
 
   const isAiWorking = startSessionMutation.isLoading;
 
-  // Run agent function - wrapped in useCallback to stabilize reference
   const handleRunAgent = useCallback(() => {
     if (isAiWorking) return; 
 
@@ -221,11 +218,9 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
 
     // Auto-title on first run
     if (!hasRunOnce.current) {
-        // First 30 chars
         const cleanName = prompt.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30).trim() || "New Task";
         setCardTitle(cleanName);
         hasRunOnce.current = true;
-        // Immediate update to store
         updateCard(id, { title: cleanName });
     }
 
@@ -242,21 +237,18 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
     });
   }, [content, agentConfig, startSessionMutation, id, isAiWorking, updateCard, targetDir]);
 
-  // Handle file attachment
   const handleAttachFile = useCallback(async (filePath: string) => {
     try {
       const fileContent = await readFile(filePath);
       const attachmentText = `\n\n---\n**Attached File: ${filePath}**\n\`\`\`\n${fileContent}\n\`\`\`\n---\n\n`;
       setContent(prev => prev + attachmentText);
       setShowAttachModal(false);
-    } catch (error) {
-      console.error('Failed to attach file:', error);
-      setError(`Failed to attach file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (err) {
+      console.error('Failed to attach file:', err);
+      setError(`Failed to attach file: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }, [readFile]);
 
-
-  // Auto-creation logic
   const initializedRef = useRef<string | null>(null);
   useEffect(() => {
     if (initializedRef.current === id) return;
@@ -288,10 +280,8 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
         initializedRef.current = id;
     };
     void init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, currentPath]);
 
-  // The "Little Button" Menu options
   const menuItems = [
     { id: 'editor', icon: FileText, label: 'Write (Tiptap)' },
     { id: 'code', icon: Code, label: 'Code (Monaco)' },
@@ -301,7 +291,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
 
   const neonColor = getNeonColorForPath(currentPath);
 
-  // View Switcher Component (Reused)
   const viewSwitcher = (
     <div className="flex items-center gap-1 bg-[var(--color-background)] rounded p-0.5 border border-[var(--color-border)]">
         {menuItems.map((item) => (
@@ -320,7 +309,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
     </div>
   );
 
-  // Determine if we are in "Universal Mode" (upgraded tools)
   const isUniversalMode = viewMode === 'editor' && (type === 'browser' || type === 'terminal');
   
   return (
@@ -340,7 +328,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
         }}
       >
         
-        {/* HEADER with File Controls - HIDDEN IN UNIVERSAL MODE */}
         {!isUniversalMode && (
         <div 
           className="flex-none h-8 border-b flex items-center justify-between px-2"
@@ -350,9 +337,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
           }}
         >
           
-          {/* Left: VFS Badge + Title */}
           <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] overflow-hidden">
-            {/* VFS Path Badge - Minimal */}
             <div 
               className="group relative px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider cursor-help flex-none"
               style={{ 
@@ -364,13 +349,11 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
               <span className="opacity-60 group-hover:opacity-100 transition-opacity">
                 {currentPath.split('/').pop() || '/'}
               </span>
-              {/* Tooltip on hover */}
               <div className="absolute left-0 top-full mt-1 px-2 py-1 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-[9px] opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
                 {currentPath}
               </div>
             </div>
             
-            {/* Card Title */}
             <div className="flex items-center gap-2 min-w-0">
                 {viewMode === 'settings' ? (
                     <Settings size={14} className="text-[var(--color-primary)] flex-none" />
@@ -388,9 +371,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
             </div>
           </div>
   
-          {/* Right: Controls */}
           <div className="flex items-center gap-2">
-            {/* Run Button - Icon Only */}
             {viewMode === 'editor' && type === 'editor' && (
               <>
                 <button
@@ -411,7 +392,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
               </>
             )}
   
-            {/* Settings Button - Neon */}
             <button
               onClick={() => setViewMode(viewMode === 'settings' ? 'editor' : 'settings')}
               className={`p-1.5 rounded transition-all ${
@@ -424,7 +404,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
               <Settings size={14} />
             </button>
   
-            {/* View Switcher (Only for Editor/Code modes) */}
             {(type === 'editor' || type === 'code') && viewMode !== 'settings' && (
               <div className="flex items-center gap-1 bg-[var(--color-background)] rounded p-0.5 border border-[var(--color-border)]">
                 <button 
@@ -444,17 +423,14 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
               </div>
             )}
   
-            {/* Component Swapper */}
             {viewSwitcher}
             
           </div>
         </div>
         )}
   
-        {/* BODY */}
         <div className="flex-1 min-h-0 relative bg-[var(--color-background)]">
 
-          {/* SETTINGS VIEW */}
           {viewMode === 'settings' && (
             <div className="flex flex-col h-full w-full bg-zinc-950">
               <div className="px-3 pt-3 pb-0">
@@ -473,7 +449,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
                 name: r.name, 
                 category: (r.category as any)?.name || (typeof r.category === 'string' ? r.category : '') || 'Uncategorized' 
               })) || []}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               availableModels={models?.map((m: any) => ({
                   id: m.modelId,
                   name: m.name,
@@ -496,7 +471,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
             </div>
           )}
   
-          {/* EDITOR / CODE VIEW */}
           {viewMode === 'editor' && (type === 'editor' || type === 'code') && (
             activeFile ? (
               <SmartEditor 
@@ -519,7 +493,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
             )
           )}
   
-          {/* FILE EXPLORER VIEW */}
           {viewMode === 'files' && (
             <div className="h-full w-full p-2">
               <div className="text-[10px] uppercase text-[var(--color-text-muted)] mb-2 font-bold">Select file for Card {id}</div>
@@ -549,7 +522,6 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
             </div>
           )}
   
-          {/* OTHER VIEWS */}
           {viewMode === 'editor' && type === 'browser' && <BrowserCard headerEnd={viewSwitcher} />}
           {viewMode === 'editor' && type === 'terminal' && (
             <XtermTerminal 
@@ -564,9 +536,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
   
         </div>
         
-        {/* Status Footer */}
         <div className="flex-none p-2 bg-[var(--color-background-secondary)] border-t border-[var(--color-border)]">
-          {/* Single Row - Status Info and Action Buttons */}
           <div className="flex gap-2 justify-between items-center px-1 text-[10px]">
             <div className="text-[var(--color-text-muted)] flex-shrink-0">
               Role: <span className="text-[var(--color-text-secondary)]">{roles?.find(r => r.id === agentConfig.roleId)?.name || 'None'}</span> | 
@@ -580,9 +550,7 @@ export const SwappableCard = memo(({ id, roleId }: { id: string; roleId?: string
               WS: <span className={wsStatus === 'connected' ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}>{wsStatus}</span>
             </div>
 
-            {/* Action Buttons - Inline */}
             <div className="flex gap-1.5 ml-auto">
-              {/* Card Agent Prompt */}
               <CardAgentPrompt
                 cardId={id}
                 cardContext={{
@@ -615,7 +583,6 @@ User Question: ${prompt}
                 isLoading={isAiWorking}
               />
 
-              {/* Custom Buttons */}
               <CardCustomButtons
                 cardId={id}
                 buttons={[]} 
@@ -647,11 +614,9 @@ User Question: ${prompt}
         </div>
       </div>
 
-      {/* File Attachment Modal */}
       {showAttachModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl w-[600px] h-[500px] flex flex-col">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <h3 className="text-sm font-bold text-zinc-200">Attach File from VFS</h3>
               <button
@@ -662,7 +627,6 @@ User Question: ${prompt}
               </button>
             </div>
 
-            {/* File Explorer */}
             <div className="flex-1 overflow-hidden p-4">
               <FileExplorer 
                 files={files}
@@ -678,7 +642,6 @@ User Question: ${prompt}
               />
             </div>
 
-            {/* Modal Footer */}
             <div className="px-4 py-3 border-t border-zinc-800 text-xs text-[var(--color-text-secondary)]">
               Click on a file to attach it to your chat
             </div>
