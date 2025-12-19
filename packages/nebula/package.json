@@ -9,9 +9,10 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@types/react-dom": "^18.3.7",
     "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
     "nanoid": "^5.0.7",
-    "react": "^18.3.1",
     "tailwind-merge": "^3.4.0",
     "typescript": "^5.4.5",
     "zod": "^3.23.8"
@@ -19,6 +20,11 @@
   "devDependencies": {
     "@types/react": "^18.3.26",
     "immer": "^11.0.1",
-    "tsx": "^4.7.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
