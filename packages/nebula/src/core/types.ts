@@ -25,6 +25,12 @@ export interface StyleTokens {
   desktop?: Partial<StyleTokens>;
 }
 
+export interface DataBinding {
+  propName: string; // e.g., "content" or "src"
+  sourcePath: string; // e.g., "query.activeUser.name"
+  defaultValue?: any;
+}
+
 // The "Atom" Node
 export interface NebulaNode {
   id: NebulaId;
@@ -32,6 +38,7 @@ export interface NebulaNode {
 
   // Content & Configuration
   props: Record<string, any>;
+  bindings?: DataBinding[]; // Dynamic value injection
 
   // Visuals (Token-based)
   style: StyleTokens;
