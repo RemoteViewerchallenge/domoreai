@@ -11,6 +11,7 @@ export interface LLMModel {
   capabilities?: string[];
   specs?: {
     contextWindow?: number;
+    maxOutput?: number;
     hasVision?: boolean;
     hasReasoning?: boolean;
     hasCoding?: boolean;

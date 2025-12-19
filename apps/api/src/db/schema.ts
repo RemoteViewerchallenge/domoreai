@@ -32,18 +32,44 @@ export const modelRegistry = pgTable('model_registry', {
   // We keep these for quick lookup/display without joining
   modelName: text('model_name'), 
   isFree: boolean('is_free').default(false),
+  isActive: boolean('is_active').default(true),
+  source: text('source').default('INDEX'),
   costPer1k: doublePrecision('cost_per_1k'),
+
+  capabilityTags: text('capability_tags').array().default(sql`ARRAY['text']::text[]`),
 
   // Triple-Layer System
   providerData: jsonb('provider_data').default({}),
   aiData: jsonb('ai_data').default({}),
   specs: jsonb('specs').default({}),
   
+  firstSeenAt: timestamp('first_seen_at').defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => {
   return {
     unq: uniqueIndex('model_registry_provider_id_model_id_key').on(table.providerId, table.modelId),
   };
+});
+
+export const modelCapabilities = pgTable('ModelCapabilities', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  modelId: text('model_id').unique().notNull(),
+  contextWindow: integer('context_window').default(4096),
+  maxOutput: integer('max_output').default(4096),
+  hasVision: boolean('has_vision').default(false).notNull(),
+  hasAudioInput: boolean('has_audio_input').default(false).notNull(),
+  hasAudioOutput: boolean('has_audio_output').default(false).notNull(),
+  hasTTS: boolean('has_tts').default(false).notNull(),
+  hasImageGen: boolean('has_image_gen').default(false).notNull(),
+  isMultimodal: boolean('is_multimodal').default(false).notNull(),
+  supportsFunctionCalling: boolean('supports_function_calling').default(false).notNull(),
+  supportsJsonMode: boolean('supports_json_mode').default(false).notNull(),
+  tokenizer: text('tokenizer'),
+  paramCount: text('param_count'),
+  requestsPerMinute: integer('requests_per_minute'),
+  tokensPerMinute: integer('tokens_per_minute'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Provider-specific tables removed: model details are consolidated into `modelRegistry`'s JSON columns.

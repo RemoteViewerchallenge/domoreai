@@ -11,7 +11,6 @@ import { createTRPCContext as createContext } from './trpc.js';
 import { db, shutdownDb } from './db.js'; 
 import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
-import { autoLoadRawJsonFiles } from './services/RawJsonLoader.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
 import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
@@ -78,10 +77,21 @@ async function startServer() {
   // Initialize Provider Manager
   await ProviderManager.initialize();
   
-  // SIMPLIFIED: Only load raw JSON files into raw_* tables
-  // Skip syncModelsToRegistry() - we don't need model_registry table yet
-  // Load raw JSON files into raw_* tables
-  await autoLoadRawJsonFiles();
+  // ==============================================================================
+  // RUN THE ANTI-CORRUPTION PIPELINE
+  // ==============================================================================
+  // Phase 1: Saves raw JSON files exactly as they are to RawDataLake
+  // Phase 2: Filters and normalizes data into the Model table
+  // - Strict filtering: Rejects paid OpenRouter models
+  // - Fail-open for Groq, Google, Mistral (assumes free tier)
+  // - Preserves all original data in providerData field
+  try {
+    console.log('🔄 Running Unified Model Ingestion (Anti-Corruption Pipeline)...');
+    const { UnifiedIngestionService } = await import('./services/UnifiedIngestionService.js');
+    await UnifiedIngestionService.ingestAllModels();
+  } catch (err) {
+    console.error('❌ Model Ingestion Failed:', err);
+  }
 
   // Mount RESTful API routers
   app.use('/llm', llmRouter);

@@ -58,7 +58,7 @@ export async function selectBestModel(
     where: {
       isActive: true,      // ✨ Only confirmed-working models
       isFree: true,        // Zero-Burn mode
-      capabilities: {
+      capabilityTags: {
         hasSome: capabilities
       },
       provider: {
@@ -249,7 +249,7 @@ export async function addManualModel(
         note: 'Manually added by user',
         addedAt: now.toISOString()
       },
-      capabilities: specs.isMultimodal ? ['text', 'vision'] : ['text']
+      capabilityTags: specs.isMultimodal ? ['text', 'vision'] : ['text']
     }
   });
 

@@ -64,12 +64,12 @@ export class ComplexityRouter {
 
     // --- THE NEW ROUTING LOGIC (Zero-Burn) ---
     let recommendedModel = (await prisma.model.findFirst({
-      where: { capabilities: { has: 'fallback' } }
+      where: { capabilityTags: { has: 'fallback' } }
     }))?.id;
 
     if (!recommendedModel) {
       const fallback = await prisma.model.findFirst({
-        where: { capabilities: { has: 'text' } },
+        where: { capabilityTags: { has: 'text' } },
         orderBy: { costPer1k: 'asc' }
       });
       if (fallback) recommendedModel = fallback.id;
@@ -85,7 +85,7 @@ export class ComplexityRouter {
               { isFree: true },
               { costPer1k: 0 }
             ],
-            capabilities: { has: capability },
+            capabilityTags: { has: capability },
             specs: {
                path: ['contextWindow'],
                gte: minContext

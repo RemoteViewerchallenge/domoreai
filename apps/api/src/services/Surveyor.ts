@@ -323,7 +323,7 @@ export class Surveyor {
               source: 'surveyor',
               surveyedAt: new Date().toISOString()
             },
-            capabilities: specs.capabilities
+            capabilityTags: specs.capabilities
           }
         });
         surveyed++;
