@@ -22,6 +22,7 @@ export const DatabaseBrowser: React.FC = () => {
   const [pendingImportJson, setPendingImportJson] = useState<string | null>(null);
   const [importOptions, setImportOptions] = useState({ allowReserved: false, preserveIds: false, preserveCreatedAt: false, upsertOnConflict: false, auditReason: '' });
   const [tempQueryResults, setTempQueryResults] = useState<Record<string, unknown>[] | null>(null);
+  const [showFreeOnly, setShowFreeOnly] = useState(false);
   const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
     onSuccess: (data) => {
       alert(`Successfully imported ${data.rowCount} rows into table "${data.tableName}".`);
@@ -385,7 +386,19 @@ export const DatabaseBrowser: React.FC = () => {
 
           {/* Actions */}
           {activeTable && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+               {/* [ADDED] Client-side filter for Model Registry */}
+               {activeTable === 'model_registry' && (
+                 <label className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded cursor-pointer hover:bg-zinc-800 transition-all">
+                   <input 
+                     type="checkbox" 
+                     checked={showFreeOnly} 
+                     onChange={(e) => setShowFreeOnly(e.target.checked)}
+                     className="w-3 h-3 accent-cyan-500"
+                   />
+                   <span className="text-[10px] font-bold text-zinc-300 uppercase">Free Only</span>
+                 </label>
+               )}
 
                <button 
                  onClick={() => setShowQuery(!showQuery)}
@@ -456,7 +469,13 @@ export const DatabaseBrowser: React.FC = () => {
           )}
           {activeTable ? (
             <UniversalDataGrid 
-              data={tempQueryResults || (tableData?.rows as Record<string, unknown>[]) || []} 
+              data={(() => {
+                const base = tempQueryResults || (tableData?.rows as Record<string, unknown>[]) || [];
+                if (activeTable === 'model_registry' && showFreeOnly) {
+                  return base.filter(row => row.is_free === true || row.isFree === true);
+                }
+                return base;
+              })()} 
               headers={tableSchema?.columns?.map(col => col.column_name) || []}
             />
           ) : showJsonViewer && jsonViewerData ? (

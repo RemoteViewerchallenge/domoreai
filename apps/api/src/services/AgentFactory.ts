@@ -242,7 +242,7 @@ export class AgentFactoryService implements IAgentFactory {
             gte: threshold.min,
             lte: threshold.max
           },
-          capabilities: {
+          capabilityTags: {
             has: 'text' // At minimum, must support text
           }
         },

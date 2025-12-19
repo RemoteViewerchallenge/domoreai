@@ -150,7 +150,7 @@ export class PersistentModelDoctor {
         id: true,
         modelId: true,
         specs: true,
-        capabilities: true,
+        capabilityTags: true,
         costPer1k: true
       }
     });
@@ -171,7 +171,7 @@ export class PersistentModelDoctor {
         if (field === 'contextWindow') {
           hasField = !!(specs.contextWindow || specs.context_window);
         } else if (field === 'capabilities') {
-          hasField = !!(model.capabilities && model.capabilities.length > 0);
+          hasField = !!(model.capabilityTags && model.capabilityTags.length > 0);
         } else if (field === 'costPer1k') {
           hasField = model.costPer1k !== null && model.costPer1k !== undefined;
         }

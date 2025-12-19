@@ -39,60 +39,68 @@ model Model {
   modelId      String  @map("model_id")
   name         String  @map("model_name")
 
-  // [NEW] Fast filtering for Orchestrator
-  // e.g. ["text", "vision", "audio_input", "speech_generation", "embedding"]
-  // defaulted to ["text"] so agents can start working immediately.
-  capabilities String[] @default(["text"]) 
+  // [NEW] Layer 3: The Specialized Capabilities Table
+  capabilities ModelCapabilities?
 
-  // [NEW] Flexible Pricing Configuration
-  // "costPer1k" is kept for legacy text compatibility, but this JSON 
-  // allows multi-modal pricing:
-  // { 
-  //   "image": { "standard": 0.004, "hd": 0.012 }, 
-  //   "audio_in": { "per_minute": 0.006 },
-  //   "embedding": { "per_1k_tokens": 0.0001 }
-  // }
-  pricingConfig Json?    @map("pricing_config")
-
-  // THE TRIPLE LAYER SYSTEM
-  // 1. Raw Data: Exactly what the API sent us. Never touched by us.
+  // [UPDATED] Layer 1: Raw Data Lake (Keep this! It's your backup)
   providerData Json    @default("{}") @map("provider_data")
   
-  // 2. AI Knowledge: Data inferred or researched by our Agents.
+  // [UPDATED] Layer 2: AI Knowledge (Inferred/Researched)
   aiData       Json    @default("{}") @map("ai_data")
 
-  // 3. Specs: The computed view (Provider + AI Overrides) used by the app.
+  // [DEPRECATED] Specs will be replaced by ModelCapabilities
   specs        Json    @default("{}") @map("specs")
 
-  // Kept for backward compatibility with Drizzle/Router until fully migrated
+  // Fast filtering for Orchestrator tokens
+  capabilityTags String[] @default(["text"]) @map("capability_tags")
+
   isFree       Boolean @default(false) @map("is_free")
   costPer1k    Float?  @map("cost_per_1k")
 
-  // ---------------------------------------------------------
-  // GHOST RECORDS PATTERN: Track model discovery & lifecycle
-  // ---------------------------------------------------------
-  // Use this to filter the UI. If 'false', show with a warning.
   isActive     Boolean @default(true) @map("is_active")
-  
-  // Where did this model come from?
-  // 'INDEX' = Found in the provider's official JSON list
-  // 'INFERENCE' = Successfully used in a chat/job, so we auto-added it
-  // 'MANUAL' = You added it by hand because you know it exists
   source       ModelSource @default(INDEX)
   
-  // Critical for cleaning up dead models later without deleting valid ones immediately
   firstSeenAt  DateTime @default(now()) @map("first_seen_at")
   lastSeenAt   DateTime @default(now()) @map("last_seen_at")
-
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Relations
   modelUsage   ModelUsage[]
   knowledgeVectors KnowledgeVector[]
   
   @@unique([providerId, modelId])
   @@index([providerId, lastSeenAt])
   @@map("model_registry")
+}
+
+// [NEW] The Related Table for gathered/aligned data
+model ModelCapabilities {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  // Context & Throughput
+  contextWindow Int?     @default(4096) // Fail-Open default
+  maxOutput     Int?     @default(4096)
+  
+  // Features (Booleans for fast filtering)
+  hasVision         Boolean @default(false)
+  hasAudioInput     Boolean @default(false)
+  hasAudioOutput    Boolean @default(false)
+  hasTTS            Boolean @default(false)
+  hasImageGen       Boolean @default(false)
+  isMultimodal      Boolean @default(false)
+  supportsFunctionCalling Boolean @default(false)
+  supportsJsonMode  Boolean @default(false)
+
+  // Technical Specs
+  tokenizer         String? // e.g., "cl100k_base"
+  paramCount        String? // e.g., "70B"
+  
+  // Rate Limits
+  requestsPerMinute Int?
+  tokensPerMinute   Int?
+
+  updatedAt   DateTime @updatedAt
 }
 
 // Enum for tracking model discovery source

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Trash2, Plus, RotateCcw, Keyboard, Palette, Monitor, Server, RefreshCw, Edit2 } from 'lucide-react';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { trpc } from '../utils/trpc.js';
 
 interface Hotkey {
   id: string;
@@ -29,9 +30,33 @@ const HOTKEYS_STORAGE_KEY = 'core-hotkeys';
 const COLOR_SCHEMES_STORAGE_KEY = 'core-color-schemes';
 const SELECTED_SCHEME_STORAGE_KEY = 'core-selected-scheme';
 
+interface ProviderFormState {
+  id?: string;
+  name: string;
+  providerType: string;
+  baseURL: string;
+  apiKey: string;
+}
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'appearance' | 'hotkeys' | 'workspace'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'hotkeys' | 'workspace' | 'providers'>('appearance');
   const { theme, setTheme, resetToDefault } = useTheme();
+
+  // Provider Management State
+  const utils = trpc.useContext();
+  const providersQuery = trpc.providers.list.useQuery();
+  const deleteProviderMutation = trpc.providers.delete.useMutation({
+    onSuccess: () => utils.providers.list.invalidate()
+  });
+  const upsertProviderMutation = trpc.providers.upsert.useMutation({
+    onSuccess: () => {
+      void utils.providers.list.invalidate();
+      setEditingProvider(null);
+    }
+  });
+  const syncModelsMutation = trpc.providers.fetchAndNormalizeModels.useMutation();
+
+  const [editingProvider, setEditingProvider] = useState<ProviderFormState | null>(null);
 
   // Load hotkeys from localStorage
   const [hotkeys, setHotkeys] = useState<Hotkey[]>(() => {
@@ -224,6 +249,29 @@ export default function SettingsPage() {
 
   const currentScheme = colorSchemes.find(s => s.id === selectedSchemeId) || colorSchemes[0];
 
+  const handleSaveProvider = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProvider) return;
+    
+    upsertProviderMutation.mutate({
+      id: editingProvider.id,
+      name: editingProvider.name,
+      providerType: editingProvider.providerType,
+      baseURL: editingProvider.baseURL,
+      apiKey: editingProvider.apiKey || undefined,
+    });
+  };
+
+  const handleSync = async (providerId: string) => {
+    try {
+      await syncModelsMutation.mutateAsync({ providerId });
+      alert('Models synced successfully!');
+    } catch (err) {
+      alert('Failed to sync models. Check console.');
+      console.error(err);
+    }
+  };
+
   return (
     <div className="h-full w-full bg-[var(--color-background)] text-[var(--color-text)] flex flex-col font-mono text-xs overflow-hidden">
       {/* Header */}
@@ -257,6 +305,19 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <Keyboard size={14} />
               Hotkeys
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('providers')}
+            className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-all ${
+              activeTab === 'providers'
+                ? 'bg-[var(--color-primary)] text-black shadow-[var(--glow-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-background)]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Server size={14} />
+              Providers
             </div>
           </button>
           <button
@@ -617,6 +678,163 @@ export default function SettingsPage() {
                 {hotkeys.length === 0 && (
                   <div className="text-center py-8 text-[var(--color-text-secondary)] italic">
                     No custom hotkeys defined.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* PROVIDERS TAB */}
+          {activeTab === 'providers' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--color-text)] uppercase flex items-center gap-2">
+                    <Server size={16} className="text-[var(--color-primary)]" />
+                    AI Providers
+                  </h2>
+                  <p className="text-[var(--color-text-secondary)] text-[10px]">Manage connections to LLM inference engines.</p>
+                </div>
+                <button
+                  onClick={() => setEditingProvider({ name: '', providerType: 'openai', baseURL: '', apiKey: '' })}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-primary)] text-black rounded font-bold uppercase text-[10px]"
+                >
+                  <Plus size={14} /> Add Provider
+                </button>
+              </div>
+
+              {/* Edit/Add Form Overlay */}
+              {editingProvider && (
+                <div className="border border-[var(--color-primary)] rounded-lg p-4 bg-[var(--color-background-secondary)] animate-in fade-in slide-in-from-top-4">
+                  <h3 className="font-bold text-[var(--color-primary)] mb-4 uppercase text-[10px]">
+                    {editingProvider.id ? 'Edit Provider' : 'New Provider'}
+                  </h3>
+                  <form onSubmit={handleSaveProvider} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[8px] uppercase font-bold text-[var(--color-text-secondary)] mb-1">Label</label>
+                        <input 
+                          className="w-full bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
+                          value={editingProvider.name}
+                          onChange={e => setEditingProvider({...editingProvider, name: e.target.value})}
+                          placeholder="e.g. Groq Production"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase font-bold text-[var(--color-text-secondary)] mb-1">Type</label>
+                        <select 
+                          className="w-full bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
+                          value={editingProvider.providerType}
+                          onChange={e => setEditingProvider({...editingProvider, providerType: e.target.value})}
+                        >
+                          <option value="openai">OpenAI Compatible (Generic)</option>
+                          <option value="groq">Groq</option>
+                          <option value="openrouter">OpenRouter</option>
+                          <option value="anthropic">Anthropic</option>
+                          <option value="google">Google Gemini</option>
+                          <option value="ollama">Ollama</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[8px] uppercase font-bold text-[var(--color-text-secondary)] mb-1">Base URL</label>
+                      <input 
+                        className="w-full bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded text-[var(--color-text)] font-mono focus:border-[var(--color-primary)] focus:outline-none"
+                        value={editingProvider.baseURL}
+                        onChange={e => setEditingProvider({...editingProvider, baseURL: e.target.value})}
+                        placeholder="https://api.groq.com/openai/v1"
+                      />
+                      <p className="text-[8px] text-[var(--color-text-secondary)] mt-1 italic">
+                        Leave empty to use the default URL for the selected type.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[8px] uppercase font-bold text-[var(--color-text-secondary)] mb-1">API Key</label>
+                      <input 
+                        type="password"
+                        className="w-full bg-[var(--color-background)] border border-[var(--color-border)] p-2 rounded text-[var(--color-text)] font-mono focus:border-[var(--color-primary)] focus:outline-none"
+                        value={editingProvider.apiKey}
+                        onChange={e => setEditingProvider({...editingProvider, apiKey: e.target.value})}
+                        placeholder="sk-..."
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button 
+                        type="button"
+                        onClick={() => setEditingProvider(null)}
+                        className="px-4 py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text)] uppercase text-[10px] font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        className="px-4 py-2 bg-[var(--color-primary)] text-black font-bold rounded uppercase text-[10px]"
+                      >
+                        Save Connection
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Provider List */}
+              <div className="grid gap-4">
+                {providersQuery.data?.map(provider => (
+                  <div key={provider.id} className="flex items-center justify-between p-4 border border-[var(--color-border)] rounded bg-[var(--color-background-secondary)] hover:border-[var(--color-primary)] transition-all">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[var(--color-text)]">{provider.label}</span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-[var(--color-background)] text-[var(--color-text-secondary)] border border-[var(--color-border)] uppercase font-bold">
+                          {provider.type}
+                        </span>
+                      </div>
+                      <div className="text-[var(--color-text-secondary)] font-mono text-[8px] mt-1 italic">
+                        {provider.baseURL || '(Default URL)'}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => { void handleSync(provider.id); }}
+                        disabled={syncModelsMutation.isLoading}
+                        className="p-2 text-[var(--color-primary)] hover:bg-[var(--color-background)] rounded border border-transparent hover:border-[var(--color-primary)] transition-all"
+                        title="Sync Models"
+                      >
+                        <RefreshCw size={14} className={syncModelsMutation.isLoading ? 'animate-spin' : ''} />
+                      </button>
+                      <button 
+                        onClick={() => setEditingProvider({
+                          id: provider.id,
+                          name: provider.label,
+                          providerType: provider.type,
+                          baseURL: provider.baseURL || '',
+                          apiKey: ''
+                        })}
+                        className="p-2 text-[var(--color-text)] hover:bg-[var(--color-background)] rounded border border-transparent hover:border-[var(--color-border)] transition-all"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if(confirm('Delete this provider?')) deleteProviderMutation.mutate({ id: provider.id });
+                        }}
+                        className="p-2 text-[var(--color-error)] hover:bg-[var(--color-background)] rounded border border-transparent hover:border-[var(--color-error)] transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {providersQuery.data?.length === 0 && (
+                  <div className="text-center py-8 text-[var(--color-text-secondary)] italic border border-dashed border-[var(--color-border)] rounded text-[10px]">
+                    No providers configured. Click &ldquo;Add Provider&rdquo; to start.
                   </div>
                 )}
               </div>

@@ -10,15 +10,23 @@ export const providerRouter = createTRPCRouter({
     return providerService.listProviders();
   }),
 
-  add: publicProcedure
+  // [UPDATED] Changed 'add' to 'upsert' to support editing
+  upsert: publicProcedure
     .input(z.object({
+      id: z.string().optional(),
       name: z.string(),
       providerType: z.string(),
       baseURL: z.string(),
       apiKey: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      return providerService.addProvider(input);
+      return providerService.upsertProviderConfig({
+        id: input.id,
+        label: input.name,
+        type: input.providerType,
+        baseURL: input.baseURL,
+        apiKey: input.apiKey,
+      });
     }),
 
   listAllAvailableModels: publicProcedure.query(async () => {

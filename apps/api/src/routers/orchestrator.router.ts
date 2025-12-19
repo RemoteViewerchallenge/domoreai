@@ -91,7 +91,7 @@ export const orchestratorRouter = createTRPCRouter({
           provider_enabled: model.provider.isEnabled,
           model_id: model.modelId,
           model_name: model.name,
-          capabilities: model.capabilities,
+          capabilities: model.capabilityTags,
           is_free: model.isFree,
           cost_per_1k: model.costPer1k,
           is_active: model.isActive,
@@ -100,7 +100,6 @@ export const orchestratorRouter = createTRPCRouter({
           last_seen_at: model.lastSeenAt,
           specs: model.specs,
           provider_data: model.providerData,
-          pricing_config: model.pricingConfig,
         }));
 
         return { 

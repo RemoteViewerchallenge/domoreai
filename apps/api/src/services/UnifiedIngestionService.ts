@@ -44,6 +44,13 @@ interface RawModelData {
   [key: string]: unknown;
 }
 
+// Type for the raw provider response structure
+interface RawProviderResponse {
+  data?: RawModelData[];
+  models?: RawModelData[];
+  [key: string]: unknown;
+}
+
 export class UnifiedIngestionService {
   
   /**
@@ -82,7 +89,7 @@ export class UnifiedIngestionService {
       
       try {
         const content = await fs.readFile(path.join(targetDir, file), 'utf-8');
-        const rawData = JSON.parse(content);
+        const rawData = JSON.parse(content) as RawProviderResponse | RawModelData[];
         
         // Save to RawDataLake (The Bag)
         const record = await prisma.rawDataLake.create({
@@ -105,7 +112,7 @@ export class UnifiedIngestionService {
 
     // PHASE 2: Process each raw record into Model table
     let totalIngested = 0;
-    let totalSkipped = 0;
+    let totalFiltered = 0;
 
     for (const { id, provider, fileName } of rawRecords) {
       try {
@@ -119,11 +126,17 @@ export class UnifiedIngestionService {
           continue;
         }
 
-        const rawData = rawRecord.rawData as any;
+        // Type the raw data properly to avoid unsafe any usage
+        const rawData = rawRecord.rawData as RawProviderResponse | RawModelData[];
         const mapping = MAPPINGS[provider] || MAPPINGS['openrouter'];
         
         // Handle both array and wrapped structures
-        const modelList = Array.isArray(rawData) ? rawData : (rawData.data || rawData.models || []);
+        let modelList: RawModelData[];
+        if (Array.isArray(rawData)) {
+          modelList = rawData;
+        } else {
+          modelList = rawData.data || rawData.models || [];
+        }
 
         if (modelList.length === 0) {
           console.log(`  ⚠️  No models in ${fileName} (provider may have returned empty list)`);
@@ -141,15 +154,20 @@ export class UnifiedIngestionService {
         const providerConfig = await this.ensureProviderConfig(provider);
 
         let ingestedCount = 0;
-        let skippedCount = 0;
+        let filteredCount = 0;
 
         for (const raw of modelList) {
           try {
-            await this.ingestSingleModel(raw, providerConfig.id, provider, mapping);
-            ingestedCount++;
+            // ingestSingleModel now returns true if accepted, false if filtered
+            const accepted = await this.ingestSingleModel(raw, providerConfig.id, provider, mapping);
+            if (accepted) {
+              ingestedCount++;
+            } else {
+              filteredCount++;
+            }
           } catch (error) {
-            console.error(`    ❌ Failed to ingest model:`, error);
-            skippedCount++;
+            console.error(`    ❌ Failed to process model:`, error);
+            filteredCount++;
           }
         }
 
@@ -159,18 +177,18 @@ export class UnifiedIngestionService {
           data: { processed: true }
         });
 
-        console.log(`    ✅ Ingested ${ingestedCount} models, skipped ${skippedCount} from ${fileName}`);
+        console.log(`    ✅ Ingested ${ingestedCount} models, filtered ${filteredCount} from ${fileName}`);
         totalIngested += ingestedCount;
-        totalSkipped += skippedCount;
+        totalFiltered += filteredCount;
       } catch (error) {
         console.error(`[UnifiedIngestion] Failed to process raw record ${id}:`, error);
       }
     }
     
     console.log(`\n✅ Ingestion Complete!`);
-    console.log(`   Total Ingested: ${totalIngested}`);
-    console.log(`   Total Skipped: ${totalSkipped}`);
-    console.log(`   Agents ready to spawn.\n`);
+    console.log(`   - Saved to App: ${totalIngested} models`);
+    console.log(`   - Filtered Out: ${totalFiltered} models (Paid OpenRouter or Invalid)`);
+    console.log(`\n`);
   }
 
   /**
@@ -221,22 +239,42 @@ export class UnifiedIngestionService {
   /**
    * Ingests a single model from raw provider data
    * Uses Ghost Records pattern: updates lastSeenAt, preserves source
+   * 
+   * @returns true if model was accepted and ingested, false if filtered out
    */
   private static async ingestSingleModel(
     raw: RawModelData,
     providerId: string,
     providerName: string,
     mapping: typeof MAPPINGS[string]
-  ): Promise<void> {
+  ): Promise<boolean> {
     // 2. Extract Data using Mappings
     const modelId = this.resolvePath(raw, mapping.idPath) as string;
     const name = (this.resolvePath(raw, mapping.namePath) as string) || modelId;
-    const rawContext = this.resolvePath(raw, mapping.contextPath);
     
     if (!modelId) {
       throw new Error('Model ID not found in raw data');
     }
 
+    // ==============================================================================
+    // PHASE 2 GATEKEEPER: Strict Filtering
+    // ==============================================================================
+    // Determine if this model is truly free
+    const isFree = this.isModelFree(providerName, raw);
+
+    // STRICT RULE: If OpenRouter AND Not Free, REJECT IT ENTIRELY
+    // This prevents paid models from ever entering the Model table
+    if (providerName === 'openrouter' && !isFree) {
+      // Log the rejection for transparency
+      console.log(`    🚫 Filtered out paid OpenRouter model: ${name} (${modelId})`);
+      return false; // Model rejected - never enters the database
+    }
+
+    // ==============================================================================
+    // NORMALIZATION: Only reached if model passed the gatekeeper
+    // ==============================================================================
+    const rawContext = this.resolvePath(raw, mapping.contextPath);
+    
     // 3. Normalize "Specs" (The Unified Layer)
     let contextWindow = 4096; // Safe default
     if (rawContext !== null && rawContext !== undefined) {
@@ -270,6 +308,8 @@ export class UnifiedIngestionService {
 
     const isMultimodal = this.detectMultimodal(raw);
     
+    // CRITICAL: Preserve the raw pricing object in specs
+    // This solves "the data is not there" - we keep the original pricing structure
     const specs: Prisma.JsonObject = {
       contextWindow: contextWindow,
       maxOutput: maxOutput,
@@ -277,15 +317,11 @@ export class UnifiedIngestionService {
       pricing: mapping.pricingPath ? (this.resolvePath(raw, mapping.pricingPath) as Prisma.JsonValue) : {}
     };
 
-    // Determine capabilities
-    const capabilities = this.extractCapabilities(raw, isMultimodal);
+    // Determine capabilities (as string array for capabilityTags)
+    const capabilityTags = this.extractCapabilities(raw, isMultimodal);
 
-    // Extract pricing with strict free model detection
-    const isFree = this.isModelFree(providerName, raw);
+    // Extract cost (will be 0 for free models)
     const costPer1k = isFree ? 0 : this.extractCostPer1k(raw, providerName);
-
-    // Extract pricing config for multi-modal support
-    const pricingConfig = this.extractPricingConfig(raw, providerName);
 
     // 4. GHOST RECORDS PATTERN: Upsert with timestamp tracking
     // - Update lastSeenAt on every ingestion (proves the model still exists)
@@ -304,10 +340,9 @@ export class UnifiedIngestionService {
         name,
         specs,
         providerData: raw as Prisma.JsonObject, // <--- CRITICAL: Never lose the original data
-        capabilities,
+        capabilityTags, // Use capabilityTags (string[]) instead of capabilities (relation)
         costPer1k,
-        isFree,
-        pricingConfig: pricingConfig as Prisma.JsonObject | undefined,
+        isFree: true, // We only accepted it because it passed the gatekeeper
         // GHOST RECORDS: Update tracking fields
         lastSeenAt: now,        // Confirm this model is still alive
         isActive: true,         // Re-activate if it was marked inactive
@@ -319,10 +354,9 @@ export class UnifiedIngestionService {
         name: name,
         specs,
         providerData: raw as Prisma.JsonObject,
-        capabilities,
+        capabilityTags, // Use capabilityTags (string[]) instead of capabilities (relation)
         costPer1k,
-        isFree,
-        pricingConfig: pricingConfig as Prisma.JsonObject | undefined,
+        isFree: true, // Only free models make it this far
         // GHOST RECORDS: Initialize tracking fields
         source: 'INDEX',        // This came from the provider's official list
         firstSeenAt: now,
@@ -330,6 +364,8 @@ export class UnifiedIngestionService {
         isActive: true,
       }
     });
+
+    return true; // Model accepted and ingested
   }
 
   /**
@@ -394,61 +430,68 @@ export class UnifiedIngestionService {
   /**
    * Helper to detect if a model is TRULY free
    * This is strict to avoid false positives that could lead to unexpected charges
+   * 
+   * WHITELIST APPROACH:
+   * - Ollama: Always free (local)
+   * - Groq, Mistral, Google: Free tier with rate limits (fail-open)
+   * - OpenRouter: STRICT - must have pricing.prompt === 0 AND pricing.completion === 0
    */
   private static isModelFree(providerName: string, raw: RawModelData): boolean {
-    // Local models are always free
+    // 1. Whitelist: Local models are always free
     if (providerName === 'ollama' || providerName === 'local') {
       return true;
     }
     
-    // OpenRouter: Check if both prompt and completion pricing are exactly 0
+    // 2. Whitelist: Providers with robust Free Tiers / Rate Limits
+    // We ingest ALL of these. We assume the user stays within rate limits.
+    // These providers have generous free tiers and we fail-open (trust them)
+    if (['groq', 'mistral', 'google'].includes(providerName)) {
+      return true; 
+    }
+
+    // 3. STRICT CHECK: OpenRouter
+    // OpenRouter does NOT have a simple "is_free" flag.
+    // We MUST check the pricing object structure.
+    // The pricing object looks like: { prompt: "0", completion: "0" } for free models
+    // or { prompt: "0.00001", completion: "0.00002" } for paid models
     if (providerName === 'openrouter') {
-      if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
+      if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing !== null) {
         const pricing = raw.pricing as Record<string, unknown>;
+        
+        // Extract prompt and completion costs
         const promptVal = pricing.prompt;
         const completionVal = pricing.completion;
-        const prompt = parseFloat(typeof promptVal === 'string' || typeof promptVal === 'number' ? String(promptVal) : '999');
-        const completion = parseFloat(typeof completionVal === 'string' || typeof completionVal === 'number' ? String(completionVal) : '999');
-        return prompt === 0 && completion === 0;
-      }
-      return false;
-    }
-    
-    // Google: Flash models are typically free-tier eligible
-    // This is a heuristic until we get real pricing data
-    if (providerName === 'google') {
-      const nameVal = raw.name;
-      const displayNameVal = raw.displayName;
-      const id = (typeof nameVal === 'string' ? nameVal : '').toLowerCase();
-      const displayName = (typeof displayNameVal === 'string' ? displayNameVal : '').toLowerCase();
-      
-      // Flash models are generally free, but experimental 8b might have limits
-      const hasFreePattern = (id.includes('flash') || displayName.includes('flash')) && !id.includes('8b');
-      
-      // Also check explicit isFree flag if present
-      if ('isFree' in raw && typeof raw.isFree === 'boolean') {
-        return raw.isFree;
-      }
-      
-      return hasFreePattern;
-    }
-
-    // Groq: Currently offers free tier for many models
-    if (providerName === 'groq') {
-      // Groq doesn't always include pricing in the API response
-      // Check if pricing exists and is 0, otherwise assume not free (conservative)
-      if ('pricing' in raw && typeof raw.pricing === 'object' && raw.pricing) {
-        const pricing = raw.pricing as Record<string, unknown>;
-        if ('prompt' in pricing) {
-          const promptVal = pricing.prompt;
-          return parseFloat(typeof promptVal === 'string' || typeof promptVal === 'number' ? String(promptVal) : '999') === 0;
+        
+        // Convert to numbers, defaulting to 999 (expensive) if invalid
+        const prompt = parseFloat(
+          typeof promptVal === 'string' || typeof promptVal === 'number' 
+            ? String(promptVal) 
+            : '999'
+        );
+        const completion = parseFloat(
+          typeof completionVal === 'string' || typeof completionVal === 'number' 
+            ? String(completionVal) 
+            : '999'
+        );
+        
+        // It is only free if BOTH are exactly zero
+        const isFree = prompt === 0 && completion === 0;
+        
+        // Debug logging for OpenRouter pricing detection
+        if (!isFree) {
+          const modelId = this.resolvePath(raw, 'id') as string;
+          console.log(`    💰 OpenRouter pricing check for ${modelId}: prompt=${prompt}, completion=${completion} -> ${isFree ? 'FREE' : 'PAID'}`);
         }
+        
+        return isFree;
       }
-      // Conservative: if no pricing info, assume not free
+      
+      // If no pricing info, assume NOT free (conservative/safe)
+      console.log(`    ⚠️  OpenRouter model missing pricing info - treating as PAID (safe default)`);
       return false;
     }
 
-    // Default: assume NOT free for safety
+    // Default: assume NOT free for safety (unknown providers)
     return false;
   }
 

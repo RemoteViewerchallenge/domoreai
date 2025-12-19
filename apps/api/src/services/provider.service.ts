@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
-import { providerConfigs, modelRegistry } from '../db/schema.js';
+import { providerConfigs, modelRegistry, modelCapabilities } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { encrypt, decrypt } from '../utils/encryption.js';
-import { ProviderFactory } from '../utils/ProviderFactory.js';
+import { ProviderFactory, LLMModel } from '../utils/ProviderFactory.js';
 import { ProviderManager } from './ProviderManager.js';
 
 export class ProviderService {
@@ -11,19 +11,41 @@ export class ProviderService {
     return db.select().from(providerConfigs);
   }
 
-  async addProvider(input: { name: string, providerType: string, baseURL: string, apiKey?: string }) {
-      const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : '';
+  // [NEW] Manage Providers via UI
+  async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
+    const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined;
+    
+    if (input.id) {
+       return db.update(providerConfigs)
+         .set({
+           label: input.label,
+           type: input.type,
+           baseURL: input.baseURL,
+           ...(encryptedKey ? { apiKey: encryptedKey } : {}),
+           updatedAt: new Date()
+         })
+         .where(eq(providerConfigs.id, input.id))
+         .returning();
+    } else {
+       return db.insert(providerConfigs).values({
+         id: uuidv4(),
+         label: input.label,
+         type: input.type,
+         baseURL: input.baseURL,
+         apiKey: encryptedKey || '',
+         isEnabled: true,
+         updatedAt: new Date()
+       }).returning();
+    }
+  }
 
-      const [newProvider] = await db.insert(providerConfigs).values({
-        id: uuidv4(),
+  async addProvider(input: { name: string, providerType: string, baseURL: string, apiKey?: string }) {
+      return this.upsertProviderConfig({
         label: input.name,
         type: input.providerType,
         baseURL: input.baseURL,
-        apiKey: encryptedApiKey,
-        isEnabled: true,
-      }).returning();
-
-      return newProvider;
+        apiKey: input.apiKey,
+      });
   }
 
   async deleteProvider(id: string) {
@@ -44,17 +66,13 @@ export class ProviderService {
     }));
   }
 
+  // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
   async fetchAndNormalizeModels(providerId: string) {
-      // 1. Get Provider Config
       const providerConfig = await db.query.providerConfigs.findFirst({
         where: eq(providerConfigs.id, providerId),
       });
+      if (!providerConfig) throw new Error('Provider not found');
 
-      if (!providerConfig) {
-        throw new Error('Provider not found');
-      }
-
-      // 2. Decrypt the API key
       let apiKey: string;
       try {
         apiKey = decrypt(providerConfig.apiKey);
@@ -63,51 +81,81 @@ export class ProviderService {
         throw new Error('Invalid API key configuration');
       }
 
-      // 3. Get the models using Volcano SDK
       const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
         id: providerConfig.id,
         apiKey,
         baseURL: providerConfig.baseURL || undefined,
       });
 
-      console.log(`[ProviderService] Fetching models for ${providerConfig.label} (${providerConfig.type})...`);
+      console.log(`[Ingestion] Fetching models for ${providerConfig.label} (${providerConfig.type})...`);
       const rawModelList = await providerInstance.getModels();
-      console.log(`[ProviderService] Got ${rawModelList.length} models.`);
+      console.log(`[Ingestion] Found ${rawModelList.length} models.`);
 
-      // 4. Batch "upsert" models into the database.
-      const upsertPromises = rawModelList.map(async (model) => {
+      // HEURISTIC: Quick detection for Groq/Free models based on ID
+      const isLikelyFree = (id: string) => {
+         const lower = id.toLowerCase();
+         if (providerConfig.type === 'groq') return true; 
+         if (lower.includes('free') || lower.includes('beta')) return true;
+         return false;
+      };
+
+      const upsertPromises = rawModelList.map(async (model: LLMModel) => {
         const modelId = model.id;
         if (!modelId) return;
 
-        const specs = {
-          contextWindow: model.specs?.contextWindow,
-          hasVision: model.specs?.hasVision,
-          hasReasoning: model.specs?.hasReasoning || false,
-          hasCoding: model.specs?.hasCoding || false,
-        };
-
-        // Consolidated upsert into modelRegistry
-        await db.insert(modelRegistry)
+        // 1. Create/Update the Core Identity
+        const results = await db.insert(modelRegistry)
           .values({
             id: uuidv4(),
             modelId: modelId,
             providerId: providerConfig.id,
             modelName: (model.name as string) || modelId,
-            isFree: model.isFree || false,
-            costPer1k: model.costPer1k || 0,
+            isFree: isLikelyFree(modelId),
             providerData: model as any,
-            specs: specs as any,
-            aiData: {},
+            isActive: true,
+            updatedAt: new Date(),
           })
           .onConflictDoUpdate({
             target: [modelRegistry.modelId, modelRegistry.providerId],
             set: {
-              modelName: (model.name as string) || modelId,
-              isFree: model.isFree || false,
-              costPer1k: model.costPer1k || 0,
+              isActive: true,
+              lastSeenAt: new Date(),
               providerData: model as any,
-              specs: specs as any,
-            },
+              updatedAt: new Date(),
+            }
+          })
+          .returning({ id: modelRegistry.id });
+
+        const dbModel = results[0];
+        if (!dbModel) return;
+
+        // 2. Populate/Update the Related Capabilities Table
+        // Use safe defaults (4096)
+        const contextWindow = (model.specs?.contextWindow as number) || (model.context_window as number) || 4096;
+        const maxOutput = (model.specs?.maxOutput as number) || (model.max_tokens as number) || 4096;
+        
+        const hasVision = modelId.toLowerCase().includes('vision') || 
+                         modelId.toLowerCase().includes('vl') || 
+                         !!model.specs?.hasVision;
+        
+        await db.insert(modelCapabilities)
+          .values({
+            id: uuidv4(),
+            modelId: dbModel.id,
+            contextWindow,
+            maxOutput,
+            hasVision,
+            hasAudioInput: modelId.toLowerCase().includes('whisper') || modelId.toLowerCase().includes('audio'),
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [modelCapabilities.modelId],
+            set: {
+              contextWindow: contextWindow,
+              maxOutput: maxOutput,
+              hasVision: hasVision,
+              updatedAt: new Date(),
+            }
           });
       });
 
