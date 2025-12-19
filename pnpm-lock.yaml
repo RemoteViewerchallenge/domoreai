@@ -504,19 +504,22 @@ importers:
 
   packages/nebula:
     dependencies:
-      immer:
-        specifier: ^11.0.1
-        version: 11.0.1
-      nanoid:
-        specifier: ^5.1.6
-        version: 5.1.6
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      tailwind-merge:
+        specifier: ^3.4.0
+        version: 3.4.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
+      '@types/react':
+        specifier: ^18.3.26
+        version: 18.3.26
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
