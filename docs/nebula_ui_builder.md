@@ -38,6 +38,7 @@ Verify: Check packages/nebula/src/react/NebulaRenderer.tsx.
 
 Critical Check: Ensure it handles the children mapping correctly.
 
+<!-- cspell:ignore Ingester -->
 Step 4: The Ingester (AST Transformer)
 Action: Paste [TASK 5] from the previous response.
 

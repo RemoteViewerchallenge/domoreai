@@ -4,6 +4,7 @@ import { modelRegistry, providerConfigs, modelCapabilities } from '../db/schema.
 import { eq, isNull } from 'drizzle-orm';
 import { createVolcanoAgent } from './AgentFactory.js';
 import { webScraperTool } from '../tools/webScraper.js';
+// cspell:ignore uuidv
 import { v4 as uuidv4 } from 'uuid';
 
 interface Agent {
@@ -207,13 +208,16 @@ export class ModelDoctor {
       
       const inferred = this.inferCapabilitiesFromName(m.modelId);
       
+      const newId: string = uuidv4() as string;
+      const capabilityValues = {
+        id: newId,
+        modelId: m.id,
+        ...inferred,
+        updatedAt: new Date(),
+      };
+      
       await db.insert(modelCapabilities)
-        .values({
-          id: uuidv4(),
-          modelId: m.id,
-          ...inferred,
-          updatedAt: new Date(),
-        })
+        .values(capabilityValues)
         .onConflictDoUpdate({
           target: [modelCapabilities.modelId],
           set: {
@@ -306,12 +310,15 @@ export class ModelDoctor {
       updatedAt: new Date()
     };
 
+    const newId: string = uuidv4() as string;
+    const capabilityValues = {
+      id: newId,
+      modelId: model.id,
+      ...caps
+    };
+    
     await db.insert(modelCapabilities)
-      .values({
-        id: uuidv4(),
-        modelId: model.id,
-        ...caps
-      })
+      .values(capabilityValues)
       .onConflictDoUpdate({
         target: modelCapabilities.modelId,
         set: caps
