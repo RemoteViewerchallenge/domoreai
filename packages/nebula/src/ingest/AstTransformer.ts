@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { NebulaNode, NebulaId, StyleTokens, NebulaTree } from '../core/types.js';
+import { NebulaNode, NebulaId, StyleTokens, NebulaTree, DataBinding } from '../core/types.js';
 import { nanoid } from 'nanoid';
 
 export class AstTransformer {
@@ -80,7 +80,29 @@ export class AstTransformer {
       return this.mapJsxElement(node);
     }
 
-    // Handle Text
+    // 1. HANDLE TEXT EXPRESSIONS: <span>{user.name}</span>
+    if (ts.isJsxExpression(node)) {
+       const expression = node.expression;
+       if (expression) {
+         const bindingPath = this.extractBindingPath(expression);
+         if (bindingPath) {
+            // Return a Text node with a binding attached
+            const id = nanoid();
+            const textNode: NebulaNode = {
+                id,
+                type: 'Text',
+                props: { content: `{{${bindingPath}}}` }, // Visual placeholder
+                style: {},
+                children: [],
+                bindings: [{ propName: 'content', sourcePath: bindingPath }]
+            };
+            this.nodes[id] = textNode;
+            return textNode;
+         }
+       }
+    }
+
+    // Handle Static Text
     if (ts.isJsxText(node)) {
         const text = node.getText().trim();
         if(!text) return null;
@@ -128,6 +150,7 @@ export class AstTransformer {
     if (childrenNodes.length === 1) return childrenNodes[0];
 
     if (childrenNodes.length > 0) {
+        // SourceFile/Fragment with multiple children -> Wrap in Box
         const id = nanoid();
         const containerNode: NebulaNode = {
             id,
@@ -151,7 +174,7 @@ export class AstTransformer {
 
     const props: Record<string, any> = {};
     const style: StyleTokens = {};
-    const layout: any = {};
+    const bindings: DataBinding[] = []; // Store discovered bindings here
 
     // Extract Attributes
     const attributes = ts.isJsxSelfClosingElement(node)
@@ -162,10 +185,21 @@ export class AstTransformer {
         if (ts.isJsxAttribute(attr)) {
             const name = attr.name.getText();
             let value: any = true;
+
+            // 3. HANDLE ATTRIBUTE EXPRESSIONS: <img src={product.image} />
+            if (attr.initializer && ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+                const bindingPath = this.extractBindingPath(attr.initializer.expression);
+                if (bindingPath) {
+                    bindings.push({ propName: name, sourcePath: bindingPath });
+                    return; // Skip adding to static props
+                }
+            }
+
             if (attr.initializer) {
                  if (ts.isStringLiteral(attr.initializer)) {
                     value = attr.initializer.text;
                 } else if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+                     // Fallback for non-binding expressions
                      value = attr.initializer.expression.getText();
                 }
             }
@@ -191,6 +225,7 @@ export class AstTransformer {
         id,
         type: tagName, // Maps to "Card", "Button", etc.
         props,
+        bindings, // <--- Attach harvested bindings
         style,
         layout,
         children: childrenNodes.map(c => c.id),
@@ -201,7 +236,8 @@ export class AstTransformer {
     return nebulaNode;
   }
 
-  private parseTailwindToTokens(className: string, style: StyleTokens, layout: any) {
+  private parseTailwindToTokens(className: string, style: StyleTokens) {
+      // Heuristic mapping: "p-4" -> style.padding = "p-4"
       const classes = className.split(/\s+/);
       classes.forEach(c => {
           // 1. STYLE TOKENS
@@ -215,26 +251,23 @@ export class AstTransformer {
           if (c.startsWith('w-')) style.width = c;
           if (c.startsWith('h-')) style.height = c;
           if (c.startsWith('border')) style.border = c;
-
-          // 2. LAYOUT ENGINE
-          if (c === 'flex') layout.mode = 'flex';
-          if (c === 'grid') layout.mode = 'grid';
-          if (c === 'flex-col') layout.direction = 'column';
-          if (c === 'flex-row') layout.direction = 'row';
-          
-          if (c === 'items-center') layout.align = 'center';
-          if (c === 'items-start') layout.align = 'start';
-          if (c === 'items-end') layout.align = 'end';
-          if (c === 'items-stretch') layout.align = 'stretch';
-
-          if (c === 'justify-center') layout.justify = 'center';
-          if (c === 'justify-between') layout.justify = 'between';
-          if (c === 'justify-around') layout.justify = 'around';
-          if (c === 'justify-start') layout.justify = 'start';
-          if (c === 'justify-end') layout.justify = 'end';
-
-          if (c.startsWith('gap-')) layout.gap = c;
-          if (c.startsWith('grid-cols-')) layout.columns = parseInt(c.replace('grid-cols-', ''));
       });
+  }
+
+  /**
+   * Recursive helper to turn AST "user.profile.name" into string "user.profile.name"
+   */
+  private extractBindingPath(node: ts.Expression): string | null {
+      // Handle simple identifier: "{name}"
+      if (ts.isIdentifier(node)) {
+          return node.text;
+      }
+      // Handle property access: "{user.name}" or "{props.data.title}"
+      if (ts.isPropertyAccessExpression(node)) {
+          const left = this.extractBindingPath(node.expression);
+          const right = node.name.text;
+          return left ? `${left}.${right}` : right;
+      }
+      return null; // Too complex (function calls, math, etc.)
   }
 }

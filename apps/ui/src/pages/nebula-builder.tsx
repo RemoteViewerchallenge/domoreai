@@ -1,271 +1,145 @@
-// @Role: Frontend Architect
-// @Task: Build the Nebula Builder Page
-// @Context: This page visualizes the JSON Tree side-by-side with the rendered UI.
-// It acts as the "Host" for the AI Agent's operations.
-
-import { useMemo, useState } from 'react';
-import { NebulaOps, NebulaRenderer, AstTransformer } from '@repo/nebula';
-import type { NebulaTree } from '@repo/nebula';
-import MonacoEditor from '../components/MonacoEditor.js';
-import { Button } from '../components/ui/button.js';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
-import { Play, RotateCcw, Code, Eye, FolderTree, Brain as BrainIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.js';
-import { Textarea } from '../components/ui/textarea.js';
-import { FileExplorer } from '../components/FileExplorer.js';
-import { useCardVFS } from '../hooks/useCardVFS.js';
-import * as LucideIcons from 'lucide-react';
-
-// 1. BUILD THE REGISTRY
-// This bridges the Nebula Engine to your real React components and Icons.
-const NEBULA_COMPONENTS: Record<string, React.FC<any>> = {
-  // Bridge Lucide Icons (Note: We spread this first, then override core components)
-  ...LucideIcons as any,
-  
-  // CORE NEBULA LAYOUT COMPONENTS (Must override Lucide icons of the same name)
-  Box: ({ className, children, ...props }: any) => <div className={className} {...props}>{children}</div>,
-  Text: ({ content, className, type }: any) => {
-      const Tag = (type === 'h1' ? 'h1' : type === 'h2' ? 'h2' : 'p') as keyof JSX.IntrinsicElements;
-      return <Tag className={className}>{content}</Tag>
-  },
-  
-  // Bridge your UI components
-  Button: Button,
-  
-  // Add mapping for common names if needed
-  Card: ({ children, className }: any) => <div className={`bg-card text-card-foreground border rounded-xl shadow-sm ${className}`}>{children}</div>,
-  CardHeader: ({ children, className }: any) => <div className={`p-6 pb-3 ${className}`}>{children}</div>,
-  CardTitle: ({ children, className }: any) => <h3 className={`text-lg font-bold leading-none ${className}`}>{children}</h3>,
-  CardContent: ({ children, className }: any) => <div className={`p-6 pt-0 ${className}`}>{children}</div>,
-};
-
-// Initial Empty State
-const INITIAL_TREE: NebulaTree = {
-  rootId: 'root',
-  version: 1,
-  nodes: {
-    'root': {
-      id: 'root',
-      type: 'Box',
-      props: { className: 'h-full w-full bg-background p-8' },
-      style: {},
-      layout: { mode: 'flex', direction: 'column', gap: 'gap-4' },
-      children: [],
-      meta: { label: 'Canvas Root', locked: true }
-    }
-  }
-};
+import React, { useState } from 'react';
+import { NebulaOps } from '@repo/nebula/src/engine/NebulaOps.js';
+import { NebulaRenderer } from '@repo/nebula/src/react/NebulaRenderer.js';
+import { DEFAULT_NEBULA_TREE } from '@repo/nebula/src/engine/defaults.js';
+import { NebulaTree, NebulaNode } from '@repo/nebula/src/core/types.js';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sparkles, Layout, Code, Play } from 'lucide-react';
+import { trpc } from '@/utils/trpc';
+import { toast } from 'sonner';
+import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel';
 
 export default function NebulaBuilderPage() {
-  const [tree, setTree] = useState<NebulaTree>(INITIAL_TREE);
-  const [activeTab, setActiveTab] = useState('preview');
-  const [leftTab, setLeftTab] = useState<'brain' | 'vfs'>('vfs');
-  const [importCode, setImportCode] = useState('');
-  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [tree, setTree] = useState<NebulaTree>(DEFAULT_NEBULA_TREE);
+  const [prompt, setPrompt] = useState('');
 
-  // VFS Hook
-  const vfs = useCardVFS('nebula-builder');
+  // Initialize Engine
+  const ops = new NebulaOps(tree);
 
-  // Logic to ingest a file from VFS
-  const ingestFile = async (path: string) => {
-    try {
-      if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) {
-        alert("Nebula Ingest only supports .tsx or .jsx files for now.");
-        return;
-      }
-
-      const content = await vfs.readFile(path);
-      const transformer = new AstTransformer();
-      const fragment = transformer.parse(content);
-      
-      if (fragment) {
-        ops.ingestTree('root', fragment);
-        alert(`Successfully ingested ${path}`);
-      }
-    } catch (err: unknown) {
-      console.error("Failed to ingest file:", err);
-      alert(`Error ingesting file: ${err instanceof Error ? err.message : String(err)}`);
+  // AI Agent Mutation
+  const agentMutation = trpc.agent.chat.useMutation({
+    onSuccess: (data) => {
+        // In a real implementation, the AI would return JSON operations
+        // For now, we simulate a response or handle the text
+        toast.success("AI Agent finished thinking");
+        console.log("AI Response:", data);
+    },
+    onError: (err) => {
+        toast.error(`AI Error: ${err.message}`);
     }
-  };
+  });
 
-  // Initialize the Engine
-  // We use useMemo to ensure the Ops engine instance is stable
-  const ops = useMemo(() => new NebulaOps(INITIAL_TREE, (newTree) => {
-    setTree(newTree); // Reactivity binding: Engine Update -> React State
-  }), []);
+  const handleSendPrompt = () => {
+    if(!prompt.trim()) return;
 
-  // -- AI SIMULATION HELPERS --
-  // These simulate what the AI Agent does via "Code Mode"
-  const runAiSimulation = () => {
-    // 1. Create a Navbar
-    const navId = ops.addNode('root', {
-      type: 'Box',
-      layout: { mode: 'flex', justify: 'between', align: 'center', gap: 'gap-4' },
-      style: { padding: 'p-4', border: 'border-b', background: 'bg-card' }
+    // 1. Dispatch to AI (Simulated for this UI skeleton)
+    agentMutation.mutate({
+        message: `Current Tree State: ${JSON.stringify(tree)}. User Request: ${prompt}`,
+        agentId: 'nebula-architect' // Hypothetical agent
     });
 
-    // 2. Add Logo Text
-    ops.addNode(navId, {
-      type: 'Text',
-      props: { content: 'Nebula AI', type: 'h2', className: 'font-bold text-xl' }
-    });
-
-    // 3. Add a Hero Section Container
-    const heroId = ops.addNode('root', {
-      type: 'Box',
-      layout: { mode: 'flex', direction: 'column', align: 'center', justify: 'center', gap: 'gap-6' },
-      style: { padding: 'p-20', background: 'bg-secondary/20', radius: 'rounded-lg' }
-    });
-
-    // 4. Add Headline
-    ops.addNode(heroId, {
-      type: 'Text',
-      props: { content: 'Built by Recursive JSON', type: 'h1', className: 'text-4xl font-extrabold tracking-tight' }
-    });
-
-    // 5. Add Buttons Row
-    const buttonRow = ops.addNode(heroId, {
-        type: 'Box',
-        layout: { mode: 'flex', gap: 'gap-4' }
-    });
-
-    ops.addNode(buttonRow, { type: 'Button', props: { children: 'Get Started', variant: 'default' }});
-    ops.addNode(buttonRow, { type: 'Button', props: { children: 'View Specs', variant: 'outline' }});
-  };
-
-  // -- IMPORT HANDLER --
-  const handleImport = () => {
-    try {
-      const transformer = new AstTransformer();
-      const fragment = transformer.parse(importCode);
-      
-      if (fragment) {
-        // Add the parsed fragment to the root
-        ops.ingestTree('root', fragment); 
-        
-        setImportCode('');
-        setIsImportOpen(false);
-      }
-    } catch (e: unknown) {
-      console.error("Failed to parse JSX", e);
-      alert("Invalid JSX: " + (e instanceof Error ? e.message : String(e)));
-    }
+    // 2. Optimistic / Manual Update (Example)
+    // ops.addNode(tree.rootId, { type: 'Card', props: { children: 'AI Generated' } });
+    // setTree(ops.getTree()); // Update state
+    setPrompt('');
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background text-foreground">
-      {/* HEADER */}
-      <header className="h-14 border-b flex items-center justify-between px-4 bg-muted/40">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-primary rounded-full animate-pulse" />
-          <span className="font-semibold">Nebula Engine</span>
-          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">v0.1.0</span>
+    <div className="h-screen w-full bg-background flex flex-col">
+      {/* Header */}
+      <header className="h-14 border-b flex items-center px-4 justify-between bg-card">
+        <div className="flex items-center gap-2 font-bold text-lg">
+          <Sparkles className="w-5 h-5 text-purple-500" />
+          Nebula <span className="text-muted-foreground font-normal">Builder</span>
         </div>
-
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setTree(INITIAL_TREE)}>
-            <RotateCcw className="w-4 h-4 mr-2" /> Reset
-          </Button>
-          <Button size="sm" onClick={runAiSimulation}>
-            <Play className="w-4 h-4 mr-2" /> Run AI Simulation
-          </Button>
-
-          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="secondary">
-                <Code className="w-4 h-4 mr-2" /> Import Code
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Ingest React/JSX Code</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4 px-6">
-                <Textarea 
-                  placeholder="Paste standard JSX here (e.g. <div className='flex'><Button>Hi</Button></div>)" 
-                  className="h-[300px] font-mono text-xs"
-                  value={importCode}
-                  onChange={(e) => setImportCode(e.target.value)}
-                />
-                <Button onClick={handleImport}>Explode & Render</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="flex items-center gap-2">
+           <Button variant="outline" size="sm"><Code className="w-4 h-4 mr-2"/> Export</Button>
+           <Button size="sm"><Play className="w-4 h-4 mr-2"/> Preview</Button>
         </div>
       </header>
 
-      {/* WORKSPACE */}
+      {/* Main Workspace */}
       <div className="flex-1 flex overflow-hidden">
-
-        {/* LEFT: The "Brain" (JSON Spec) OR "VFS" (File Explorer) */}
-        <div className="w-1/3 border-r flex flex-col bg-slate-950">
-          <div className="p-1 border-b border-white/10 bg-zinc-900 flex justify-center">
-             <Tabs value={leftTab} onValueChange={(val) => setLeftTab(val as any)}>
-                <TabsList className="bg-transparent h-8">
-                   <TabsTrigger value="vfs" className="text-[10px] py-1 h-6">
-                      <FolderTree className="w-3 h-3 mr-1" /> VFS LOADER
-                   </TabsTrigger>
-                   <TabsTrigger value="brain" className="text-[10px] py-1 h-6">
-                      <BrainIcon className="w-3 h-3 mr-1" /> JSON SPEC
-                   </TabsTrigger>
+        {/* Left: Sidebar (Tools & Structure) */}
+        <aside className="w-80 border-r bg-muted/20 flex flex-col">
+          <Tabs defaultValue="structure" className="flex-1 flex flex-col">
+            <div className="px-4 py-2 border-b">
+                <TabsList className="w-full">
+                    <TabsTrigger value="structure" className="flex-1">Structure</TabsTrigger>
+                    <TabsTrigger value="components" className="flex-1">Components</TabsTrigger>
+                    <TabsTrigger value="theme" className="flex-1">Theme</TabsTrigger>
                 </TabsList>
-             </Tabs>
-          </div>
-
-          <div className="flex-1 relative overflow-hidden flex flex-col">
-             {leftTab === 'brain' ? (
-                <>
-                  <div className="p-2 border-b border-white/10 text-xs font-mono text-muted-foreground flex justify-between bg-zinc-950">
-                    <span>CURRENT_STATE.json</span>
-                    <span className="text-green-500">Connected</span>
-                  </div>
-                  <div className="flex-1 relative">
-                     <MonacoEditor
-                       value={JSON.stringify(tree, null, 2)}
-                       language="json"
-                       onChange={() => {}} // Read-only for now
-                       className="h-full w-full"
-                     />
-                  </div>
-                </>
-             ) : (
-                <FileExplorer 
-                  files={vfs.files}
-                  onSelect={(path) => { void ingestFile(path); }}
-                  currentPath={vfs.currentPath}
-                  onNavigate={vfs.navigateTo}
-                  onLoadChildren={vfs.loadChildren}
-                  onRefresh={() => { void vfs.refresh(); }}
-                  onCreateNode={(type, name) => { void vfs.createNode(type, name); }}
-                  className="h-full"
-                />
-             )}
-          </div>
-        </div>
-
-        {/* RIGHT: The "Face" (Renderer) */}
-        <div className="flex-1 bg-neutral-100 dark:bg-neutral-900 flex flex-col relative">
-          <div className="absolute top-4 right-4 z-10 flex bg-background rounded-lg border p-1 shadow-sm">
-             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="h-8">
-                  <TabsTrigger value="preview" className="text-xs"><Eye className="w-3 h-3 mr-1"/> Preview</TabsTrigger>
-                  <TabsTrigger value="wireframe" className="text-xs"><Code className="w-3 h-3 mr-1"/> Wireframe</TabsTrigger>
-                </TabsList>
-             </Tabs>
-          </div>
-
-          <div className="flex-1 p-8 overflow-auto flex justify-center">
-            {/* The Stage */}
-            <div className="w-full max-w-5xl h-full bg-background border shadow-xl rounded-lg overflow-hidden transition-all duration-300">
-               {activeTab === 'preview' ? (
-                 <NebulaRenderer tree={tree} componentMap={NEBULA_COMPONENTS} />
-               ) : (
-                 <pre className="p-4 text-xs text-muted-foreground">Wireframe Mode Not Implemented</pre>
-               )}
             </div>
-          </div>
-        </div>
 
+            <TabsContent value="structure" className="flex-1 p-4">
+                <div className="text-sm text-muted-foreground">Tree View Placeholder</div>
+                {/* We would render a recursive tree list here */}
+            </TabsContent>
+            <TabsContent value="components" className="flex-1 p-4">
+                 <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" className="justify-start">Container</Button>
+                    <Button variant="outline" className="justify-start">Card</Button>
+                    <Button variant="outline" className="justify-start">Text</Button>
+                    <Button variant="outline" className="justify-start">Button</Button>
+                 </div>
+            </TabsContent>
+            <TabsContent value="theme" className="flex-1 p-0 overflow-auto">
+                 <ThemeEditorPanel />
+            </TabsContent>
+          </Tabs>
+        </aside>
+
+        {/* Center: Canvas (The Renderer) */}
+        <main className="flex-1 bg-neutral-100/50 p-8 flex items-center justify-center overflow-auto relative">
+           {/* The Stage */}
+           <div className="w-full max-w-4xl min-h-[600px] bg-white shadow-xl rounded-xl border overflow-hidden relative">
+              <NebulaRenderer tree={tree} />
+           </div>
+        </main>
+
+        {/* Right: AI & Properties */}
+        <aside className="w-96 border-l bg-card flex flex-col">
+           <div className="flex-1 overflow-auto p-4">
+               <h3 className="font-semibold mb-4">Properties</h3>
+               <div className="space-y-4">
+                  <div className="space-y-2">
+                      <label className="text-xs font-medium">Background</label>
+                      <Input placeholder="bg-white" />
+                  </div>
+                  <div className="space-y-2">
+                      <label className="text-xs font-medium">Padding</label>
+                      <Input placeholder="p-4" />
+                  </div>
+               </div>
+           </div>
+
+           {/* AI Chat Interface */}
+           <div className="h-1/3 border-t bg-muted/30 p-4 flex flex-col gap-2">
+               <div className="flex items-center gap-2 mb-2">
+                   <Sparkles className="w-4 h-4 text-purple-600" />
+                   <span className="text-sm font-semibold">Nebula AI</span>
+               </div>
+               <div className="flex-1 bg-background border rounded-md p-2 text-xs text-muted-foreground overflow-auto">
+                   Hello! I am ready to help you build. Describe what you want.
+               </div>
+               <div className="flex gap-2">
+                   <Input
+                     value={prompt}
+                     onChange={e => setPrompt(e.target.value)}
+                     placeholder="Add a hero section..."
+                     className="bg-background"
+                     onKeyDown={e => e.key === 'Enter' && handleSendPrompt()}
+                   />
+                   <Button size="icon" onClick={handleSendPrompt}>
+                       <Sparkles className="w-4 h-4" />
+                   </Button>
+               </div>
+           </div>
+        </aside>
       </div>
     </div>
   );
