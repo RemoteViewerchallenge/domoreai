@@ -7,7 +7,7 @@ import { trpc } from '../utils/trpc.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { NewUIThemeProvider } from '../components/appearance/NewUIThemeProvider.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
-import { AIContextButton } from '../components/AIContextButton.js';
+import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 import { cn } from '@/lib/utils.js';
 
 // --- TYPE DEFINITIONS ---
@@ -97,7 +97,7 @@ export default function AdaptiveWorkspace() {
                      </div>
 
                      <div className="flex items-center gap-2">
-                         <AIContextButton context="Workspace (Adaptive)" size="sm" />
+                         <SuperAiButton contextId="Workspace (Adaptive)" />
                          <div className="flex bg-zinc-900 rounded p-0.5 border border-zinc-800">
                             <button onClick={() => setColumns(1)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", columns === 1 && "bg-zinc-700 text-white")}>1</button>
                             <button onClick={() => setColumns(2)} className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px]", columns === 2 && "bg-zinc-700 text-white")}>2</button>

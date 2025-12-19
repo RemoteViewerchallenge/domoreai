@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Settings, User, Zap, ArrowRight, X } from 'lucide-react';
+import { Sparkles, Settings, User, Zap, ArrowRight, X, Eye, EyeOff, Database } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 import { cn } from '@/lib/utils.js';
 import { trpc } from '../../utils/trpc.js';
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
 // Lazy load the role selector
 const CompactRoleSelector = React.lazy(() => import('../CompactRoleSelector.js'));
@@ -11,32 +12,39 @@ const CompactRoleSelector = React.lazy(() => import('../CompactRoleSelector.js')
 type ButtonState = 'idle' | 'active' | 'menu' | 'role_select' | 'config';
 
 type SuperAiButtonProps = {
-  contextId?: string;
+  contextId?: string; // The local context ID (e.g. "users-table", "terminal-1")
   className?: string;
   expandUp?: boolean;
+  side?: 'left' | 'right'; // Expansion direction
   onGenerate?: (prompt: string) => void;
+  defaultPrompt?: string;
 };
 
 export const SuperAiButton: React.FC<SuperAiButtonProps> = ({ 
   contextId, 
   className, 
   expandUp = false,
+  side = 'left', // Default to left per user request to avoid off-screen overflow
   onGenerate,
+  defaultPrompt = ''
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(defaultPrompt);
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>();
   
-  const inputRef = useRef<HTMLInputElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   
+  // Workspace Store for Global Context
+  const { aiContext, setAiContext } = useWorkspaceStore();
+
   // Floating UI for menu positioning
   const { refs, floatingStyles } = useFloating({
-    placement: expandUp ? 'top' : 'bottom',
+    placement: expandUp ? 'top-start' : 'bottom-start',
     middleware: [
-      offset(8),
+      offset(12),
       flip(),
-      shift({ padding: 8 }),
+      shift({ padding: 10 }),
     ],
     whileElementsMounted: autoUpdate,
   });
@@ -63,14 +71,22 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   const handleGenerate = () => {
     if (!prompt.trim()) return;
     
+    // Construct the full payload
+    const payload = {
+        prompt,
+        contextId: contextId || aiContext.scope, // Prefer local context, fallback to global
+        roleId: selectedRoleId,
+        // Include flags if needed by the backend
+        flags: {
+            limitContext: aiContext.isLimiting,
+            injectState: aiContext.injectedState
+        }
+    };
+
     if (onGenerate) {
       onGenerate(prompt);
     } else {
-      dispatchMutation.mutate({
-        prompt,
-        contextId,
-        roleId: selectedRoleId,
-      });
+      dispatchMutation.mutate(payload);
     }
   };
 
@@ -93,8 +109,11 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     setState('menu');
   };
 
+  // Determine button aesthetic based on context
+  const isContextLimited = aiContext.isLimiting;
+
   return (
-    <div className={cn("relative inline-flex", className)}>
+    <div className={cn("relative inline-flex z-[1000]", className)}>
       {/* Main Button */}
       <button
         ref={(node) => {
@@ -104,19 +123,20 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         onClick={() => setState(state === 'idle' ? 'active' : 'idle')}
         onContextMenu={handleRightClick}
         className={cn(
-          "h-8 w-8 flex items-center justify-center rounded-full transition-all border relative",
-          "shadow-lg hover:shadow-xl",
-          state === 'menu' || state === 'role_select' || state === 'config'
+          "h-8 w-8 flex items-center justify-center rounded-full transition-all border relative z-[1001]",
+          "shadow-lg hover:shadow-xl hover:scale-110 active:scale-95",
+          state !== 'idle'
             ? "bg-[var(--color-background-secondary)] border-[var(--color-primary)] text-[var(--color-primary)]" 
-            : "bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white border-transparent",
-          "hover:scale-110 active:scale-95"
+            : isContextLimited 
+                ? "bg-zinc-700 text-zinc-300 border-zinc-600"
+                : "bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white border-transparent"
         )}
-        title="AI Command Center (Right-click for menu)"
+        title={contextId ? `AI Context: ${contextId}` : "AI Command Center (Right-click for menu)"}
       >
         <AnimatePresence mode="wait">
           {state === 'menu' || state === 'role_select' || state === 'config' ? (
             <motion.div
-              key="x"
+              key="close"
               initial={{ rotate: -90, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
               exit={{ rotate: 90, opacity: 0 }}
@@ -133,8 +153,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
               transition={{ duration: 0.15 }}
               className="relative"
             >
-              <Sparkles size={16} />
-              {state === 'idle' && (
+              <Sparkles size={16} className={cn(isContextLimited && "opacity-50")} />
+              {state === 'idle' && !isContextLimited && (
                 <motion.div
                   className="absolute inset-0"
                   animate={{
@@ -155,39 +175,44 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         </AnimatePresence>
       </button>
 
-      {/* Active Input Mode */}
+      {/* Active Input Mode - Expands OUTWARDS */}
       <AnimatePresence>
         {state === 'active' && (
           <motion.div
-            initial={{ width: 32, opacity: 0 }}
-            animate={{ width: 300, opacity: 1 }}
-            exit={{ width: 32, opacity: 0 }}
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 320, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="absolute left-0 top-0 flex items-center bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-primary)]/50 rounded-full overflow-hidden h-8 shadow-[0_0_20px_rgba(var(--color-primary),0.3)]"
+            style={side === 'left' ? { right: 16 } : { left: 16 }}
+            className={cn(
+               "absolute top-0 h-8 flex items-center bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-primary)]/50 overflow-hidden shadow-[0_0_20px_rgba(var(--color-primary),0.3)] z-[1000]",
+               side === 'left' ? "rounded-l-full pr-6 pl-2" : "rounded-r-full pl-6 pr-2"
+            )}
           >
-            <div className="pl-2 pr-1 text-[var(--color-primary)]">
-              <Sparkles size={14} />
-            </div>
-            <input
+            {/* If Left Side: Input first, then button */}
+             <input
               ref={inputRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => {
-                // Delay to allow button click
                 setTimeout(() => {
                   if (state === 'active' && !prompt.trim()) {
                     setState('idle');
                   }
                 }, 200);
               }}
-              className="flex-1 bg-transparent text-[var(--color-text)] text-xs px-2 focus:outline-none placeholder:text-[var(--color-text-secondary)]/50"
-              placeholder="Command the AI..."
+              className="flex-1 min-w-0 bg-transparent text-[var(--color-text)] text-xs px-2 focus:outline-none placeholder:text-[var(--color-text-secondary)]/50"
+              placeholder={`Ask AI about ${contextId || 'Global Context'}...`}
             />
+            
             <button 
               onClick={handleGenerate}
               disabled={!prompt.trim() || dispatchMutation.isLoading}
-              className="text-[var(--color-primary)] hover:text-white pr-2 transition-colors disabled:opacity-50"
+              className={cn(
+                  "text-[var(--color-primary)] hover:text-white px-3 h-full hover:bg-[var(--color-primary)]/20 transition-colors disabled:opacity-50",
+                  side === 'left' ? "border-r border-[var(--color-border)]/50 order-first" : "border-l border-[var(--color-border)]/50"
+              )}
             >
               {dispatchMutation.isLoading ? (
                 <motion.div
@@ -205,65 +230,69 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
       </AnimatePresence>
 
       {/* Bloom Menu */}
-      <AnimatePresence>
-        {state === 'menu' && (
-          <motion.div
+      {state === 'menu' && (
+        <div 
             ref={refs.setFloating}
             style={floatingStyles}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-border)] p-1 rounded-lg shadow-2xl z-[100] min-w-[160px]"
-          >
-            <div className="grid grid-cols-3 gap-1">
-              <MenuButton 
-                icon={<User size={14} />} 
-                label="Roles" 
-                onClick={() => setState('role_select')} 
-              />
-              <MenuButton 
-                icon={<Settings size={14} />} 
-                label="Config" 
-                onClick={() => setState('config')} 
-              />
-              <MenuButton 
-                icon={<Zap size={14} />} 
-                label="Events" 
-                onClick={() => console.log('Events clicked')} 
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            className="z-[9999]" // Force high z-index
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                className="bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-border)] p-1 rounded-lg shadow-2xl min-w-[160px]"
+            >
+                <div className="grid grid-cols-3 gap-1">
+                <MenuButton 
+                    icon={<User size={14} />} 
+                    label="Roles" 
+                    onClick={() => setState('role_select')} 
+                />
+                <MenuButton 
+                    icon={<Settings size={14} />} 
+                    label="Config" 
+                    onClick={() => setState('config')} 
+                />
+                <MenuButton 
+                    icon={<Zap size={14} />} 
+                    label="Events" 
+                    onClick={() => console.log('Events clicked')} 
+                />
+                </div>
+            </motion.div>
+        </div>
+      )}
 
       {/* Sub-Panels (Role Selector / Config) */}
-      <AnimatePresence>
-        {(state === 'role_select' || state === 'config') && (
-          <motion.div
+      {(state === 'role_select' || state === 'config') && (
+        <div 
             ref={refs.setFloating}
             style={floatingStyles}
-            initial={{ opacity: 0, scale: 0.95, y: expandUp ? 10 : -10 }}
+            className="z-[9999]"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: expandUp ? 10 : -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="w-64 bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg shadow-2xl overflow-hidden z-[100]"
+            className="w-64 bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-2 py-1 bg-[var(--color-background)]/30 border-b border-[var(--color-border)]">
+            <div className="flex justify-between items-center px-2 py-1.5 bg-[var(--color-background)]/30 border-b border-[var(--color-border)]">
               <span className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                {state === 'role_select' ? 'Select Role' : 'Configuration'}
+                {state === 'role_select' ? 'Select Role' : 'Context Configuration'}
               </span>
               <button 
                 onClick={() => setState('menu')}
-                className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors"
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors p-1"
               >
                 <X size={12} />
               </button>
             </div>
 
             {/* Content */}
-            <div className="max-h-56 overflow-y-auto custom-scrollbar">
+            <div className="max-h-64 overflow-y-auto custom-scrollbar">
               <React.Suspense fallback={
                 <div className="p-3 text-[10px] text-[var(--color-text-secondary)]">
                   Loading...
@@ -276,28 +305,58 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                   />
                 )}
                 {state === 'config' && (
-                  <div className="p-3 text-[10px] text-[var(--color-text-secondary)]">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span>Context ID:</span>
-                        <code className="text-[9px] bg-[var(--color-background)]/50 px-1 rounded">
-                          {contextId || 'none'}
-                        </code>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Selected Role:</span>
-                        <code className="text-[9px] bg-[var(--color-background)]/50 px-1 rounded">
-                          {selectedRoleId || 'auto'}
-                        </code>
-                      </div>
-                    </div>
+                  <div className="p-2 space-y-1">
+                     <div className="p-2 bg-[var(--color-background)]/50 rounded mb-2">
+                        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] mb-1">
+                            <span>Target Scope:</span>
+                            <span className="font-mono text-[var(--color-text)]">{contextId || 'Global'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
+                            <span>Selected Role:</span>
+                            <span className="font-mono text-[var(--color-text)]">{selectedRoleId || 'Auto'}</span>
+                        </div>
+                     </div>
+
+                     <h4 className="text-[9px] font-bold uppercase text-[var(--color-text-muted)] px-1 mb-1">Visibility</h4>
+                     <button 
+                        onClick={() => setAiContext({ isLimiting: !aiContext.isLimiting })}
+                        className={cn(
+                            "w-full flex items-center justify-between px-2 py-1.5 rounded text-[10px] transition-all border",
+                            aiContext.isLimiting 
+                                ? "bg-purple-900/40 border-purple-500/30 text-purple-200" 
+                                : "bg-transparent border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-text)]/5"
+                        )}
+                     >
+                        <div className="flex items-center gap-2">
+                            {aiContext.isLimiting ? <EyeOff size={12} /> : <Eye size={12} />}
+                            <span>Limit AI Visibility</span>
+                        </div>
+                        <div className={cn("w-2 h-2 rounded-full", aiContext.isLimiting ? "bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.5)]" : "bg-[var(--color-border)]")} />
+                     </button>
+
+                     <h4 className="text-[9px] font-bold uppercase text-[var(--color-text-muted)] px-1 mt-2 mb-1">Data Injection</h4>
+                     <button 
+                        onClick={() => setAiContext({ injectedState: !aiContext.injectedState })}
+                        className={cn(
+                            "w-full flex items-center justify-between px-2 py-1.5 rounded text-[10px] transition-all border",
+                            aiContext.injectedState 
+                                ? "bg-blue-900/40 border-blue-500/30 text-blue-200" 
+                                : "bg-transparent border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-text)]/5"
+                        )}
+                     >
+                        <div className="flex items-center gap-2">
+                            <Database size={12} />
+                            <span>Inject Local State</span>
+                        </div>
+                        <div className={cn("w-2 h-2 rounded-full", aiContext.injectedState ? "bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]" : "bg-[var(--color-border)]")} />
+                     </button>
                   </div>
                 )}
               </React.Suspense>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 };
@@ -314,7 +373,7 @@ const MenuButton = ({
 }) => (
   <button 
     onClick={onClick}
-    className="flex flex-col items-center justify-center w-12 h-12 hover:bg-white/5 rounded transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] border border-transparent hover:border-[var(--color-border)]/50 gap-0.5"
+    className="flex flex-col items-center justify-center w-full h-12 hover:bg-white/5 rounded transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] border border-transparent hover:border-[var(--color-border)]/50 gap-0.5"
     title={label}
   >
     {icon}

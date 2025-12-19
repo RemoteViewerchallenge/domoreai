@@ -4,6 +4,7 @@ import { cn } from '../lib/utils.js';
 
 // 1. The Component Registry (Map JSON 'type' to React Component)
 // Ideally injected via props, but creating a default map here.
+// 1. The Component Registry (Map JSON 'type' to React Component)
 const Registry: Record<string, React.FC<any>> = {
   Box: ({ className, children, ...props }) => <div className={className} {...props}>{children}</div>,
   Text: ({ content, className, type }) => {
@@ -11,10 +12,29 @@ const Registry: Record<string, React.FC<any>> = {
       return <Tag className={className}>{content}</Tag>
   },
   Button: ({ children, className, variant, ...props }) => {
-      // Basic button implementation to satisfy simulation.
-      // In a real app, this should be injected or use a proper component library.
-      return <button className={`px-4 py-2 rounded font-medium transition-colors ${variant === 'outline' ? 'border bg-transparent hover:bg-neutral-100' : 'bg-blue-600 text-white hover:bg-blue-700'} ${className}`} {...props}>{children}</button>
-  }
+      const base = "px-4 py-2 rounded font-medium transition-colors";
+      const styles = variant === 'outline' 
+        ? "border border-zinc-700 bg-transparent hover:bg-zinc-800 text-zinc-300" 
+        : "bg-blue-600 text-white hover:bg-blue-700";
+      return <button className={cn(base, styles, className)} {...props}>{children}</button>
+  },
+  // Native HTML Mappings
+  h1: ({ className, children, ...props }) => <h1 className={cn("text-2xl font-bold", className)} {...props}>{children}</h1>,
+  h2: ({ className, children, ...props }) => <h2 className={cn("text-xl font-semibold", className)} {...props}>{children}</h2>,
+  h3: ({ className, children, ...props }) => <h3 className={cn("text-lg font-medium", className)} {...props}>{children}</h3>,
+  p: ({ className, children, ...props }) => <p className={className} {...props}>{children}</p>,
+  span: ({ className, children, ...props }) => <span className={className} {...props}>{children}</span>,
+  label: ({ className, children, ...props }) => <label className={cn("text-sm font-medium", className)} {...props}>{children}</label>,
+  input: ({ className, ...props }) => <input className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props} />,
+  select: ({ className, children, ...props }) => <select className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props}>{children}</select>,
+  option: ({ children, ...props }) => <option {...props}>{children}</option>,
+  
+  // Custom / Icon placeholder
+  Icon: ({ className, size = 16 }) => (
+    <div className={cn("flex items-center justify-center text-zinc-400", className)} style={{ width: size, height: size }}>
+       <div className="w-full h-full border-2 border-dashed border-current rounded-sm opacity-50" />
+    </div>
+  )
 };
 
 interface RendererProps {

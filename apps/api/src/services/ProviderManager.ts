@@ -64,7 +64,7 @@ export class ProviderManager implements IProviderManager {
       for (const config of configs) {
         try {
           // Try to use environment variable first (avoids decryption issues)
-          let apiKey: string;
+          let apiKey = '';
           const envVar = envMappings[config.type];
           
           if (config.type === 'ollama') {
@@ -72,7 +72,7 @@ export class ProviderManager implements IProviderManager {
             apiKey = process.env.OLLAMA_API_KEY || '';
           } else if (envVar && process.env[envVar]) {
             // Use environment variable directly
-            apiKey = process.env[envVar];
+            apiKey = process.env[envVar] as string;
             console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
           } else {
             // Fall back to decrypting from database
@@ -174,7 +174,7 @@ export class ProviderManager implements IProviderManager {
   async syncModelsToRegistry() {
     console.log('[ProviderManager] Starting Registry Sync (Unified)...');
 
-    for (const [providerId, provider] of this.providers.entries()) {
+    for (const [providerId] of this.providers.entries()) {
       try {
         // 1. Get readable name for logs
         const meta = this.providerMetadata.get(providerId);
@@ -242,23 +242,24 @@ export class ProviderManager implements IProviderManager {
               isFree: isFree,
               costPer1k: cost || 0,
               providerData: m, // Store full raw model object
-              specs: specs as any,
-              aiData: {} as any
+              specs: specs as unknown as Record<string, unknown>,
+              aiData: {}
             },
             update: {
               name: (m.name as string) || modelId,
               isFree: isFree,
               costPer1k: cost || 0,
               providerData: m, // Store full raw model object
-              specs: specs as any
+              specs: specs as unknown as Record<string, unknown>
             }
           });
         }
 
-      } catch (error: any) {
+      } catch (error) {
         const meta = this.providerMetadata.get(providerId);
         const providerLabel = meta?.label || providerId;
-        if (error.cause?.code === 'ETIMEDOUT') {
+        const err = error as Error & { cause?: { code: string } };
+        if (err.cause?.code === 'ETIMEDOUT') {
           console.error(`[Registry Sync] Failed for provider ${providerLabel}: Connection timed out.`);
           console.error(`If you are behind a firewall, please ensure the HTTPS_PROXY environment variable is correctly configured.`);
         } else {
