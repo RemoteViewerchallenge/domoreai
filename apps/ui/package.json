@@ -36,6 +36,7 @@
     "elkjs": "^0.11.0",
     "framer-motion": "^12.23.26",
     "howler": "^2.2.4",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.553.0",
     "monaco-editor": "^0.54.0",
     "react": "^18.3.1",

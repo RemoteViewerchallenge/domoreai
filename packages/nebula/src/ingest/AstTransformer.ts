@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { NebulaNode, NebulaId, StyleTokens, NebulaTree } from '../core/types.js';
+import { NebulaNode, NebulaId, StyleTokens, NebulaTree, DataBinding } from '../core/types.js';
 import { nanoid } from 'nanoid';
 
 export class AstTransformer {
@@ -40,7 +40,29 @@ export class AstTransformer {
       return this.mapJsxElement(node);
     }
 
-    // Handle Text
+    // 1. HANDLE TEXT EXPRESSIONS: <span>{user.name}</span>
+    if (ts.isJsxExpression(node)) {
+       const expression = node.expression;
+       if (expression) {
+         const bindingPath = this.extractBindingPath(expression);
+         if (bindingPath) {
+            // Return a Text node with a binding attached
+            const id = nanoid();
+            const textNode: NebulaNode = {
+                id,
+                type: 'Text',
+                props: { content: `{{${bindingPath}}}` }, // Visual placeholder
+                style: {},
+                children: [],
+                bindings: [{ propName: 'content', sourcePath: bindingPath }]
+            };
+            this.nodes[id] = textNode;
+            return textNode;
+         }
+       }
+    }
+
+    // Handle Static Text
     if (ts.isJsxText(node)) {
         const text = node.getText().trim();
         if(!text) return null;
@@ -68,13 +90,7 @@ export class AstTransformer {
     if (childrenNodes.length === 1) return childrenNodes[0];
 
     if (childrenNodes.length > 0) {
-        // If we are at the SourceFile level or Fragment level and have multiple children, wrap them.
-        // But for SourceFile -> SyntaxList -> ExpressionStatement -> JsxFragment -> [Children]
-        // We want the children of JsxFragment.
-
-        // If we are at SourceFile, we might get one child (the ExpressionStatement's result).
-        // If we are at JsxFragment, we get the children.
-
+        // SourceFile/Fragment with multiple children -> Wrap in Box
         const id = nanoid();
         const containerNode: NebulaNode = {
             id,
@@ -97,6 +113,7 @@ export class AstTransformer {
 
     const props: Record<string, any> = {};
     const style: StyleTokens = {};
+    const bindings: DataBinding[] = []; // Store discovered bindings here
 
     // Extract Attributes
     const attributes = ts.isJsxSelfClosingElement(node)
@@ -107,10 +124,21 @@ export class AstTransformer {
         if (ts.isJsxAttribute(attr)) {
             const name = attr.name.getText();
             let value: any = true;
+
+            // 3. HANDLE ATTRIBUTE EXPRESSIONS: <img src={product.image} />
+            if (attr.initializer && ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+                const bindingPath = this.extractBindingPath(attr.initializer.expression);
+                if (bindingPath) {
+                    bindings.push({ propName: name, sourcePath: bindingPath });
+                    return; // Skip adding to static props
+                }
+            }
+
             if (attr.initializer) {
                  if (ts.isStringLiteral(attr.initializer)) {
                     value = attr.initializer.text;
                 } else if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+                     // Fallback for non-binding expressions
                      value = attr.initializer.expression.getText();
                 }
             }
@@ -136,6 +164,7 @@ export class AstTransformer {
         id,
         type: tagName, // Maps to "Card", "Button", etc.
         props,
+        bindings, // <--- Attach harvested bindings
         style,
         children: childrenNodes.map(c => c.id),
         meta: { source: 'imported' }
@@ -147,7 +176,6 @@ export class AstTransformer {
 
   private parseTailwindToTokens(className: string, style: StyleTokens) {
       // Heuristic mapping: "p-4" -> style.padding = "p-4"
-      // This allows the "Ghost" editor to recognize the styles
       const classes = className.split(/\s+/);
       classes.forEach(c => {
           if (c.startsWith('p-')) style.padding = c;
@@ -159,7 +187,23 @@ export class AstTransformer {
           if (c.startsWith('w-')) style.width = c;
           if (c.startsWith('h-')) style.height = c;
           if (c.startsWith('border')) style.border = c;
-          // Add more heuristics mapping
       });
+  }
+
+  /**
+   * Recursive helper to turn AST "user.profile.name" into string "user.profile.name"
+   */
+  private extractBindingPath(node: ts.Expression): string | null {
+      // Handle simple identifier: "{name}"
+      if (ts.isIdentifier(node)) {
+          return node.text;
+      }
+      // Handle property access: "{user.name}" or "{props.data.title}"
+      if (ts.isPropertyAccessExpression(node)) {
+          const left = this.extractBindingPath(node.expression);
+          const right = node.name.text;
+          return left ? `${left}.${right}` : right;
+      }
+      return null; // Too complex (function calls, math, etc.)
   }
 }
