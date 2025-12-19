@@ -6,6 +6,25 @@ import { ModelDoctor } from './ModelDoctor.js';
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
+interface FreeModelRow {
+  id?: string;
+  model_id?: string;
+  name?: string;
+  model_name?: string;
+  context_length?: number;
+  context_window?: number;
+  contextWindow?: number;
+  provider?: string;
+}
+
+interface UnifiedModelRow {
+  id: string;
+  name: string;
+  context_length: number;
+  provider: string;
+  source: string;
+}
+
 export class ModelService {
   async saveNormalizedModel(input: ModelInput) {
     const { providerId, modelId, name, isFree, contextWindow, hasVision, hasReasoning, hasCoding, providerData } = input;
@@ -115,31 +134,32 @@ export class ModelService {
 
     for (const row of rows) {
       // C. Construct Model Object using Mapping + Fuzzy Matching
-      const modelData: any = {
+      const safeRow = row as Record<string, unknown>;
+      const modelData: Record<string, any> = {
          providerId: providerId || 'generic-import',
-         providerData: row
+         providerData: safeRow
       };
 
       const getValue = (targetField: string) => {
         // 1. Explicit mapping
         const mappedCol = Object.keys(mapping).find(key => mapping[key] === targetField);
-        if (mappedCol && row[mappedCol] !== undefined) return row[mappedCol];
+        if (mappedCol && safeRow[mappedCol] !== undefined) return safeRow[mappedCol];
         // 2. Exact match
-        if (row[targetField] !== undefined) return row[targetField];
+        if (safeRow[targetField] !== undefined) return safeRow[targetField];
         // 3. Fuzzy Match
         const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const rowKey = Object.keys(row).find(k => {
+        const rowKey = Object.keys(safeRow).find(k => {
            const normK = normalize(k);
            const normT = normalize(targetField);
            if (targetField === 'contextWindow' && (normK.includes('length') || normK.includes('context'))) return true;
            if (targetField === 'modelId' && (normK === 'id' || normK === 'slug')) return true;
            return normK === normT;
         });
-        return rowKey ? row[rowKey] : undefined;
+        return rowKey ? safeRow[rowKey] : undefined;
       };
 
-      modelData.name = getValue('name') || row.id || 'Unknown';
-      modelData.modelId = getValue('modelId') || row.id;
+      modelData.name = getValue('name') || safeRow.id || 'Unknown';
+      modelData.modelId = getValue('modelId') || safeRow.id;
       modelData.contextWindow = Number(getValue('contextWindow')) || 4096;
       modelData.costPer1k = Number(getValue('costPer1k')) || 0;
 
@@ -147,8 +167,27 @@ export class ModelService {
       if (modelData.modelId && providerId) {
           await prisma.model.upsert({
               where: { providerId_modelId: { providerId: providerId, modelId: modelData.modelId } },
-              create: modelData,
-              update: modelData
+              create: {
+                  providerId: String(modelData.providerId),
+                  modelId: String(modelData.modelId),
+                  name: String(modelData.name),
+                  isFree: true,
+                  isActive: true,
+                  specs: { 
+                      contextWindow: Number(modelData.contextWindow || 4096),
+                      costPer1k: Number(modelData.costPer1k || 0)
+                  },
+                  providerData: safeRow as Prisma.InputJsonValue,
+                  source: 'MERGE'
+              },
+              update: {
+                  name: String(modelData.name),
+                  providerData: safeRow as Prisma.InputJsonValue,
+                  specs: { 
+                      contextWindow: Number(modelData.contextWindow || 4096),
+                      costPer1k: Number(modelData.costPer1k || 0)
+                  }
+              }
           });
           successCount++;
       }
@@ -157,13 +196,14 @@ export class ModelService {
     return { imported: successCount, total: rows.length };
   }
 
+
+
   async listRefinedModels() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows = await prisma.$queryRaw<any[]>`SELECT * FROM "my_free_models"`;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return rows.map((row: any) => ({
-        id: row.id || row.model_id || row.name,
+      const rows = await prisma.$queryRaw<FreeModelRow[]>`SELECT * FROM "my_free_models"`;
+      return rows.map((row) => ({
+        id: row.id || row.model_id || row.name || 'unknown',
         name: row.name || row.model_name || 'Unknown Model',
         contextLength: Number(row.context_length || row.context_window || row.contextWindow || 0),
         provider: row.provider || 'unknown'
@@ -195,11 +235,12 @@ export class ModelService {
       for (const t of tables) {
         try {
           // Get columns for this table
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const columnsRaw = await prisma.$queryRawUnsafe<{ column_name: string }[]>(
             `SELECT column_name FROM information_schema.columns
              WHERE table_name = '${t.name}'
              AND table_schema = 'public'`
-          ) as { column_name: string }[];
+          );
           const columns = columnsRaw.map(c => c.column_name);
 
           // Detect common columns with fallbacks
@@ -231,10 +272,9 @@ export class ModelService {
       const fullQuery = queries.join(' UNION ALL ');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows = await prisma.$queryRawUnsafe<any[]>(fullQuery);
+      const rows = await prisma.$queryRawUnsafe<UnifiedModelRow[]>(fullQuery);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return rows.map((row: any) => ({
+      return rows.map((row) => ({
         id: row.id,
         name: row.name,
         contextLength: Number(row.context_length || 0),

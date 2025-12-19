@@ -66,6 +66,7 @@ export class UnifiedIngestionService {
             // 2. Is it OpenRouter? -> CHECK PRICING OBJECT
             const isFree = this.checkIsFree(provider, raw);
 
+            // cspell:ignore Gatekeeping
             // Gatekeeping: If OpenRouter AND Paid, SKIP IT.
             if (provider === 'openrouter' && !isFree) {
                 continue; 
