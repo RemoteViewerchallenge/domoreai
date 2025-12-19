@@ -1,5 +1,3 @@
-import { z } from 'zod'; // Use Zod for runtime validation if needed later
-
 export type NebulaId = string;
 
 // The "DNA" of the UI. Every layout is a constraint, not a pixel value.
@@ -9,16 +7,17 @@ export type Alignment = 'start' | 'center' | 'end' | 'stretch' | 'between' | 'ar
 
 // Design Tokens (The "No Hard-Coding" Rule)
 // We map semantic names to Tailwind classes
+// using (string & {}) to preserve autocomplete for literals while allowing any string
 export interface StyleTokens {
-  padding?: 'p-0' | 'p-2' | 'p-4' | 'p-8' | string;
-  gap?: 'gap-0' | 'gap-2' | 'gap-4' | 'gap-8' | string;
+  padding?: 'p-0' | 'p-2' | 'p-4' | 'p-8' | (string & {});
+  gap?: 'gap-0' | 'gap-2' | 'gap-4' | 'gap-8' | (string & {});
   radius?: 'rounded-none' | 'rounded-sm' | 'rounded-md' | 'rounded-lg' | 'rounded-full';
   shadow?: 'shadow-none' | 'shadow-sm' | 'shadow-md' | 'shadow-lg';
   background?: string; // e.g., "bg-card", "bg-primary"
   color?: string;      // e.g., "text-foreground", "text-primary-foreground"
   border?: string;     // e.g., "border", "border-2"
-  width?: 'w-full' | 'w-auto' | 'w-screen' | string;
-  height?: 'h-full' | 'h-auto' | 'h-screen' | string;
+  width?: 'w-full' | 'w-auto' | 'w-screen' | (string & {});
+  height?: 'h-full' | 'h-auto' | 'h-screen' | (string & {});
   // Responsive overrides
   mobile?: Partial<StyleTokens>;
   tablet?: Partial<StyleTokens>;
@@ -31,6 +30,7 @@ export interface NebulaNode {
   type: string; // Mapped to ComponentRegistry (e.g., "Card", "Button", "Container")
 
   // Content & Configuration
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   props: Record<string, any>;
 
   // Visuals (Token-based)
