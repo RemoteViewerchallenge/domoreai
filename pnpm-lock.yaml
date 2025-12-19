@@ -265,6 +265,9 @@ importers:
       '@repo/common':
         specifier: workspace:*
         version: link:../../packages/common
+      '@repo/nebula':
+        specifier: workspace:*
+        version: link:../../packages/nebula
       '@tanstack/react-query':
         specifier: ^4.36.1
         version: 4.42.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -526,6 +529,9 @@ importers:
       '@types/react':
         specifier: ^18.3.26
         version: 18.3.26
+      immer:
+        specifier: ^11.0.1
+        version: 11.0.1
       tsx:
         specifier: ^4.7.1
         version: 4.20.6
@@ -11071,8 +11077,7 @@ snapshots:
 
   ignore@7.0.5: {}
 
-  immer@11.0.1:
-    optional: true
+  immer@11.0.1: {}
 
   immer@9.0.21: {}
 
