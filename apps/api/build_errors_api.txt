@@ -1,7 +1,0 @@
-src/mcp-adapters.ts(23,7): error TS2739: Type '{ id: string; providerId: string; object: string; created: number; owned_by: string; }' is missing the following properties from type 'LLMModel': name, provider, providerConfigId
-src/services/AgentFactory.ts(371,49): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
-src/services/AssessmentService.ts(68,50): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
-src/services/ToolDocumenter.ts(175,58): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
-src/services/modelManager.service.ts(63,9): error TS2322: Type '{ [key: string]: unknown; }' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
-  Type '{ [key: string]: unknown; }' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 20 more.
-src/services/provider.service.ts(43,38): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.

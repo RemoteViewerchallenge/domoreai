@@ -1,3 +1,0 @@
-src/coc.ts(51,42): error TS2307: Cannot find module './prod/model-registry.js' or its corresponding type declarations.
-src/coc.ts(52,43): error TS2307: Cannot find module './prod/retriever.js' or its corresponding type declarations.
-src/coc.ts(53,43): error TS2307: Cannot find module './prod/evaluator.js' or its corresponding type declarations.
