@@ -101,7 +101,8 @@ export class ModelService {
 
   async mergeFromTable(sourceTableName: string, providerId?: string) {
     // A. Fetch Raw Data using Unsafe Query
-    const rows = await prisma.$queryRawUnsafe(`SELECT * FROM "${sourceTableName}"`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "${sourceTableName}"`);
     if (!rows.length) throw new Error(`Table ${sourceTableName} is empty.`);
 
     // B. Fetch Saved Mapping (if any)
@@ -158,7 +159,9 @@ export class ModelService {
 
   async listRefinedModels() {
     try {
-      const rows = await prisma.$queryRaw`SELECT * FROM "my_free_models"`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = await prisma.$queryRaw<any[]>`SELECT * FROM "my_free_models"`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rows.map((row: any) => ({
         id: row.id || row.model_id || row.name,
         name: row.name || row.model_name || 'Unknown Model',
@@ -196,7 +199,7 @@ export class ModelService {
             `SELECT column_name FROM information_schema.columns
              WHERE table_name = '${t.name}'
              AND table_schema = 'public'`
-          );
+          ) as { column_name: string }[];
           const columns = columnsRaw.map(c => c.column_name);
 
           // Detect common columns with fallbacks
@@ -227,8 +230,10 @@ export class ModelService {
 
       const fullQuery = queries.join(' UNION ALL ');
 
-      const rows = await prisma.$queryRawUnsafe(fullQuery);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = await prisma.$queryRawUnsafe<any[]>(fullQuery);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return rows.map((row: any) => ({
         id: row.id,
         name: row.name,
