@@ -21,7 +21,7 @@
     "maxContext": 2000000,
     "needsReasoning": true,
     "needsCoding": false,
-    "tools": ["search_codebase", "research_browser", "filesystem"],
+    "tools": ["search_codebase", "research_browser", "filesystem", "scan_ui_components"],
     "defaultTemperature": 0.7,
     "defaultMaxTokens": 4096
   },
@@ -34,7 +34,7 @@
     "maxContext": 2000000,
     "needsReasoning": true,
     "needsCoding": false,
-    "tools": ["search_codebase", "filesystem", "research_browser"],
+    "tools": ["search_codebase", "filesystem", "research_browser", "scan_ui_components"],
     "defaultTemperature": 0.6,
     "defaultMaxTokens": 4096
   },
@@ -47,7 +47,7 @@
     "maxContext": 1000000,
     "needsReasoning": true,
     "needsCoding": true,
-    "tools": ["search_codebase", "filesystem", "terminal", "research_browser"],
+    "tools": ["search_codebase", "filesystem", "terminal", "research_browser", "scan_ui_components"],
     "defaultTemperature": 0.6,
     "defaultMaxTokens": 3072
   },
@@ -60,7 +60,7 @@
     "maxContext": 262144,
     "needsReasoning": true,
     "needsCoding": true,
-    "tools": ["filesystem", "terminal", "search_codebase", "research_browser"],
+    "tools": ["filesystem", "terminal", "search_codebase", "research_browser", "scan_ui_components"],
     "defaultTemperature": 0.5,
     "defaultMaxTokens": 3000
   },
@@ -86,7 +86,7 @@
     "maxContext": 131072,
     "needsReasoning": false,
     "needsCoding": true,
-    "tools": ["filesystem", "terminal", "search_codebase", "browser"],
+    "tools": ["filesystem", "terminal", "search_codebase", "browser", "scan_ui_components"],
     "defaultTemperature": 0.5,
     "defaultMaxTokens": 2500
   },
@@ -190,7 +190,7 @@
     "maxContext": 131072,
     "needsReasoning": true,
     "needsCoding": false,
-    "tools": ["filesystem", "search_codebase", "research_browser", "browser"],
+    "tools": ["filesystem", "search_codebase", "research_browser", "browser", "scan_ui_components"],
     "defaultTemperature": 0.7,
     "defaultMaxTokens": 2048
   },
