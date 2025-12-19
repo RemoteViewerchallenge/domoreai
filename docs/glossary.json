@@ -1,0 +1,32 @@
+{
+
+  "glossary": {
+
+    "Triple Layer System": "A data architecture for AI Models consisting of three layers: 1. 'ProviderData' (immutable raw API response), 2. 'AiData' (inferred or collected knowledge), and 3. 'Specs' (the computed view used by the app to select a model capable of fulfilling the role).",
+
+    "Ghost Record": "A database pattern where records (specifically Models and the unreported specs that the app needs to improve model selection) are created automatically during runtime ('INFERENCE' source) or via index discovery ('INDEX' source) rather than explicit user creation. Active status is tracked via 'lastSeenAt'.",
+
+    "Workspace": Must change to Project Directory! (where code files .git, and base config for abb is stored like opening a folder in vscode) "A database entity representing a broad scope of work (e.g., a repository). It explicitly holds 'codeRules' and 'glossary' configuration for agents. It is NOT the UI layout.",
+
+    "WorkOrderCard": THIS IS MISLEADING! THOUGH IT MIGHT BE ACCEPTABLE THIS SETS A MODEL SPEC BY ROLE RECRUITED TO THE CODE BASE  "The persisted database entity representing a user's task session. It links a 'Workspace' to a specific 'relativePath' and holds 'contextStats' (file size, token estimates).",
+
+    "VolcanoAgent": THE APP USES THE VOLCANO SDK BY KONG https://volcano.dev/docs  AN AGENT IS ANY LLM WITH THE ABILITY TO USE TOOLS IN THIS APP "The primary agent class that implements the 'Triple Layer' logic. It features an 'Exhaustive Fallback' mechanism that switches providers on failure and a 'Judge Verification' step if orchestration requires it.",
+
+    "Corporate Recruiter/ THE SYSTEM THAT ASSIGNS A ROLE TO OVERSEE A CODE FILE OR GROUP OF CODE FILES CREATES DETAILED PROMPTS IF NECESSARY ORCHESTRATOR": "A service responsible for dispatching 'Crews' (Job records) to specific 'Departments' (Project records). It creates 'Ghost Branches' in git for these jobs.",
+
+    "Ghost Branch": "A temporary git branch created by the Corporate Orchestrator for a specific Job ID (e.g., 'volcano/task-123'). It allows agents to work safely without corrupting the main branch.",
+
+    "McpOrchestrator": "Manages connections to Model Context Protocol (MCP) servers (e.g., git, postgres). It proxies tools from these servers into the agent's sandbox.", 
+    CODE MODE ; ALL TOOL CALLS MADE BY AGENTS IN THE APP UTILIZE A PROCESS OF AGENTS WRITING TYPESCRIPT CODE NOT STRUCTURED JSON EVEN TOOLS CONNECTED THROUGH MCP SERVERS
+
+    "RawDataLake": "A storage table for the exact, untouched JSON returned by provider APIs before it is processed into the Model table. Prevents data loss during ingestion.", AI SHOULD NOT OMIT DATA 
+
+    "Job Hierarchy": "A 'Cell Division' structure where a 'Lead' Job can spawn multiple 'Worker' child Jobs. Jobs can be sequential (via 'dependsOnJobId') or parallel (via 'parallelGroup').",
+
+    "COC": WRONG TERM THE CHAIN OF COMMAND IS STRUCTURED HIEARCHY OF AGENT ROLES WITH A TOP DOWN DELEGATION FROM CEO TO INTERN IF HUMAN PROMPTS CHANGES WITH CEO IT DOES NOT DO THE WORK IN DELEGATES THROUGH THE CHAIN OF COMMAND  
+    
+    THE BANDIT  A logic engine that uses a 'StrategyEngine' and 'Bandit' algorithms (reinforcement learning) to select models and ROLES based on past performance."
+
+  }
+
+}
