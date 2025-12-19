@@ -62,13 +62,25 @@ export const modelCapabilities = pgTable('ModelCapabilities', {
   hasVision: boolean('hasVision').default(false),
   hasAudioInput: boolean('hasAudioInput').default(false),
   hasAudioOutput: boolean('hasAudioOutput').default(false),
+  hasTTS: boolean('hasTTS').default(false),
+  hasImageGen: boolean('hasImageGen').default(false),
   hasReasoning: boolean('hasReasoning').default(false),
+  isMultimodal: boolean('isMultimodal').default(false),
+  supportsFunctionCalling: boolean('supportsFunctionCalling').default(false),
+  supportsJsonMode: boolean('supportsJsonMode').default(false),
   
   // Limits
   contextWindow: integer('contextWindow').default(4096),
   maxOutput: integer('maxOutput').default(4096),
   
+  // Technical Specs
   tokenizer: text('tokenizer'),
+  paramCount: text('paramCount'),
+  
+  // Rate Limits
+  requestsPerMinute: integer('requestsPerMinute'),
+  tokensPerMinute: integer('tokensPerMinute'),
+  
   updatedAt: timestamp('updatedAt').defaultNow(),
 });
 

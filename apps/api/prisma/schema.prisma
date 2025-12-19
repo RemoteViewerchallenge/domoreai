@@ -88,6 +88,7 @@ model ModelCapabilities {
   hasAudioOutput    Boolean @default(false)
   hasTTS            Boolean @default(false)
   hasImageGen       Boolean @default(false)
+  hasReasoning      Boolean @default(false)
   isMultimodal      Boolean @default(false)
   supportsFunctionCalling Boolean @default(false)
   supportsJsonMode  Boolean @default(false)

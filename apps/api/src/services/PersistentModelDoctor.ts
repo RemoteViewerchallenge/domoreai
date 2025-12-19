@@ -59,8 +59,8 @@ export class PersistentModelDoctor {
     await this.runHealingCycle();
 
     // Schedule periodic checks
-    this.interval = setInterval(async () => {
-      await this.runHealingCycle();
+    this.interval = setInterval(() => {
+      void this.runHealingCycle();
     }, this.checkIntervalMs);
 
     console.log(`[PersistentDoctor] ✅ Service started (checking every ${this.checkIntervalMs / 1000 / 60} minutes)`);
@@ -139,19 +139,17 @@ export class PersistentModelDoctor {
 
   /**
    * Check the health status of all models
+   * 
+   * [UPDATED] Now strictly checks the ModelCapabilities relation
    */
   async checkHealth(): Promise<HealthCheckResult> {
     const { prisma } = await import('../db.js');
 
-    // Get all active models
+    // Get all active models WITH their capabilities relation
     const models = await prisma.model.findMany({
       where: { isActive: true },
-      select: {
-        id: true,
-        modelId: true,
-        specs: true,
-        capabilityTags: true,
-        costPer1k: true
+      include: {
+        capabilities: true // <--- The Critical Check
       }
     });
 
@@ -160,27 +158,26 @@ export class PersistentModelDoctor {
     const missingFields: Record<string, number> = {};
 
     for (const model of models) {
-      const specs = (model.specs as any) || {};
       let isComplete = true;
 
-      // Check required fields
-      for (const field of this.requiredFields) {
-        let hasField = false;
-
-        // Check in multiple locations (specs, top-level, capabilities array)
-        if (field === 'contextWindow') {
-          hasField = !!(specs.contextWindow || specs.context_window);
-        } else if (field === 'capabilities') {
-          hasField = !!(model.capabilityTags && model.capabilityTags.length > 0);
-        } else if (field === 'costPer1k') {
-          hasField = model.costPer1k !== null && model.costPer1k !== undefined;
-        }
-
-        if (!hasField) {
+      // If the capabilities relation is null, the model is SICK
+      if (!model.capabilities) {
+        missingFields['missing_capabilities_record'] = (missingFields['missing_capabilities_record'] || 0) + 1;
+        isComplete = false;
+      } else {
+        // If capabilities exist, check for specific required values
+        if (!model.capabilities.contextWindow || model.capabilities.contextWindow === 0) {
+          missingFields['contextWindow'] = (missingFields['contextWindow'] || 0) + 1;
           isComplete = false;
-          missingFields[field] = (missingFields[field] || 0) + 1;
+        }
+        
+        if (!model.capabilities.maxOutput || model.capabilities.maxOutput === 0) {
+          missingFields['maxOutput'] = (missingFields['maxOutput'] || 0) + 1;
+          isComplete = false;
         }
       }
+
+      // Pricing is optional - don't check it
 
       if (isComplete) {
         complete++;
