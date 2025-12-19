@@ -502,6 +502,16 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/nebula:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/typescript-config: {}
 
 packages:
