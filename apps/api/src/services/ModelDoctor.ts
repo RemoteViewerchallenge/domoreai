@@ -208,6 +208,7 @@ export class ModelDoctor {
       
       const inferred = this.inferCapabilitiesFromName(m.modelId);
       
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
       const newId: string = uuidv4() as string;
       const capabilityValues = {
         id: newId,
@@ -310,6 +311,7 @@ export class ModelDoctor {
       updatedAt: new Date()
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
     const newId: string = uuidv4() as string;
     const capabilityValues = {
       id: newId,
