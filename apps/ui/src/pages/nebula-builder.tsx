@@ -3,13 +3,12 @@
 // @Context: This page visualizes the JSON Tree side-by-side with the rendered UI.
 // It acts as the "Host" for the AI Agent's operations.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NebulaOps, NebulaRenderer } from '@repo/nebula';
-import type { NebulaTree, NebulaNode } from '@repo/nebula';
+import type { NebulaTree } from '@repo/nebula';
 import MonacoEditor from '../components/MonacoEditor.js'; // Adjusted import path
-import { Card } from '../components/ui/card.js'; // Adjusted import path
 import { Button } from '../components/ui/button.js'; // Adjusted import path
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js'; // Adjusted import path
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js'; // Adjusted import path
 import { Play, RotateCcw, Code, Eye } from 'lucide-react';
 
 // Initial Empty State
@@ -59,7 +58,7 @@ export default function NebulaBuilderPage() {
     const heroId = ops.addNode('root', {
       type: 'Box',
       layout: { mode: 'flex', direction: 'column', align: 'center', justify: 'center', gap: 'gap-6' },
-      style: { padding: 'p-20', background: 'bg-secondary/20', radius: 'rounded-xl' }
+      style: { padding: 'p-20', background: 'bg-secondary/20', radius: 'rounded-lg' }
     });
 
     // 4. Add Headline

@@ -74,7 +74,7 @@ export async function flattenRawData(options: FlattenOptions) {
     const vals = columns.map(col => {
       // Find the original key before sanitization to look up the value
       const originalKey = Array.from(columnSet).find(k => sanitizeName(k) === col);
-      const val = originalKey ? (row as Record<string, unknown>)[originalKey] : undefined;
+      const val = originalKey ? (row)[originalKey] : undefined;
 
       if (val === null || val === undefined) return 'NULL';
       // IMPROVEMENT: If the value is an object or array, store it as a JSONB type

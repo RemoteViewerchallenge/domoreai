@@ -1,5 +1,5 @@
-import { pgTable, text, boolean, integer, timestamp, jsonb, doublePrecision, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { pgTable, text, boolean, integer, timestamp, jsonb, doublePrecision, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql, relations } from 'drizzle-orm';
 
 // --- Core Configuration ---
 
@@ -25,52 +25,60 @@ export const orchestratorConfigs = pgTable('OrchestratorConfig', {
 
 // --- Model Registry (The "Phonebook") ---
 // Minimal info to route the request: Who has it? What's it called?
+// --- Model Registry (The "Phonebook") ---
+// Minimal info to route the request: Who has it? What's it called?
 export const modelRegistry = pgTable('model_registry', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  modelId: text('model_id').notNull(),
+  id: text('id').primaryKey(), // CUID
   providerId: text('provider_id').notNull(),
-  // We keep these for quick lookup/display without joining
-  modelName: text('model_name'), 
-  isFree: boolean('is_free').default(false),
-  isActive: boolean('is_active').default(true),
-  source: text('source').default('INDEX'),
-  costPer1k: doublePrecision('cost_per_1k'),
-
-  capabilityTags: text('capability_tags').array().default(sql`ARRAY['text']::text[]`),
-
-  // Triple-Layer System
-  providerData: jsonb('provider_data').default({}),
-  aiData: jsonb('ai_data').default({}),
-  specs: jsonb('specs').default({}),
+  modelId: text('model_id').notNull(),
+  modelName: text('model_name').notNull(),
   
-  firstSeenAt: timestamp('first_seen_at').defaultNow().notNull(),
-  lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => {
-  return {
-    unq: uniqueIndex('model_registry_provider_id_model_id_key').on(table.providerId, table.modelId),
-  };
+  // The Triple Layer
+  providerData: jsonb('provider_data').default('{}'), // Layer 1: Raw
+  aiData: jsonb('ai_data').default('{}'),             // Layer 2: Knowledge
+  // Note: 'specs' column is deprecated but kept for safety if needed
+  specs: jsonb('specs').default('{}'),
+
+  capabilityTags: text('capability_tags').array(), // Used for fast filtering
+  source: text('source'), // INDEX, INFERENCE, MANUAL
+
+  isActive: boolean('is_active').default(true),
+  isFree: boolean('is_free').default(false),
+  costPer1k: doublePrecision('cost_per_1k'),
+  
+  firstSeenAt: timestamp('first_seen_at').defaultNow(),
+  lastSeenAt: timestamp('last_seen_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  unq: uniqueIndex('model_registry_provider_id_model_id_key').on(t.providerId, t.modelId),
+}));
+
+// [NEW] The Capabilities Table (Layer 3)
+export const modelCapabilities = pgTable('ModelCapabilities', {
+  id: text('id').primaryKey(),
+  modelId: text('modelId').notNull().unique(), // Foreign Key to modelRegistry.id
+  
+  // Features
+  hasVision: boolean('hasVision').default(false),
+  hasAudioInput: boolean('hasAudioInput').default(false),
+  hasAudioOutput: boolean('hasAudioOutput').default(false),
+  hasReasoning: boolean('hasReasoning').default(false),
+  
+  // Limits
+  contextWindow: integer('contextWindow').default(4096),
+  maxOutput: integer('maxOutput').default(4096),
+  
+  tokenizer: text('tokenizer'),
+  updatedAt: timestamp('updatedAt').defaultNow(),
 });
 
-export const modelCapabilities = pgTable('ModelCapabilities', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  modelId: text('model_id').unique().notNull(),
-  contextWindow: integer('context_window').default(4096),
-  maxOutput: integer('max_output').default(4096),
-  hasVision: boolean('has_vision').default(false).notNull(),
-  hasAudioInput: boolean('has_audio_input').default(false).notNull(),
-  hasAudioOutput: boolean('has_audio_output').default(false).notNull(),
-  hasTTS: boolean('has_tts').default(false).notNull(),
-  hasImageGen: boolean('has_image_gen').default(false).notNull(),
-  isMultimodal: boolean('is_multimodal').default(false).notNull(),
-  supportsFunctionCalling: boolean('supports_function_calling').default(false).notNull(),
-  supportsJsonMode: boolean('supports_json_mode').default(false).notNull(),
-  tokenizer: text('tokenizer'),
-  paramCount: text('param_count'),
-  requestsPerMinute: integer('requests_per_minute'),
-  tokensPerMinute: integer('tokens_per_minute'),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+// [NEW] Relations
+export const modelRelations = relations(modelRegistry, ({ one }) => ({
+  capabilities: one(modelCapabilities, {
+    fields: [modelRegistry.id],
+    references: [modelCapabilities.modelId],
+  }),
+}));
 
 // Provider-specific tables removed: model details are consolidated into `modelRegistry`'s JSON columns.
 

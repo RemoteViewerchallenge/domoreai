@@ -822,7 +822,7 @@ export const dataRefinementRouter = createTRPCRouter({
     }
 
     // Validate and sanitize table name
-    let safeTableName = input.tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+    const safeTableName = input.tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
     if (!safeTableName || safeTableName.match(/^\d/)) {
       throw new Error("Invalid table name. Must contain letters, numbers, or underscores and not start with a number.");
     }

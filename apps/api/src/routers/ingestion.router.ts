@@ -63,7 +63,7 @@ export const ingestionRouter = createTRPCRouter({
           },
           update: {
             name: m.name,
-            providerData: m as any,
+            providerData: m,
             isFree: m.is_free,
             specs: {
                 contextWindow: m.context_window,
@@ -74,7 +74,7 @@ export const ingestionRouter = createTRPCRouter({
             providerId: provider.id,
             modelId: m.model_id,
             name: m.name,
-            providerData: m as any,
+            providerData: m,
             isFree: m.is_free,
             specs: {
                 contextWindow: m.context_window,

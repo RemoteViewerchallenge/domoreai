@@ -22,7 +22,7 @@ export async function loadToolDocs(tools: string[], nativeTools: ToolDefinition[
             docs.push('```typescript');
             // Simplified signature generation
             const props = nativeTool.input_schema?.properties || {};
-            const args = Object.entries(props).map(([k, v]) => `${k}: ${(v as any).type}`).join(', ');
+            const args = Object.entries(props).map(([k, v]) => `${k}: ${(v).type}`).join(', ');
             docs.push(`await system.${nativeTool.name}({ ${args} })`);
             docs.push('```');
             docs.push('---');
