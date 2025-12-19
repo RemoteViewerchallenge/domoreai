@@ -7,6 +7,7 @@ export interface CardData {
   column: number;
   title?: string;
   type?: string;
+  metadata?: any;
 }
 
 interface WorkspaceState {
