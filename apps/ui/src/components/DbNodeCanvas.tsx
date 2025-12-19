@@ -2,18 +2,18 @@ import React, { useCallback, useRef, useState } from 'react';
 import ReactFlow, { 
   addEdge, Background, Controls, type Connection, 
   useNodesState, useEdgesState, ReactFlowProvider, 
-  Panel, MarkerType, Handle, Position
+  Panel, Handle, Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { trpc } from '../utils/trpc.js';
-import { Database, Table as TableIcon, Plus, Maximize, Minimize, Terminal, Play, FileJson } from 'lucide-react';
+import { Database, Table as TableIcon, Plus, Maximize, Minimize, Terminal, FileJson } from 'lucide-react';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
 import { cn } from '@/lib/utils.js';
 import { AIContextButton } from './AIContextButton.js';
 
 // --- CUSTOM NODES ---
 
-const TableNode = ({ data, id }: { data: any, id: string }) => {
+const TableNode = ({ data, id: _id }: { data: { tableName: string; columns: string[] }, id: string }) => {
     const [expanded, setExpanded] = useState(false);
     
     // Fetch schema and sample data on expansion
@@ -56,9 +56,7 @@ const TableNode = ({ data, id }: { data: any, id: string }) => {
                     {schema && rows ? (
                          <UniversalDataGrid 
                             data={rows.rows} 
-                            columns={schema.map(c => c.column_name)} 
-                            className="bg-transparent"
-                            density="compact"
+                            headers={schema.columns?.map((c: { column_name: string }) => c.column_name) || []} 
                          />
                     ) : (
                         <div className="flex items-center justify-center h-full text-zinc-500 text-xs animate-pulse">
@@ -71,7 +69,7 @@ const TableNode = ({ data, id }: { data: any, id: string }) => {
             {/* Collapsed: Schema Ports */}
             {!expanded && (
                 <div className="p-2 space-y-1">
-                    {data.columns?.slice(0, 5).map((col: string, i: number) => (
+                    {data.columns?.slice(0, 5).map((col: string, _i: number) => (
                         <div key={col} className="relative flex items-center justify-between group">
                             <span className="text-[10px] text-zinc-400 font-mono pl-2">{col}</span>
                             {/* Handles for connecting columns */}
@@ -107,13 +105,13 @@ const nodeTypes = {
 export const DbNodeCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const reactFlowWrapper = useRef(null);
+  const _reactFlowWrapper = useRef(null);
   
   // Fetch Tables List for Sidebar
   const { data: tables } = trpc.dataRefinement.listAllTables.useQuery();
 
   // Add Table to Canvas Logic
-  const addTableToCanvas = (tableName: string, event: React.DragEvent) => {
+  const addTableToCanvas = (tableName: string, _event: React.DragEvent | React.MouseEvent) => {
       // Logic to drop node at cursor would go here, simplified for now
       const id = `${tableName}-${Date.now()}`;
       // In a real implementation we'd fetch columns first or optimistically load them
@@ -149,12 +147,12 @@ export const DbNodeCanvas = () => {
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <div className="text-[10px] text-zinc-500 font-bold px-2 py-1 uppercase">Postgres Tables</div>
-            {tables?.map((table: any) => (
+            {tables?.map((table: { name: string }) => (
                 <div 
                     key={table.name}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('application/reactflow/table', table.name)}
-                    onClick={(e) => addTableToCanvas(table.name, e as any)}
+                    onClick={(e) => addTableToCanvas(table.name, e)}
                     className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-move group transition-colors border border-transparent hover:border-zinc-700/50"
                 >
                     <TableIcon size={12} className="text-zinc-500 group-hover:text-blue-400" />

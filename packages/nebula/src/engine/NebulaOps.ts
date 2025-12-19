@@ -113,4 +113,28 @@ export class NebulaOps {
     });
     this.onChange(this.tree);
   }
+
+  /**
+   * Ingests a whole tree fragment into the current tree.
+   * Useful for "Paste & Explode" or "Agentic Ingest".
+   */
+  ingestTree(parentId: NebulaId, fragment: NebulaTree) {
+    this.tree = produce(this.tree, draft => {
+      // 1. Merge all nodes from fragment into current nodes list
+      Object.entries(fragment.nodes).forEach(([id, node]) => {
+        draft.nodes[id] = {
+          ...node,
+          parentId: id === fragment.rootId ? parentId : node.parentId
+        };
+      });
+
+      // 2. Link fragment root to parent
+      if (draft.nodes[parentId]) {
+        draft.nodes[parentId].children.push(fragment.rootId);
+      }
+    });
+
+    this.onChange(this.tree);
+    return fragment.rootId;
+  }
 }

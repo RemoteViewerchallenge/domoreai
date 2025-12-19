@@ -4,12 +4,14 @@
 // It acts as the "Host" for the AI Agent's operations.
 
 import { useMemo, useState } from 'react';
-import { NebulaOps, NebulaRenderer } from '@repo/nebula';
+import { NebulaOps, NebulaRenderer, AstTransformer } from '@repo/nebula';
 import type { NebulaTree } from '@repo/nebula';
-import MonacoEditor from '../components/MonacoEditor.js'; // Adjusted import path
-import { Button } from '../components/ui/button.js'; // Adjusted import path
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js'; // Adjusted import path
+import MonacoEditor from '../components/MonacoEditor.js';
+import { Button } from '../components/ui/button.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { Play, RotateCcw, Code, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog.js';
+import { Textarea } from '../components/ui/textarea.js';
 
 // Initial Empty State
 const INITIAL_TREE: NebulaTree = {
@@ -31,6 +33,8 @@ const INITIAL_TREE: NebulaTree = {
 export default function NebulaBuilderPage() {
   const [tree, setTree] = useState<NebulaTree>(INITIAL_TREE);
   const [activeTab, setActiveTab] = useState('preview');
+  const [importCode, setImportCode] = useState('');
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Initialize the Engine
   // We use useMemo to ensure the Ops engine instance is stable
@@ -77,6 +81,25 @@ export default function NebulaBuilderPage() {
     ops.addNode(buttonRow, { type: 'Button', props: { children: 'View Specs', variant: 'outline' }});
   };
 
+  // -- IMPORT HANDLER --
+  const handleImport = () => {
+    try {
+      const transformer = new AstTransformer();
+      const fragment = transformer.parse(importCode);
+      
+      if (fragment) {
+        // Add the parsed fragment to the root
+        ops.ingestTree('root', fragment); 
+        
+        setImportCode('');
+        setIsImportOpen(false);
+      }
+    } catch (e: unknown) {
+      console.error("Failed to parse JSX", e);
+      alert("Invalid JSX: " + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
       {/* HEADER */}
@@ -94,6 +117,28 @@ export default function NebulaBuilderPage() {
           <Button size="sm" onClick={runAiSimulation}>
             <Play className="w-4 h-4 mr-2" /> Run AI Simulation
           </Button>
+
+          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="secondary">
+                <Code className="w-4 h-4 mr-2" /> Import Code
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Ingest React/JSX Code</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4 px-6">
+                <Textarea 
+                  placeholder="Paste standard JSX here (e.g. <div className='flex'><Button>Hi</Button></div>)" 
+                  className="h-[300px] font-mono text-xs"
+                  value={importCode}
+                  onChange={(e) => setImportCode(e.target.value)}
+                />
+                <Button onClick={handleImport}>Explode & Render</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
