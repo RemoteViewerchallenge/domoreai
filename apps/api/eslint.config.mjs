@@ -57,7 +57,7 @@ export default tseslint.config(
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.json'], // Adjust to your monorepo structure
+        project: ['./tsconfig.json', './scripts/tsconfig.json'], // Adjust to your monorepo structure
         tsconfigRootDir: import.meta.dirname,
       },
     },

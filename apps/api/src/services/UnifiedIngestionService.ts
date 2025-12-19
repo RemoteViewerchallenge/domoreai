@@ -78,7 +78,23 @@ export class UnifiedIngestionService {
             const name = (typeof nameRaw === 'string' || typeof nameRaw === 'number') ? String(nameRaw) : modelId;
             const isMultimodal = JSON.stringify(raw).toLowerCase().includes('vision');
 
-            // Upsert into Application Registry
+            // 3. CAPABILITY EXTRACTION
+            const modelIdLower = modelId.toLowerCase();
+            const rawStr = JSON.stringify(raw).toLowerCase();
+            const capsData = {
+                contextWindow,
+                maxOutput: 4096,
+                hasVision: isMultimodal || modelIdLower.includes('vision') || modelIdLower.includes('vl'),
+                hasAudioInput: modelIdLower.includes('audio') || modelIdLower.includes('whisper'),
+                hasAudioOutput: modelIdLower.includes('tts') || rawStr.includes('text-to-speech'),
+                hasTTS: modelIdLower.includes('tts'),
+                hasImageGen: modelIdLower.includes('dall-e') || modelIdLower.includes('imagen'),
+                isMultimodal,
+                supportsFunctionCalling: rawStr.includes('function') || rawStr.includes('tool'),
+                supportsJsonMode: rawStr.includes('json_mode') || rawStr.includes('json')
+            };
+
+            // 4. UPSERT WITH CAPABILITIES (The Missing Link)
             await prisma.model.upsert({
                 where: { providerId_modelId: { providerId: providerConfig.id, modelId } },
                 create: {
@@ -89,13 +105,24 @@ export class UnifiedIngestionService {
                     isActive: true,
                     providerData: raw as Prisma.JsonObject, // Store copy here for fast access
                     specs: { contextWindow, isMultimodal }, // Deprecated but populated for safety
-                    source: 'INDEX'
+                    source: 'INDEX',
+                    // [UPDATED] Create the relation immediately
+                    capabilities: {
+                        create: capsData
+                    }
                 },
                 update: {
                     isActive: true,
                     isFree: true,
                     providerData: raw as Prisma.JsonObject,
-                    lastSeenAt: new Date()
+                    lastSeenAt: new Date(),
+                    // [UPDATED] Update the relation
+                    capabilities: {
+                        upsert: {
+                            create: capsData,
+                            update: capsData
+                        }
+                    }
                 }
             });
             totalIngested++;
