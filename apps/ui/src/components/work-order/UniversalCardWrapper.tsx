@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, ArrowLeft, Globe, Terminal, type LucideIcon } from 'lucide-react';
-import { AIContextButton } from '../AIContextButton';
+import { Settings, ArrowLeft, type LucideIcon } from 'lucide-react';
+import { SuperAiButton } from '../ui/SuperAiButton.js';
 
 interface UniversalCardWrapperProps {
   title: string;
@@ -45,7 +45,7 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
             <div className="flex items-center gap-2">
               {headerEnd}
               <div className="h-4 w-px bg-zinc-800 mx-1" />
-              <AIContextButton context={aiContext} size="sm" />
+              <SuperAiButton contextId={aiContext} />
               <button 
                 onClick={() => setIsFlipped(true)}
                 className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"

@@ -124,6 +124,10 @@ class ConcurrencyLimiter {
 const embeddingLimiter = new ConcurrencyLimiter(1); // Limit to 1 concurrent request
 
 export const createEmbedding = async (text: string): Promise<number[]> => {
+  if (!text || !text.trim()) {
+    return Array(1024).fill(0);
+  }
+
   return embeddingLimiter.run(async () => {
     // console.log(`Creating embedding for text: "${text.substring(0, 50)}..."`);
     
@@ -141,10 +145,10 @@ export const createEmbedding = async (text: string): Promise<number[]> => {
       const response = await axios.post('http://localhost:11434/api/embeddings', {
         model: 'mxbai-embed-large',
         prompt: text,
-      });
+      }, { timeout: 10000 }); // Add timeout
       return response.data.embedding;
     } catch (error) {
-      console.error('Error creating embedding:', error);
+      console.error(`Error creating embedding for text (${text.length} chars): "${text.substring(0, 20)}..."`, error);
       // Fallback to random vector if Ollama fails, to keep the app running
       return Array.from({ length: 1024 }, () => Math.random());
     }

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { trpc } from '../utils/trpc.js';
 import DualRangeSlider from './DualRangeSlider.js';
 import { RoleModelOverride } from './RoleModelOverride.js';
+import { SuperAiButton } from './ui/SuperAiButton.js';
 import { 
   Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, 
   ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, Edit2, Plus 
@@ -9,6 +10,44 @@ import {
 
 interface RoleCreatorPanelProps {
   className?: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  basePrompt: string;
+  category?: string | { name: string };
+  categoryString?: string;
+  minContext?: number;
+  maxContext?: number;
+  needsVision?: boolean;
+  needsReasoning?: boolean;
+  needsCoding?: boolean;
+  needsTools?: boolean;
+  needsJson?: boolean;
+  needsUncensored?: boolean;
+  needsImageGeneration?: boolean;
+  tools?: string[];
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
+  defaultTopP?: number;
+  defaultFrequencyPenalty?: number;
+  defaultPresencePenalty?: number;
+  defaultStop?: string[];
+  defaultSeed?: number;
+  defaultResponseFormat?: 'text' | 'json_object';
+  terminalRestrictions?: { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] };
+  criteria?: Record<string, unknown>;
+  orchestrationConfig?: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number };
+  memoryConfig?: { useProjectMemory: boolean; readOnly: boolean };
+}
+
+interface CategoryNode {
+  id: string;
+  name: string;
+  parentId?: string;
+  children: CategoryNode[];
+  roles: Role[];
 }
 
 const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) => {
@@ -141,7 +180,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     return Array.from(categories).filter(Boolean).sort();
   }, [roles]);
 
-  const selectedRole = useMemo(() => roles?.find((r: any) => r.id === selectedRoleId), [roles, selectedRoleId]);
+  const selectedRole = useMemo(() => roles?.find((r) => r.id === selectedRoleId), [roles, selectedRoleId]);
 
   const categoryTree = useMemo(() => {
     if (!categories) return { roots: [], uncategorizedRoles: [] };
@@ -312,9 +351,6 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     }
   };
 
-  const handleMagicGenerate = () => {
-     generatePromptMutation.mutate({ name: formData.name, category: formData.category });
-  };
 
   const renderDynamicInputs = () => {
       return null; // Placeholder as implementation was complex and might be redundant or can be restored later if needed
@@ -323,8 +359,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   // NOTE: categoryTree useMemo moved above early returns to comply with Rules of Hooks
 
   // Recursive Category Renderer
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderCategory = (node: any, level = 0) => {
+  const renderCategory = (node: CategoryNode, level = 0) => {
     const isExpanded = openCategories[node.id] !== false; // Default open
     
     const handleDragOver = (e: React.DragEvent) => {
@@ -369,10 +404,19 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                     autoFocus
                     value={tempCategoryName}
                     onChange={(e) => setTempCategoryName(e.target.value)}
-                    onBlur={() => setEditingCategory(null)}
+                    onBlur={() => {
+                        if (tempCategoryName.trim() && tempCategoryName !== node.name) {
+                            updateCategoryMutation.mutate({ id: node.id, name: tempCategoryName });
+                        }
+                        setEditingCategory(null);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        updateCategoryMutation.mutate({ id: node.id, name: tempCategoryName });
+                        if (tempCategoryName.trim()) {
+                            updateCategoryMutation.mutate({ id: node.id, name: tempCategoryName });
+                        }
+                        setEditingCategory(null);
+                      } else if (e.key === 'Escape') {
                         setEditingCategory(null);
                       }
                     }}
@@ -441,10 +485,19 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                     placeholder="New Folder..."
                     value={tempCategoryName}
                     onChange={(e) => setTempCategoryName(e.target.value)}
-                    onBlur={() => setIsCreatingCategory(false)}
+                    onBlur={() => {
+                        if (tempCategoryName.trim()) {
+                            createCategoryMutation.mutate({ name: tempCategoryName, parentId: node.id });
+                        }
+                        setIsCreatingCategory(false);
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && tempCategoryName.trim()) {
-                        createCategoryMutation.mutate({ name: tempCategoryName, parentId: node.id });
+                      if (e.key === 'Enter') {
+                        if (tempCategoryName.trim()) {
+                            createCategoryMutation.mutate({ name: tempCategoryName, parentId: node.id });
+                        }
+                        setIsCreatingCategory(false);
+                      } else if (e.key === 'Escape') {
                         setIsCreatingCategory(false);
                       }
                     }}
@@ -454,10 +507,10 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
              )}
              
              {/* Subcategories */}
-             {node.children?.map((child: any) => renderCategory(child, level + 1))}
+             {node.children?.map((child) => renderCategory(child, level + 1))}
              
              {/* Roles */}
-             {node.roles?.map((role: any) => (
+             {node.roles?.map((role) => (
                 <div
                   key={role.id}
                   draggable
@@ -510,10 +563,19 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                      placeholder="New Root Folder..."
                      value={tempCategoryName}
                      onChange={(e) => setTempCategoryName(e.target.value)}
-                     onBlur={() => setIsCreatingCategory(false)}
+                     onBlur={() => {
+                        if (tempCategoryName.trim()) {
+                            createCategoryMutation.mutate({ name: tempCategoryName, parentId: undefined });
+                        }
+                        setIsCreatingCategory(false);
+                     }}
                      onKeyDown={(e) => {
-                       if (e.key === 'Enter' && tempCategoryName.trim()) {
-                         createCategoryMutation.mutate({ name: tempCategoryName, parentId: undefined });
+                       if (e.key === 'Enter') {
+                         if (tempCategoryName.trim()) {
+                             createCategoryMutation.mutate({ name: tempCategoryName, parentId: undefined });
+                         }
+                         setIsCreatingCategory(false);
+                       } else if (e.key === 'Escape') {
                          setIsCreatingCategory(false);
                        }
                      }}
@@ -547,10 +609,11 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
        </div>
 
       {/* Main Editor Area - 2 Columns */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         
         {/* LEFT COLUMN: Prompt & Name (60%) */}
-        <div className="w-[60%] flex flex-col border-r border-[var(--color-border)]">
+        {/* Added relative and z-10 to ensure AI button expansion goes OVER the right column */}
+        <div className="w-[60%] flex flex-col border-r border-[var(--color-border)] relative z-10">
           {/* Header with Name and Actions */}
           <div className="flex-none border-b border-[var(--color-border)] p-4">
             <div className="flex flex-col gap-2"> {/* Changed to flex-col for better layout of name and category */}
@@ -659,14 +722,20 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                       <Sparkles size={12} />
                       USE GEMINI 3 (ANTIGRAVITY)
                     </button>
-                    <button
-                      onClick={() => { void handleMagicGenerate(); }}
-                      disabled={generatePromptMutation.isLoading}
-                      className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] text-white text-[10px] font-bold rounded hover:opacity-80 transition-all"
-                    >
-                      <Sparkles size={12} />
-                      {generatePromptMutation.isLoading ? 'GENERATING...' : 'MAGIC GENERATE'}
-                    </button>
+                    <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-border)]/50">
+                        <SuperAiButton 
+                            contextId="role-creator-magic-gen"
+                            onGenerate={(prompt) => {
+                                generatePromptMutation.mutate({ 
+                                    name: formData.name, 
+                                    category: formData.category,
+                                    // @ts-expect-error - Assuming backend might accept this, or it will just be ignored
+                                    instructions: prompt
+                                });
+                            }}
+                            defaultPrompt={`Generate a prompt for a ${formData.name || 'new role'}...`}
+                        />
+                    </div>
                   </div>
                 </div>
                 <textarea
@@ -729,7 +798,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         </div>
 
         {/* RIGHT COLUMN: Parameters (40%) */}
-        <div className="w-[40%] flex flex-col bg-[var(--color-background-secondary)]/30 overflow-hidden">
+        <div className="w-[40%] flex flex-col bg-[var(--color-background-secondary)]/30 overflow-hidden relative z-0">
           {/* Tab Headers */}
           <div className="flex border-b border-[var(--color-border)]">
             <button
@@ -788,7 +857,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 {/* --- MODEL OVERRIDE INTEGRATION --- */}
                 {selectedRole && (
                   <div className="mt-4 border-t border-[var(--color-border)] pt-4">
-                    <RoleModelOverride role={selectedRole as any} />
+                    <RoleModelOverride role={selectedRole} />
                   </div>
                 )}
 

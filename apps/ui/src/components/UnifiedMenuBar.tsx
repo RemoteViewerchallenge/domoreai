@@ -7,11 +7,10 @@ import {
   Palette, 
   PenTool,
   Network,
-  Mic,
   Settings
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AIContextButton } from './AIContextButton.js';
+import { SuperAiButton } from './ui/SuperAiButton.js';
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -76,17 +75,9 @@ export const UnifiedMenuBar = () => {
 
       {/* Center: Command Center & AI Context */}
       <div className="flex-1 max-w-xl mx-4 flex items-center justify-center gap-2">
-         {/* AI Super Button */}
-         <div className="flex items-center gap-2 p-0.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full pr-3 relative group focus-within:ring-1 focus-within:ring-[var(--color-primary)] transition-all">
-             <AIContextButton context={currentContext} size="sm" />
-             <input 
-                type="text" 
-                placeholder={`Ask AI about ${currentContext}...`}
-                className="w-64 bg-transparent border-none text-xs text-[var(--color-text)] focus:outline-none placeholder-[var(--color-text-muted)]"
-             />
-             <div className="flex items-center gap-1 border-l border-[var(--color-border)] pl-2 text-[var(--color-text-muted)]">
-                 <button className="p-1 hover:text-[var(--color-primary)] transition-colors"><Mic size={12} /></button>
-             </div>
+         {/* AI Super Button - Replaces old bar */}
+         <div className="flex items-center gap-2">
+             <SuperAiButton contextId={currentContext} />
          </div>
       </div>
 
