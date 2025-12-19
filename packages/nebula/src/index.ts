@@ -8,4 +8,5 @@ export * from './lib/utils.js';
 export * from './ingest/AstTransformer.js';
 export * from './engine/NebulaOps.js';
 export * from './engine/defaults.js';
+export * from './engine/ActionExecutor.js';
 export * from './export/CodeGenerator.js';
