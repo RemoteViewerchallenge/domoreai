@@ -1,84 +1,93 @@
-import { Palette, Shield } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme.js';
+import { useState } from 'react';
+import { Scale, Book, Shield, Edit3, Settings } from 'lucide-react';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
+import SmartEditor from '../components/SmartEditor.js';
+import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
 
 export default function Constitution() {
-  const { theme, setTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'rules' | 'glossary' | 'settings'>('rules');
+  
+  // Mock data - In real app, useCardVFS() to load from the paths set in WorkspaceSettings
+  const [rulesContent, setRulesContent] = useState('# Project Coding Rules\n\n1. The Rule of Ubiquity...\n2. The Rule of Evolution...');
+  const [glossaryContent, setGlossaryContent] = useState('# System Glossary\n\n* **SwappableCard**: A container for...');
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 text-white overflow-hidden font-sans">
+    <div className="flex flex-col h-full bg-zinc-950 text-white overflow-hidden">
+      
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-zinc-800 bg-zinc-900/50">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">System Constitution</h1>
-          <p className="text-zinc-400 text-sm">Define the laws, visuals, and behavior of the OS.</p>
+      <div className="flex-none h-16 border-b border-zinc-800 bg-zinc-900/50 px-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+           <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+             <Scale size={24} />
+           </div>
+           <div>
+             <h1 className="text-xl font-bold tracking-tight">Project Constitution</h1>
+             <p className="text-xs text-zinc-500">The governing laws and definitions of this project.</p>
+           </div>
         </div>
-        <SuperAiButton contextId="constitution_global" />
+        
+        {/* Tab Switcher */}
+        <div className="flex bg-black/40 p-1 rounded-lg border border-zinc-800">
+           <button 
+             onClick={() => setActiveTab('rules')}
+             className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'rules' ? 'bg-zinc-800 text-white shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+           >
+             <Shield size={14} /> Coding Rules
+           </button>
+           <button 
+             onClick={() => setActiveTab('glossary')}
+             className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'glossary' ? 'bg-zinc-800 text-white shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+           >
+             <Book size={14} /> Glossary
+           </button>
+           <button 
+             onClick={() => setActiveTab('settings')}
+             className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'settings' ? 'bg-zinc-800 text-white shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+           >
+             <Settings size={14} /> Sources
+           </button>
+        </div>
+
+        <SuperAiButton contextId="constitution_editor" />
       </div>
 
-      <div className="flex-1 overflow-auto p-8">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Appearance Section */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-6">
-            <div className="flex items-center gap-2 text-purple-400 border-b border-zinc-800 pb-2">
-              <Palette size={20} />
-              <h2 className="font-bold text-lg">Visual Theme</h2>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-300">System Mode</span>
-                <select 
-                  value={(theme as unknown as Record<string, string>).mode || 'dark'} 
-                  onChange={(e) => setTheme({ mode: e.target.value } as unknown as Partial<typeof theme>)}
-                  className="bg-black border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-300 focus:border-purple-500 outline-none"
-                >
-                  <option value="dark">Standard Dark</option>
-                  <option value="midnight">Midnight Blue</option>
-                  <option value="oled">OLED Black</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-300">Accent Color</span>
-                <div className="flex gap-2">
-                  {['purple', 'blue', 'green', 'orange'].map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setTheme({ primaryColor: color } as unknown as Partial<typeof theme>)}
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        (theme as unknown as Record<string, string>).primaryColor === color ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'
-                      }`}
-                      style={{ backgroundColor: `var(--color-${color})` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Rules & Governance */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-6">
-            <div className="flex items-center gap-2 text-blue-400 border-b border-zinc-800 pb-2">
-              <Shield size={20} />
-              <h2 className="font-bold text-lg">Core Directives</h2>
-            </div>
-            <div className="space-y-4">
-               {/* Placeholder for future Rule/Glossary injection via VFS */}
-               <div className="p-4 bg-black/40 rounded-lg border border-zinc-800">
-                 <div className="flex items-center justify-between mb-2">
-                   <span className="text-sm font-bold text-zinc-300">Auto-Commit Changes</span>
-                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+      {/* Main Content Area */}
+      <div className="flex-1 flex gap-6 p-6 overflow-hidden">
+         {/* Editor Container / Settings Container */}
+         {activeTab === 'settings' ? (
+           <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-y-auto shadow-2xl">
+             <WorkspaceSettings />
+           </div>
+         ) : (
+           <div className="flex-1 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-black/20">
+                 <span className="text-xs font-mono text-zinc-500">
+                   {activeTab === 'rules' ? '.system/coding_rules.md' : '.system/glossary.md'}
+                 </span>
+                 <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <Edit3 size={12} /> Editable
                  </div>
-                 <p className="text-xs text-zinc-500">
-                   All AI actions in the VFS currently trigger automatic git commits tagged with the active Role ID.
-                 </p>
-               </div>
-            </div>
-          </div>
+              </div>
+              
+              <div className="flex-1 relative">
+                 <SmartEditor 
+                   fileName={activeTab === 'rules' ? 'coding_rules.md' : 'glossary.md'}
+                   content={activeTab === 'rules' ? rulesContent : glossaryContent}
+                   onChange={activeTab === 'rules' ? setRulesContent : setGlossaryContent}
+                 />
+              </div>
+           </div>
+         )}
 
-        </div>
+         {/* Context/Helper Column (Optional) */}
+         <div className="w-80 hidden xl:flex flex-col gap-4">
+            <div className="p-4 rounded-xl border border-blue-900/30 bg-blue-900/5">
+               <h3 className="text-sm font-bold text-blue-400 mb-2">Why this matters</h3>
+               <p className="text-xs text-zinc-400 leading-relaxed">
+                 The AI reads these documents before starting any task. Keeping them updated ensures the &quot;Corporate Recruiter&quot; assigns the right roles and the &quot;Code Writer&quot; follows your style.
+               </p>
+            </div>
+         </div>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ import OrganizationalStructure from './pages/OrganizationalStructure.js';
 import DataCenter from './pages/DataCenter.js';
 import InterfaceStudio from './pages/InterfaceStudio.js';
 import Constitution from './pages/Constitution.js';
+import ThemeStudio from './pages/ThemeStudio.js';
 
 // Sub-routes (if any specific ones remain)
 import FileLocationPage from './pages/FileLocationPage.js';
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/datacenter" element={<DataCenter />} />
               <Route path="/ui-studio" element={<InterfaceStudio />} />
               <Route path="/settings" element={<Constitution />} />
+              <Route path="/theme-studio" element={<ThemeStudio />} />
 
               {/* System & Legacy Support */}
               <Route path="/setup" element={<FileLocationPage />} />

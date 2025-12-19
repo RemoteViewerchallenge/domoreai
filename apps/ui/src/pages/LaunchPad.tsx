@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Cpu, Layout, Database, Settings, 
   BarChart2, Shield, Zap, FileText,
-  Monitor
+  Monitor, Scale, Book
 } from 'lucide-react';
 import { useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 
@@ -57,7 +57,8 @@ const ZONES: NexusZone[] = [
     icon: Settings,
     color: '#a855f7', // Purple
     nodes: [
-      { title: 'Constitution', path: '/settings', icon: Settings, description: 'Global rules, themes, and system requirements.', color: '#a855f7' },
+      { title: 'Constitution', path: '/settings', icon: Scale, description: 'The "Brain": Project rules, logic, and governing laws.', color: '#a855f7' },
+      { title: 'Theme Studio', path: '/theme-studio', icon: Layout, description: 'The "Skin": Personalize colors, layouts, and animations.', color: '#d8b4fe' },
       { title: 'System Setup', path: '/setup', icon: FileText, description: 'Initialization and environment mapping.', color: '#c084fc' },
     ]
   }
