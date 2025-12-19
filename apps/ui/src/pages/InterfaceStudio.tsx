@@ -6,7 +6,7 @@ import { CraftContainer, CraftText } from '../features/ui-builder/CraftComponent
 import { Toolbox } from '../features/ui-builder/Toolbox.js';
 import { SettingsPanel } from '../features/ui-builder/SettingsPanel.js';
 import { NewUIThemeProvider } from '../components/appearance/NewUIThemeProvider.js';
-import { AIContextButton } from '../components/AIContextButton.js';
+import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 
 export default function FactoryPage() {
   return (
@@ -25,7 +25,7 @@ export default function FactoryPage() {
           </div>
           
           <div className="flex items-center gap-3">
-             <AIContextButton context="UI Builder" size="sm" />
+             <SuperAiButton contextId="UI Builder" />
              <div className="h-6 w-px bg-[var(--color-border)]" />
              <button className="px-3 py-1.5 bg-[var(--color-primary)] text-[var(--color-background)] rounded text-xs font-bold uppercase hover:opacity-90 transition-opacity">
                 Export Layout

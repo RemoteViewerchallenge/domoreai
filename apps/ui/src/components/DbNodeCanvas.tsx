@@ -9,7 +9,7 @@ import { trpc } from '../utils/trpc.js';
 import { Database, Table as TableIcon, Plus, Maximize, Minimize, Terminal, FileJson } from 'lucide-react';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
 import { cn } from '@/lib/utils.js';
-import { AIContextButton } from './AIContextButton.js';
+import { SuperAiButton } from './ui/SuperAiButton.js';
 
 // --- CUSTOM NODES ---
 
@@ -195,8 +195,7 @@ export const DbNodeCanvas = () => {
                 <Panel position="top-right" className="m-4">
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-1.5 rounded-full shadow-xl">
-                            <span className="text-[10px] font-bold text-zinc-500 px-2 uppercase">Canvas Context</span>
-                            <AIContextButton context="Active Graph: 3 Tables Joined" size="sm" />
+                            <SuperAiButton contextId="Active Graph: 3 Tables Joined" />
                         </div>
                         {edges.length > 0 && (
                             <div className="flex items-center gap-2 animate-in slide-in-from-right fade-in">

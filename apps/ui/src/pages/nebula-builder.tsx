@@ -14,6 +14,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '../components/ui/textarea.js';
 import { FileExplorer } from '../components/FileExplorer.js';
 import { useCardVFS } from '../hooks/useCardVFS.js';
+import * as LucideIcons from 'lucide-react';
+
+// 1. BUILD THE REGISTRY
+// This bridges the Nebula Engine to your real React components and Icons.
+const NEBULA_COMPONENTS: Record<string, React.FC<any>> = {
+  // Bridge Lucide Icons (Note: We spread this first, then override core components)
+  ...LucideIcons as any,
+  
+  // CORE NEBULA LAYOUT COMPONENTS (Must override Lucide icons of the same name)
+  Box: ({ className, children, ...props }: any) => <div className={className} {...props}>{children}</div>,
+  Text: ({ content, className, type }: any) => {
+      const Tag = (type === 'h1' ? 'h1' : type === 'h2' ? 'h2' : 'p') as keyof JSX.IntrinsicElements;
+      return <Tag className={className}>{content}</Tag>
+  },
+  
+  // Bridge your UI components
+  Button: Button,
+  
+  // Add mapping for common names if needed
+  Card: ({ children, className }: any) => <div className={`bg-card text-card-foreground border rounded-xl shadow-sm ${className}`}>{children}</div>,
+  CardHeader: ({ children, className }: any) => <div className={`p-6 pb-3 ${className}`}>{children}</div>,
+  CardTitle: ({ children, className }: any) => <h3 className={`text-lg font-bold leading-none ${className}`}>{children}</h3>,
+  CardContent: ({ children, className }: any) => <div className={`p-6 pt-0 ${className}`}>{children}</div>,
+};
 
 // Initial Empty State
 const INITIAL_TREE: NebulaTree = {
@@ -234,7 +258,7 @@ export default function NebulaBuilderPage() {
             {/* The Stage */}
             <div className="w-full max-w-5xl h-full bg-background border shadow-xl rounded-lg overflow-hidden transition-all duration-300">
                {activeTab === 'preview' ? (
-                 <NebulaRenderer tree={tree} />
+                 <NebulaRenderer tree={tree} componentMap={NEBULA_COMPONENTS} />
                ) : (
                  <pre className="p-4 text-xs text-muted-foreground">Wireframe Mode Not Implemented</pre>
                )}
