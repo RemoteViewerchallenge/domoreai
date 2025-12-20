@@ -3,6 +3,8 @@ import { NebulaTree, NebulaNode } from '../core/types.js';
 export const DEFAULT_NEBULA_TREE: NebulaTree = {
   rootId: 'root',
   version: 1,
+  imports: [],
+  exports: [],
   nodes: {
     'root': {
       id: 'root',

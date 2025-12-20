@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { nebulaTool } from '../tools/nebulaTool.js';
+import { createVolcanoAgent } from '../services/AgentFactory.js';
+import { AgentRuntime } from '../services/AgentRuntime.js';
+import { PrismaAgentConfigRepository } from '../repositories/PrismaAgentConfigRepository.js';
+
+
 
 export const orchestratorRouter = createTRPCRouter({
   getConfig: protectedProcedure.query(async ({ ctx }) => {
@@ -197,26 +202,71 @@ export const orchestratorRouter = createTRPCRouter({
       roleId: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      // Log the dispatch request
       console.log(`🚀 [Orchestrator] Dispatching command:`, {
         prompt: input.prompt.substring(0, 100),
         contextId: input.contextId,
         roleId: input.roleId,
       });
 
-      // For now, return a simple acknowledgment
-      // In a full implementation, this would:
-      // 1. Select the appropriate role (or use provided roleId)
-      // 2. Create an orchestration execution
-      // 3. Execute the steps
-      // 4. Return the result
-      
-      return {
-        success: true,
-        message: 'Command dispatched successfully',
-        executionId: `exec_${Date.now()}`,
-        prompt: input.prompt,
-        contextId: input.contextId,
-      };
+      try {
+          const roleId = input.roleId || 'general_worker';
+          const repo = new PrismaAgentConfigRepository();
+          const role = await repo.getRole(roleId);
+
+          if (!role) throw new Error(`Role ${roleId} not found`);
+
+          // 1. Initialize Runtime with Role Tools
+          console.log(`[Orchestrator] Initializing runtime for role: ${roleId} with tools: [${role.tools.join(', ')}]`);
+          const runtime = await AgentRuntime.create(process.cwd(), role.tools);
+
+          // 2. Initialize Agent
+          const agent = await createVolcanoAgent({
+              roleId: roleId,
+              modelId: null,
+              isLocked: false,
+              temperature: 0.7,
+              maxTokens: 4096,
+              userGoal: input.prompt
+          });
+
+          // 3. Generate content WITH context (Constitution, memory, and code-mode protocol)
+          console.log(`[Orchestrator] Generating response...`);
+          const aiResponse = await runtime.generateWithContext(
+              agent, 
+              role.basePrompt, 
+              input.prompt, 
+              roleId
+          );
+
+          // 4. Run Execution Loop (Handles tool calling if AI wrote code blocks)
+          console.log(`[Orchestrator] Running agent loop...`);
+          const { result, logs } = await runtime.runAgentLoop(
+              input.prompt, 
+              async () => aiResponse as string // Pass the already generated response as if it was the first step
+          );
+
+          console.log(`[Orchestrator] Execution complete. Result length: ${result.length}, Logs: ${logs.length}`);
+
+          return {
+            success: true,
+            message: 'Command executed successfully',
+            executionId: `exec_${Date.now()}`,
+            prompt: input.prompt,
+            contextId: input.contextId,
+            output: result,
+            logs: logs
+          };
+
+      } catch (error) {
+          console.error('[Orchestrator] Dispatch failed:', error);
+          return {
+            success: false,
+            message: `Execution Failed: ${error instanceof Error ? error.message : String(error)}`,
+            executionId: `err_${Date.now()}`,
+            prompt: input.prompt,
+            contextId: input.contextId,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`
+          };
+      }
     }),
 });

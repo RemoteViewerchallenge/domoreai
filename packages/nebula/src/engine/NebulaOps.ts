@@ -132,6 +132,20 @@ export class NebulaOps {
       if (draft.nodes[parentId]) {
         draft.nodes[parentId].children.push(fragment.rootId);
       }
+
+      // 3. Merge Imports & Exports (set union)
+      if (fragment.imports) {
+         if (!draft.imports) draft.imports = [];
+         fragment.imports.forEach(imp => {
+            if (!draft.imports.includes(imp)) draft.imports.push(imp);
+         });
+      }
+      if (fragment.exports) {
+        if (!draft.exports) draft.exports = [];
+        fragment.exports.forEach(exp => {
+           if (!draft.exports.includes(exp)) draft.exports.push(exp);
+        });
+      }
     });
 
     this.onChange(this.tree);

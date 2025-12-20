@@ -49,12 +49,21 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     return Object.keys(categorizedRoles).sort();
   }, [categorizedRoles]);
 
-  // Auto-select first category
+  // Auto-select first category or current category
   React.useEffect(() => {
-    if (categories.length > 0 && !activeCategory) {
+    if (selectedRoleId && roles) {
+        // Find category of selected role
+        const role = roles.find(r => r.id === selectedRoleId);
+        if (role) {
+            const cat = role.categoryString || role.category?.name || 'Uncategorized';
+            if (activeCategory !== cat) {
+                setActiveCategory(cat);
+            }
+        }
+    } else if (categories.length > 0 && !activeCategory) {
       setActiveCategory(categories[0]);
     }
-  }, [categories, activeCategory]);
+  }, [categories, activeCategory, selectedRoleId, roles]);
 
   if (isLoading) {
     return (

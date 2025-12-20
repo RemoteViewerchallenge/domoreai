@@ -25,6 +25,20 @@ export class AstTransformer {
       ts.ScriptKind.TSX
     );
 
+    const imports: string[] = [];
+    const exports: string[] = [];
+
+    // Capture standard imports and re-exports
+    file.statements.forEach(statement => {
+        if (ts.isImportDeclaration(statement)) {
+            imports.push(statement.getText());
+        }
+        // Capture "export { Foo } from 'bar'" or "export { Foo }"
+        if (ts.isExportDeclaration(statement)) {
+            exports.push(statement.getText());
+        }
+    });
+
     let targetJsx: ts.Node | null = null;
 
     // 1. Try to find the default export
@@ -71,6 +85,8 @@ export class AstTransformer {
     return {
         rootId: rootNode.id,
         nodes: this.nodes,
+        imports,
+        exports,
         version: 1
     };
   }

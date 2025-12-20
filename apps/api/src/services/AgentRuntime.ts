@@ -58,7 +58,12 @@ export class AgentRuntime {
     // 1. Initialize Orchestrator & Load Servers
     // We assume requestedTools contains server names like 'git', 'postgres'
     // Filter out native tools and 'meta' from this list before passing to orchestrator
-    const nativeToolNames = ['read_file', 'write_file', 'list_files', 'browse', 'research.web_scrape', 'analysis.complexity'];
+    const nativeToolNames = [
+        'read_file', 'write_file', 'list_files', 
+        'browse', 'research.web_scrape', 'analysis.complexity',
+        'terminal_execute', 'search_codebase', 'list_files_tree', 
+        'scan_ui_components', 'nebula'
+    ];
     const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t) && t !== 'meta');
     
     let mcpTools: ToolDefinition[] = [];
@@ -107,7 +112,7 @@ export class AgentRuntime {
     }
   }
 
-  async runAgentLoop(userGoal: string, llmCallback: (prompt: string) => Promise<string>) {
+  async runAgentLoop(userGoal: string, llmCallback: (prompt: string) => Promise<string>): Promise<{ result: string; logs: string[] }> {
     // The Prompt for the LLM
 
 
@@ -143,7 +148,7 @@ export class AgentRuntime {
     }
 
     // 2. Execute in Sandbox
-    const { result, logs } = await this.client.callToolChain(codeToExecute);
+    const { result, logs } = await this.client.callToolChain(codeToExecute) as { result: string; logs: string[] };
     
     // 3. Return logs to your UI Terminal
     return { result, logs };

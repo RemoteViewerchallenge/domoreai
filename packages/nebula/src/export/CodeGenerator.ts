@@ -8,9 +8,12 @@ export class CodeGenerator {
 
     const jsx = this.renderNode(root, tree);
 
+    const imports = (tree.imports && tree.imports.length > 0)
+      ? tree.imports.join('\n')
+      : `import React from 'react';\nimport { Button, Card, Input, Label, Slider } from '@/components/ui';`;
+
     return `
-import React from 'react';
-import { Button, Card, Input, Label, Slider } from '@/components/ui';
+${imports}
 
 export default function GeneratedPage() {
   return (
