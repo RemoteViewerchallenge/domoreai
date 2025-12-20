@@ -178,7 +178,7 @@ export class ModelService {
                       costPer1k: Number(modelData.costPer1k || 0)
                   },
                   providerData: safeRow as Prisma.InputJsonValue,
-                  source: 'MERGE'
+                  source: 'MANUAL'
               },
               update: {
                   name: String(modelData.name),

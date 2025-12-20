@@ -5,7 +5,6 @@ import {
   Server, FilePlus, FolderPlus 
 } from 'lucide-react';
 import type { VFile } from '../stores/FileSystemTypes.js';
-import { SuperAiButton } from './ui/SuperAiButton.js';
 import { cn } from '@/lib/utils.js';
 
 interface FileExplorerProps {
@@ -145,8 +144,6 @@ const FileNode = ({
                     <Brain size={10} />
                 </button>
             )}
-            
-            <SuperAiButton contextId={`file_${node.path}`} />
         </div>
       </div>
 

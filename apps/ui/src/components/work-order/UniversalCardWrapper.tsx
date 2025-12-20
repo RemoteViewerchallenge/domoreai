@@ -10,6 +10,7 @@ interface UniversalCardWrapperProps {
   settings: React.ReactNode;
   children: React.ReactNode;
   headerEnd?: React.ReactNode; // Optional prop to inject extra controls (like view switcher)
+  hideAiButton?: boolean;
 }
 
 export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
@@ -18,7 +19,8 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
   aiContext = 'Global',
   settings,
   children,
-  headerEnd
+  headerEnd,
+  hideAiButton
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -45,7 +47,7 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
             <div className="flex items-center gap-2">
               {headerEnd}
               <div className="h-4 w-px bg-zinc-800 mx-1" />
-              <SuperAiButton contextId={aiContext} />
+              {!hideAiButton && <SuperAiButton contextId={aiContext} />}
               <button 
                 onClick={() => setIsFlipped(true)}
                 className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
