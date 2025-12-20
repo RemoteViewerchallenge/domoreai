@@ -33,6 +33,17 @@ export class NebulaOps {
       node: Partial<Omit<NebulaNode, "id" | "children">>;
     }[]
   ): NebulaId[] {
+    // VALIDATION: Check if all parents exist before starting the producer
+    // We want to fail loudly for batch operations too
+    for (const action of actions) {
+      if (!this.tree.nodes[action.parentId]) {
+        console.error(
+          `[NebulaOps] ❌ CRITICAL: Attempted to add node to non-existent parent: "${action.parentId}" in batch operation.`
+        );
+        throw new Error(`Parent node '${action.parentId}' not found.`);
+      }
+    }
+
     const newIds: NebulaId[] = [];
     this.tree = produce(this.tree, (draft) => {
       actions.forEach((action) => {
@@ -89,6 +100,15 @@ export class NebulaOps {
       typeof parentIdOrArgs === "string"
         ? parentIdOrArgs
         : parentIdOrArgs.parentId;
+
+    // VALIDATION: Check if parent exists before starting the producer
+    if (!this.tree.nodes[parentId]) {
+      console.error(
+        `[NebulaOps] ❌ CRITICAL: Attempted to add node to non-existent parent: "${parentId}". Node became an orphan.`
+      );
+      throw new Error(`Parent node '${parentId}' not found.`);
+    }
+
     const nodeData =
       typeof parentIdOrArgs === "string" ? node! : parentIdOrArgs.node;
     const newId = `node_${nanoid(6)}`;

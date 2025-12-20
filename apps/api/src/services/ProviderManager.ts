@@ -79,6 +79,11 @@ export class ProviderManager implements IProviderManager {
             apiKey = decrypt(config.apiKey);
           }
           
+          // Validate required fields based on provider type
+          // if (!config.type || !(config.type in ProviderFactory.registry)) {
+          //   throw new Error(`Invalid provider type: ${config.type}`);
+          // }
+
           const provider = ProviderFactory.createProvider(config.type, {
             id: config.id,
             apiKey,

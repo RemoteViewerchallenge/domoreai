@@ -74,7 +74,7 @@ export class WebSocketService {
       }, 100);
 
       // Handle shell output
-      shell.stdout.on('data', (data) => {
+      shell.stdout.on('data', (data: Buffer | string) => {
         ws.send(JSON.stringify({
           timestamp: new Date().toISOString(),
           type: 'info',

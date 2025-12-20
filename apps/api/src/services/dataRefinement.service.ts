@@ -84,7 +84,8 @@ export async function flattenRawData(options: FlattenOptions) {
         const jsonString = JSON.stringify(val).replace(/'/g, "''");
         return `'${jsonString}'::jsonb`;
       }
-      return `'${String(val).replace(/'/g, "''")}'`; // This is safe now because objects are handled above
+      const valStr = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val);
+      return `'${valStr.replace(/'/g, "''")}'`; // This is safe now because objects are handled above
     });
     return `(${vals.join(', ')})`;
   });

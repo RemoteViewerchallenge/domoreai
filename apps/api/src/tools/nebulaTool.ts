@@ -5,6 +5,8 @@ export const nebulaTool = {
     
     NEBULA CODE MODE v2.0:
     When writing TypeScript to manipulate the UI, use the global 'nebula' and 'ast' objects.
+
+    IMPORTANT: You MUST use an existing parentId. The root ID is often dynamic, not always 'root'.
     
     1. addNode(parentId, node): Adds a node and RETURNS a unique nodeId. ALWAYS capture this ID.
     2. updateNode(nodeId, update): Updates an existing node.
@@ -91,8 +93,9 @@ export const nebulaTool = {
         },
         required: ['action']
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     handler: async (args: unknown) => {
-        const typedArgs = args as Record<string, any>;
+        const typedArgs = args as Record<string, unknown>;
         // Return structured action for the UI to consume
         return {
             status: 'success',
@@ -100,7 +103,7 @@ export const nebulaTool = {
                 tool: 'nebula',
                 ...typedArgs
             },
-            message: `Nebula operation '${typedArgs.action}' queued for UI execution.`
+            message: `Nebula operation '${String(typedArgs.action)}' queued for UI execution.`
         };
     }
 };

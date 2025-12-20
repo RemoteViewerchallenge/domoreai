@@ -14,7 +14,7 @@ async function testDoctor() {
   if (Object.keys(health.missingFields).length > 0) {
     console.log('\n=== MISSING FIELDS ===');
     for (const [field, count] of Object.entries(health.missingFields)) {
-      console.log(`  ${field}: ${count} models`);
+      console.log(`  ${field}: ${count as number} models`);
     }
   } else {
     console.log('\n✅ All models have complete data!');
