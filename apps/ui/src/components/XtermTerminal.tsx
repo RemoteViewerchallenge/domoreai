@@ -246,6 +246,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
       aiContext={workingDirectory || 'Local Terminal'}
       settings={settingsContent}
       headerEnd={headerEnd}
+      hideAiButton={true}
     >
       <div 
         className="h-full w-full overflow-hidden bg-zinc-950/90 text-left" 

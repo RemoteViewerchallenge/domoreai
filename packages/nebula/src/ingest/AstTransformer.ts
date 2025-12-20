@@ -174,6 +174,7 @@ export class AstTransformer {
 
     const props: Record<string, any> = {};
     const style: StyleTokens = {};
+    const layout: any = {};
     const bindings: DataBinding[] = []; // Store discovered bindings here
 
     // Extract Attributes
@@ -236,7 +237,7 @@ export class AstTransformer {
     return nebulaNode;
   }
 
-  private parseTailwindToTokens(className: string, style: StyleTokens) {
+  private parseTailwindToTokens(className: string, style: StyleTokens, layout: any) {
       // Heuristic mapping: "p-4" -> style.padding = "p-4"
       const classes = className.split(/\s+/);
       classes.forEach(c => {
@@ -251,6 +252,26 @@ export class AstTransformer {
           if (c.startsWith('w-')) style.width = c;
           if (c.startsWith('h-')) style.height = c;
           if (c.startsWith('border')) style.border = c;
+
+          // 2. LAYOUT ENGINE
+          if (c === 'flex') layout.mode = 'flex';
+          if (c === 'grid') layout.mode = 'grid';
+          if (c === 'flex-col') layout.direction = 'column';
+          if (c === 'flex-row') layout.direction = 'row';
+          
+          if (c === 'items-center') layout.align = 'center';
+          if (c === 'items-start') layout.align = 'start';
+          if (c === 'items-end') layout.align = 'end';
+          if (c === 'items-stretch') layout.align = 'stretch';
+
+          if (c === 'justify-center') layout.justify = 'center';
+          if (c === 'justify-between') layout.justify = 'between';
+          if (c === 'justify-around') layout.justify = 'around';
+          if (c === 'justify-start') layout.justify = 'start';
+          if (c === 'justify-end') layout.justify = 'end';
+
+          if (c.startsWith('gap-')) layout.gap = c;
+          if (c.startsWith('grid-cols-')) layout.columns = parseInt(c.replace('grid-cols-', ''));
       });
   }
 

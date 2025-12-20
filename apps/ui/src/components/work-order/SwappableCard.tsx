@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { 
-  Code, Globe, Terminal, Play, Paperclip, Settings, 
-  X, ChevronRight 
+  Code, Globe, Terminal, Play, Settings, Folder
 } from 'lucide-react';
 import SmartEditor from '../SmartEditor.js'; 
 import MonacoEditor from '../MonacoEditor.js';
@@ -22,8 +21,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   // State
   const [activeFile, setActiveFile] = useState<string>('');
   const [content, setContent] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser'>('editor');
-  const [showFiles, setShowFiles] = useState(true);
+  const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files'>('editor');
   const [showSettings, setShowSettings] = useState(false);
   const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
 
@@ -48,28 +46,15 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       if (activeFile) await writeFile(activeFile, val);
   }, [activeFile, writeFile]);
 
+  const handleRunAgent = useCallback(() => {
+      console.log('Running agent...');
+      // Future: Trigger actual AI run or code execution
+  }, []);
+
   return (
     <div className="flex h-full w-full rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl relative group">
       
-      {/* 1. Persistent File Drawer */}
-      {showFiles && (
-          <div className="w-64 flex-none border-r border-zinc-800 flex flex-col bg-zinc-900/50">
-             <div className="p-2 border-b border-zinc-800 font-bold text-[10px] text-zinc-500 tracking-wider flex justify-between items-center">
-                <span>EXPLORER</span>
-                <button onClick={() => setShowFiles(false)}><X size={12}/></button>
-             </div>
-             <FileExplorer 
-                files={files} 
-                currentPath={currentPath}
-                onNavigate={navigateTo}
-                onSelect={setActiveFile}
-                onCreateNode={createNode}
-                onRefresh={refresh}
-                onEmbedDir={ingestDirectory}
-                onLoadChildren={loadChildren}
-             />
-          </div>
-      )}
+
 
       {/* 2. Main Work Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
@@ -78,11 +63,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              
              {/* Left: Path & File Toggle */}
              <div className="flex items-center gap-2 flex-1">
-                {!showFiles && (
-                    <button onClick={() => setShowFiles(true)} className="text-zinc-500 hover:text-white" title="Show Files">
-                        <ChevronRight size={14} />
-                    </button>
-                )}
                 <div className="flex items-center bg-black/40 rounded px-2 py-1 border border-zinc-800 flex-1 max-w-md">
                     <span className="text-zinc-500 text-xs mr-2 font-mono">/</span>
                     <input 
@@ -97,15 +77,12 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {/* Right: Actions & Tools */}
              <div className="flex items-center gap-2">
                 
-                {/* Run Agent Action */}
-                <button className="p-1.5 hover:bg-green-500/10 text-zinc-400 hover:text-green-400 rounded transition-colors" title="Run Agent">
-                    <Play size={14} />
-                </button>
-
-                {/* Attach File */}
-                <button className="p-1.5 hover:bg-white/10 text-zinc-400 hover:text-white rounded transition-colors" title="Attach Context">
-                    <Paperclip size={14} />
-                </button>
+                {/* THE SUPER AI BUTTON (Unified) */}
+                <SuperAiButton 
+                    contextId={`card_${id}`} 
+                    side="left"
+                    expandUp={false} // Expands down since it's in header
+                />
 
                 {/* Settings Toggle */}
                 <button 
@@ -116,10 +93,20 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     <Settings size={14} />
                 </button>
 
+                {/* Run Agent Button */}
+                <button 
+                    onClick={handleRunAgent}
+                    className="p-1.5 rounded hover:bg-green-900/30 text-green-500 transition-colors"
+                    title="Run Agent"
+                >
+                    <Play size={14} fill="currentColor" />
+                </button>
+
                 <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
 
                 {/* View Switcher */}
                 <div className="flex bg-black/40 rounded p-0.5">
+                    <button onClick={() => setViewMode('files')} className={`p-1.5 rounded ${viewMode === 'files' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Folder size={14}/></button>
                     <button onClick={() => setViewMode('editor')} className={`p-1.5 rounded ${viewMode === 'editor' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Code size={14}/></button>
                     <button onClick={() => setViewMode('terminal')} className={`p-1.5 rounded ${viewMode === 'terminal' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Terminal size={14}/></button>
                     <button onClick={() => setViewMode('browser')} className={`p-1.5 rounded ${viewMode === 'browser' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}><Globe size={14}/></button>
@@ -141,20 +128,34 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {viewMode === 'editor' && (
                  editorType === 'monaco' 
                  ? <MonacoEditor fileName={activeFile} content={content} onChange={handleSave} />
-                 : <SmartEditor fileName={activeFile} content={content} onChange={handleSave} />
+                 : <SmartEditor fileName={activeFile} content={content} onChange={handleSave} onRun={handleRunAgent} />
              )}
              
              {/* Tools */}
+             {viewMode === 'files' && (
+                <div className="h-full w-full bg-zinc-900/50">
+                    <FileExplorer 
+                        files={files} 
+                        currentPath={currentPath}
+                        onNavigate={navigateTo}
+                        onSelect={(path) => {
+                            setActiveFile(path);
+                            // Auto-switch to editor when a file is selected
+                            if (!path.endsWith('/')) { // Simple check, might need robust isFile check
+                                setViewMode('editor');
+                            }
+                        }}
+                        onCreateNode={createNode}
+                        onRefresh={refresh}
+                        onEmbedDir={ingestDirectory}
+                        onLoadChildren={loadChildren}
+                        className="p-2"
+                    />
+                </div>
+              )}
              {viewMode === 'terminal' && <XtermTerminal workingDirectory={currentPath} />}
              {viewMode === 'browser' && <BrowserCard />}
 
-             {/* THE SUPER AI BUTTON (Bottom Right, Absolute) */}
-             <div className="absolute bottom-4 right-4 z-50">
-                <SuperAiButton 
-                    contextId={`card_${id}_${viewMode}`} 
-                    className="shadow-2xl shadow-purple-500/20 hover:scale-105 transition-transform"
-                />
-             </div>
           </div>
       </div>
     </div>

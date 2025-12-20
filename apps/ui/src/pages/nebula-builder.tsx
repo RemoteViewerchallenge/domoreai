@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { NebulaOps } from '@repo/nebula/src/engine/NebulaOps.js';
-import { NebulaRenderer } from '@repo/nebula/src/react/NebulaRenderer.js';
-import { DEFAULT_NEBULA_TREE } from '@repo/nebula/src/engine/defaults.js';
-import { NebulaTree, NebulaNode } from '@repo/nebula/src/core/types.js';
+import { NebulaOps, NebulaRenderer, DEFAULT_NEBULA_TREE, type NebulaTree, type NebulaNode } from '@repo/nebula';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,39 +10,23 @@ import { trpc } from '@/utils/trpc';
 import { toast } from 'sonner';
 import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel';
 
+import { SuperAiButton } from '@/components/ui/SuperAiButton';
+
 export default function NebulaBuilderPage() {
   const [tree, setTree] = useState<NebulaTree>(DEFAULT_NEBULA_TREE);
-  const [prompt, setPrompt] = useState('');
 
   // Initialize Engine
-  const ops = new NebulaOps(tree);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const ops = new NebulaOps(tree, setTree);
 
-  // AI Agent Mutation
-  const agentMutation = trpc.agent.chat.useMutation({
-    onSuccess: (data) => {
-        // In a real implementation, the AI would return JSON operations
-        // For now, we simulate a response or handle the text
-        toast.success("AI Agent finished thinking");
-        console.log("AI Response:", data);
-    },
-    onError: (err) => {
-        toast.error(`AI Error: ${err.message}`);
-    }
-  });
-
-  const handleSendPrompt = () => {
-    if(!prompt.trim()) return;
-
-    // 1. Dispatch to AI (Simulated for this UI skeleton)
-    agentMutation.mutate({
-        message: `Current Tree State: ${JSON.stringify(tree)}. User Request: ${prompt}`,
-        agentId: 'nebula-architect' // Hypothetical agent
-    });
-
-    // 2. Optimistic / Manual Update (Example)
-    // ops.addNode(tree.rootId, { type: 'Card', props: { children: 'AI Generated' } });
-    // setTree(ops.getTree()); // Update state
-    setPrompt('');
+  // AI Handler for SuperAiButton
+  const handleAiCommand = (prompt: string) => {
+     // In a real implementation we would call the mutation here
+     // But SuperAiButton handles dispatch via trpc.orchestrator.dispatch
+     // We can listen to changes or inject context via the store if needed.
+     // For now, we'll just show a toast that it was received.
+     toast.info(`AI Command Received: ${prompt}`);
+     // TODO: Actually hook up the Nebula Agent
   };
 
   return (
@@ -57,7 +38,17 @@ export default function NebulaBuilderPage() {
           Nebula <span className="text-muted-foreground font-normal">Builder</span>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm"><Code className="w-4 h-4 mr-2"/> Export</Button>
+           <Button variant="outline" size="sm" onClick={() => {
+              const json = JSON.stringify(tree, null, 2);
+              const blob = new Blob([json], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'nebula-tree.json';
+              a.click();
+           }}>
+             <Code className="w-4 h-4 mr-2"/> Export
+           </Button>
            <Button size="sm"><Play className="w-4 h-4 mr-2"/> Preview</Button>
         </div>
       </header>
@@ -76,15 +67,15 @@ export default function NebulaBuilderPage() {
             </div>
 
             <TabsContent value="structure" className="flex-1 p-4">
-                <div className="text-sm text-muted-foreground">Tree View Placeholder</div>
+                <div className="text-sm text-muted-foreground">Tree View Placeholder (Use AI to build)</div>
                 {/* We would render a recursive tree list here */}
             </TabsContent>
             <TabsContent value="components" className="flex-1 p-4">
                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="justify-start">Container</Button>
-                    <Button variant="outline" className="justify-start">Card</Button>
-                    <Button variant="outline" className="justify-start">Text</Button>
-                    <Button variant="outline" className="justify-start">Button</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => ops.addNode(tree.rootId, { type: 'Box', props: { className: 'p-4 border rounded' } })}>Container</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => ops.addNode(tree.rootId, { type: 'Box', props: { className: 'p-6 shadow-lg rounded-xl bg-card' } })}>Card</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => ops.addNode(tree.rootId, { type: 'Text', props: { content: 'Hello World', type: 'h2' } })}>Text</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => ops.addNode(tree.rootId, { type: 'Button', props: { children: 'Click Me' } })}>Button</Button>
                  </div>
             </TabsContent>
             <TabsContent value="theme" className="flex-1 p-0 overflow-auto">
@@ -106,37 +97,28 @@ export default function NebulaBuilderPage() {
            <div className="flex-1 overflow-auto p-4">
                <h3 className="font-semibold mb-4">Properties</h3>
                <div className="space-y-4">
-                  <div className="space-y-2">
-                      <label className="text-xs font-medium">Background</label>
-                      <Input placeholder="bg-white" />
-                  </div>
-                  <div className="space-y-2">
-                      <label className="text-xs font-medium">Padding</label>
-                      <Input placeholder="p-4" />
+                  <div className="bg-muted/30 p-4 rounded text-xs text-muted-foreground">
+                    Select a node to edit properties.
                   </div>
                </div>
            </div>
 
            {/* AI Chat Interface */}
-           <div className="h-1/3 border-t bg-muted/30 p-4 flex flex-col gap-2">
+           <div className="h-auto border-t bg-muted/30 p-4 flex flex-col gap-2 relative">
                <div className="flex items-center gap-2 mb-2">
-                   <Sparkles className="w-4 h-4 text-purple-600" />
-                   <span className="text-sm font-semibold">Nebula AI</span>
-               </div>
-               <div className="flex-1 bg-background border rounded-md p-2 text-xs text-muted-foreground overflow-auto">
-                   Hello! I am ready to help you build. Describe what you want.
-               </div>
-               <div className="flex gap-2">
-                   <Input
-                     value={prompt}
-                     onChange={e => setPrompt(e.target.value)}
-                     placeholder="Add a hero section..."
-                     className="bg-background"
-                     onKeyDown={e => e.key === 'Enter' && handleSendPrompt()}
+                   <span className="text-sm font-semibold">Nebula AI Config</span>
+                   <div className="flex-1" />
+                   {/* We place the SuperAiButton which manages the chat */}
+                   <SuperAiButton 
+                      contextId="nebula-builder" 
+                      className="relative" 
+                      expandUp={true}
+                      side="left"
+                      onGenerate={handleAiCommand}
                    />
-                   <Button size="icon" onClick={handleSendPrompt}>
-                       <Sparkles className="w-4 h-4" />
-                   </Button>
+               </div>
+               <div className="text-xs text-muted-foreground">
+                  Click the sparkle button to command the Nebula Architect.
                </div>
            </div>
         </aside>

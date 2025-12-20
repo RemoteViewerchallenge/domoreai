@@ -53,7 +53,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
     onSuccess: (data) => {
       console.log('✅ Command dispatched:', data);
-      setPrompt('');
+      // setPrompt(''); // Keep prompt for reuse per user request
       setState('idle');
     },
     onError: (error) => {
