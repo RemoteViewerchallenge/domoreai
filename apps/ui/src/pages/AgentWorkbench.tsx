@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
+import { Button } from '../components/ui/button.js';
 import { Plus } from 'lucide-react';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
@@ -39,10 +40,18 @@ export default function AgentWorkbench() {
   }, [columns]); // Only run when columns changes, not when cards changes
 
   // Group cards by column
-  const cardsByColumn: { [key: number]: typeof cards } = {};
-  for (let i = 0; i < columns; i++) {
-    cardsByColumn[i] = cards.filter(card => card.column === i);
-  }
+  const cardsByColumn = useMemo(() => {
+    const buckets: { [key: number]: typeof cards } = {};
+    for (let i = 0; i < columns; i++) {
+      buckets[i] = [];
+    }
+    cards.forEach(card => {
+      if (buckets[card.column]) {
+        buckets[card.column].push(card);
+      }
+    });
+    return buckets;
+  }, [cards, columns]);
 
   const handleSpawnCard = (columnIndex: number) => {
     if (availableRoles.length === 0) {
@@ -111,14 +120,16 @@ export default function AgentWorkbench() {
                 <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
                   <div className="flex items-center gap-0.5 flex-wrap justify-center">
                     {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
-                      <button
+                      <Button
                         key={c.id}
                         onClick={() => scrollToCardIndex(columnIndex, idx)}
-                        className="w-6 h-6 flex items-center justify-center text-[10px] font-bold bg-[var(--color-background-secondary)] hover:bg-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-black border border-[var(--color-border)] hover:border-[var(--color-primary)] rounded transition-all"
+                        variant="outline"
+                        size="icon"
+                        className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
                         title={`Go to card ${idx + 1}`}
                       >
                         {idx + 1}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -149,35 +160,41 @@ export default function AgentWorkbench() {
               <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
                 {columnCards.length > 0 ? (
                   <div className="h-full flex items-center justify-between px-3">
-                    <button
+                    <Button
                       onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
                       disabled={currentFocusIndex === 0}
-                      className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                     >
                       ↑ Prev
-                    </button>
+                    </Button>
                     
                     <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
                       {currentFocusIndex + 1}/{columnCards.length}
                     </span>
                     
-                    <button
+                    <Button
                       onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
                       disabled={currentFocusIndex === columnCards.length - 1}
-                      className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                     >
                       Next ↓
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center">
-                    <button
+                    <Button
                       onClick={() => handleSpawnCard(columnIndex)}
-                      className="flex items-center gap-1 px-3 py-1 bg-[var(--color-primary)]/20 border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30 rounded text-[10px] font-bold uppercase tracking-wider transition-all"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 bg-[var(--color-primary)]/20 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30 text-[10px] font-bold uppercase tracking-wider"
                     >
-                      <Plus size={12} />
+                      <Plus size={12} className="mr-1" />
                       Spawn Card
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
