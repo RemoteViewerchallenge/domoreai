@@ -72,5 +72,7 @@ export interface NebulaNode {
 export interface NebulaTree {
   rootId: NebulaId;
   nodes: Record<NebulaId, NebulaNode>;
+  imports: string[]; // Captured import statements
+  exports: string[]; // Captured export statements
   version: number;
 }

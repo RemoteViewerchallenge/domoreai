@@ -5,8 +5,37 @@ import { RoleModelOverride } from './RoleModelOverride.js';
 import { SuperAiButton } from './ui/SuperAiButton.js';
 import { 
   Save, Trash2, Brain, Eye, Code, Wrench, FileJson, Skull, Sparkles, Shield, Database, 
-  ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, Edit2, Plus 
+  ChevronDown, ChevronRight, CheckCircle, Folder, FolderOpen, Edit2, Plus, FilePlus 
 } from 'lucide-react';
+
+const DEFAULT_FORM_DATA = {
+  name: '',
+  basePrompt: '',
+  category: '', 
+  minContext: 0,
+  maxContext: 128000,
+  needsVision: false,
+  needsReasoning: false,
+  needsCoding: false,
+  needsTools: false,
+  needsJson: false,
+  needsUncensored: false,
+  needsImageGeneration: false,
+  tools: [] as string[],
+  defaultTemperature: 0.7,
+  defaultMaxTokens: 2048,
+  defaultTopP: 1.0,
+  defaultFrequencyPenalty: 0.0,
+  defaultPresencePenalty: 0.0,
+  defaultStop: [] as string[],
+  defaultSeed: undefined as number | undefined,
+  defaultResponseFormat: 'text' as 'text' | 'json_object',
+  terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] } as { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  criteria: {} as Record<string, any>,
+  orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined as string | undefined, minPassScore: 80 },
+  memoryConfig: { useProjectMemory: false, readOnly: false },
+};
 
 interface RoleCreatorPanelProps {
   className?: string;
@@ -58,34 +87,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [tempCategoryName, setTempCategoryName] = useState('');
   const [isNewCategory, setIsNewCategory] = useState<boolean>(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    basePrompt: '',
-    category: '', 
-    minContext: 0,
-    maxContext: 128000,
-    needsVision: false,
-    needsReasoning: false,
-    needsCoding: false,
-    needsTools: false,
-    needsJson: false,
-    needsUncensored: false,
-    needsImageGeneration: false,
-    tools: [] as string[],
-    defaultTemperature: 0.7,
-    defaultMaxTokens: 2048,
-    defaultTopP: 1.0,
-    defaultFrequencyPenalty: 0.0,
-    defaultPresencePenalty: 0.0,
-    defaultStop: [] as string[],
-    defaultSeed: undefined as number | undefined,
-    defaultResponseFormat: 'text' as 'text' | 'json_object',
-    terminalRestrictions: { mode: 'blacklist', commands: ['rm', 'sudo', 'dd', 'mkfs', 'shutdown', 'reboot'] } as { mode: 'whitelist' | 'blacklist' | 'unrestricted'; commands: string[] },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    criteria: {} as Record<string, any>,
-    orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined as string | undefined, minPassScore: 80 },
-    memoryConfig: { useProjectMemory: false, readOnly: false },
-  });
+  const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
   const [leftTab, setLeftTab] = useState<'params' | 'toolPrompts'>('params');
   const [rightTab, setRightTab] = useState<'capabilities' | 'orchestration' | 'assignments'>('capabilities');
   const [toolPrompts, setToolPrompts] = useState<Record<string, string>>({});
@@ -311,6 +313,14 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         setToolPrompts({});
     }
     setSaveStatus('idle');
+  };
+
+  const handleCreateNewRole = () => {
+    setSelectedRoleId(null);
+    setFormData(DEFAULT_FORM_DATA);
+    setToolPrompts({});
+    setSaveStatus('idle');
+    setLeftTab('params');
   };
 
   const handleSave = () => {
@@ -540,6 +550,13 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
              <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Categories ({roles?.length || 0})</span>
              <div className="flex gap-1">
                  <button 
+                    onClick={handleCreateNewRole}
+                    title="Create New Role"
+                    className="text-[var(--color-text-muted)] hover:text-[var(--color-primary)] mr-2"
+                 >
+                    <FilePlus size={14} />
+                 </button>
+                 <button 
                     onClick={() => {
                         if(confirm('Ingest default agent library? This may create duplicates if run twice.')) {
                             ingestLibraryMutation.mutate();
@@ -722,28 +739,32 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                       <Sparkles size={12} />
                       USE GEMINI 3 (ANTIGRAVITY)
                     </button>
-                    <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-border)]/50">
-                        <SuperAiButton 
-                            contextId="role-creator-magic-gen"
-                            onGenerate={(prompt) => {
-                                generatePromptMutation.mutate({ 
-                                    name: formData.name, 
-                                    category: formData.category,
-                                    // @ts-expect-error - Assuming backend might accept this, or it will just be ignored
-                                    instructions: prompt
-                                });
-                            }}
-                            defaultPrompt={`Generate a prompt for a ${formData.name || 'new role'}...`}
-                        />
-                    </div>
+
                   </div>
                 </div>
-                <textarea
-                  value={formData.basePrompt}
-                  onChange={(e) => setFormData({ ...formData, basePrompt: e.target.value })}
-                  className="flex-1 w-full p-4 bg-[var(--color-background-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none font-mono text-sm resize-none rounded-lg leading-relaxed"
-                  placeholder="You are an expert AI assistant..."
-                />
+                <div className="relative flex-1 w-full">
+                  <textarea
+                    value={formData.basePrompt}
+                    onChange={(e) => setFormData({ ...formData, basePrompt: e.target.value })}
+                    className="w-full h-full p-4 bg-[var(--color-background-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none font-mono text-sm resize-none rounded-lg leading-relaxed pb-12"
+                    placeholder="You are an expert AI assistant..."
+                  />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+                     <SuperAiButton 
+                        contextId="role-creator-magic-gen"
+                        expandUp={true}
+                        onGenerate={(prompt) => {
+                            generatePromptMutation.mutate({ 
+                                name: formData.name, 
+                                category: formData.category,
+                                // @ts-expect-error - Assuming backend might accept this, or it will just be ignored
+                                instructions: prompt
+                            });
+                        }}
+                        defaultPrompt={`Generate a prompt for a ${formData.name || 'new role'}...`}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

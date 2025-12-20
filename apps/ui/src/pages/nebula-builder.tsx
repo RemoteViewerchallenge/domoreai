@@ -1,32 +1,66 @@
 import React, { useState } from 'react';
-import { NebulaOps, NebulaRenderer, DEFAULT_NEBULA_TREE, type NebulaTree, type NebulaNode } from '@repo/nebula';
+import { NebulaOps, NebulaRenderer, DEFAULT_NEBULA_TREE, type NebulaTree } from '@repo/nebula';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Layout, Code, Play } from 'lucide-react';
-import { trpc } from '@/utils/trpc';
+import { Sparkles, Code, Play, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel';
 
-import { SuperAiButton } from '@/components/ui/SuperAiButton';
+import { trpc } from '@/utils/trpc';
+import { Textarea } from '@/components/ui/textarea';
+import CompactRoleSelector from '@/components/CompactRoleSelector';
+
+
 
 export default function NebulaBuilderPage() {
   const [tree, setTree] = useState<NebulaTree>(DEFAULT_NEBULA_TREE);
+  const [prompt, setPrompt] = useState('');
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [lastResponse, setLastResponse] = useState<{status: string, message: string, logs?: string[]} | null>(null);
+
+  // tRPC Mutation
+  const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onSuccess: (data: any) => {
+          toast.success(`Command Sent! ID: ${data.executionId}`);
+          setLastResponse({
+             status: 'success',
+             message: `Successfully dispatched to ${selectedRoleId}. Output: ${data.output}`,
+             logs: data.logs
+          });
+          setPrompt(''); 
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onError: (err: any) => {
+          toast.error(`Failed to dispatch: ${err.message}`);
+          setLastResponse({
+             status: 'error',
+             message: `Error: ${err.message}`
+          });
+      }
+  });
 
   // Initialize Engine
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const ops = new NebulaOps(tree, setTree);
 
-  // AI Handler for SuperAiButton
-  const handleAiCommand = (prompt: string) => {
-     // In a real implementation we would call the mutation here
-     // But SuperAiButton handles dispatch via trpc.orchestrator.dispatch
-     // We can listen to changes or inject context via the store if needed.
-     // For now, we'll just show a toast that it was received.
-     toast.info(`AI Command Received: ${prompt}`);
-     // TODO: Actually hook up the Nebula Agent
+  // AI Handler
+  const handleAiCommand = (promptText: string) => {
+     // Check if role is selected
+     if (!selectedRoleId) {
+         toast.error("Please select a role first.");
+         return;
+     }
+     
+     if (!promptText.trim()) return;
+
+     setLastResponse(null);
+     
+     // Call the orchestrator dispatch via mutation hook
+     dispatchMutation.mutate({
+         prompt: promptText,
+         roleId: selectedRoleId
+     });
   };
 
   return (
@@ -49,6 +83,20 @@ export default function NebulaBuilderPage() {
            }}>
              <Code className="w-4 h-4 mr-2"/> Export
            </Button>
+           <Button variant="ghost" size="sm" onClick={() => {
+                // MOCK INGESTION DEMO
+                const mockImports = [
+                   "import { User } from '@/types'",
+                   "import { format } from 'date-fns'"
+                ];
+                setTree(prev => ({
+                    ...prev,
+                    imports: mockImports
+                }));
+                toast.success('Mock Ingested imports!');
+           }}>
+             Ingest Demo
+           </Button>
            <Button size="sm"><Play className="w-4 h-4 mr-2"/> Preview</Button>
         </div>
       </header>
@@ -69,6 +117,15 @@ export default function NebulaBuilderPage() {
             <TabsContent value="structure" className="flex-1 p-4">
                 <div className="text-sm text-muted-foreground">Tree View Placeholder (Use AI to build)</div>
                 {/* We would render a recursive tree list here */}
+                <div className="mt-6 pt-4 border-t">
+                  <h4 className="font-semibold text-xs mb-2 uppercase text-muted-foreground">Page Imports</h4>
+                  <div className="bg-neutral-900 text-green-400 font-mono text-[10px] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                    {tree.imports && tree.imports.length > 0 
+                      ? tree.imports.map((imp, i) => <div key={i}>{imp}</div>) 
+                      : <span className="text-neutral-500">// No imports detected</span>
+                    }
+                  </div>
+                </div>
             </TabsContent>
             <TabsContent value="components" className="flex-1 p-4">
                  <div className="grid grid-cols-2 gap-2">
@@ -106,20 +163,63 @@ export default function NebulaBuilderPage() {
            {/* AI Chat Interface */}
            <div className="h-auto border-t bg-muted/30 p-4 flex flex-col gap-2 relative">
                <div className="flex items-center gap-2 mb-2">
-                   <span className="text-sm font-semibold">Nebula AI Config</span>
-                   <div className="flex-1" />
-                   {/* We place the SuperAiButton which manages the chat */}
-                   <SuperAiButton 
-                      contextId="nebula-builder" 
-                      className="relative" 
-                      expandUp={true}
-                      side="left"
-                      onGenerate={handleAiCommand}
-                   />
+                   <Sparkles className="w-4 h-4 text-purple-500" />
+                   <span className="text-sm font-semibold">Nebula Architect</span>
                </div>
-               <div className="text-xs text-muted-foreground">
-                  Click the sparkle button to command the Nebula Architect.
+
+               <div className="mb-2 border rounded-md overflow-hidden bg-background">
+                  <CompactRoleSelector 
+                    selectedRoleId={selectedRoleId} 
+                    onSelect={(id: string) => setSelectedRoleId(id)} 
+                  />
                </div>
+               
+               <Textarea 
+                 placeholder="Describe the UI layout or changes you want..."
+                 className="min-h-[120px] text-xs font-mono resize-none bg-background/50 focus:bg-background transition-colors"
+                 value={prompt}
+                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
+                 onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                    if(e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if(prompt.trim()) handleAiCommand(prompt);
+                    }
+                 }}
+               />
+
+               <Button 
+                   size="sm" 
+                   className="w-full gap-2"
+                   onClick={() => handleAiCommand(prompt)}
+                   disabled={!prompt.trim() || dispatchMutation.isLoading}
+                >
+                  {dispatchMutation.isLoading ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Processing...
+                      </>
+                  ) : (
+                      <>
+                        <Send className="w-3 h-3" />
+                         Execute Instructions
+                      </>
+                  )}
+               </Button>
+               
+               <div className="text-[10px] text-muted-foreground text-center mt-1">
+                  Using role: {selectedRoleId ? <span className="font-mono text-purple-400">{selectedRoleId}</span> : <span className="text-red-400 font-bold">None Selected</span>}
+               </div>
+               
+               {lastResponse && (
+                  <div className={`mt-2 p-2 rounded text-[10px] border flex flex-col gap-1 ${lastResponse.status === 'success' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                      <div className="font-semibold">{lastResponse.message}</div>
+                      {lastResponse.logs && lastResponse.logs.length > 0 && (
+                          <div className="mt-1 pt-1 border-t border-current/20 font-mono opacity-80 whitespace-pre-wrap max-h-32 overflow-auto">
+                              {lastResponse.logs.join('\n')}
+                          </div>
+                      )}
+                  </div>
+               )}
            </div>
         </aside>
       </div>
