@@ -1,5 +1,5 @@
 import { CodeModeUtcpClient } from '@utcp/code-mode';
-import { CallTemplateSerializer, CallTemplate, CommunicationProtocol } from '@utcp/sdk';
+import { CallTemplateSerializer, CommunicationProtocol } from '@utcp/sdk';
 import { createFsTools } from '../tools/filesystem.js';
 import { mcpOrchestrator } from './McpOrchestrator.js';
 import { metaTools } from '../tools/meta.js';
@@ -125,8 +125,8 @@ export class AgentRuntime {
       await this.client.registerManual({
         name: 'system',
         call_template_type: 'local',
-        tools: toolsToRegister
-      } as any); 
+        tools: toolsToRegister as any
+      }); 
       
       // 5. Load Tool Documentation
       this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
@@ -189,18 +189,19 @@ export class AgentRuntime {
     if (useSpecializedInterpreter) {
         process.stdout.write('[AgentRuntime] Using specialized Nebula Code Mode interpreter...\n');
         const { typescriptInterpreterTool } = await import('../tools/typescriptInterpreter.js');
-        const interpreterResponse = await (typescriptInterpreterTool.handler as (args: { code: string }) => Promise<any>)({ code: codeToExecute });
+        const interpreterResponse = await (typescriptInterpreterTool.handler as (args: { code: string }) => Promise<{ text: string, meta?: { nebula_actions?: any[] } }[]>)({ code: codeToExecute });
         
         // The interpreter tool returns an array of message objects
-        const responseText = (interpreterResponse[0]?.text as string) || '';
-        const actions = (interpreterResponse[0]?.meta?.nebula_actions as any[]) || [];
+        const firstMessage = interpreterResponse[0];
+        const responseText = firstMessage?.text || '';
+        const actions = firstMessage?.meta?.nebula_actions || [];
         
         const toolResults: unknown[] = [];
         // If we have actions, we need to execute them via the nebula tool
         if (actions.length > 0) {
             process.stdout.write(`[AgentRuntime] Executing ${actions.length} captured Nebula actions...\n`);
             for (const action of actions) {
-                const toolOutput = await this.client.callTool('system.nebula', action as Record<string, any>);
+                const toolOutput = await this.client.callTool('system.nebula', action);
                 toolResults.push(toolOutput);
             }
         }
@@ -212,12 +213,12 @@ export class AgentRuntime {
         // Return both the text output and the captured tool results
         // We wrap the text in an object that the frontend will ignore (fails ui_action check)
         // but can still be displayed as the primary output.
-        const combinedResult = [
+        const combinedResult: unknown = [
             { type: 'text', content: parsedResult },
             ...toolResults
         ];
         
-        result = combinedResult as any;
+        result = JSON.stringify(combinedResult);
         logs = [responseText]; 
     } else {
         // Standard Sandbox Execution
@@ -229,7 +230,7 @@ export class AgentRuntime {
     // 3. Post-process result
     if (!result && logs.length > 0) {
       result = logs[logs.length - 1];
-      console.log('[AgentRuntime] Using last log as result:', (result as string).substring(0, 100));
+      console.log('[AgentRuntime] Using last log as result:', String(result).substring(0, 100));
     }
     
     return { result, logs };
@@ -281,21 +282,39 @@ Before writing code, you must output a plan:
 - DEFINE: What specific tokens (Tailwind) and Layouts (flex/grid) will I use?
 - EXECUTE: Write the script.
 
+### Component Registry (Use these as "type" for addNode)
+- **Box**: Layout container (div). Default.
+- **Text**: Props: { content: string, type: 'h1'|'h2'|'h3'|'p' }.
+- **Button**: Props: { children: string, variant: 'default'|'outline'|'ghost' }.
+- **Input / Textarea**: Form inputs.
+- **Badge**: Tiny pill label.
+- **Label**: Form labels.
+- **Slider**: Range input.
+- **Icon**: Props: { name: string } (Lucide names like 'User', 'Settings').
+- **Card**: Composite (CardHeader, CardTitle, CardDescription, CardContent, CardFooter).
+- **Tabs**: Composite (TabsList, TabsTrigger [prop value], TabsContent [prop value]).
+- **AiButton / SuperAiButton**: AI trigger buttons.
+- **Image**: Props: { src: string, alt: string }.
+
 ### Phase 2: API Reference (Cheat Sheet)
 \`\`\`typescript
 // 1. ADDING NODES (Recursive)
 const parentId = "root"; // Or some captured ID
 const btnId = nebula.addNode(parentId, {
   type: "Button",
-  props: { variant: "default" },
+  props: { children: "Click Me", variant: "default" },
   style: { background: "bg-primary", padding: "p-4" },
-  layout: { mode: "flex" },
-  // Optional: Bindings & Actions
-  bindings: [{ propName: "children", sourcePath: "user.name" }],
-  actions: [{ trigger: "onClick", type: "navigate", payload: { url: "/home" } }]
+  layout: { mode: "flex" }
 });
 
-// 2. UPDATING NODES
+// 2. BUILDING COCHLEATED STRUCTURES (Cards)
+const cardId = nebula.addNode("root", { type: "Card", style: { width: "w-80" } });
+const headerId = nebula.addNode(cardId, { type: "CardHeader" });
+nebula.addNode(headerId, { type: "CardTitle", props: { children: "User Profile" } });
+const contentId = nebula.addNode(cardId, { type: "CardContent" });
+nebula.addNode(contentId, { type: "Text", props: { children: "Managing your account settings level here." } });
+
+// 3. UPDATING NODES
 nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
 
 // 3. MOVING NODES

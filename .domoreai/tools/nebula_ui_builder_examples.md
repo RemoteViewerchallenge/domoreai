@@ -31,11 +31,17 @@ Before writing any code, you MUST follow this structure in your response:
 
 ## Component Registry
 
-- **Box**: Layout container. Use for everything.
-- **Text**: Props: `{ children: string }`.
+- **Box**: Layout container. Use for wrapping and layout.
+- **Text**: Props: `{ children: string, type: 'h1'|'h2'|'h3'|'p' }`.
 - **Button**: Props: `{ children: string, variant: 'default' | 'ghost' | 'outline' }`.
-- **Input**: Props: `{ placeholder: string, type: 'text' | 'password' }`.
-- **Icon**: Props: `{ name: string }` (e.g., "User", "Settings").
+- **Input / Textarea**: Standard text inputs.
+- **Badge**: Tiny label/pill.
+- **Label**: Form labels.
+- **Slider**: Range slider input.
+- **Icon**: Props: `{ name: string }` (Use [Lucide](https://lucide.dev/icons) names like "User", "Settings").
+- **Card**: Composite with children: `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.
+- **Tabs**: Composite with children: `TabsList`, `TabsTrigger` (prop `value`), `TabsContent` (prop `value`).
+- **AiButton / SuperAiButton**: Special AI-trigger buttons.
 - **Image**: Props: `{ src: string, alt: string }`.
 
 ## Golden Rules
