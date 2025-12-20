@@ -20,24 +20,28 @@ export class NebulaOps {
 
   /**
    * Adds a new node to the tree.
-   * AI Usage: nebula.addNode('container-1', { type: 'Button', props: { label: 'Click Me' } })
+   * AI Usage: nebula.addNode({ parentId: 'root', node: { type: 'Button', props: { label: 'Click Me' } } })
+   * Legacy: nebula.addNode('container-1', { type: 'Button', props: { label: 'Click Me' } })
    */
-  addNode(parentId: NebulaId, node: Partial<Omit<NebulaNode, 'id' | 'children'>>): NebulaId {
+  addNode(parentIdOrArgs: NebulaId | { parentId: NebulaId; node: Partial<Omit<NebulaNode, 'id' | 'children'>> }, node?: Partial<Omit<NebulaNode, 'id' | 'children'>>): NebulaId {
+    // Handle both object and positional parameters
+    const parentId = typeof parentIdOrArgs === 'string' ? parentIdOrArgs : parentIdOrArgs.parentId;
+    const nodeData = typeof parentIdOrArgs === 'string' ? node! : parentIdOrArgs.node;
     const newId = `node_${nanoid(6)}`;
 
     this.tree = produce(this.tree, draft => {
       // Create Node
       draft.nodes[newId] = {
         id: newId,
-        type: node.type || 'Box',
-        props: node.props || {},
-        bindings: node.bindings || [],
-        actions: node.actions || [],
-        style: node.style || {},
-        layout: node.layout || { mode: 'flex', direction: 'column' },
+        type: nodeData.type || 'Box',
+        props: nodeData.props || {},
+        bindings: nodeData.bindings || [],
+        actions: nodeData.actions || [],
+        style: nodeData.style || {},
+        layout: nodeData.layout || { mode: 'flex', direction: 'column' },
         children: [],
         parentId,
-        meta: { ...node.meta, source: 'ai-gen' }
+        meta: { ...nodeData.meta, source: 'ai-gen' }
       };
 
       // Link to Parent
@@ -46,7 +50,9 @@ export class NebulaOps {
       }
     });
 
+    console.log('[NebulaOps.addNode] Calling onChange with updated tree. Node count:', Object.keys(this.tree.nodes).length);
     this.onChange(this.tree);
+    console.log('[NebulaOps.addNode] ✅ Created node:', newId, 'under parent:', parentId);
     return newId;
   }
 
@@ -60,40 +66,95 @@ export class NebulaOps {
 
   /**
    * Ingests a raw JSX string, explodes it into nodes, and attaches it to parentId.
+   * AI Usage: nebula.ingest({ parentId: 'root', rawJsx: '<div>...</div>', options: { preserve: ['Header', 'Footer'] } })
+   * Legacy: nebula.ingest('root', '<div>...</div>')
    */
-  ingest(parentId: NebulaId, rawJsx: string): NebulaId {
-    console.log(`[NebulaOps] Ingesting JSX into ${parentId}`);
+  ingest(
+    parentIdOrArgs: NebulaId | { parentId: NebulaId; rawJsx: string; options?: { preserve?: string[] } }, 
+    rawJsx?: string,
+    options?: { preserve?: string[] }
+  ): NebulaId {
+    // Handle both object and positional parameters
+    const parentId = typeof parentIdOrArgs === 'string' ? parentIdOrArgs : parentIdOrArgs.parentId;
+    const jsx = typeof parentIdOrArgs === 'string' ? rawJsx! : parentIdOrArgs.rawJsx;
+    const ingestOptions = typeof parentIdOrArgs === 'string' ? options : parentIdOrArgs.options;
     
-    // Extract JSX from code
-    const jsx = JsxParser.extractJsx(rawJsx);
+    console.log('[NebulaOps.ingest] Called with:', {
+      parentId,
+      jsxLength: jsx?.length,
+      jsxPreview: jsx?.substring(0, 100),
+      preserveComponents: ingestOptions?.preserve,
+      parameterType: typeof parentIdOrArgs === 'string' ? 'positional' : 'object'
+    });
     
-    // Parse into element tree
-    const parsed = JsxParser.parse(jsx);
-    
-    if (!parsed) {
-      console.warn('[NebulaOps] Failed to parse JSX');
-      return this.addNode(parentId, {
-        type: 'Box',
-        props: { className: 'parse-error' },
-        meta: { aiDescription: 'Failed to parse JSX', source: 'imported' }
+    try {
+      // Use AstTransformer for advanced parsing
+      const { AstTransformer } = require('../ingest/AstTransformer.js');
+      const transformer = new AstTransformer();
+      
+      // Configure preserved components if specified
+      if (ingestOptions?.preserve && ingestOptions.preserve.length > 0) {
+        transformer.setPreservedComponents(ingestOptions.preserve);
+        console.log('[NebulaOps.ingest] Preserving components:', ingestOptions.preserve);
+      }
+      
+      // Parse the JSX into a Nebula tree fragment
+      console.log('[NebulaOps.ingest] Parsing JSX with AstTransformer...');
+      const fragment = transformer.parse(jsx);
+      console.log('[NebulaOps.ingest] Parse result:', {
+        rootId: fragment.rootId,
+        nodeCount: Object.keys(fragment.nodes).length,
+        imports: fragment.imports.length,
+        exports: fragment.exports.length
       });
+      
+      // Ingest the parsed tree fragment
+      const rootNodeId = this.ingestTree(parentId, fragment);
+      console.log('[NebulaOps.ingest] ✅ Ingest complete! Root node ID:', rootNodeId);
+      console.log('[NebulaOps.ingest] Tree now has', Object.keys(this.tree.nodes).length, 'nodes');
+      return rootNodeId;
+      
+    } catch (error) {
+      console.error('[NebulaOps.ingest] Error during ingestion:', error);
+      // Fallback to old parser if AstTransformer fails
+      console.warn('[NebulaOps.ingest] Falling back to legacy JsxParser...');
+      
+      const extractedJsx = JsxParser.extractJsx(jsx);
+      const parsed = JsxParser.parse(extractedJsx);
+      
+      if (!parsed) {
+        console.warn('[NebulaOps.ingest] Failed to parse JSX - creating error node');
+        return this.addNode(parentId, {
+          type: 'Box',
+          props: { className: 'parse-error' },
+          meta: { aiDescription: 'Failed to parse JSX', source: 'imported' }
+        });
+      }
+      
+      const rootNodeId = this.buildFromParsed(parsed, parentId);
+      console.log('[NebulaOps.ingest] ✅ Fallback ingest complete! Root node ID:', rootNodeId);
+      return rootNodeId;
     }
-    
-    // Convert parsed tree to Nebula nodes
-    return this.buildFromParsed(parsed, parentId);
   }
 
   /**
    * Recursively build Nebula nodes from parsed JSX tree
    */
   private buildFromParsed(element: any, parentId: NebulaId): NebulaId {
+    console.log('[NebulaOps.buildFromParsed] Building node:', {
+      tag: element.tag,
+      parentId,
+      childrenCount: element.children?.length || 0
+    });
+    
     // Map HTML tag to Nebula type
-    const type = JsxParser.mapToNebulaType(element.tag);
+    const type = JsxParser.mapToNebulaType(element.tag) as import('../core/types.js').NodeType;
     
     // Extract className for styling
     const className = element.props.className || element.props.class || '';
     
     // Create the node
+    console.log('[NebulaOps.buildFromParsed] Creating node with type:', type);
     const nodeId = this.addNode(parentId, {
       type,
       props: {
@@ -105,12 +166,15 @@ export class NebulaOps {
         source: 'imported'
       }
     });
+    console.log('[NebulaOps.buildFromParsed] Created node:', nodeId);
     
     // Recursively add children
+    console.log('[NebulaOps.buildFromParsed] Processing', element.children.length, 'children for node:', nodeId);
     for (const child of element.children) {
       if (typeof child === 'string') {
         // Text content - add as Text node
         if (child.trim()) {
+          console.log('[NebulaOps.buildFromParsed] Adding text child:', child.trim().substring(0, 50));
           this.addNode(nodeId, {
             type: 'Text',
             props: { content: child.trim() }
@@ -118,17 +182,23 @@ export class NebulaOps {
         }
       } else {
         // Nested element
+        console.log('[NebulaOps.buildFromParsed] Recursing for nested element:', child.tag);
         this.buildFromParsed(child, nodeId);
       }
     }
     
+    console.log('[NebulaOps.buildFromParsed] ✅ Finished building node:', nodeId);
     return nodeId;
   }
 
   /**
    * Updates the global theme tokens.
+   * AI Usage: nebula.setTheme({ theme: { primary: '#ff0000', radius: 0.5, font: 'Inter' } })
+   * Legacy: nebula.setTheme({ primary: '#ff0000', radius: 0.5, font: 'Inter' })
    */
-  setTheme(theme: { primary: string; radius: number; font: string }) {
+  setTheme(themeOrArgs: { primary: string; radius: number; font: string } | { theme: { primary: string; radius: number; font: string } }) {
+    // Handle both direct theme object and wrapped theme object
+    const theme = 'theme' in themeOrArgs ? themeOrArgs.theme : themeOrArgs;
     console.log('[NebulaOps] Setting theme:', theme);
     // This would typically update a global theme state or CSS variables
     document.documentElement.style.setProperty('--primary', theme.primary);
@@ -138,16 +208,20 @@ export class NebulaOps {
 
   /**
    * Updates properties or styles of a node.
-   * AI Usage: nebula.updateNode(nodeId, { style: { background: 'bg-red-500' } })
+   * AI Usage: nebula.updateNode({ nodeId: 'node_123', update: { style: { background: 'bg-red-500' } } })
+   * Legacy: nebula.updateNode('node_123', { style: { background: 'bg-red-500' } })
    */
-  updateNode(nodeId: NebulaId, update: Partial<NebulaNode>) {
+  updateNode(nodeIdOrArgs: NebulaId | { nodeId: NebulaId; update: Partial<NebulaNode> }, update?: Partial<NebulaNode>) {
+    // Handle both object and positional parameters
+    const nodeId = typeof nodeIdOrArgs === 'string' ? nodeIdOrArgs : nodeIdOrArgs.nodeId;
+    const updateData = typeof nodeIdOrArgs === 'string' ? update! : nodeIdOrArgs.update;
     this.tree = produce(this.tree, draft => {
       if (draft.nodes[nodeId]) {
         // Deep merge logic should be applied here for props/style
         Object.assign(draft.nodes[nodeId], {
-          ...update,
-          props: { ...draft.nodes[nodeId].props, ...update.props },
-          style: { ...draft.nodes[nodeId].style, ...update.style },
+          ...updateData,
+          props: { ...draft.nodes[nodeId].props, ...updateData.props },
+          style: { ...draft.nodes[nodeId].style, ...updateData.style },
         });
       }
     });
@@ -156,9 +230,14 @@ export class NebulaOps {
 
   /**
    * Moves a node to a new index or new parent.
-   * AI Usage: nebula.moveNode(cardId, containerId, 0)
+   * AI Usage: nebula.moveNode({ nodeId: 'card_1', targetParentId: 'container_1', index: 0 })
+   * Legacy: nebula.moveNode('card_1', 'container_1', 0)
    */
-  moveNode(nodeId: NebulaId, targetParentId: NebulaId, index: number) {
+  moveNode(nodeIdOrArgs: NebulaId | { nodeId: NebulaId; targetParentId: NebulaId; index: number }, targetParentId?: NebulaId, index?: number) {
+    // Handle both object and positional parameters
+    const nodeId = typeof nodeIdOrArgs === 'string' ? nodeIdOrArgs : nodeIdOrArgs.nodeId;
+    const targetParent = typeof nodeIdOrArgs === 'string' ? targetParentId! : nodeIdOrArgs.targetParentId;
+    const targetIndex = typeof nodeIdOrArgs === 'string' ? index! : nodeIdOrArgs.index;
     this.tree = produce(this.tree, draft => {
       const node = draft.nodes[nodeId];
       if (!node) return;
@@ -170,10 +249,10 @@ export class NebulaOps {
       }
 
       // Add to new parent
-      const newParent = draft.nodes[targetParentId];
+      const newParent = draft.nodes[targetParent];
       if (newParent) {
-        newParent.children.splice(index, 0, nodeId);
-        node.parentId = targetParentId;
+        newParent.children.splice(targetIndex, 0, nodeId);
+        node.parentId = targetParent;
       }
     });
     this.onChange(this.tree);
@@ -181,8 +260,12 @@ export class NebulaOps {
 
   /**
    * Deletes a node and its children.
+   * AI Usage: nebula.deleteNode({ nodeId: 'node_123' })
+   * Legacy: nebula.deleteNode('node_123')
    */
-  deleteNode(nodeId: NebulaId) {
+  deleteNode(nodeIdOrArgs: NebulaId | { nodeId: NebulaId }) {
+    // Handle both object and positional parameters
+    const nodeId = typeof nodeIdOrArgs === 'string' ? nodeIdOrArgs : nodeIdOrArgs.nodeId;
     this.tree = produce(this.tree, draft => {
         // Recursive deletion logic needed here
         const deleteRecursive = (id: NebulaId) => {

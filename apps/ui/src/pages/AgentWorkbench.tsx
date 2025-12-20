@@ -146,7 +146,6 @@ export default function AgentWorkbench() {
                     <SwappableCard
                       key={currentCard.id}
                       id={currentCard.id}
-                      roleId={currentCard.roleId}
                     />
                   </div>
                 ) : (

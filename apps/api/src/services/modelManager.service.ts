@@ -107,7 +107,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
 
     // Add capability filters if specified
     if (capabilities.length > 0) {
-      whereClause.capabilities = {
+      whereClause.capabilityTags = {
         hasSome: capabilities
       };
     }

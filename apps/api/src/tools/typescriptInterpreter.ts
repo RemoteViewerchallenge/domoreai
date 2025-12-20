@@ -15,24 +15,18 @@ const execAsync = promisify(exec);
  */
 export const typescriptInterpreterTool: SandboxTool = {
   name: 'typescript_interpreter',
-  description: `Execute raw TypeScript code. Use this to perform calculations, data transformation, or complex logic that standard tools cannot handle.
-
-RULES:
-1. Code must end with a console.log() to return data
-2. You have access to Node.js built-in modules
-3. Code runs in an isolated environment with a 30s timeout
-4. Use this for: calculations, data processing, algorithm implementation
-5. Do NOT use for: file system access (use filesystem tool), network requests (use browser tool)
-
-EXAMPLE:
-\`\`\`typescript
-// Calculate Fibonacci
-function fib(n: number): number {
-  if (n <= 1) return n;
-  return fib(n - 1) + fib(n - 2);
-}
-console.log(JSON.stringify({ result: fib(10) }));
-\`\`\``,
+  description: `Execute raw TypeScript code. 
+    
+    NEBULA CODE MODE v2.0:
+    In UI-related roles, you have access to specialized globals:
+    - nebula: { addNode(p,n), updateNode(id,u), moveNode(...), deleteNode(id) }
+    - ast: { parse(jsx) -> returns fragment }
+    - tree: Read-only access to current state
+    
+    RULES:
+    1. Code must end with console.log() to return data
+    2. nebula.addNode RETURNS an ID. You MUST capture it.
+    3. Use this for calculations or complex UI construction logic.`,
   
   inputSchema: {
     type: 'object',
@@ -50,8 +44,8 @@ console.log(JSON.stringify({ result: fib(10) }));
     required: ['code'],
   },
   
-  handler: async (args: any) => {
-    const { code, timeout = 30000 } = args;
+  handler: async (args: Record<string, unknown>) => {
+    const { code, timeout = 30000 } = args as { code: string; timeout?: number };
     const maxTimeout = Math.min(timeout, 60000); // Cap at 60 seconds
     
     // Create a unique temporary file
@@ -61,11 +55,91 @@ console.log(JSON.stringify({ result: fib(10) }));
     const fileName = `agent_${Date.now()}_${Math.random().toString(36).substring(7)}.ts`;
     const filePath = path.join(tempDir, fileName);
     
+    const SAFETY_SHIM = `
+/** 🧠 Nebula Code Mode v2.0 Safety Shim **/
+const __logs = [];
+const __actions = [];
+const __tree = { nodes: { root: { id: 'root', children: [] } } };
+
+// 1. Wrap the Nebula Instance to catch invalid IDs
+const nebula = {
+  addNode: (parentId, nodeOrFragment) => {
+    if (!nebula.getNode(parentId) && parentId !== 'root') {
+      throw new Error(\`❌ Safety Check Failed: Parent Node "\${parentId}" does not exist. Did you forget to capture the ID from a previous addNode() call?\`);
+    }
+    
+    // Handle both single nodes and fragments (from ast.parse)
+    if (nodeOrFragment.type === 'Fragment') {
+        __actions.push({ action: 'ingest', parentId, rawJsx: nodeOrFragment.rawJsx });
+        return 'fragment_root'; // Placeholder as fragments usually have multiple roots or managed IDs
+    }
+
+    const id = nodeOrFragment.props?.id || 'node_' + Math.random().toString(36).substr(2, 9);
+    __tree.nodes[id] = { id, parentId, ...nodeOrFragment, children: [] };
+    if (__tree.nodes[parentId]) __tree.nodes[parentId].children.push(id);
+    
+    __actions.push({ action: 'addNode', parentId, node: { ...nodeOrFragment, props: { ...nodeOrFragment.props, id } } });
+    return id;
+  },
+  updateNode: (nodeId, update) => {
+    if (!nebula.getNode(nodeId)) {
+      throw new Error(\`❌ Safety Check Failed: Node "\${nodeId}" does not exist. Update failed.\`);
+    }
+    __actions.push({ action: 'updateNode', nodeId, update });
+  },
+  moveNode: (nodeId, targetParentId, index) => {
+    if (!nebula.getNode(nodeId)) throw new Error(\`❌ Safety Check Failed: Node "\${nodeId}" does not exist.\`);
+    __actions.push({ action: 'moveNode', nodeId, targetParentId, index });
+  },
+  deleteNode: (nodeId) => {
+    if (!nebula.getNode(nodeId)) throw new Error(\`❌ Safety Check Failed: Node "\${nodeId}" does not exist.\`);
+    __actions.push({ action: 'deleteNode', nodeId });
+  },
+  setTheme: (theme) => {
+    __actions.push({ action: 'setTheme', theme });
+  },
+  getNode: (id) => __tree.nodes[id]
+};
+
+const ast = {
+  parse: (jsx) => ({ type: 'Fragment', rawJsx: jsx })
+};
+
+const tree = __tree; // Read-only access
+
+// 2. Add a "Log" helper so the agent "sees" what it did
+const console = {
+  log: (...args) => {
+    __logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+  },
+  error: (...args) => {
+    __logs.push("ERROR: " + args.join(' '));
+  }
+};
+`;
+
+    const wrappedCode = `
+${SAFETY_SHIM}
+
+try {
+  ${code}
+} catch (err) {
+  console.log("ERROR: " + (err as Error).message);
+}
+
+// Output final result for processing
+if (__actions.length > 0) {
+  process.stdout.write("\\n---NEBULA_RESULT---\\n" + JSON.stringify({ actions: __actions, logs: __logs }) + "\\n");
+} else {
+  process.stdout.write(__logs.join("\\n"));
+}
+`;
+
     try {
-      // Write the agent's code to a temporary file
-      await fs.writeFile(filePath, code, 'utf-8');
+      // Write the wrapped code to a temporary file
+      await fs.writeFile(filePath, wrappedCode, 'utf-8');
       
-      console.log(`[TypeScriptInterpreter] Executing: ${fileName}`);
+      process.stdout.write(`[TypeScriptInterpreter] Executing: ${fileName}\n`);
       
       // Execute using tsx with timeout
       const { stdout, stderr } = await execAsync(
@@ -75,29 +149,40 @@ console.log(JSON.stringify({ result: fib(10) }));
           cwd: tempDir,
           env: {
             ...process.env,
-            NODE_ENV: 'sandbox', // Signal to any libraries they're in sandbox mode
+            NODE_ENV: 'sandbox',
           }
         }
       );
       
-      // Return both stdout and stderr for debugging
-      const result = {
-        success: true,
-        output: stdout.trim(),
-        errors: stderr.trim() || undefined,
-        executionTime: Date.now(),
-      };
-      
+      let finalOutput = stdout.trim();
+      let resultActions: unknown[] = [];
+
+      // Check if we have a structured Nebula result
+      if (stdout.includes('---NEBULA_RESULT---')) {
+        const parts = stdout.split('---NEBULA_RESULT---');
+        try {
+          const structured = JSON.parse(parts[1].trim()) as { actions: unknown[]; logs: string[] };
+          resultActions = structured.actions;
+          finalOutput = structured.logs.join('\\n');
+        } catch (e) {
+          process.stdout.write(`[TypeScriptInterpreter] Failed to parse Nebula result: ${(e as Error).message}\n`);
+        }
+      }
+
       return [{
         type: 'text',
-        text: `✅ Code executed successfully.\n\nOutput:\n${stdout}\n${stderr ? `\nWarnings/Errors:\n${stderr}` : ''}`,
+        text: `✅ Code executed successfully.\n\nOutput:\n${finalOutput}\n${stderr ? `\nWarnings/Errors:\n${stderr}` : ''}`,
+        // Provide the actions back for the runtime to handle if needed
+        // In this architecture, we might need to return them as part of the tool result
+        meta: resultActions.length > 0 ? { nebula_actions: resultActions } : undefined
       }];
       
-    } catch (error: any) {
-      console.error(`[TypeScriptInterpreter] Execution failed:`, error);
+    } catch (error: unknown) {
+      const execError = error as { message: string; stderr?: string; stdout?: string; killed?: boolean; signal?: string };
+      process.stdout.write(`[TypeScriptInterpreter] Execution failed: ${execError.message}\n`);
       
       // Handle timeout
-      if (error.killed && error.signal === 'SIGTERM') {
+      if (execError.killed && execError.signal === 'SIGTERM') {
         return [{
           type: 'text',
           text: `❌ Execution timeout (${maxTimeout}ms exceeded).\n\nThe code took too long to execute. Consider breaking it into smaller steps.`,
@@ -107,7 +192,7 @@ console.log(JSON.stringify({ result: fib(10) }));
       // Handle execution errors
       return [{
         type: 'text',
-        text: `❌ Execution Error:\n\n${error.message}\n\nStderr: ${error.stderr || 'N/A'}\nStdout: ${error.stdout || 'N/A'}`,
+        text: `❌ Execution Error:\n\n${execError.message}\n\nStderr: ${execError.stderr || 'N/A'}\nStdout: ${execError.stdout || 'N/A'}`,
       }];
       
     } finally {
@@ -115,7 +200,7 @@ console.log(JSON.stringify({ result: fib(10) }));
       try {
         await fs.unlink(filePath);
       } catch (cleanupError) {
-        console.warn(`[TypeScriptInterpreter] Failed to cleanup ${fileName}:`, cleanupError);
+        process.stdout.write(`[TypeScriptInterpreter] Failed to cleanup ${fileName}: ${(cleanupError as Error).message}\n`);
       }
     }
   },

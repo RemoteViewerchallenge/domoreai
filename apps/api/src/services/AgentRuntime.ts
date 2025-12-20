@@ -87,12 +87,38 @@ export class AgentRuntime {
         requestedTools.includes(t.name)
     );
 
-    // 4. Add meta-tools if requested and role has permission
-    const toolsToRegister = [...nativeTools, ...mcpTools];
+    // 4. Wrap tools with logging
+    const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools].map(tool => ({
+      ...tool,
+      handler: tool.handler ? (async (args: unknown) => {
+        console.log(`Calling tool 'system.${tool.name}' via protocol 'local'.`);
+        try {
+          const result = await tool.handler!(args);
+          console.log(JSON.stringify(result));
+          return result;
+        } catch (error) {
+          console.error(`Tool 'system.${tool.name}' failed:`, error);
+          throw error;
+        }
+      }) : undefined
+    }));
     
     if (requestedTools.includes('meta')) {
-      console.log('[AgentRuntime] Meta-tools requested - adding role and orchestration management tools');
-      toolsToRegister.push(...metaTools as unknown as ToolDefinition[]);
+      const wrappedMetaTools = (metaTools as unknown as ToolDefinition[]).map(tool => ({
+        ...tool,
+        handler: tool.handler ? (async (args: unknown) => {
+          console.log(`Calling tool 'system.${tool.name}' via protocol 'local'.`);
+          try {
+            const result = await tool.handler!(args);
+            console.log(JSON.stringify(result));
+            return result;
+          } catch (error) {
+            console.error(`Tool 'system.${tool.name}' failed:`, error);
+            throw error;
+          }
+        }) : undefined
+      }));
+      toolsToRegister.push(...wrappedMetaTools);
     }
 
     try {
@@ -100,7 +126,7 @@ export class AgentRuntime {
         name: 'system',
         call_template_type: 'local',
         tools: toolsToRegister
-      } as unknown as CallTemplate); // Cast to CallTemplate
+      } as any); 
       
       // 5. Load Tool Documentation
       this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
@@ -122,46 +148,90 @@ export class AgentRuntime {
     // Convert response to string if it's an object (some providers return objects)
     const responseStr = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);
     
-    // Simple code extraction (regex for ```ts ... ``` or just the whole body if no blocks)
-    const codeBlockMatch = responseStr.match(/```(?:typescript|ts|js|javascript)?\n([\s\S]*?)```/);
+    // Improved code extraction: Find ALL code blocks and join them
+    // This handles agents that provide a "Thinking" block followed by an "Execution" block.
+    const codeBlockRegex = /```(?:typescript|ts|js|javascript)?\n([\s\S]*?)```/g;
+    let match;
+    const blocks: string[] = [];
+    
+    while ((match = codeBlockRegex.exec(responseStr)) !== null) {
+        blocks.push(match[1]);
+    }
     
     let codeToExecute: string | null = null;
 
-    if (codeBlockMatch) {
-        codeToExecute = codeBlockMatch[1];
+    if (blocks.length > 0) {
+        codeToExecute = blocks.join('\n');
     } else {
         // SAFETY CHECK: If no code block, only execute if it looks like code.
-        // If it contains markdown bold/italic or doesn't look like code, skip execution.
-        const isMarkdown = /\*\*|__/.test(responseStr); // Simple check for bold
-        // Check for common code keywords at the start of lines
-        const hasCodeKeywords = /^(?:import|const|let|var|function|class|await|system\.)/m.test(responseStr.trim());
+        const isMarkdown = /\*\*|__/.test(responseStr);
+        const hasCodeKeywords = /^(?:import|const|let|var|function|class|await|system\.|nebula\.)/m.test(responseStr.trim());
         
         if (!isMarkdown && hasCodeKeywords) {
             codeToExecute = responseStr;
         }
     }
 
-    if (!codeToExecute) {
+    if (!codeToExecute || codeToExecute.trim().length === 0) {
         // Treat as conversational response - DO NOT EXECUTE
-        console.log('[AgentRuntime] No code block found and text looks conversational. Skipping execution.');
+        process.stdout.write('[AgentRuntime] No code found or text looks conversational. Skipping execution.\n');
         return { result: responseStr, logs: [] };
     }
 
     console.log('[AgentRuntime] Executing code in sandbox:\n', codeToExecute);
 
-    // 2. Execute in Sandbox
-    const sandboxResponse = await this.client.callToolChain(codeToExecute) as { result: string; logs: string[] };
-    let result = sandboxResponse?.result || '';
-    const logs = sandboxResponse?.logs || [];
+    // 2. Check if we should use the specialized TypeScript interpreter for Nebula Code Mode
+    const useSpecializedInterpreter = codeToExecute.includes('nebula.') || codeToExecute.includes('ast.');
     
-    // If result is empty but we have logs, use the last log as the result
-    // This handles cases where the AI uses console.log for output
-    if (!result && logs.length > 0) {
-      result = logs[logs.length - 1];
-      console.log('[AgentRuntime] Using last log as result:', result.substring(0, 100));
+    let result = '';
+    let logs: string[] = [];
+
+    if (useSpecializedInterpreter) {
+        process.stdout.write('[AgentRuntime] Using specialized Nebula Code Mode interpreter...\n');
+        const { typescriptInterpreterTool } = await import('../tools/typescriptInterpreter.js');
+        const interpreterResponse = await (typescriptInterpreterTool.handler as (args: { code: string }) => Promise<any>)({ code: codeToExecute });
+        
+        // The interpreter tool returns an array of message objects
+        const responseText = (interpreterResponse[0]?.text as string) || '';
+        const actions = (interpreterResponse[0]?.meta?.nebula_actions as any[]) || [];
+        
+        const toolResults: unknown[] = [];
+        // If we have actions, we need to execute them via the nebula tool
+        if (actions.length > 0) {
+            process.stdout.write(`[AgentRuntime] Executing ${actions.length} captured Nebula actions...\n`);
+            for (const action of actions) {
+                const toolOutput = await this.client.callTool('system.nebula', action as Record<string, any>);
+                toolResults.push(toolOutput);
+            }
+        }
+        
+        // Parse result and logs from the response text
+        const outputMatch = responseText.match(/Output:\n([\s\S]*?)(?:\nWarnings\/Errors:|$)/);
+        const parsedResult = outputMatch ? outputMatch[1].trim() : responseText;
+        
+        // Return both the text output and the captured tool results
+        // We wrap the text in an object that the frontend will ignore (fails ui_action check)
+        // but can still be displayed as the primary output.
+        const combinedResult = [
+            { type: 'text', content: parsedResult },
+            ...toolResults
+        ];
+        
+        result = combinedResult as any;
+        logs = [responseText]; 
+    } else {
+        // Standard Sandbox Execution
+        const sandboxResponse = await this.client.callToolChain(codeToExecute) as { result: string; logs: string[] };
+        result = sandboxResponse?.result || '';
+        logs = sandboxResponse?.logs || [];
     }
     
-    // 3. Return logs to your UI Terminal
+    // 3. Post-process result
+    if (!result && logs.length > 0) {
+      result = logs[logs.length - 1];
+      console.log('[AgentRuntime] Using last log as result:', (result as string).substring(0, 100));
+    }
+    
     return { result, logs };
   }
 
@@ -182,87 +252,77 @@ export class AgentRuntime {
         } else {
             // Auto-append Protocol + Docs if tag is missing
             const CODE_MODE_PROTOCOL = `
+🧠 System Instruction: Nebula Code Mode v2.0
+Role: You are the Nebula Engine Pilot. You do not write code to describe a UI; you write code to construct it using the live nebula runtime instance.
+
+The Prime Directive: NEVER write code without first verifying the current state.
+
+Your Runtime Environment:
+- Global Object: nebula (Instance of NebulaOps)
+- Global Helper: ast (Instance of AstTransformer)
+- Context: tree (Read-only access to current NebulaTree state)
+
 ## 🛠️ TOOL USAGE PROTOCOL
 You are operating in **CODE MODE**. Your primary objective is to fulfill the user's request by calling available tools. 
 
 ### 🚨 CRITICAL RULES:
 1. **NO CONVERSATIONAL FILLER.** Do not say "Sure, I can help with that." 
 2. **USE CODE BLOCKS.** You MUST wrap your logic in a \` \` \`typescript block.
-3. **USE THE SYSTEM NAMESPACE.** Call tools using \`await system.tool_name({...})\`.
-4. **EXECUTION.** Your response will be parsed and executed in a sandbox.
-5. **NEBULA TOOL.** If you are asked to change the UI, layout, or add components, you MUST use the \`nebula\` tool.
+3. **USE THE NEBULA OBJECT.** Call nebula methods directly: \`const id = nebula.addNode(...)\`.
+4. **CAPTURE RETURNS.** The addNode function returns an ID. YOU MUST CAPTURE IT.
+   - ✅ Good: \`const cardId = nebula.addNode(...)\`
+   - ❌ Bad: \`nebula.addNode(...)\` (ID is lost, cannot add children).
+5. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
+6. **NEVER HALLUCINATE IDs.** Do not update node_123 unless you created it or confirmed it exists in the tree.
 
-### Example:
-\`\` \`typescript
-await system.nebula({
-    action: 'addNode',
-    parentId: 'root',
-    node: { type: 'Box', props: { className: 'p-4 bg-zinc-900 border border-zinc-800 rounded-lg' } }
-});
-console.log("Added a box to the layout.");
-\`\` \`
+### Phase 1: The "Thinking" Protocol (Mandatory)
+Before writing code, you must output a plan:
+- LOCATE: Which node ID am I attaching to? (Check existence).
+- DEFINE: What specific tokens (Tailwind) and Layouts (flex/grid) will I use?
+- EXECUTE: Write the script.
 
-### Interface definition for Nebula Tool:
+### Phase 2: API Reference (Cheat Sheet)
 \`\`\`typescript
-/**
- * GLOBAL CONTEXT:
- * You have access to a global \`nebula\` object to manipulate the UI tree.
- */
+// 1. ADDING NODES (Recursive)
+const parentId = "root"; // Or some captured ID
+const btnId = nebula.addNode(parentId, {
+  type: "Button",
+  props: { variant: "default" },
+  style: { background: "bg-primary", padding: "p-4" },
+  layout: { mode: "flex" },
+  // Optional: Bindings & Actions
+  bindings: [{ propName: "children", sourcePath: "user.name" }],
+  actions: [{ trigger: "onClick", type: "navigate", payload: { url: "/home" } }]
+});
 
-// -- Data Binding Schema --
-type DataBinding = {
-  propName: string;       // e.g. "src", "children"
-  sourcePath: string;     // e.g. "user.profile.url"
-};
+// 2. UPDATING NODES
+nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
 
-// -- Event Action Schema --
-type NebulaAction = {
-  trigger: 'onClick' | 'onSubmit';
-  type: 'navigate' | 'mutation' | 'toast';
-  payload: any;
-};
+// 3. MOVING NODES
+nebula.moveNode(btnId, "new-parent-id", 0); // Index 0
 
-interface NebulaOps {
-  /**
-   * Core Method: Adds a node to the tree.
-   * NOW SUPPORTS: bindings and actions
-   */
-  addNode(
-    parentId: string,
-    node: {
-      type: 'Box' | 'Text' | 'Button' | 'Card' | 'Image' | 'Input' | 'Icon';
-      
-      // Visuals
-      style?: StyleTokens; 
-      layout?: LayoutConfig; 
-      
-      // Static Content
-      props?: Record<string, any>; 
-      
-      // DYNAMIC POWER-UPS
-      bindings?: DataBinding[]; // Connect to data
-      actions?: NebulaAction[]; // Connect to logic
-    }
-  ): string; // Returns nodeId
+// 4. INGESTION (Raw Code -> Nodes)
+const rawJSX = \`<div className="p-4">...</div>\`;
+const fragment = ast.parse(rawJSX);
+nebula.addNode(parentId, fragment);
+\`\`\`
 
-  /**
-   * Ingests a raw JSX string, explodes it into nodes, and attaches it to parentId.
-   */
-  ingest(parentId: string, rawJsx: string): void;
+### Example Pattern: The "Iterator" (Building Lists)
+\`\`\`typescript
+const listId = nebula.addNode(parentId, { type: 'Box', layout: { mode: 'flex', direction: 'column' }});
+const items = ['Pricing', 'Features', 'About'];
 
-  /**
-   * Updates the global theme tokens.
-   */
-  setTheme(theme: {
-    primary: string;   // Hex color
-    radius: number;    // rem value
-    font: string;
-  }): void;
-}
+items.forEach(item => {
+  nebula.addNode(listId, { 
+    type: 'Button', 
+    props: { children: item, variant: 'ghost' },
+    style: { width: 'w-full', align: 'start' }
+  });
+});
 \`\`\`
 
 ### Available Tools:
-${this.toolDocs}
+\${this.toolDocs}
 `;
             enhancedSystemPrompt += CODE_MODE_PROTOCOL;
         }

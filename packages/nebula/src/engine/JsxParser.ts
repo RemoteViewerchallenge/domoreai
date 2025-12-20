@@ -26,44 +26,178 @@ export class JsxParser {
   }
 
   /**
-   * Parse JSX string into element tree
+   * Parse JSX string into element tree using stack-based approach
    */
   static parse(jsx: string): ParsedElement | null {
     jsx = jsx.trim();
     if (!jsx) return null;
 
+    console.log('[JsxParser.parse] Starting parse of JSX:', jsx.substring(0, 200));
+
     // Handle text nodes
     if (!jsx.startsWith('<')) {
-      return null; // Text content will be handled by parent
+      console.log('[JsxParser.parse] Not JSX, returning null');
+      return null;
     }
 
-    // Extract tag name
-    const tagMatch = jsx.match(/^<(\w+)/);
-    if (!tagMatch) return null;
+    try {
+      const result = this.parseElement(jsx, 0);
+      console.log('[JsxParser.parse] Parse successful:', result.element);
+      return result.element;
+    } catch (error) {
+      console.error('[JsxParser.parse] Parse failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse a single element starting at position
+   * Returns { element, endPos }
+   */
+  private static parseElement(jsx: string, startPos: number): { element: ParsedElement; endPos: number } {
+    let pos = startPos;
     
-    const tag = tagMatch[1];
-
-    // Check if self-closing
-    const isSelfClosing = jsx.includes('/>');
-
-    // Extract props
-    const propsMatch = jsx.match(/<\w+([^>]*?)(\/>|>)/);
-    const propsString = propsMatch ? propsMatch[1].trim() : '';
-    const props = this.parseProps(propsString);
-
-    // If self-closing, no children
-    if (isSelfClosing) {
-      return { tag, props, children: [], isSelfClosing: true };
+    // Skip whitespace
+    while (pos < jsx.length && /\s/.test(jsx[pos])) pos++;
+    
+    if (jsx[pos] !== '<') {
+      throw new Error(`Expected < at position ${pos}`);
     }
-
-    // Extract content between opening and closing tags
-    const contentMatch = jsx.match(new RegExp(`<${tag}[^>]*>(.*)<\/${tag}>`, 's'));
-    const content = contentMatch ? contentMatch[1] : '';
-
+    
+    pos++; // Skip <
+    
+    // Extract tag name
+    let tagName = '';
+    while (pos < jsx.length && /[\w-]/.test(jsx[pos])) {
+      tagName += jsx[pos];
+      pos++;
+    }
+    
+    if (!tagName) {
+      throw new Error(`No tag name found at position ${pos}`);
+    }
+    
+    console.log('[JsxParser.parseElement] Parsing tag:', tagName);
+    
+    // Parse attributes
+    const props: Record<string, any> = {};
+    while (pos < jsx.length && jsx[pos] !== '>' && jsx[pos] !== '/') {
+      // Skip whitespace
+      while (pos < jsx.length && /\s/.test(jsx[pos])) pos++;
+      
+      if (jsx[pos] === '>' || jsx[pos] === '/') break;
+      
+      // Parse attribute name
+      let attrName = '';
+      while (pos < jsx.length && /[\w-]/.test(jsx[pos])) {
+        attrName += jsx[pos];
+        pos++;
+      }
+      
+      if (!attrName) break;
+      
+      // Skip whitespace and =
+      while (pos < jsx.length && /[\s=]/.test(jsx[pos])) pos++;
+      
+      // Parse attribute value
+      let attrValue: any = true; // Boolean attribute
+      
+      if (jsx[pos] === '"' || jsx[pos] === "'") {
+        const quote = jsx[pos];
+        pos++; // Skip opening quote
+        attrValue = '';
+        while (pos < jsx.length && jsx[pos] !== quote) {
+          attrValue += jsx[pos];
+          pos++;
+        }
+        pos++; // Skip closing quote
+      } else if (jsx[pos] === '{') {
+        pos++; // Skip {
+        let depth = 1;
+        attrValue = '';
+        while (pos < jsx.length && depth > 0) {
+          if (jsx[pos] === '{') depth++;
+          if (jsx[pos] === '}') depth--;
+          if (depth > 0) attrValue += jsx[pos];
+          pos++;
+        }
+      }
+      
+      props[attrName] = attrValue;
+    }
+    
+    // Check for self-closing
+    const isSelfClosing = jsx[pos] === '/';
+    if (isSelfClosing) {
+      pos++; // Skip /
+      pos++; // Skip >
+      console.log('[JsxParser.parseElement] Self-closing tag:', tagName);
+      return {
+        element: { tag: tagName, props, children: [], isSelfClosing: true },
+        endPos: pos
+      };
+    }
+    
+    pos++; // Skip >
+    
     // Parse children
-    const children = this.parseChildren(content);
-
-    return { tag, props, children, isSelfClosing: false };
+    const children: (ParsedElement | string)[] = [];
+    let textBuffer = '';
+    
+    while (pos < jsx.length) {
+      // Check for closing tag
+      if (jsx[pos] === '<' && jsx[pos + 1] === '/') {
+        // Save any accumulated text
+        if (textBuffer.trim()) {
+          children.push(textBuffer.trim());
+          textBuffer = '';
+        }
+        
+        // Parse closing tag
+        pos += 2; // Skip </
+        let closingTag = '';
+        while (pos < jsx.length && jsx[pos] !== '>') {
+          closingTag += jsx[pos];
+          pos++;
+        }
+        pos++; // Skip >
+        
+        if (closingTag.trim() !== tagName) {
+          console.warn(`[JsxParser] Mismatched closing tag: expected ${tagName}, got ${closingTag}`);
+        }
+        
+        console.log('[JsxParser.parseElement] Finished parsing', tagName, 'with', children.length, 'children');
+        return {
+          element: { tag: tagName, props, children, isSelfClosing: false },
+          endPos: pos
+        };
+      }
+      
+      // Check for child element
+      if (jsx[pos] === '<' && jsx[pos + 1] !== '/') {
+        // Save any accumulated text
+        if (textBuffer.trim()) {
+          children.push(textBuffer.trim());
+          textBuffer = '';
+        }
+        
+        // Parse child element recursively
+        const childResult = this.parseElement(jsx, pos);
+        children.push(childResult.element);
+        pos = childResult.endPos;
+      } else {
+        // Accumulate text
+        textBuffer += jsx[pos];
+        pos++;
+      }
+    }
+    
+    // If we get here, we didn't find a closing tag
+    console.warn('[JsxParser] No closing tag found for:', tagName);
+    return {
+      element: { tag: tagName, props, children, isSelfClosing: false },
+      endPos: pos
+    };
   }
 
   /**

@@ -13,6 +13,8 @@ Your goal is to help the user build beautiful, functional, and consistent React 
 1. Always use the 'nebula' tool for layout changes.
 2. Favor modern, clean aesthetics (Tailwind-like classes).
 3. Be concise and proactive in building.
+4. **CRITICAL**: When using \`read_file\`, capture the result in a variable to use it in \`ingest\`.
+   - Example: \`const code = await system.read_file({ path: '...' }); await system.nebula({ action: 'ingest', rawJsx: code, ... });\`
 
 ### CONSTITUTION:
 - Use standard HTML components (Box, Text, Button, Input, Icon, Image).
@@ -28,19 +30,25 @@ Your goal is to help the user build beautiful, functional, and consistent React 
 
   console.log(`Seeding role: ${roleName}...`);
 
+  const metadata = {
+    capabilities: ['text']
+  };
+
   await prisma.role.upsert({
     where: { id: roleId },
     update: {
       name: roleName,
       basePrompt: basePrompt,
-      tools: tools
+      tools: tools,
+      metadata: metadata
     },
     create: {
       id: roleId,
       name: roleName,
       basePrompt: basePrompt,
       tools: tools,
-      categoryString: 'Engineering & Development'
+      categoryString: 'Engineering & Development',
+      metadata: metadata
     }
   });
 

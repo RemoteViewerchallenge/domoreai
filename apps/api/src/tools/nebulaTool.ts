@@ -1,7 +1,20 @@
 
 export const nebulaTool = {
     name: 'nebula',
-    description: 'A layout engine tool for manipulating the Nebula UI tree. Use this to add, update, move, or delete nodes in the UI.',
+    description: `A layout engine tool for manipulating the Nebula UI tree. 
+    
+    NEBULA CODE MODE v2.0:
+    When writing TypeScript to manipulate the UI, use the global 'nebula' and 'ast' objects.
+    
+    1. addNode(parentId, node): Adds a node and RETURNS a unique nodeId. ALWAYS capture this ID.
+    2. updateNode(nodeId, update): Updates an existing node.
+    3. moveNode(nodeId, targetParentId, index): Moves a node.
+    4. deleteNode(nodeId): Deletes a node.
+    5. ast.parse(jsx): Parses raw JSX into a fragment for ingestion.
+    
+    Example:
+    const cardId = nebula.addNode('root', { type: 'Box', props: { className: 'p-4' } });
+    nebula.addNode(cardId, { type: 'Text', props: { children: 'Hello v2.0' } });`,
     input_schema: {
         type: 'object',
         properties: {

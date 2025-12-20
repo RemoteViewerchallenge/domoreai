@@ -3,6 +3,12 @@ import type { NebulaAction } from './actions.js';
 
 export type NebulaId = string;
 
+// Node Types: Primitives, Logic, and Black-Box Components
+export type NodeType = 
+  | 'Box' | 'Text' | 'Button' | 'Input' | 'Icon' | 'Image' // Primitives
+  | 'Loop' | 'Condition'                                   // Logic
+  | 'Component';                                           // Black Box (Custom Components)
+
 // The "DNA" of the UI. Every layout is a constraint, not a pixel value.
 export type LayoutMode = 'flex' | 'grid' | 'absolute' | 'flow';
 export type Direction = 'row' | 'column' | 'row-reverse' | 'column-reverse';
@@ -35,12 +41,25 @@ export interface DataBinding {
 // The "Atom" Node
 export interface NebulaNode {
   id: NebulaId;
-  type: string; // Mapped to ComponentRegistry (e.g., "Card", "Button", "Container")
+  type: NodeType; // Strongly typed node types
 
   // Content & Configuration
   props: Record<string, any>;
   bindings?: DataBinding[]; // Dynamic value injection
   actions?: NebulaAction[];  // Event handlers connected to logic
+
+  // Logic Configuration (for Loop and Condition nodes)
+  logic?: {
+    // For Loops: {items.map((item) => ...)}
+    loopData?: string;   // e.g., "props.users"
+    iterator?: string;   // e.g., "user"
+    
+    // For Conditions: {isActive && ...}
+    condition?: string;  // e.g., "props.isActive"
+  };
+
+  // Component Reference (for Black-Box imports)
+  componentName?: string; // e.g., "UserCard", "HeroSection"
 
   // Visuals (Token-based)
   style: StyleTokens;

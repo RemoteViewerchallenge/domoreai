@@ -8,6 +8,7 @@ import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
 import { nebulaTool } from '../../tools/nebulaTool.js';
+import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
@@ -16,6 +17,12 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
             handler: nebulaTool.handler,
             description: nebulaTool.description,
             input_schema: nebulaTool.input_schema
+        },
+        {
+          name: typescriptInterpreterTool.name,
+          handler: typescriptInterpreterTool.handler,
+          description: typescriptInterpreterTool.description,
+          input_schema: typescriptInterpreterTool.inputSchema as any
         },
         {
             name: 'read_file',

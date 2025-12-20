@@ -19,7 +19,10 @@
     "seed:models": "tsx src/scripts/seed-ghost-records.ts"
   },
   "dependencies": {
+    "@automatalabs/mcp-server-playwright": "^1.2.1",
+    "@cyanheads/filesystem-mcp-server": "^1.0.4",
     "@google/genai": "^1.30.0",
+    "@henkey/postgres-mcp-server": "^1.0.5",
     "@modelcontextprotocol/sdk": "^1.21.1",
     "@mozilla/readability": "^0.6.0",
     "@opentelemetry/api": "^1.9.0",
@@ -43,6 +46,7 @@
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.44.7",
     "express": "^4.19.2",
+    "git-mcp-server": "^1.0.0",
     "google-auth-library": "^10.5.0",
     "https-proxy-agent": "^7.0.6",
     "jsdom": "^27.2.0",
