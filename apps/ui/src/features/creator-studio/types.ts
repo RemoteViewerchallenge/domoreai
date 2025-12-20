@@ -11,6 +11,9 @@ export type RoleConfig = {
   description: string;
   modelProvider: 'openai' | 'anthropic' | 'mistral' | 'llama' | 'vertex';
   model: string;
+  currentModel?: string; // Resolved friendly name
+  scope?: string;        // "Jurisdiction"
+  healthScore?: number;  // 0-100
   systemPrompt: string;
   temperature: number;
   tools: string[]; // List of tool names (e.g., "web_search", "git_commit")

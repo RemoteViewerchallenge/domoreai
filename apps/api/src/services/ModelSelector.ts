@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { db, prisma } from '../db.js';
 import { modelRegistry, modelCapabilities } from '../db/schema.js';
 import { eq, and, gte, desc, SQL } from 'drizzle-orm';
 
@@ -58,9 +58,11 @@ export class ModelSelector {
     // Find all active models that meet criteria
     const capFilters = this.buildCapabilityFilters(requiredCaps);
     
+    // Fetch more candidates than needed to allow for filtering
     const candidates = await db.select({
       id: modelRegistry.id,
       modelId: modelRegistry.modelId,
+      providerId: modelRegistry.providerId,
       contextWindow: modelCapabilities.contextWindow
     })
       .from(modelRegistry)
@@ -71,23 +73,95 @@ export class ModelSelector {
         ...capFilters
       ))
       .orderBy(desc(modelCapabilities.contextWindow))
-      .limit(10);
+      .limit(20);
 
     if (candidates.length === 0) {
-      // Emergency Fallback: If absolutely nothing matches, try to find ANY active model from the provider
+      // Emergency Fallback
       const fallback = await db.select({ id: modelRegistry.id })
         .from(modelRegistry)
         .where(eq(modelRegistry.isActive, true))
         .limit(1);
         
       if (fallback.length > 0) return fallback[0].id;
-      
       throw new Error(`No model found matching requirements: ${JSON.stringify(requirements)}`);
     }
 
+    // STICKINESS: Check for last successful model
+    const lastSuccess = await prisma.modelUsage.findFirst({
+      where: { roleId: role.id },
+      orderBy: { createdAt: 'desc' },
+      select: { modelId: true }
+    });
+
+    // BATCH FETCH: Probation Stats
+    // Optimize: fetch failures and usage for all candidates in parallel batches
+    const candidateIds = candidates.map(c => c.id);
+    const candidateModelIds = candidates.map(c => c.modelId);
+    const candidateProviderIds = candidates.map(c => c.providerId);
+
+    // Fetch failures for these provider/model combos on this role
+    const failures = await prisma.modelFailure.findMany({
+        where: {
+            roleId: role.id,
+            modelId: { in: candidateModelIds },
+            providerId: { in: candidateProviderIds }
+        }
+    });
+
+    // Fetch usage counts (approximated by grouping, or simplified count)
+    // GroupBy is efficient.
+    const usageCounts = await prisma.modelUsage.groupBy({
+        by: ['modelId'],
+        where: {
+            roleId: role.id,
+            modelId: { in: candidateIds }
+        },
+        _count: {
+            id: true
+        }
+    });
+
+    const validCandidates: typeof candidates = [];
+
+    for (const candidate of candidates) {
+        // PROBATION CHECK
+        const failureRecord = failures.find(f =>
+            f.providerId === candidate.providerId &&
+            f.modelId === candidate.modelId
+        );
+        const failureCount = failureRecord?.failures || 0;
+
+        const usageRecord = usageCounts.find(u => u.modelId === candidate.id);
+        const usageCount = usageRecord?._count.id || 0;
+
+        // THE GUARD RAIL:
+        // Only bench if they have failed > 3 times AND have tried at least 5 times.
+        if (failureCount > 3 && usageCount > 5) {
+            console.warn(`[ModelSelector] 🛑 Benching ${candidate.modelId} for ${role.id} (Failures: ${failureCount}, Usage: ${usageCount})`);
+            continue; // Skip this candidate
+        }
+
+        validCandidates.push(candidate);
+    }
+
+    if (validCandidates.length === 0) {
+       // All candidates benched? Fallback to the first one (ignoring probation) or finding ANY active.
+       // For now, let's just return the first one from original list to avoid complete breakage,
+       // or throw if we really want to enforce strictness.
+       // Logic says "Skip this candidate". If all skipped, we need a fallback.
+       return candidates[0].id;
+    }
+
     // 3. Pick the Best
-    // Currently prefers larger context window. Future: cost analysis.
-    return candidates[0].id;
+    // Sort with Stickiness: If one is sticky, it wins
+    validCandidates.sort((a, b) => {
+        if (lastSuccess && a.id === lastSuccess.modelId) return -1; // a comes first
+        if (lastSuccess && b.id === lastSuccess.modelId) return 1;  // b comes first
+        // Otherwise keep original sort (context window desc)
+        return 0;
+    });
+
+    return validCandidates[0].id;
   }
 
   private async getModelWithCapabilities(id: string) {

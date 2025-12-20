@@ -34,6 +34,9 @@ export const OrchestrationDesigner: React.FC = () => {
     description: '', // Backend role doesn't have description yet?
     modelProvider: 'openai', // Default or derived
     model: 'gpt-4', // Default or derived
+    currentModel: (r as any).currentModel,
+    scope: (r as any).scope,
+    healthScore: (r as any).healthScore,
     systemPrompt: r.basePrompt,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     temperature: ((r as any).defaultTemperature as number) || 0.7,
