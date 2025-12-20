@@ -20,6 +20,7 @@ import { PrismaAgentConfigRepository } from "../repositories/PrismaAgentConfigRe
 const DEFAULT_RETRY_SECONDS = 2;
 const MAX_RETRY_WAIT = 5;
 const JUDGE_MAX_TOKENS = 500;
+const AGENT_MAX_ATTEMPTS = 5; // Prevent infinite loops
 
 // Type extension for Role to include metadata fields
 interface ExtendedRole extends Role {
@@ -52,13 +53,13 @@ export class VolcanoAgent implements IAgent {
   /**
    * Generates a response using the configured provider and model.
    * This utilizes the SDK's standardized BaseLLMProvider interface.
-   * NOW WITH EXHAUSTIVE FALLBACK!
+   * NOW WITH EXHAUSTIVE FALLBACK and LOOP PROTECTION!
    */
   async generate(userGoal: string): Promise<string> {
-     
-    while (true) {
+    for (let attempt = 1; attempt <= AGENT_MAX_ATTEMPTS; attempt++) {
       try {
-        console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id}`);
+        console.log(`[VolcanoAgent] Generating with model: "${this.config.apiModelId}" on provider ${this.provider.id} (Attempt ${attempt}/${AGENT_MAX_ATTEMPTS})`);
+
         const response = await executeWithRateLimit(this.provider, {
             modelId: this.config.apiModelId,
             messages: [
@@ -113,11 +114,12 @@ export class VolcanoAgent implements IAgent {
           }
 
           return response;
+
       } catch (error) {
         const err = error as ProviderError;
         console.warn(`[VolcanoAgent] Generation failed with provider ${this.provider.id || 'unknown'}:`, err);
         
-        // Track failed model (not provider - allows other models from same provider to work)
+        // Track failed model
         const modelId = this.config.apiModelId;
         if (modelId) this.failedModels.push(modelId);
 
@@ -128,6 +130,11 @@ export class VolcanoAgent implements IAgent {
           const waitSeconds = Math.min(parseInt(retryAfter, 10) || DEFAULT_RETRY_SECONDS, MAX_RETRY_WAIT);
           console.log(`[VolcanoAgent] Encountered ${status} error. Waiting ${waitSeconds}s before failover.`);
           await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+        }
+
+        // If we reached max attempts, stop trying
+        if (attempt === AGENT_MAX_ATTEMPTS) {
+           throw new Error(`Agent Execution Failed: Max attempts (${AGENT_MAX_ATTEMPTS}) reached. Last Error: ${err.message}`);
         }
 
         // ATTEMPT RECOVERY
@@ -142,7 +149,6 @@ export class VolcanoAgent implements IAgent {
           }
           
           // 2. Reconfigure Agent
-          // Ensure we don't pick the same failed model again
           if (this.failedModels.includes(nextModel.modelId)) {
              throw new Error(`Orchestrator returned failed model ${nextModel.modelId} despite exclusion list.`);
           }
@@ -158,13 +164,15 @@ export class VolcanoAgent implements IAgent {
           this.provider = newProvider;
           console.log(`[VolcanoAgent] Failover successful. Switched to: ${nextModel.providerId} / ${nextModel.modelId}`);
           
-          // Loop continues and tries again with new provider...
+          // Loop continues...
         } catch (retryError) {
           console.error("[VolcanoAgent] Exhaustive fallback failed:", retryError);
           throw new Error(`Agent Execution Failed (Exhausted all options). Final Error: ${retryError instanceof Error ? retryError.message : String(retryError)}`);
         }
       }
     }
+
+    throw new Error("Agent execution loop terminated unexpectedly.");
   }
 
   public getConfig() {
@@ -178,6 +186,9 @@ export class VolcanoAgent implements IAgent {
 }
 
 export class AgentFactoryService implements IAgentFactory {
+  // Static cache to prevent disk spamming
+  private static cachedRoles: any[] | null = null;
+
   constructor(
     private providerManager: IProviderManager,
     private configRepo: IAgentConfigRepository
@@ -185,81 +196,49 @@ export class AgentFactoryService implements IAgentFactory {
 
   /**
    * Create an agent with a specific corporate tier
-   * 
-   * @param cardConfig - Base agent configuration
-   * @param tier - Corporate tier: "Executive", "Manager", or "Worker"
-   * @returns Configured VolcanoAgent with tier-appropriate model
    */
   async createVolcanoAgentWithTier(
     cardConfig: CardAgentState,
     tier: 'Executive' | 'Manager' | 'Worker' = 'Worker'
   ): Promise<VolcanoAgent> {
-    // Override the model selection based on tier
     const tierConfig = { ...cardConfig, isLocked: false };
-    
-    // Get tier-appropriate model
     const bestModel = await this.getModelForTier(cardConfig.roleId, tier);
     
     if (bestModel) {
       tierConfig.modelId = bestModel.modelId;
       tierConfig.temperature = bestModel.temperature;
       tierConfig.maxTokens = bestModel.maxTokens;
-      tierConfig.isLocked = true; // Lock to the tier-selected model
+      tierConfig.isLocked = true;
     }
     
     return this.createVolcanoAgent(tierConfig);
   }
 
-  /**
-   * Get the best model for a given tier
-   * 
-   * Tier mapping:
-   * - Executive: High-cost, powerful models (o1-preview, claude-opus, gpt-4-turbo)
-   * - Manager: Mid-tier models (gpt-4o, claude-sonnet, gemini-pro)
-   * - Worker: Low-cost, fast models (gpt-4o-mini, gemini-flash, llama-3-8b)
-   */
   private async getModelForTier(
     roleId: string,
     tier: 'Executive' | 'Manager' | 'Worker'
   ): Promise<{ modelId: string; providerId: string; temperature: number; maxTokens: number } | null> {
     const { prisma } = await import('../db.js');
-    
-    // Define tier cost thresholds (cost per 1k tokens)
     const tierThresholds = {
-      Executive: { min: 0.01, max: 1.0 },    // $0.01+ per 1k tokens
-      Manager: { min: 0.001, max: 0.01 },    // $0.001-$0.01 per 1k tokens
-      Worker: { min: 0, max: 0.001 }         // $0-$0.001 per 1k tokens (includes free)
+      Executive: { min: 0.01, max: 1.0 },
+      Manager: { min: 0.001, max: 0.01 },
+      Worker: { min: 0, max: 0.001 }
     };
     
     const threshold = tierThresholds[tier];
     
     try {
-      // Find the best model within the tier's cost range
       const model = await prisma.model.findFirst({
         where: {
           isActive: true,
-          costPer1k: {
-            gte: threshold.min,
-            lte: threshold.max
-          },
-          capabilityTags: {
-            has: 'text' // At minimum, must support text
-          }
+          costPer1k: { gte: threshold.min, lte: threshold.max },
+          capabilityTags: { has: 'text' }
         },
-        orderBy: [
-          { costPer1k: tier === 'Executive' ? 'desc' : 'asc' }, // Executive wants most expensive, others want cheapest
-        ],
-        include: {
-          provider: true
-        }
+        orderBy: [{ costPer1k: tier === 'Executive' ? 'desc' : 'asc' }],
+        include: { provider: true }
       });
       
-      if (!model) {
-        console.warn(`[AgentFactory] No model found for tier ${tier}. Falling back to default selection.`);
-        return null;
-      }
-      
-      console.log(`[AgentFactory] Selected ${tier} tier model: ${model.modelId} (${model.provider.label}) @ $${model.costPer1k}/1k`);
+      if (!model) return null;
       
       return {
         modelId: model.id,
@@ -280,16 +259,13 @@ export class AgentFactoryService implements IAgentFactory {
     
     if (rawRole) {
       role = { ...rawRole, metadata: (rawRole as any).metadata || {} } as ExtendedRole;
-
-      // Check for legacy fields or metadata fields
       const template = role.metadata?.template || (rawRole as any).template;
       if (template) {
-         // Merge template properties into role
          role = { ...role, ...template, metadata: { ...role.metadata, ...template } };
       }
     }
 
-    // Fallback to 'general_worker' if not found
+    // Fallback logic with CACHING to avoid repetitive Disk I/O
     if (!role && cardConfig.roleId !== 'general_worker') {
       const rawGw = await this.configRepo.getRole('general_worker');
       if (rawGw) {
@@ -298,18 +274,20 @@ export class AgentFactoryService implements IAgentFactory {
       }
     }
 
-    // If still not found, attempt to seed 'general_worker' from roles.json packaged with the repo
     if (!role) {
       try {
-        // Read roles.json from the monorepo packages
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const rolesPath = path.join(process.cwd(), 'packages', 'coc', 'agents', 'roles.json');
-        const raw = await fs.readFile(rolesPath, 'utf-8');
-        const list = JSON.parse(raw);
-        const gw = (list || []).find((r: any) => r.id === 'general_worker');
+        if (!AgentFactoryService.cachedRoles) {
+            const fs = await import('node:fs/promises');
+            const path = await import('node:path');
+            const rolesPath = path.join(process.cwd(), 'packages', 'coc', 'agents', 'roles.json');
+            const raw = await fs.readFile(rolesPath, 'utf-8');
+            AgentFactoryService.cachedRoles = JSON.parse(raw);
+        }
+
+        const list = AgentFactoryService.cachedRoles || [];
+        const gw = list.find((r: any) => r.id === 'general_worker');
+
         if (gw) {
-          // Insert into DB with id 'general_worker' so future lookups resolve
           try {
             const created = await this.configRepo.createRole({
                 id: gw.id,
@@ -322,11 +300,10 @@ export class AgentFactoryService implements IAgentFactory {
             cardConfig.roleId = 'general_worker';
             console.log('[AgentFactory] Seeded general_worker role from roles.json');
           } catch (createErr) {
-            console.warn('[AgentFactory] Failed to seed general_worker role:', createErr);
+            console.warn('[AgentFactory] Failed to seed general_worker role (might exist):', createErr);
           }
         }
       } catch (readErr) {
-        // ignore if file not present or parse error
         console.warn('[AgentFactory] Could not read roles.json to seed default role:', readErr instanceof Error ? readErr.message : String(readErr));
       }
     }
@@ -340,12 +317,8 @@ export class AgentFactoryService implements IAgentFactory {
 
     // 2. Model Resolution Strategy
     if (!cardConfig.isLocked || !cardConfig.modelId) {
-      // STRATEGY A: Dynamic Orchestration (Volcano-style)
       const bestModel = await getBestModel(cardConfig.roleId);
-
-      if (!bestModel) {
-        throw new Error("Orchestrator failed to select a model for this agent.");
-      }
+      if (!bestModel) throw new Error("Orchestrator failed to select a model for this agent.");
 
       model = bestModel.model;
       effectiveConfig = {
@@ -354,27 +327,13 @@ export class AgentFactoryService implements IAgentFactory {
           maxTokens: bestModel.maxTokens
       };
     } else {
-      // STRATEGY B: Manual/Locked
       const allModels = await this.providerManager.getAllModels();
       const modelDef = allModels.find(m => m.id === cardConfig.modelId);
-
-      if (!modelDef) {
-         // Allow fallback if model not found in provider list but might exist in DB
-         console.warn(`[AgentFactory] Model '${cardConfig.modelId}' not in active provider cache. Checking DB...`);
-      }
-
-      // Fetch the Prisma Model
       const requestedModelId = modelDef?.id || cardConfig.modelId;
-      const requestedProviderId = modelDef?.providerId; // Might be undefined if not in cache
+      const requestedProviderId = modelDef?.providerId;
 
       if (requestedProviderId && requestedModelId) {
          model = await this.configRepo.getModel(requestedProviderId, requestedModelId);
-      }
-
-      // Quick Fix for "model not found" when it strictly exists in DB but not cache
-      if (!model && (cardConfig.modelId)) {
-           // We can't query reliably without providerId in current Repo structure,
-           // but let's assume if we are here, something is wrong or we skip.
       }
 
       if (!modelDef && !model) {
@@ -382,19 +341,15 @@ export class AgentFactoryService implements IAgentFactory {
       }
 
       if (modelDef && !model) {
-          // JIT Creation: Model exists in provider but not in DB. Create it now.
           console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
-
           try {
               model = await this.configRepo.createModel(modelDef as any);
-              console.log(`[AgentFactory] JIT Creation successful: ${model.id}`);
           } catch (createError) {
                console.error(`[AgentFactory] JIT Creation failed:`, createError);
                throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
           }
       }
       
-      // Found the model, now set config
       effectiveConfig = {
           modelId: model.id,
           temperature: cardConfig.temperature,
@@ -415,29 +370,18 @@ export class AgentFactoryService implements IAgentFactory {
     let basePrompt: string;
     
     try {
-      // Fetch Constitution settings (Global Rules)
-      let constitution: { codeRules?: string; glossary?: Record<string, string> } | undefined;
-      
-      // Try to get the workspace ID from the card config or find the first workspace
       const { prisma } = await import('../db.js');
       const workspace = await prisma.workspace.findFirst({
-        select: {
-          codeRules: true,
-          glossary: true,
-        },
+        select: { codeRules: true, glossary: true },
       });
       
-      if (workspace) {
-        constitution = {
-          codeRules: workspace.codeRules || undefined,
-          glossary: (workspace.glossary as Record<string, string>) || undefined,
-        };
-      }
+      const constitution = workspace ? {
+        codeRules: workspace.codeRules || undefined,
+        glossary: (workspace.glossary as Record<string, string>) || undefined,
+      } : undefined;
 
-      // Use PromptFactory to assemble the prompt with memory and Constitution
       const lessonProvider = new PrismaLessonProvider();
       const promptFactory = new PromptFactory(lessonProvider);
-
       const memoryConfig = role.metadata?.memoryConfig || (rawRole as any)?.memoryConfig;
 
       basePrompt = await promptFactory.build(
@@ -446,7 +390,7 @@ export class AgentFactoryService implements IAgentFactory {
           memoryConfig,
           role.tools,
           cardConfig.projectPrompt,
-          constitution // Inject Constitution here
+          constitution
       );
     } catch (error) {
       console.warn(`[AgentFactory] PromptFactory failed for role \"${role.name}\". Falling back to simple role prompt load.`, error);
@@ -471,8 +415,17 @@ export class AgentFactoryService implements IAgentFactory {
   }
 }
 
-// Facade
-const defaultFactory = new AgentFactoryService(ProviderManager.getInstance(), new PrismaAgentConfigRepository());
+// LAZY INITIALIZATION FACADE
+// Prevents top-level execution of ProviderManager.getInstance()
+// which can cause circular dependency crashes at module load time.
+let defaultFactory: AgentFactoryService | null = null;
+
 export async function createVolcanoAgent(cardConfig: CardAgentState): Promise<VolcanoAgent> {
+  if (!defaultFactory) {
+    defaultFactory = new AgentFactoryService(
+      ProviderManager.getInstance(),
+      new PrismaAgentConfigRepository()
+    );
+  }
   return defaultFactory.createVolcanoAgent(cardConfig);
 }
