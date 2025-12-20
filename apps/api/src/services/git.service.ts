@@ -41,6 +41,22 @@ export class GitService {
     }
   }
 
+  async checkoutAndPull(vfsToken: string, branchName: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      // Ensure we have latest refs
+      await git.fetch();
+      await git.checkout(branchName);
+      await git.pull();
+      return { success: true, branch: branchName };
+    } catch (error: any) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Checkout and Pull failed: ${error.message}`,
+      });
+    }
+  }
+
   async gitCommit(vfsToken: string, message: string) {
     try {
       const { git } = this.getGit(vfsToken);
@@ -61,10 +77,10 @@ export class GitService {
     }
   }
   
-  async createGhostBranch(vfsToken: string, taskId: string) {
+  async createGhostBranch(vfsToken: string, taskId: string, customName?: string) {
     try {
       const { git } = this.getGit(vfsToken);
-      const branchName = `volcano/task-${taskId}`;
+      const branchName = customName || `volcano/task-${taskId}`;
       
       // Ensure we are on main and up to date
       await git.checkout('main');
