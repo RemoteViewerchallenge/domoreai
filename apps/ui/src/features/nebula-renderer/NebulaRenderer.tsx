@@ -1,9 +1,7 @@
 import React from 'react';
-import { NebulaTree, NebulaNode, LayoutMode, Direction, Alignment } from '../core/types.js';
-import { cn } from '../lib/utils.js';
+import type { NebulaTree, NebulaNode, Alignment } from '@repo/nebula';
+import { cn } from '../../lib/utils'; // Adapting to local UI utils
 
-// 1. The Component Registry (Map JSON 'type' to React Component)
-// Ideally injected via props, but creating a default map here.
 // 1. The Component Registry (Map JSON 'type' to React Component)
 const Registry: Record<string, React.FC<any>> = {
   Box: ({ className, children, ...props }) => <div className={className} {...props}>{children}</div>,
@@ -58,7 +56,7 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
   const styleClasses = resolveStyles(node.style);
   const combinedClasses = cn(layoutClasses, styleClasses, node.props.className);
 
-  // Sanitize props: Prevent React from crashing if 'style' is a string (e.g. from ingested raw JSX)
+  // Sanitize props: Prevent React from crashing if 'style' is a string
   const sanitizedProps = { ...node.props };
   if (typeof sanitizedProps.style === 'string') {
     delete sanitizedProps.style;
@@ -89,60 +87,43 @@ function resolveLayout(layout: NebulaNode['layout']) {
     // Mode
     if (layout.mode === 'flex') {
         classes.push('flex');
-
-        // Direction
         if (layout.direction === 'column') classes.push('flex-col');
         else if (layout.direction === 'row') classes.push('flex-row');
         else if (layout.direction === 'column-reverse') classes.push('flex-col-reverse');
         else if (layout.direction === 'row-reverse') classes.push('flex-row-reverse');
 
-        // Justify
         classes.push(mapAlignment(layout.justify, 'justify'));
-
-        // Align
         classes.push(mapAlignment(layout.align, 'items'));
 
-        // Wrap
         if (layout.wrap) classes.push('flex-wrap');
 
     } else if (layout.mode === 'grid') {
         classes.push('grid');
         if (layout.columns) classes.push(`grid-cols-${layout.columns}`);
-
-        // Justify/Align in grid often maps differently but basic items/justify applies
         classes.push(mapAlignment(layout.justify, 'justify'));
         classes.push(mapAlignment(layout.align, 'items'));
     } else if (layout.mode === 'absolute') {
         classes.push('absolute');
     }
 
-    // Gap (Common to flex and grid)
     if (layout.gap) classes.push(layout.gap);
-
     return classes.join(' ');
 }
 
 function mapAlignment(align: Alignment | undefined, prefix: 'justify' | 'items'): string {
     if (!align) return '';
-
-    // Tailwind mapping
-    // justify: start, center, end, between, around, evenly
-    // items: start, center, end, stretch, baseline
-
     switch (align) {
         case 'start': return `${prefix}-start`;
         case 'center': return `${prefix}-center`;
         case 'end': return `${prefix}-end`;
-        case 'between': return prefix === 'justify' ? 'justify-between' : ''; // items-between invalid
+        case 'between': return prefix === 'justify' ? 'justify-between' : '';
         case 'around': return prefix === 'justify' ? 'justify-around' : '';
-        case 'stretch': return prefix === 'items' ? 'items-stretch' : 'justify-stretch'; // justify-stretch exists
+        case 'stretch': return prefix === 'items' ? 'items-stretch' : 'justify-stretch';
         default: return '';
     }
 }
 
 function resolveStyles(style: NebulaNode['style']) {
-    // Map tokens to classes
-    // Safely filter to only include string values (ignoring responsive objects for now)
     return Object.values(style || {})
         .filter((val): val is string => typeof val === 'string')
         .join(' ');
