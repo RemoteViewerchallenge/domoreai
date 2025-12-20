@@ -1,9 +1,0 @@
-Deleting old UI design assistant role: cmjdkct760000bal48wbwzpgq
-✅ Deleted role: ui design assistant
-   ID: cmjdkct760000bal48wbwzpgq
-   Tools: [research_browser, nebula, search_codebase, browser, filesystem]
-
-Remaining UI Design Assistant:
-   Name: UI Design Assistant
-   ID: ui_design_assistant
-   Tools: [nebula, scan_ui_components, read_file, list_files_tree]

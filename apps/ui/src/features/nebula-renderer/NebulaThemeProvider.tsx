@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { NebulaTheme, DEFAULT_THEME } from '../core/theme.js';
+import { DEFAULT_THEME } from '@repo/nebula';
+import type { NebulaTheme } from '@repo/nebula';
 
 const ThemeContext = createContext<{
   theme: NebulaTheme;
@@ -15,10 +16,8 @@ export const NebulaThemeProvider: React.FC<{
 }> = ({ children, initialTheme = DEFAULT_THEME }) => {
   const [theme, setTheme] = useState(initialTheme);
 
-  // The Magic: Sync JSON State to CSS Variables
   useEffect(() => {
     const root = document.documentElement;
-
     // Colors
     root.style.setProperty('--nebula-primary', theme.colors.primary);
     root.style.setProperty('--nebula-secondary', theme.colors.secondary);
@@ -26,11 +25,9 @@ export const NebulaThemeProvider: React.FC<{
     root.style.setProperty('--nebula-surface', theme.colors.surface);
     root.style.setProperty('--nebula-text', theme.colors.text);
     root.style.setProperty('--nebula-border', theme.colors.border);
-
     // Shape
-    root.style.setProperty('--nebula-radius', theme.shape.radius);
-    root.style.setProperty('--nebula-border-width', theme.shape.borderWidth);
-
+    root.style.setProperty('--nebula-radius', theme.shape.radius.toString());
+    root.style.setProperty('--nebula-border-width', theme.shape.borderWidth.toString());
     // Typography
     root.style.setProperty('--nebula-font', theme.typography.fontFamily);
     root.style.setProperty('--nebula-base-size', theme.typography.baseSize);

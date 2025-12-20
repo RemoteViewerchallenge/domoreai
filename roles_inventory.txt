@@ -1,2 +1,0 @@
-ID: cmjdkct760000bal48wbwzpgq, Name: ui design assistant, Category: Specialized Workers
-ID: ui_design_assistant, Name: UI Design Assistant, Category: Engineering & Development
