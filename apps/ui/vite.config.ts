@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@repo/nebula": path.resolve(__dirname, "../../packages/nebula/src")
     },
     dedupe: ['react', 'react-dom'],
   },

@@ -147,8 +147,19 @@ export class AgentRuntime {
         return { result: responseStr, logs: [] };
     }
 
+    console.log('[AgentRuntime] Executing code in sandbox:\n', codeToExecute);
+
     // 2. Execute in Sandbox
-    const { result, logs } = await this.client.callToolChain(codeToExecute) as { result: string; logs: string[] };
+    const sandboxResponse = await this.client.callToolChain(codeToExecute) as { result: string; logs: string[] };
+    let result = sandboxResponse?.result || '';
+    const logs = sandboxResponse?.logs || [];
+    
+    // If result is empty but we have logs, use the last log as the result
+    // This handles cases where the AI uses console.log for output
+    if (!result && logs.length > 0) {
+      result = logs[logs.length - 1];
+      console.log('[AgentRuntime] Using last log as result:', result.substring(0, 100));
+    }
     
     // 3. Return logs to your UI Terminal
     return { result, logs };
@@ -172,10 +183,83 @@ export class AgentRuntime {
             // Auto-append Protocol + Docs if tag is missing
             const CODE_MODE_PROTOCOL = `
 ## 🛠️ TOOL USAGE PROTOCOL
-You are operating in **CODE MODE**. To perform actions, you must write executable TypeScript code blocks.
-- Use the \`system\` namespace for tools (e.g., \`await system.read_file({ path: "..." })\`).
-- Always wrap logic in \`async function main() { ... }\` or top-level await blocks.
-- Use \`console.log()\` to output your final answer or reasoning.
+You are operating in **CODE MODE**. Your primary objective is to fulfill the user's request by calling available tools. 
+
+### 🚨 CRITICAL RULES:
+1. **NO CONVERSATIONAL FILLER.** Do not say "Sure, I can help with that." 
+2. **USE CODE BLOCKS.** You MUST wrap your logic in a \` \` \`typescript block.
+3. **USE THE SYSTEM NAMESPACE.** Call tools using \`await system.tool_name({...})\`.
+4. **EXECUTION.** Your response will be parsed and executed in a sandbox.
+5. **NEBULA TOOL.** If you are asked to change the UI, layout, or add components, you MUST use the \`nebula\` tool.
+
+### Example:
+\`\` \`typescript
+await system.nebula({
+    action: 'addNode',
+    parentId: 'root',
+    node: { type: 'Box', props: { className: 'p-4 bg-zinc-900 border border-zinc-800 rounded-lg' } }
+});
+console.log("Added a box to the layout.");
+\`\` \`
+
+### Interface definition for Nebula Tool:
+\`\`\`typescript
+/**
+ * GLOBAL CONTEXT:
+ * You have access to a global \`nebula\` object to manipulate the UI tree.
+ */
+
+// -- Data Binding Schema --
+type DataBinding = {
+  propName: string;       // e.g. "src", "children"
+  sourcePath: string;     // e.g. "user.profile.url"
+};
+
+// -- Event Action Schema --
+type NebulaAction = {
+  trigger: 'onClick' | 'onSubmit';
+  type: 'navigate' | 'mutation' | 'toast';
+  payload: any;
+};
+
+interface NebulaOps {
+  /**
+   * Core Method: Adds a node to the tree.
+   * NOW SUPPORTS: bindings and actions
+   */
+  addNode(
+    parentId: string,
+    node: {
+      type: 'Box' | 'Text' | 'Button' | 'Card' | 'Image' | 'Input' | 'Icon';
+      
+      // Visuals
+      style?: StyleTokens; 
+      layout?: LayoutConfig; 
+      
+      // Static Content
+      props?: Record<string, any>; 
+      
+      // DYNAMIC POWER-UPS
+      bindings?: DataBinding[]; // Connect to data
+      actions?: NebulaAction[]; // Connect to logic
+    }
+  ): string; // Returns nodeId
+
+  /**
+   * Ingests a raw JSX string, explodes it into nodes, and attaches it to parentId.
+   */
+  ingest(parentId: string, rawJsx: string): void;
+
+  /**
+   * Updates the global theme tokens.
+   */
+  setTheme(theme: {
+    primary: string;   // Hex color
+    radius: number;    // rem value
+    font: string;
+  }): void;
+}
+\`\`\`
 
 ### Available Tools:
 ${this.toolDocs}

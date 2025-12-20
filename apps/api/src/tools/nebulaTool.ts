@@ -1,6 +1,4 @@
 
-import { z } from 'zod';
-
 export const nebulaTool = {
     name: 'nebula',
     description: 'A layout engine tool for manipulating the Nebula UI tree. Use this to add, update, move, or delete nodes in the UI.',
@@ -9,12 +7,12 @@ export const nebulaTool = {
         properties: {
             action: { 
                 type: 'string', 
-                enum: ['addNode', 'updateNode', 'moveNode', 'deleteNode'],
+                enum: ['addNode', 'updateNode', 'moveNode', 'deleteNode', 'ingest', 'setTheme'],
                 description: 'The operation to perform on the layout.'
             },
             parentId: { 
                 type: 'string',
-                description: 'The ID of the parent node (required for addNode).'
+                description: 'The ID of the parent node (required for addNode and ingest).'
             },
             nodeId: {
                 type: 'string',
@@ -22,14 +20,48 @@ export const nebulaTool = {
             },
             node: {
                 type: 'object',
-                description: 'The node definition (required for addNode). Should include type, props, style, layout.',
+                description: 'The node definition (required for addNode). Should include type, props, style, layout, bindings, and actions.',
                 properties: {
-                    type: { type: 'string' },
+                    type: { type: 'string', enum: ['Box', 'Text', 'Button', 'Card', 'Image', 'Input', 'Icon'] },
                     props: { type: 'object' },
                     style: { type: 'object' },
                     layout: { type: 'object' },
+                    bindings: { 
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                propName: { type: 'string' },
+                                sourcePath: { type: 'string' }
+                            }
+                        }
+                    },
+                    actions: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                trigger: { type: 'string', enum: ['onClick', 'onSubmit'] },
+                                type: { type: 'string', enum: ['navigate', 'mutation', 'toast'] },
+                                payload: { type: 'object' }
+                            }
+                        }
+                    },
                     meta: { type: 'object' }
                 }
+            },
+            rawJsx: {
+              type: 'string',
+              description: 'The raw JSX string to ingest (required for ingest).'
+            },
+            theme: {
+              type: 'object',
+              description: 'The theme configuration (required for setTheme).',
+              properties: {
+                primary: { type: 'string' },
+                radius: { type: 'number' },
+                font: { type: 'string' }
+              }
             },
             update: {
                 type: 'object',
@@ -46,13 +78,16 @@ export const nebulaTool = {
         },
         required: ['action']
     },
-    handler: async (args: any) => {
-        // Since the UI state is client-side, the server-side tool acts as a validator/relay.
-        // In a real implementation, this might push an event to the client via WebSocket.
-        // For now, we return a success message indicating the intent was captured.
+    handler: async (args: unknown) => {
+        const typedArgs = args as Record<string, any>;
+        // Return structured action for the UI to consume
         return {
             status: 'success',
-            message: `Nebula operation '${args.action}' received. Ensure this is executed in the client context if in simulation mode.`
+            ui_action: {
+                tool: 'nebula',
+                ...typedArgs
+            },
+            message: `Nebula operation '${typedArgs.action}' queued for UI execution.`
         };
     }
 };
