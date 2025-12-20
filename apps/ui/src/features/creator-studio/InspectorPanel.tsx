@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { Button } from '../../components/ui/button.js';
 import { 
   Activity, 
   Layers, 
@@ -155,14 +156,22 @@ export const VisualInspectorPanel: React.FC<InspectorProps> = React.memo(({
         
         {/* Actions Toolbar */}
         <div className="grid grid-cols-2 gap-2 p-4 border-b border-zinc-800">
-           <button className="flex items-center justify-center gap-2 py-2 bg-purple-900/20 border border-purple-500/30 text-purple-400 text-xs font-bold rounded hover:bg-purple-900/40 transition-all">
-             <Zap size={12} />
+           <Button
+             variant="outline"
+             size="sm"
+             className="h-8 bg-purple-900/20 border-purple-500/30 text-purple-400 hover:bg-purple-900/40 hover:text-purple-300"
+           >
+             <Zap size={12} className="mr-2" />
              Edit Code
-           </button>
-           <button className="flex items-center justify-center gap-2 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-bold rounded hover:bg-zinc-800 transition-all">
-             <Layers size={12} />
+           </Button>
+           <Button
+             variant="secondary"
+             size="sm"
+             className="h-8 bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+           >
+             <Layers size={12} className="mr-2" />
              Wrap
-           </button>
+           </Button>
         </div>
 
         {/* CSS Classes */}
