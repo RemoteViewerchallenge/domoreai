@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
+import { ProviderManager } from './ProviderManager.js';
 
 interface AgentData {
   name: string;
@@ -239,12 +240,11 @@ export async function ingestAgentLibrary(
 /**
  * Department detection based on package.json dependencies
  */
-interface DepartmentInfo {
+interface GeneratedRole {
   name: string;
-  category: string;
-  dependencies: string[];
-  roleName: string;
   description: string;
+  tools: string[];
+  isManager: boolean;
 }
 
 /**
@@ -281,110 +281,89 @@ async function findPackageJsonFiles(rootPath: string): Promise<string[]> {
   return packageJsonFiles;
 }
 
-/**
- * Identify department type based on dependencies
- */
-function identifyDepartment(dependencies: Record<string, string>): DepartmentInfo | null {
-  const depNames = Object.keys(dependencies);
-  
-  // Frontend Department Detection
-  const hasFrontend = depNames.some(dep => 
-    ['react', 'vue', 'angular', 'svelte', 'solid-js'].includes(dep)
-  );
-  const hasTailwind = depNames.includes('tailwindcss');
-  const hasFlyonUI = depNames.includes('flyonui') || depNames.includes('daisyui');
-  
-  if (hasFrontend) {
-    const frameworks = [];
-    if (depNames.includes('react')) frameworks.push('React');
-    if (depNames.includes('vue')) frameworks.push('Vue');
-    if (depNames.includes('angular')) frameworks.push('Angular');
-    if (depNames.includes('svelte')) frameworks.push('Svelte');
-    
-    const styling = [];
-    if (hasTailwind) styling.push('TailwindCSS');
-    if (hasFlyonUI) styling.push('FlyonUI');
-    if (depNames.includes('daisyui')) styling.push('DaisyUI');
-    
-    const techStack = [...frameworks, ...styling].join(', ');
-    
-    return {
-      name: 'Frontend',
-      category: 'Frontend Department',
-      dependencies: depNames,
-      roleName: 'Frontend Lead',
-      description: `Frontend development specialist with expertise in ${techStack}`,
-    };
-  }
-  
-  // Backend Department Detection
-  const hasBackend = depNames.some(dep => 
-    ['express', '@nestjs/core', 'fastify', 'koa', 'hapi'].includes(dep)
-  );
-  const hasPrisma = depNames.includes('@prisma/client') || depNames.includes('prisma');
-  
-  if (hasBackend || hasPrisma) {
-    const frameworks = [];
-    if (depNames.includes('express')) frameworks.push('Express');
-    if (depNames.includes('@nestjs/core')) frameworks.push('NestJS');
-    if (depNames.includes('fastify')) frameworks.push('Fastify');
-    
-    const data = [];
-    if (hasPrisma) data.push('Prisma ORM');
-    if (depNames.includes('pg')) data.push('PostgreSQL');
-    if (depNames.includes('mongodb')) data.push('MongoDB');
-    if (depNames.includes('redis')) data.push('Redis');
-    
-    const techStack = [...frameworks, ...data].join(', ');
-    
-    return {
-      name: 'Backend',
-      category: 'Backend Department',
-      dependencies: depNames,
-      roleName: 'Backend Architect',
-      description: `Backend development specialist with expertise in ${techStack}`,
-    };
-  }
-  
-  return null;
+async function getTopFiles(dirPath: string, limit: number = 20): Promise<string[]> {
+    try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        const files = entries
+            .filter(e => e.isFile() && !e.name.startsWith('.'))
+            .map(e => e.name);
+        return files.slice(0, limit);
+    } catch (error) {
+        return [];
+    }
 }
 
 /**
- * Generate a tech-stack-specific system prompt
+ * Identify roles using AI
  */
-function generateDepartmentPrompt(dept: DepartmentInfo): string {
-  const techList = dept.dependencies
-    .filter(dep => !dep.startsWith('@types/'))
-    .slice(0, 15) // Limit to top 15 dependencies
-    .map(dep => `- ${dep}`)
-    .join('\n');
+async function identifyRolesWithAI(
+  dependencies: Record<string, string>,
+  fileList: string[],
+  pkgName: string
+): Promise<GeneratedRole[]> {
+  const providerManager = ProviderManager.getInstance();
   
-  return `## ROLE: ${dept.roleName}
+  // Try to get gpt-4o-mini, or fallback to any model
+  // We'll search for a model with 'gpt-4o-mini' in ID or name, or just use first available
+  const allModels = await providerManager.getAllModels();
+  let modelId = allModels.find(m => m.id.includes('gpt-4o-mini'))?.id;
+  
+  if (!modelId && allModels.length > 0) {
+      modelId = allModels[0].id;
+  }
+  
+  if (!modelId) {
+      throw new Error("No AI models available for Role Ingestion");
+  }
+  
+  // Find provider for this model
+  // Simplified lookup: we need the provider instance.
+  // We can iterate providers to find who owns this model.
+  // ProviderManager doesn't expose `getProviderForModel` directly efficiently,
+  // but we can guess or use `getProvider` if we know the provider ID.
+  // Actually, LLMModel interface has providerId.
+  const model = allModels.find(m => m.id === modelId);
+  const providerId = model?.providerId || model?.provider;
 
-**DEPARTMENT:** ${dept.category}
-**DESCRIPTION:** ${dept.description}
+  if (!providerId) {
+       throw new Error(`Provider not found for model ${modelId}`);
+  }
+  
+  const provider = providerManager.getProvider(providerId);
+  if (!provider) {
+      throw new Error(`Provider instance not found for ID ${providerId}`);
+  }
 
-**DETECTED TECH STACK:**
-${techList}
+  const prompt = `
+  You are a Corporate Recruiter for a software company.
+  Analyze the following project to determine the necessary team roles.
 
-**CORE RESPONSIBILITIES:**
-- Architect and implement features using the detected technology stack
-- Ensure code quality, maintainability, and best practices
-- Collaborate with other departments to deliver cohesive solutions
-- Leverage the specific frameworks and libraries in this project
+  Project Name: ${pkgName}
+  Top Files: ${fileList.join(', ')}
+  Dependencies: ${JSON.stringify(dependencies, null, 2)}
 
-**TECHNICAL EXPERTISE:**
-You are an expert in the technologies listed above. When working on this project:
-1. Use the exact dependencies and versions installed in this codebase
-2. Follow the architectural patterns already established in the project
-3. Ensure compatibility with the existing tech stack
-4. Provide solutions that integrate seamlessly with current implementations
+  Rule: If the directory/dependency list suggests a large or complex project (e.g. many frameworks, many files), create specialized 'Worker' roles (e.g., 'TailwindCSS Tweaker', 'API Schema Validator') and ONE 'Manager' role (e.g., 'Frontend Lead').
+  If simple, just one Manager role might suffice.
 
-**INSTRUCTIONS:**
-- Always check the actual package.json and codebase before making assumptions
-- Prioritize solutions that use the installed dependencies
-- Maintain consistency with existing code style and patterns
-- Consider the full stack context when making architectural decisions`;
+  Output strictly a JSON array with this schema:
+  [{ "name": "string", "description": "string", "tools": ["string"], "isManager": boolean }]
+
+  Allowed tools: 'filesystem', 'terminal', 'browser'.
+  `;
+
+  try {
+      const response = await provider.generateCompletion({
+          modelId: modelId,
+          messages: [{ role: 'user', content: prompt }]
+      });
+
+      // Clean markdown code blocks if present
+      const jsonStr = response.replace(/```json\n?|\n?```/g, '').trim();
+      return JSON.parse(jsonStr);
+  } catch (error) {
+      console.error("AI Role Generation failed:", error);
+      return [];
+  }
 }
 
 /**
@@ -421,109 +400,96 @@ export async function onboardProject(
     
     console.log(`📦 Found ${packageJsonFiles.length} package.json files`);
 
-    // Step 2: Analyze each package.json and identify departments
-    const departments = new Map<string, DepartmentInfo>();
+    // Step 2: Analyze each package.json and identify roles via AI
+    // We will now iterate and process immediately instead of buffering "departments"
     
     for (const pkgPath of packageJsonFiles) {
       try {
+        const dirPath = path.dirname(pkgPath);
         const content = await fs.readFile(pkgPath, 'utf-8');
-        const pkg = JSON.parse(content) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+        const pkg = JSON.parse(content) as { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
         
         const allDeps: Record<string, string> = {
           ...(pkg.dependencies || {}),
           ...(pkg.devDependencies || {}),
         };
         
-        const dept = identifyDepartment(allDeps);
+        const fileList = await getTopFiles(dirPath);
         
-        if (dept) {
-          // Use department name as key to avoid duplicates
-          if (!departments.has(dept.name)) {
-            departments.set(dept.name, dept);
-            console.log(`  ✓ Identified ${dept.name} Department in ${path.relative(rootPath, pkgPath)}`);
-          }
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        stats.errors.push(`Failed to parse ${pkgPath}: ${errorMsg}`);
-        console.error(`  ✗ Error parsing ${pkgPath}:`, errorMsg);
-      }
-    }
-    
-    stats.departments = departments.size;
-    console.log(`\n🏗️  Identified ${departments.size} unique departments\n`);
-
-    // Step 3: Create or update roles for each department
-    for (const [_deptName, dept] of departments) {
-      try {
-        // Ensure category exists
-        const category = await prisma.roleCategory.upsert({
-          where: { name: dept.category },
-          update: {},
-          create: { name: dept.category },
-        });
-
-        // Generate the tech-stack-specific prompt
-        const systemPrompt = generateDepartmentPrompt(dept);
+        console.log(`  🤖 Asking AI to staff ${pkg.name || 'project'} in ${path.relative(rootPath, dirPath)}...`);
         
-        // Determine appropriate tools based on department
-        const tools: string[] = ['filesystem', 'terminal'];
-        if (dept.name === 'Frontend') {
-          tools.push('browser');
-        }
+        // Call AI
+        const generatedRoles = await identifyRolesWithAI(allDeps, fileList, pkg.name || 'Unnamed Project');
         
-        // Check if role already exists
-        const existing = await prisma.role.findUnique({
-          where: { name: dept.roleName },
-        });
+        if (generatedRoles.length > 0) {
+            console.log(`  ✓ AI suggested ${generatedRoles.length} roles.`);
 
-        if (existing) {
-          // Update existing role with new tech stack info
-          await prisma.role.update({
-            where: { name: dept.roleName },
-            data: {
-              basePrompt: systemPrompt,
-              tools: tools,
-              categoryId: category.id,
-              categoryString: dept.category,
-              description: dept.description,
-              metadata: {
-                needsReasoning: true,
-                needsCoding: true,
-                minContext: 8192,
-                maxContext: 128000,
-                detectedDependencies: dept.dependencies,
-              },
-            } as any,
-          });
-          stats.rolesUpdated++;
-          console.log(`  ♻️  Updated role: ${dept.roleName}`);
+            // Step 3: Save to DB
+            for (const roleData of generatedRoles) {
+                 try {
+                    // Determine category (Generic "AI Recruited" for now, or derive from isManager)
+                    const categoryName = roleData.isManager ? 'Management' : 'Engineering';
+
+                    const category = await prisma.roleCategory.upsert({
+                        where: { name: categoryName },
+                        update: {},
+                        create: { name: categoryName },
+                    });
+
+                    const existing = await prisma.role.findUnique({
+                        where: { name: roleData.name },
+                    });
+
+                    const metadata = {
+                        needsReasoning: roleData.isManager, // Managers get reasoning
+                        needsCoding: true,
+                        minContext: 8192,
+                        maxContext: 128000,
+                        generatedBy: 'AI Recruiter',
+                        sourcePackage: pkgPath
+                    };
+
+                    if (existing) {
+                        await prisma.role.update({
+                            where: { name: roleData.name },
+                            data: {
+                                description: roleData.description,
+                                basePrompt: `You are ${roleData.name}. ${roleData.description}`,
+                                tools: roleData.tools,
+                                categoryId: category.id,
+                                categoryString: categoryName,
+                                metadata: metadata,
+                            } as any
+                        });
+                        stats.rolesUpdated++;
+                    } else {
+                        await prisma.role.create({
+                            data: {
+                                name: roleData.name,
+                                description: roleData.description,
+                                basePrompt: `You are ${roleData.name}. ${roleData.description}`,
+                                tools: roleData.tools,
+                                categoryId: category.id,
+                                categoryString: categoryName,
+                                metadata: metadata,
+                            } as any
+                        });
+                        stats.rolesCreated++;
+                    }
+                    console.log(`    - Processed Role: ${roleData.name} (${roleData.isManager ? 'Manager' : 'Worker'})`);
+
+                 } catch (err) {
+                     console.error(`    ✗ Failed to save role ${roleData.name}:`, err);
+                 }
+            }
         } else {
-          // Create new role
-          await prisma.role.create({
-            data: {
-              name: dept.roleName,
-              basePrompt: systemPrompt,
-              tools: tools,
-              categoryId: category.id,
-              categoryString: dept.category,
-              description: dept.description,
-              metadata: {
-                needsReasoning: true,
-                needsCoding: true,
-                minContext: 8192,
-                maxContext: 128000,
-                detectedDependencies: dept.dependencies,
-              },
-            } as any,
-          });
-          stats.rolesCreated++;
-          console.log(`  ✨ Created role: ${dept.roleName}`);
+            console.log(`  ? AI returned no roles for ${pkgPath}`);
         }
+
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        stats.errors.push(`Failed to create/update role for ${dept.roleName}: ${errorMsg}`);
-        console.error(`  ✗ Error creating role for ${dept.roleName}:`, errorMsg);
+        stats.errors.push(`Failed to process ${pkgPath}: ${errorMsg}`);
+        console.error(`  ✗ Error processing ${pkgPath}:`, errorMsg);
       }
     }
 

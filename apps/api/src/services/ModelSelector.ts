@@ -26,12 +26,23 @@ export class ModelSelector {
    * 1. Check if role has a hardcoded defaultModelId.
    * 2. If not, dynamic search for active models meeting requirements.
    * 3. Pick the most capable (currently sorted by context window).
+   *
+   * @param estimatedInputTokens - Optional estimate of input size to enforce 60% context safety margin.
    */
-  async resolveModelForRole(role: Role): Promise<string> {
+  async resolveModelForRole(role: Role, estimatedInputTokens?: number): Promise<string> {
     const metadata = (role.metadata || {}) as RoleMetadata;
     const requirements = metadata.requirements || {};
     const requiredCaps = requirements.capabilities || [];
-    const minContext = requirements.minContext || 4096;
+    let minContext = requirements.minContext || 4096;
+
+    // 60% Context Guard
+    if (estimatedInputTokens) {
+        const safetyMarginContext = Math.ceil(estimatedInputTokens / 0.60);
+        if (safetyMarginContext > minContext) {
+            minContext = safetyMarginContext;
+            console.log(`[ModelSelector] Increased minContext to ${minContext} based on estimated input of ${estimatedInputTokens} (60% rule).`);
+        }
+    }
 
     // 1. Try "Secondary" Hardcoded Model First (if defined in role metadata)
     const defaultModelId = role.defaultModelId || metadata.defaultModelId;

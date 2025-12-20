@@ -13,8 +13,10 @@ export class CorporateOrchestrator {
   /**
    * Dispatches a crew to work on a specific objective for a department.
    * Creates a Job record and a Git ghost branch.
+   *
+   * @param existingBranchName - If provided, reuses this branch ("Ghost Line") instead of creating a new one.
    */
-  async dispatchCrew(departmentId: string, objective: string, vfsToken: string) {
+  async dispatchCrew(departmentId: string, objective: string, vfsToken: string, existingBranchName?: string) {
     // 1. Create a Job record
     // departmentId is treated as projectId here.
     // If departmentId doesn't exist as a Project, we might need to handle it or assume it's valid.
@@ -36,10 +38,23 @@ export class CorporateOrchestrator {
             }
         });
 
-        // 2. Create Ghost Branch
-        const branchName = await this.gitService.createGhostBranch(vfsToken, job.id);
+        // 2. Manage Branch (Ghost Lines)
+        let branchName: string;
 
-        // 3. (Mock) Trigger AI Agent
+        if (existingBranchName) {
+            // Reuse existing branch (Ghost Line)
+            const result = await this.gitService.checkoutAndPull(vfsToken, existingBranchName);
+            branchName = result.branch;
+        } else {
+            // Create new branch using department/timestamp convention
+            // Convention: line/{department}/{timestamp}
+            const timestamp = Date.now();
+            const safeDept = departmentId.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+            const newBranchName = `line/${safeDept}/${timestamp}`;
+
+            // Use createGhostBranch with the custom name
+            branchName = await this.gitService.createGhostBranch(vfsToken, job.id, newBranchName);
+        }
         // in a real system this would push a message to a queue or call the CoC agent service.
         console.log(`[CorporateOrchestrator] Crew dispatched to ${branchName} for Job ${job.id}`);
 
