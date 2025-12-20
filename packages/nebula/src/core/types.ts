@@ -1,4 +1,5 @@
 import { z } from 'zod'; // Use Zod for runtime validation if needed later
+import type { NebulaAction } from './actions.js';
 
 export type NebulaId = string;
 
@@ -39,6 +40,7 @@ export interface NebulaNode {
   // Content & Configuration
   props: Record<string, any>;
   bindings?: DataBinding[]; // Dynamic value injection
+  actions?: NebulaAction[];  // Event handlers connected to logic
 
   // Visuals (Token-based)
   style: StyleTokens;

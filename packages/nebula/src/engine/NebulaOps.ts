@@ -5,6 +5,7 @@
 import { NebulaTree, NebulaNode, NebulaId, StyleTokens } from '../core/types.js';
 import { nanoid } from 'nanoid';
 import { produce } from 'immer'; // Use immer for immutable state updates
+import { JsxParser } from './JsxParser.js';
 
 export class NebulaOps {
   private tree: NebulaTree;
@@ -30,6 +31,8 @@ export class NebulaOps {
         id: newId,
         type: node.type || 'Box',
         props: node.props || {},
+        bindings: node.bindings || [],
+        actions: node.actions || [],
         style: node.style || {},
         layout: node.layout || { mode: 'flex', direction: 'column' },
         children: [],
@@ -45,6 +48,92 @@ export class NebulaOps {
 
     this.onChange(this.tree);
     return newId;
+  }
+
+  /**
+   * Sets a whole new tree.
+   */
+  setTree(newTree: NebulaTree) {
+    this.tree = newTree;
+    this.onChange(this.tree);
+  }
+
+  /**
+   * Ingests a raw JSX string, explodes it into nodes, and attaches it to parentId.
+   */
+  ingest(parentId: NebulaId, rawJsx: string): NebulaId {
+    console.log(`[NebulaOps] Ingesting JSX into ${parentId}`);
+    
+    // Extract JSX from code
+    const jsx = JsxParser.extractJsx(rawJsx);
+    
+    // Parse into element tree
+    const parsed = JsxParser.parse(jsx);
+    
+    if (!parsed) {
+      console.warn('[NebulaOps] Failed to parse JSX');
+      return this.addNode(parentId, {
+        type: 'Box',
+        props: { className: 'parse-error' },
+        meta: { aiDescription: 'Failed to parse JSX', source: 'imported' }
+      });
+    }
+    
+    // Convert parsed tree to Nebula nodes
+    return this.buildFromParsed(parsed, parentId);
+  }
+
+  /**
+   * Recursively build Nebula nodes from parsed JSX tree
+   */
+  private buildFromParsed(element: any, parentId: NebulaId): NebulaId {
+    // Map HTML tag to Nebula type
+    const type = JsxParser.mapToNebulaType(element.tag);
+    
+    // Extract className for styling
+    const className = element.props.className || element.props.class || '';
+    
+    // Create the node
+    const nodeId = this.addNode(parentId, {
+      type,
+      props: {
+        ...element.props,
+        className
+      },
+      meta: {
+        aiDescription: `Imported ${element.tag}`,
+        source: 'imported'
+      }
+    });
+    
+    // Recursively add children
+    for (const child of element.children) {
+      if (typeof child === 'string') {
+        // Text content - add as Text node
+        if (child.trim()) {
+          this.addNode(nodeId, {
+            type: 'Text',
+            props: { content: child.trim() }
+          });
+        }
+      } else {
+        // Nested element
+        this.buildFromParsed(child, nodeId);
+      }
+    }
+    
+    return nodeId;
+  }
+
+  /**
+   * Updates the global theme tokens.
+   */
+  setTheme(theme: { primary: string; radius: number; font: string }) {
+    console.log('[NebulaOps] Setting theme:', theme);
+    // This would typically update a global theme state or CSS variables
+    document.documentElement.style.setProperty('--primary', theme.primary);
+    document.documentElement.style.setProperty('--radius', `${theme.radius}rem`);
+    document.documentElement.style.setProperty('--font-family', theme.font);
   }
 
   /**

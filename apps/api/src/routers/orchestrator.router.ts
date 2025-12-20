@@ -1,9 +1,15 @@
 import { z } from 'zod';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { nebulaTool } from '../tools/nebulaTool.js';
 import { createVolcanoAgent } from '../services/AgentFactory.js';
 import { AgentRuntime } from '../services/AgentRuntime.js';
 import { PrismaAgentConfigRepository } from '../repositories/PrismaAgentConfigRepository.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
 
 
@@ -217,7 +223,7 @@ export const orchestratorRouter = createTRPCRouter({
 
           // 1. Initialize Runtime with Role Tools
           console.log(`[Orchestrator] Initializing runtime for role: ${roleId} with tools: [${role.tools.join(', ')}]`);
-          const runtime = await AgentRuntime.create(process.cwd(), role.tools);
+          const runtime = await AgentRuntime.create(MONOREPO_ROOT, role.tools);
 
           // 2. Initialize Agent
           const agent = await createVolcanoAgent({
@@ -238,6 +244,8 @@ export const orchestratorRouter = createTRPCRouter({
               roleId
           );
 
+          console.log(`[Orchestrator] Raw AI Response:\n${aiResponse as string}`);
+
           // 4. Run Execution Loop (Handles tool calling if AI wrote code blocks)
           console.log(`[Orchestrator] Running agent loop...`);
           const { result, logs } = await runtime.runAgentLoop(
@@ -245,7 +253,10 @@ export const orchestratorRouter = createTRPCRouter({
               async () => aiResponse as string // Pass the already generated response as if it was the first step
           );
 
-          console.log(`[Orchestrator] Execution complete. Result length: ${result.length}, Logs: ${logs.length}`);
+          const finalResult = result || '';
+          const finalLogs = logs || [];
+
+          console.log(`[Orchestrator] Execution complete. Result length: ${finalResult.length}, Logs: ${finalLogs.length}`);
 
           return {
             success: true,
@@ -253,8 +264,8 @@ export const orchestratorRouter = createTRPCRouter({
             executionId: `exec_${Date.now()}`,
             prompt: input.prompt,
             contextId: input.contextId,
-            output: result,
-            logs: logs
+            output: finalResult,
+            logs: finalLogs
           };
 
       } catch (error) {

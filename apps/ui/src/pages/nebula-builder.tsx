@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { NebulaOps, NebulaRenderer, DEFAULT_NEBULA_TREE, type NebulaTree } from '@repo/nebula';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, Code, Play, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { Sparkles, Code, Play, Send, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel';
+import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel.js';
 
-import { trpc } from '@/utils/trpc';
-import { Textarea } from '@/components/ui/textarea';
-import CompactRoleSelector from '@/components/CompactRoleSelector';
+import { trpc } from '@/utils/trpc.js';
+import { Textarea } from '@/components/ui/textarea.js';
+import CompactRoleSelector from '@/components/CompactRoleSelector.js';
 
 
 
@@ -22,13 +22,45 @@ export default function NebulaBuilderPage() {
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onSuccess: (data: any) => {
-          toast.success(`Command Sent! ID: ${data.executionId}`);
-          setLastResponse({
-             status: 'success',
-             message: `Successfully dispatched to ${selectedRoleId}. Output: ${data.output}`,
-             logs: data.logs
-          });
-          setPrompt(''); 
+          if (data.success) {
+              toast.success(`Command Sent! ID: ${data.executionId}`);
+              setLastResponse({
+                 status: 'success',
+                 message: `Successfully dispatched to ${selectedRoleId}. Output: ${typeof data.output === 'string' ? data.output : 'JSON Response Received'}`,
+                 logs: data.logs
+              });
+              setPrompt(''); 
+
+              // Apply Nebula UI actions if present
+              const applyAction = (obj: any) => {
+                if (obj && obj.ui_action && obj.ui_action.tool === 'nebula') {
+                    const { action, ...args } = obj.ui_action;
+                    const nebulaOps = ops as any;
+                    if (typeof nebulaOps[action] === 'function') {
+                        console.log(`[Nebula] Applying AI action: ${action}`, args);
+                        try {
+                            nebulaOps[action](args);
+                        } catch (err) {
+                            console.error(`[Nebula] Failed to apply action: ${action}`, err);
+                            toast.error(`UI Error: Failed to execute ${action}`);
+                        }
+                    }
+                }
+              };
+
+              if (Array.isArray(data.output)) {
+                  data.output.forEach(applyAction);
+              } else {
+                  applyAction(data.output);
+              }
+          } else {
+              toast.error(`Execution Failed: ${data.message}`);
+              setLastResponse({
+                  status: 'error',
+                  message: data.message,
+                  logs: data.logs
+              });
+          }
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) => {
@@ -45,6 +77,43 @@ export default function NebulaBuilderPage() {
   const ops = new NebulaOps(tree, setTree);
 
   // AI Handler
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[Nebula] handleFileUpload called');
+    const file = event.target.files?.[0];
+    if (!file) {
+      console.log('[Nebula] No file selected');
+      return;
+    }
+
+    console.log('[Nebula] File selected:', file.name, file.size, 'bytes');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      console.log('[Nebula] FileReader onload triggered');
+      const content = e.target?.result as string;
+      console.log('[Nebula] File content length:', content?.length);
+      console.log('[Nebula] First 100 chars:', content?.substring(0, 100));
+      
+      try {
+        console.log('[Nebula] Calling ops.ingest with parentId:', tree.rootId);
+        const nodeId = ops.ingest(tree.rootId, content);
+        console.log('[Nebula] Ingest returned nodeId:', nodeId);
+        toast.success(`Imported ${file.name} successfully!`);
+      } catch (error) {
+        console.error('[Nebula] Ingest error:', error);
+        toast.error(`Failed to import ${file.name}: ${error}`);
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('[Nebula] FileReader error:', error);
+      toast.error(`Failed to read ${file.name}`);
+    };
+    
+    console.log('[Nebula] Starting file read...');
+    reader.readAsText(file);
+  };
+
   const handleAiCommand = (promptText: string) => {
      // Check if role is selected
      if (!selectedRoleId) {
@@ -72,6 +141,21 @@ export default function NebulaBuilderPage() {
           Nebula <span className="text-muted-foreground font-normal">Builder</span>
         </div>
         <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept=".tsx,.jsx,.ts,.js"
+            onChange={handleFileUpload}
+            className="hidden"
+            id="file-upload"
+          />
+          <label htmlFor="file-upload">
+            <Button variant="outline" size="sm" className="cursor-pointer" asChild>
+              <span>
+                <Upload className="w-4 h-4 mr-2" />
+                Import File
+              </span>
+            </Button>
+          </label>
            <Button variant="outline" size="sm" onClick={() => {
               const json = JSON.stringify(tree, null, 2);
               const blob = new Blob([json], { type: 'application/json' });
@@ -122,7 +206,7 @@ export default function NebulaBuilderPage() {
                   <div className="bg-neutral-900 text-green-400 font-mono text-[10px] p-2 rounded overflow-x-auto whitespace-pre-wrap">
                     {tree.imports && tree.imports.length > 0 
                       ? tree.imports.map((imp, i) => <div key={i}>{imp}</div>) 
-                      : <span className="text-neutral-500">// No imports detected</span>
+                      : <span className="text-neutral-500">No imports detected</span>
                     }
                   </div>
                 </div>
