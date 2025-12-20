@@ -5,6 +5,8 @@ export const nebulaTool = {
     
     NEBULA CODE MODE v2.0:
     When writing TypeScript to manipulate the UI, use the global 'nebula' and 'ast' objects.
+
+    IMPORTANT: You MUST use an existing parentId. The root ID is often dynamic, not always 'root'.
     
     1. addNode(parentId, node): Adds a node and RETURNS a unique nodeId. ALWAYS capture this ID.
     2. updateNode(nodeId, update): Updates an existing node.
