@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
 import { Bot, Scale, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { OrchestrationStep, RoleConfig } from './types.js';
+import SuperNode from './nodes/SuperNode.js';
 
 // Helper to lookup role name for display
 const getRoleName = (roleId: string | undefined, roles: RoleConfig[]) => {
@@ -16,6 +17,8 @@ const getRoleName = (roleId: string | undefined, roles: RoleConfig[]) => {
  * Visualizes a worker doing a task.
  */
 const AgentNode = ({ data, selected }: NodeProps<{ step: OrchestrationStep, roles: RoleConfig[] }>) => {
+  const assignedRole = data.roles.find(r => r.id === data.step.assignedRoleId);
+
   return (
     <div className={`w-64 shadow-lg rounded-lg border-2 bg-[var(--color-background-secondary)] transition-colors ${selected ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)]'}`}>
       <div className="flex items-center px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-background)] rounded-t-lg">
@@ -25,9 +28,25 @@ const AgentNode = ({ data, selected }: NodeProps<{ step: OrchestrationStep, role
       <div className="p-4">
         <div className="text-xs text-[var(--color-text-secondary)] uppercase tracking-wider mb-1">Assigned Role</div>
         <div className="text-sm text-[var(--color-text)] font-medium truncate">
-          {getRoleName(data.step.assignedRoleId, data.roles)}
+          {assignedRole ? assignedRole.name : 'Unknown Role'}
         </div>
         
+        {/* NEW: Command Data Display */}
+        {assignedRole && (
+          <div className="mt-2 pt-2 border-t border-[var(--color-border)]/50">
+             <div className="flex justify-between items-center text-[10px] text-[var(--color-text-muted)]">
+                <span>Model:</span>
+                <span className="font-mono text-[var(--color-primary)]">{assignedRole.currentModel || 'Auto'}</span>
+             </div>
+             {assignedRole.scope && (
+               <div className="flex justify-between items-center text-[10px] text-[var(--color-text-muted)] mt-1">
+                  <span>Scope:</span>
+                  <span className="truncate max-w-[100px]" title={assignedRole.scope}>{assignedRole.scope}</span>
+               </div>
+             )}
+          </div>
+        )}
+
         {/* Input Preview (implied complexity indicator) */}
         {Object.keys(data.step.inputMapping).length > 0 && (
           <div className="mt-3 flex gap-1 flex-wrap">
@@ -92,5 +111,6 @@ const JudgeNode = ({ data, selected }: NodeProps<{ step: OrchestrationStep, role
 export const nodeTypes = {
   agent: memo(AgentNode),
   judge: memo(JudgeNode),
-  manager: memo(AgentNode), // Reuse for now or create custom
+  manager: memo(AgentNode),
+  superNode: memo(SuperNode),
 };
