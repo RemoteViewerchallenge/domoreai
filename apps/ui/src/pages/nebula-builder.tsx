@@ -4,13 +4,52 @@ import type { NebulaTree } from '@repo/nebula';
 import { NebulaRenderer } from '../features/nebula-renderer/NebulaRenderer.js';
 import { Button } from '@/components/ui/button.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
-import { Sparkles, Code, Play, Send, Upload } from 'lucide-react';
+import { Sparkles, Code, Play, Send, Upload, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThemeEditorPanel } from '@/components/nebula/ThemeEditorPanel.js';
 
 import { trpc } from '@/utils/trpc.js';
 import { Textarea } from '@/components/ui/textarea.js';
 import CompactRoleSelector from '@/components/CompactRoleSelector.js';
+
+// Tree Node Component
+const TreeNode = ({ nodeId, tree, level }: { nodeId: string; tree: NebulaTree; level: number }) => {
+  const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
+  const node = tree.nodes[nodeId];
+  
+  if (!node) return null;
+  
+  const hasChildren = node.children.length > 0;
+  const indent = level * 12;
+  
+  return (
+    <div>
+      <div 
+        className="flex items-center gap-1 py-1 px-2 hover:bg-muted/50 rounded cursor-pointer text-xs"
+        style={{ paddingLeft: `${indent}px` }}
+        onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+      >
+        {hasChildren ? (
+          isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />
+        ) : (
+          <span className="w-3" />
+        )}
+        <span className="font-mono text-blue-400">{node.type}</span>
+        <span className="text-muted-foreground">#{node.id}</span>
+        {node.props.className && (
+          <span className="text-green-400 text-[10px]">.{node.props.className.split(' ')[0]}</span>
+        )}
+      </div>
+      {isExpanded && hasChildren && (
+        <div>
+          {node.children.map(childId => (
+            <TreeNode key={childId} nodeId={childId} tree={tree} level={level + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 
 
@@ -19,11 +58,13 @@ export default function NebulaBuilderPage() {
   const [prompt, setPrompt] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [lastResponse, setLastResponse] = useState<{status: string, message: string, logs?: string[]} | null>(null);
+  const [activeTab, setActiveTab] = useState('structure');
 
   // tRPC Mutation
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onSuccess: (data: any) => {
+          console.log('[Nebula UI] Dispatch success! Full response:', data);
           if (data.success) {
               toast.success(`Command Sent! ID: ${data.executionId}`);
               setLastResponse({
@@ -35,18 +76,25 @@ export default function NebulaBuilderPage() {
 
               // Apply Nebula UI actions if present
               const applyAction = (obj: any) => {
+                console.log('[Nebula UI] Checking object for ui_action:', obj);
                 if (obj && obj.ui_action && obj.ui_action.tool === 'nebula') {
                     const { action, ...args } = obj.ui_action;
+                    console.log('[Nebula UI] Found nebula action:', action, 'with args:', args);
                     const nebulaOps = ops as any;
                     if (typeof nebulaOps[action] === 'function') {
-                        console.log(`[Nebula] Applying AI action: ${action}`, args);
+                        console.log(`[Nebula UI] Applying AI action: ${action}`, args);
                         try {
-                            nebulaOps[action](args);
+                            const result = nebulaOps[action](args);
+                            console.log(`[Nebula UI] Action ${action} completed. Result:`, result);
                         } catch (err) {
-                            console.error(`[Nebula] Failed to apply action: ${action}`, err);
+                            console.error(`[Nebula UI] Failed to apply action: ${action}`, err);
                             toast.error(`UI Error: Failed to execute ${action}`);
                         }
+                    } else {
+                        console.error(`[Nebula UI] Action ${action} is not a function on nebulaOps`);
                     }
+                } else {
+                    console.log('[Nebula UI] Object does not contain nebula ui_action');
                 }
               };
 
@@ -191,7 +239,7 @@ export default function NebulaBuilderPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Sidebar (Tools & Structure) */}
         <aside className="w-80 border-r bg-muted/20 flex flex-col">
-          <Tabs defaultValue="structure" className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <div className="px-4 py-2 border-b">
                 <TabsList className="w-full">
                     <TabsTrigger value="structure" className="flex-1">Structure</TabsTrigger>
@@ -200,9 +248,17 @@ export default function NebulaBuilderPage() {
                 </TabsList>
             </div>
 
-            <TabsContent value="structure" className="flex-1 p-4">
-                <div className="text-sm text-muted-foreground">Tree View Placeholder (Use AI to build)</div>
-                {/* We would render a recursive tree list here */}
+            <TabsContent value="structure" className="flex-1 p-4 overflow-auto">
+                {/* Recursive Tree View */}
+                <div className="space-y-1">
+                  <TreeNode 
+                    nodeId={tree.rootId} 
+                    tree={tree} 
+                    level={0}
+                  />
+                </div>
+                
+                {/* Imports Section */}
                 <div className="mt-6 pt-4 border-t">
                   <h4 className="font-semibold text-xs mb-2 uppercase text-muted-foreground">Page Imports</h4>
                   <div className="bg-neutral-900 text-green-400 font-mono text-[10px] p-2 rounded overflow-x-auto whitespace-pre-wrap">

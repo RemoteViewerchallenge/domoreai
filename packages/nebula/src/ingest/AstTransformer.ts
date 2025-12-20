@@ -1,13 +1,25 @@
 import * as ts from 'typescript';
-import { NebulaNode, NebulaId, StyleTokens, NebulaTree, DataBinding } from '../core/types.js';
+import { NebulaNode, NebulaId, StyleTokens, NebulaTree, DataBinding, NodeType } from '../core/types.js';
 import { nanoid } from 'nanoid';
 
+/**
+ * @Role: Compiler Engineer
+ * @Task: Build Advanced Ingestion Logic
+ * @Context: Parses React Logic (Maps, Conditions) and Custom Components.
+ */
 export class AstTransformer {
   private nodes: Record<NebulaId, NebulaNode> = {};
+  
+  // Config: List of components to KEEP as black boxes (don't explode)
+  private preservedComponents = new Set<string>(['Header', 'Footer', 'DataGrid', 'DatePicker', 'Calendar']);
 
   /**
-   * Converts a generic JSX string or full file into a Nebula Tree Fragment.
+   * Set which components should be preserved as black boxes
    */
+  public setPreservedComponents(components: string[]) {
+    this.preservedComponents = new Set(components);
+  }
+
   /**
    * Converts a generic JSX string or full file into a Nebula Tree Fragment.
    */
@@ -92,11 +104,66 @@ export class AstTransformer {
   }
 
   private visit(node: ts.Node): NebulaNode | null {
+    // 1. Handle Conditional Logic: {condition && <Child />}
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+        const id = nanoid();
+        const childNode = this.visit(node.right);
+        
+        const conditionNode: NebulaNode = {
+            id,
+            type: 'Condition',
+            props: {},
+            style: {},
+            children: childNode ? [childNode.id] : [],
+            logic: { condition: node.left.getText() },
+            meta: { label: `If ${node.left.getText()}` }
+        };
+        this.nodes[id] = conditionNode;
+        return conditionNode;
+    }
+
+    // 2. Handle Loops: {items.map(item => <Child />)}
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+        if (node.expression.name.text === 'map') {
+            const collection = node.expression.expression.getText(); // "items"
+            const fn = node.arguments[0];
+            
+            if (fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) {
+                const iterator = fn.parameters[0]?.name.getText() || 'item';
+                const body = fn.body;
+                
+                // If body is block { return ... }, find the return statement
+                let childNode: ts.Node | null = null;
+                if (ts.isBlock(body)) {
+                    childNode = this.findRootJsx(body);
+                } else {
+                    childNode = body;
+                }
+                
+                const parsedChild = childNode ? this.visit(childNode) : null;
+                const id = nanoid();
+                
+                const loopNode: NebulaNode = {
+                    id,
+                    type: 'Loop',
+                    props: {},
+                    style: {},
+                    children: parsedChild ? [parsedChild.id] : [],
+                    logic: { loopData: collection, iterator },
+                    meta: { label: `Loop (${collection})` }
+                };
+                this.nodes[id] = loopNode;
+                return loopNode;
+            }
+        }
+    }
+
+    // 3. Handle JSX Elements
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       return this.mapJsxElement(node);
     }
 
-    // 1. HANDLE TEXT EXPRESSIONS: <span>{user.name}</span>
+    // 4. HANDLE TEXT EXPRESSIONS: <span>{user.name}</span>
     if (ts.isJsxExpression(node)) {
        const expression = node.expression;
        if (expression) {
@@ -118,7 +185,7 @@ export class AstTransformer {
        }
     }
 
-    // Handle Static Text
+    // 5. Handle Static Text
     if (ts.isJsxText(node)) {
         const text = node.getText().trim();
         if(!text) return null;
@@ -135,7 +202,7 @@ export class AstTransformer {
         return textNode;
     }
 
-    // Handle Expressions (e.g. {children}, {variable}, or mapping)
+    // 6. Handle Expressions (e.g. {children}, {variable}, or mapping)
     if (ts.isJsxExpression(node)) {
         let expressionText = node.expression?.getText() || '...';
         // Truncate long logic blocks for a cleaner UI
@@ -155,7 +222,7 @@ export class AstTransformer {
         return exprNode;
     }
 
-    // Traverse children if it's a Fragment or other wrapper
+    // 7. Traverse children if it's a Fragment or other wrapper
     const childrenNodes: NebulaNode[] = [];
     node.forEachChild(child => {
         const result = this.visit(child);
@@ -188,6 +255,23 @@ export class AstTransformer {
         ? node.tagName.getText()
         : node.openingElement.tagName.getText();
 
+    // CHECK: Is this a Black Box component?
+    if (this.preservedComponents.has(tagName)) {
+        const id = nanoid();
+        const componentNode: NebulaNode = {
+            id,
+            type: 'Component',
+            componentName: tagName,
+            props: this.extractProps(node),
+            style: {},
+            children: [],
+            meta: { locked: true, label: tagName, source: 'imported' }
+        };
+        this.nodes[id] = componentNode;
+        return componentNode;
+    }
+
+    // Standard Processing (Explosion)
     const props: Record<string, any> = {};
     const style: StyleTokens = {};
     const layout: any = {};
@@ -203,7 +287,7 @@ export class AstTransformer {
             const name = attr.name.getText();
             let value: any = true;
 
-            // 3. HANDLE ATTRIBUTE EXPRESSIONS: <img src={product.image} />
+            // HANDLE ATTRIBUTE EXPRESSIONS: <img src={product.image} />
             if (attr.initializer && ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
                 const bindingPath = this.extractBindingPath(attr.initializer.expression);
                 if (bindingPath) {
@@ -238,9 +322,13 @@ export class AstTransformer {
     }
 
     const id = nanoid();
+    
+    // Normalize tag name to NodeType
+    let nodeType: NodeType = this.normalizeTagName(tagName);
+    
     const nebulaNode: NebulaNode = {
         id,
-        type: tagName, // Maps to "Card", "Button", etc.
+        type: nodeType,
         props,
         bindings, // <--- Attach harvested bindings
         style,
@@ -251,6 +339,75 @@ export class AstTransformer {
 
     this.nodes[id] = nebulaNode;
     return nebulaNode;
+  }
+
+  /**
+   * Normalize HTML tag names to Nebula NodeTypes
+   */
+  private normalizeTagName(tagName: string): NodeType {
+    const lowerTag = tagName.toLowerCase();
+    
+    // Map common HTML tags to Nebula primitives
+    if (lowerTag === 'div' || lowerTag === 'section' || lowerTag === 'article' || lowerTag === 'main') {
+      return 'Box';
+    }
+    if (lowerTag === 'span' || lowerTag === 'p' || lowerTag === 'h1' || lowerTag === 'h2' || lowerTag === 'h3') {
+      return 'Text';
+    }
+    if (lowerTag === 'button') return 'Button';
+    if (lowerTag === 'input' || lowerTag === 'textarea') return 'Input';
+    if (lowerTag === 'img') return 'Image';
+    
+    // If it's capitalized, treat as a custom component
+    if (tagName[0] === tagName[0].toUpperCase()) {
+      return 'Component';
+    }
+    
+    // Default to Box for unknown tags
+    return 'Box';
+  }
+
+  /**
+   * Extract props from JSX element for black-box components
+   */
+  private extractProps(node: ts.JsxElement | ts.JsxSelfClosingElement): Record<string, any> {
+    const props: Record<string, any> = {};
+    const attributes = ts.isJsxSelfClosingElement(node)
+        ? node.attributes
+        : node.openingElement.attributes;
+
+    attributes.forEachChild((attr) => {
+        if (ts.isJsxAttribute(attr)) {
+            const name = attr.name.getText();
+            let value: any = true;
+
+            if (attr.initializer) {
+                if (ts.isStringLiteral(attr.initializer)) {
+                    value = attr.initializer.text;
+                } else if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+                    value = attr.initializer.expression.getText();
+                }
+            }
+            props[name] = value;
+        }
+    });
+
+    return props;
+  }
+
+  /**
+   * Helper to locate JSX in a file/block
+   */
+  private findRootJsx(node: ts.Node): ts.Node | null {
+      // Simple DFS to find the first JsxElement
+      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) return node;
+      
+      // Check for return statements
+      if (ts.isReturnStatement(node) && node.expression) {
+        return this.findRootJsx(node.expression);
+      }
+      
+      return ts.forEachChild(node, n => this.findRootJsx(n)) || null;
   }
 
   private parseTailwindToTokens(className: string, style: StyleTokens, layout: any) {

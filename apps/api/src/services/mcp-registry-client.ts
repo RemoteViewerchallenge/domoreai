@@ -1,42 +1,70 @@
 import { IRegistryClient } from "../interfaces/IRegistryClient.js";
 
 export class RegistryClient implements IRegistryClient {
-  private REGISTRY_URL = process.env.MCP_REGISTRY_URL || 'https://registry-mcp.remote-mcp.com';
-
-  async listServers(): Promise<{ name: string; description?: string }[]> {
-    try {
-      // MOCK for now to unblock UI work, as we don't have the SSE client setup for the registry yet.
-      return [
-        { name: 'git', description: 'Git repository management' },
-        { name: 'postgres', description: 'Database access' },
-        { name: 'filesystem', description: 'Local file system access' },
-        { name: 'browser', description: 'Web browsing capabilities' }
-      ];
-    } catch (error) {
-      console.error("Failed to list servers:", error);
-      return [];
-    }
+  listServers(): Promise<{ name: string; description?: string }[]> {
+    return Promise.resolve([
+      { name: 'filesystem', description: 'Surgical file editing with insert/replace operations' },
+      { name: 'git', description: 'Git history, diffs, and repository management' },
+      { name: 'postgres', description: 'Database inspection and query optimization' },
+      { name: 'playwright', description: 'Browser automation and visual testing' },
+      { name: 'language-server', description: 'LSP features: go-to-definition, find-references' }
+    ]);
   }
 
-  async getServerConfig(serverName: string): Promise<{ command: string; args: string[]; env?: Record<string, string> }> {
-    // In a real implementation, this would fetch from the registry API
-    // For now, we'll mock it or assume a simple endpoint
-    try {
-      const response = await fetch(`${this.REGISTRY_URL}/v1/servers/${serverName}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch config for server ${serverName}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error(`Error fetching server config for ${serverName}:`, error);
-      // Fallback for testing/dev if registry is not available
-      // This is just a placeholder to prevent crashes during development
-      return {
-        command: 'echo',
-        args: [`Server ${serverName} not found`],
+  getServerConfig(serverName: string): Promise<{ command: string; args: string[]; env?: Record<string, string> }> {
+    const dbUrl = process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/domoreai";
+
+    const configs: Record<string, { command: string; args: string[]; env?: Record<string, string> }> = {
+      // 1. Perception Layer (Filesystem)
+      // Provides 'update_file' (surgical edits) and 'list_files'
+      'filesystem': {
+        command: 'npx',
+        args: ['-y', '@cyanheads/filesystem-mcp-server'],
         env: {}
-      };
+      },
+      
+      // 2. Operational History (Git)
+      // Provides 'git_diff', 'git_log', 'git_status'
+      'git': {
+        command: 'npx',
+        args: ['-y', 'git-mcp-server'],
+        env: {}
+      },
+      
+      // 3. Database Layer (Postgres)
+      // Provides 'query', 'get_schema', 'explain_analyze'
+      'postgres': {
+        command: 'npx',
+        args: ['-y', '@henkey/postgres-mcp-server'],
+        env: { 
+          "POSTGRES_CONNECTION_STRING": dbUrl 
+        }
+      },
+
+      // 4. UI Verification (Playwright)
+      // Provides 'navigate', 'click', 'screenshot'
+      'playwright': {
+        command: 'npx',
+        args: ['-y', '@automatalabs/mcp-server-playwright'],
+        env: {}
+      },
+
+      // 5. Cognition Layer (LSP)
+      // Provides 'go_to_definition', 'find_references'
+      // *Requires binary to be in PATH*
+      'language-server': {
+        command: 'mcp-language-server',
+        args: [],
+        env: {}
+      }
+    };
+
+    const config = configs[serverName];
+    if (!config) {
+      return Promise.reject(new Error(`Unknown MCP server: ${serverName}`));
     }
+    
+    return Promise.resolve(config);
   }
 
   // Static Facade for backward compatibility
@@ -50,3 +78,4 @@ export class RegistryClient implements IRegistryClient {
       return this.instance.getServerConfig(serverName);
   }
 }
+

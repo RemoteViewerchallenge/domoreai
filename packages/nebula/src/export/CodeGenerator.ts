@@ -1,4 +1,4 @@
-import { NebulaTree, NebulaNode, StyleTokens } from '../core/types.js';
+import { NebulaTree, NebulaNode, StyleTokens, NodeType } from '../core/types.js';
 
 export class CodeGenerator {
 
@@ -24,7 +24,40 @@ export default function GeneratedPage() {
   }
 
   private renderNode(node: NebulaNode, tree: NebulaTree): string {
-    const ComponentName = node.type === 'Container' ? 'div' : node.type; // Map specific generic types if needed
+    // Handle Logic Nodes: Loops
+    if (node.type === 'Loop' && node.logic) {
+      const childJsx = node.children[0] ? this.renderNode(tree.nodes[node.children[0]], tree) : '';
+      return `{${node.logic.loopData}.map((${node.logic.iterator}, index) => (
+        ${childJsx}
+      ))}`;
+    }
+
+    // Handle Logic Nodes: Conditions
+    if (node.type === 'Condition' && node.logic) {
+      const childJsx = node.children[0] ? this.renderNode(tree.nodes[node.children[0]], tree) : '';
+      return `{${node.logic.condition} && (
+        ${childJsx}
+      )}`;
+    }
+
+    // Handle Black-Box Components
+    if (node.type === 'Component' && node.componentName) {
+      const propStrings: string[] = [];
+      Object.entries(node.props).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          propStrings.push(`${key}="${value}"`);
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+          propStrings.push(`${key}={${value}}`);
+        } else {
+          propStrings.push(`${key}={${JSON.stringify(value)}}`);
+        }
+      });
+      const propsStr = propStrings.length > 0 ? ' ' + propStrings.join(' ') : '';
+      return `<${node.componentName}${propsStr} />`;
+    }
+
+    // Standard node rendering
+    const ComponentName = this.mapNodeTypeToTag(node.type);
 
     // Resolve props and styles
     const className = this.resolveClassNames(node.style);
@@ -69,6 +102,19 @@ export default function GeneratedPage() {
     <${ComponentName}${propsStr}>
       ${childrenJSX}
     </${ComponentName}>`;
+  }
+
+  private mapNodeTypeToTag(type: NodeType): string {
+    // Map Nebula NodeTypes to HTML/JSX tags
+    switch (type) {
+      case 'Box': return 'div';
+      case 'Text': return 'span';
+      case 'Button': return 'button';
+      case 'Input': return 'input';
+      case 'Image': return 'img';
+      case 'Icon': return 'div'; // Placeholder for icons
+      default: return type; // Pass through for custom types
+    }
   }
 
   private resolveClassNames(style: StyleTokens): string {

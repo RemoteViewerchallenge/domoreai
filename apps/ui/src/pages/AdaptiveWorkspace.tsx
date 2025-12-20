@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
-  Plus, Minus, Terminal, FileText, Code, Globe, 
-  MoreHorizontal, ChevronUp, ChevronDown, Play, Maximize2 
+  Plus, Minus, MoreHorizontal, Play
 } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
@@ -10,14 +9,8 @@ import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 import { cn } from '@/lib/utils.js';
 
-// --- TYPE DEFINITIONS ---
-interface CardData {
-    id: string;
-    roleId: string;
-    column: number;
-    type: 'terminal' | 'editor' | 'browser' | 'preview';
-    title: string;
-}
+
+
 
 // --- SUB-COMPONENTS ---
 
@@ -140,7 +133,6 @@ export default function AdaptiveWorkspace() {
                                     {mainCard ? (
                                         <SwappableCard 
                                             id={mainCard.id}
-                                            roleId={mainCard.roleId || (roles?.[0]?.id ?? '')}
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center text-zinc-700">

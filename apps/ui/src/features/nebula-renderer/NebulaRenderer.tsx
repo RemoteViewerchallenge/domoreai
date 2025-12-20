@@ -39,16 +39,76 @@ interface RendererProps {
   tree: NebulaTree;
   nodeId?: string; // Entry point, defaults to root
   componentMap?: Record<string, React.FC<any>>;
+  dataContext?: Record<string, any>; // Data context for bindings and logic
 }
 
 export const NebulaRenderer: React.FC<RendererProps> = ({
   tree,
   nodeId = tree.rootId,
-  componentMap = Registry
+  componentMap = Registry,
+  dataContext = {}
 }) => {
   const node = tree.nodes[nodeId];
   if (!node) return null;
 
+  // --- LOGIC: LOOPS ---
+  if (node.type === 'Loop' && node.logic) {
+    const items = getNestedValue(dataContext, node.logic.loopData || '', []);
+    return (
+      <>
+        {items.map((item: any, index: number) => {
+          // Create new context with iterator variable
+          const newContext = {
+            ...dataContext,
+            [node.logic!.iterator || 'item']: item,
+            index
+          };
+          
+          return node.children[0] ? (
+            <NebulaRenderer
+              key={index}
+              tree={tree}
+              nodeId={node.children[0]}
+              componentMap={componentMap}
+              dataContext={newContext}
+            />
+          ) : null;
+        })}
+      </>
+    );
+  }
+
+  // --- LOGIC: CONDITIONS ---
+  if (node.type === 'Condition' && node.logic) {
+    const conditionValue = evaluateCondition(node.logic.condition || '', dataContext);
+    if (!conditionValue) return null;
+    
+    return node.children[0] ? (
+      <NebulaRenderer
+        tree={tree}
+        nodeId={node.children[0]}
+        componentMap={componentMap}
+        dataContext={dataContext}
+      />
+    ) : null;
+  }
+
+  // --- CUSTOM COMPONENTS (Black Box) ---
+  if (node.type === 'Component' && node.componentName) {
+    const CustomComponent = componentMap[node.componentName];
+    if (CustomComponent) {
+      // Resolve bindings for props
+      const resolvedProps = resolveBindings(node, dataContext);
+      return <CustomComponent {...resolvedProps} />;
+    }
+    return (
+      <div className="text-red-500 text-xs p-2 border border-red-500/30 rounded">
+        Missing Component: {node.componentName}
+      </div>
+    );
+  }
+
+  // --- STANDARD PRIMITIVES ---
   const Component = componentMap[node.type] || componentMap['Box'];
 
   // Resolve Tailwind Classes from Tokens
@@ -56,11 +116,28 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
   const styleClasses = resolveStyles(node.style);
   const combinedClasses = cn(layoutClasses, styleClasses, node.props.className);
 
+  // Resolve bindings in props
+  const resolvedProps = resolveBindings(node, dataContext);
+
   // Sanitize props: Prevent React from crashing if 'style' is a string
-  const sanitizedProps = { ...node.props };
+  const sanitizedProps = { ...resolvedProps };
+  
+  // Remove 'key' prop - React handles this separately
+  delete sanitizedProps.key;
+  
+  // Remove style if it's a string
   if (typeof sanitizedProps.style === 'string') {
     delete sanitizedProps.style;
   }
+  
+  // Remove event handlers that are strings (from JSX parsing)
+  // These can't be executed anyway since they're not real functions
+  Object.keys(sanitizedProps).forEach(key => {
+    if (key.startsWith('on') && typeof sanitizedProps[key] === 'string') {
+      console.warn(`[NebulaRenderer] Removing string event handler: ${key}="${sanitizedProps[key].substring(0, 50)}..."`);
+      delete sanitizedProps[key];
+    }
+  });
 
   return (
     <Component {...sanitizedProps} className={combinedClasses} data-nebula-id={node.id}>
@@ -71,6 +148,7 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
               tree={tree}
               nodeId={childId}
               componentMap={componentMap}
+              dataContext={dataContext}
             />
           ))
         : node.props.children
@@ -127,4 +205,56 @@ function resolveStyles(style: NebulaNode['style']) {
     return Object.values(style || {})
         .filter((val): val is string => typeof val === 'string')
         .join(' ');
+}
+
+/**
+ * Resolve data bindings in node props
+ */
+function resolveBindings(node: NebulaNode, dataContext: Record<string, any>): Record<string, any> {
+  const resolvedProps = { ...node.props };
+  
+  // Apply bindings
+  if (node.bindings && node.bindings.length > 0) {
+    node.bindings.forEach(binding => {
+      const value = getNestedValue(dataContext, binding.sourcePath, binding.defaultValue);
+      resolvedProps[binding.propName] = value;
+    });
+  }
+  
+  return resolvedProps;
+}
+
+/**
+ * Get nested value from object using dot notation path
+ * Example: getNestedValue({ user: { name: 'John' } }, 'user.name') => 'John'
+ */
+function getNestedValue(obj: Record<string, any>, path: string, defaultValue: any = undefined): any {
+  if (!path) return defaultValue;
+  
+  const keys = path.split('.');
+  let current = obj;
+  
+  for (const key of keys) {
+    if (current === null || current === undefined) {
+      return defaultValue;
+    }
+    current = current[key];
+  }
+  
+  return current !== undefined ? current : defaultValue;
+}
+
+/**
+ * Evaluate a simple condition string
+ * Supports basic property access and truthiness checks
+ * Example: "props.isActive" or "user.isAdmin"
+ */
+function evaluateCondition(condition: string, dataContext: Record<string, any>): boolean {
+  if (!condition) return false;
+  
+  // Simple property access evaluation
+  const value = getNestedValue(dataContext, condition, false);
+  
+  // Convert to boolean
+  return Boolean(value);
 }
