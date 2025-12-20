@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { 
   ReactFlow,
   Background, 
@@ -14,6 +14,7 @@ import type {
 import 'reactflow/dist/style.css';
 import { FileJson, Download } from 'lucide-react';
 
+import { Button } from '../../components/ui/button.js';
 import { nodeTypes } from './CustomNodes.js';
 import { InspectorPanel } from './OrchestrationInspectorPanel.js';
 import type { OrchestrationStep, RoleConfig } from './types.js';
@@ -27,7 +28,7 @@ export const OrchestrationDesigner: React.FC = () => {
 
   // Fetch Roles from Backend
   const { data: rolesData, refetch: refetchRoles } = trpc.role.list.useQuery();
-  const roles: RoleConfig[] = (rolesData || []).map(r => ({
+  const roles: RoleConfig[] = useMemo(() => (rolesData || []).map(r => ({
     id: r.id,
     name: r.name,
     description: '', // Backend role doesn't have description yet?
@@ -38,7 +39,7 @@ export const OrchestrationDesigner: React.FC = () => {
     temperature: ((r as any).defaultTemperature as number) || 0.7,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: (r as any).tools || []
-  }));
+  })), [rolesData]);
 
   // Mutations
   const createOrchestrationMutation = trpc.orchestrationManagement.create.useMutation();
@@ -242,7 +243,7 @@ export const OrchestrationDesigner: React.FC = () => {
             Orchestration & Role Designer
           </p>
           <div className="flex gap-2 mt-2">
-            <button
+            <Button
               onClick={() => {
                 const id = crypto.randomUUID();
                 const newStep: OrchestrationStep = {
@@ -260,17 +261,20 @@ export const OrchestrationDesigner: React.FC = () => {
                   data: { step: newStep, roles }
                 }]);
               }}
-              className="px-3 py-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all"
+              size="sm"
+              className="text-xs font-bold"
             >
               + Add Node
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => document.getElementById('orchestration-json-import')?.click()}
-              className="px-3 py-1 bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all flex items-center gap-1"
+              variant="secondary"
+              size="sm"
+              className="px-3"
               title="Import JSON"
             >
               <FileJson size={14} />
-            </button>
+            </Button>
             <input
               type="file"
               id="orchestration-json-import"
@@ -278,19 +282,23 @@ export const OrchestrationDesigner: React.FC = () => {
               className="hidden"
               onChange={handleImportJson}
             />
-            <button
+            <Button
               onClick={handleExportJson}
-              className="px-3 py-1 bg-[var(--color-info)] hover:bg-[var(--color-info)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all flex items-center gap-1"
+              variant="secondary"
+              size="sm"
+              className="px-3"
               title="Export as JSON"
             >
               <Download size={14} />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => void handleSave()}
-              className="px-3 py-1 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-[var(--color-background)] rounded text-xs font-bold transition-all"
+              variant="default" // Maps to bg-primary
+              size="sm"
+              className="font-bold bg-[var(--color-success)] hover:bg-[var(--color-success)]/80" // Custom color override if semantic variant doesn't match
             >
               Save
-            </button>
+            </Button>
           </div>
         </div>
       </div>

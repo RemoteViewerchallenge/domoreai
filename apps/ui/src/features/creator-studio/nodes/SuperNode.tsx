@@ -1,5 +1,6 @@
 import React, { memo, useState, useMemo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
+import { Button } from '../../../components/ui/button.js';
 import { 
   FileCode, Sparkles,
   Maximize2, Minimize2, X,
@@ -63,19 +64,23 @@ const SuperNode = ({ data, id, selected }: NodeProps<SuperNodeData>) => {
         </div>
         
         <div className="flex items-center gap-2">
-           <button 
+           <Button
              onClick={() => { setAiMode(!aiMode); if(!aiMode) setViewMode('window'); }}
-             className="p-1 rounded hover:opacity-80 transition-opacity"
+             variant="ghost"
+             size="icon"
+             className="h-6 w-6 p-0 hover:bg-transparent hover:opacity-80"
              style={{ color: aiMode ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
            >
              <Sparkles size={12} />
-           </button>
-           <button 
+           </Button>
+           <Button
              onClick={() => setViewMode(prev => prev === 'hud' ? 'window' : 'hud')}
-             className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+             variant="ghost"
+             size="icon"
+             className="h-6 w-6 p-0 hover:bg-transparent hover:opacity-80 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
            >
              {viewMode === 'hud' ? <Maximize2 size={12}/> : <Minimize2 size={12}/>}
-           </button>
+           </Button>
         </div>
       </div>
 

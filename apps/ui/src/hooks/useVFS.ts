@@ -36,9 +36,10 @@ export const useVFS = (_token: string, initialPath: string = '/') => {
     try {
       const result = await utils.vfs.read.fetch({ path, provider: 'local' });
       return result.content;
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      return '';
+      setError(err.message || 'Failed to read file');
+      throw err;
     }
   };
 
