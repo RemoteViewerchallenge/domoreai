@@ -1,15 +1,33 @@
 import React from 'react';
 import type { NebulaTree, NebulaNode, Alignment } from '@repo/nebula';
-import { cn } from '../../lib/utils'; // Adapting to local UI utils
+import { cn } from '../../lib/utils.js'; // Adapting to local UI utils
 
 // 1. The Component Registry (Map JSON 'type' to React Component)
+interface BaseProps {
+  className?: string;
+  children?: React.ReactNode;
+}
+
+interface TextProps extends BaseProps {
+  content?: string;
+  type?: string;
+}
+
+interface ButtonProps extends BaseProps {
+  variant?: 'outline' | 'default';
+}
+
+interface IconProps extends BaseProps {
+  size?: number | string;
+}
+
 const Registry: Record<string, React.FC<any>> = {
-  Box: ({ className, children, ...props }) => <div className={className} {...props}>{children}</div>,
-  Text: ({ content, className, type }) => {
+  Box: ({ className, children, ...props }: BaseProps) => <div className={className} {...props}>{children}</div>,
+  Text: ({ content, className, type }: TextProps) => {
       const Tag = (type === 'h1' ? 'h1' : type === 'h2' ? 'h2' : 'p') as keyof JSX.IntrinsicElements;
       return <Tag className={className}>{content}</Tag>
   },
-  Button: ({ children, className, variant, ...props }) => {
+  Button: ({ children, className, variant, ...props }: ButtonProps) => {
       const base = "px-4 py-2 rounded font-medium transition-colors";
       const styles = variant === 'outline' 
         ? "border border-zinc-700 bg-transparent hover:bg-zinc-800 text-zinc-300" 
@@ -17,18 +35,18 @@ const Registry: Record<string, React.FC<any>> = {
       return <button className={cn(base, styles, className)} {...props}>{children}</button>
   },
   // Native HTML Mappings
-  h1: ({ className, children, ...props }) => <h1 className={cn("text-2xl font-bold", className)} {...props}>{children}</h1>,
-  h2: ({ className, children, ...props }) => <h2 className={cn("text-xl font-semibold", className)} {...props}>{children}</h2>,
-  h3: ({ className, children, ...props }) => <h3 className={cn("text-lg font-medium", className)} {...props}>{children}</h3>,
-  p: ({ className, children, ...props }) => <p className={className} {...props}>{children}</p>,
-  span: ({ className, children, ...props }) => <span className={className} {...props}>{children}</span>,
-  label: ({ className, children, ...props }) => <label className={cn("text-sm font-medium", className)} {...props}>{children}</label>,
-  input: ({ className, ...props }) => <input className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props} />,
-  select: ({ className, children, ...props }) => <select className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props}>{children}</select>,
-  option: ({ children, ...props }) => <option {...props}>{children}</option>,
+  h1: ({ className, children, ...props }: BaseProps) => <h1 className={cn("text-2xl font-bold", className)} {...props}>{children}</h1>,
+  h2: ({ className, children, ...props }: BaseProps) => <h2 className={cn("text-xl font-semibold", className)} {...props}>{children}</h2>,
+  h3: ({ className, children, ...props }: BaseProps) => <h3 className={cn("text-lg font-medium", className)} {...props}>{children}</h3>,
+  p: ({ className, children, ...props }: BaseProps) => <p className={className} {...props}>{children}</p>,
+  span: ({ className, children, ...props }: BaseProps) => <span className={className} {...props}>{children}</span>,
+  label: ({ className, children, ...props }: BaseProps) => <label className={cn("text-sm font-medium", className)} {...props}>{children}</label>,
+  input: ({ className, ...props }: BaseProps) => <input className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props} />,
+  select: ({ className, children, ...props }: BaseProps) => <select className={cn("bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-sm", className)} {...props}>{children}</select>,
+  option: ({ children, ...props }: BaseProps) => <option {...props}>{children}</option>,
   
   // Custom / Icon placeholder
-  Icon: ({ className, size = 16 }) => (
+  Icon: ({ className, size = 16 }: IconProps) => (
     <div className={cn("flex items-center justify-center text-zinc-400", className)} style={{ width: size, height: size }}>
        <div className="w-full h-full border-2 border-dashed border-current rounded-sm opacity-50" />
     </div>
@@ -39,14 +57,18 @@ interface RendererProps {
   tree: NebulaTree;
   nodeId?: string; // Entry point, defaults to root
   componentMap?: Record<string, React.FC<any>>;
-  dataContext?: Record<string, any>; // Data context for bindings and logic
+  dataContext?: Record<string, unknown>; // Data context for bindings and logic
+  selectedNodeId?: string | null;
+  onSelectNode?: (nodeId: string) => void;
 }
 
 export const NebulaRenderer: React.FC<RendererProps> = ({
   tree,
   nodeId = tree.rootId,
   componentMap = Registry,
-  dataContext = {}
+  dataContext = {},
+  selectedNodeId,
+  onSelectNode
 }) => {
   const node = tree.nodes[nodeId];
   if (!node) return null;
@@ -56,7 +78,7 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
     const items = getNestedValue(dataContext, node.logic.loopData || '', []);
     return (
       <>
-        {items.map((item: any, index: number) => {
+        {items.map((item: unknown, index: number) => {
           // Create new context with iterator variable
           const newContext = {
             ...dataContext,
@@ -71,6 +93,8 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
               nodeId={node.children[0]}
               componentMap={componentMap}
               dataContext={newContext}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
             />
           ) : null;
         })}
@@ -89,6 +113,8 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
         nodeId={node.children[0]}
         componentMap={componentMap}
         dataContext={dataContext}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={onSelectNode}
       />
     ) : null;
   }
@@ -109,7 +135,23 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
   }
 
   // --- STANDARD PRIMITIVES ---
-  const Component = componentMap[node.type] || componentMap['Box'];
+  let Component = componentMap[node.type];
+  let isFallback = false;
+
+  if (!Component) {
+    console.warn(`[NebulaRenderer] Missing component: ${node.type}`);
+    // Check if we can at least render a Box as a semi-fallback
+    if (componentMap['Box']) {
+      Component = componentMap['Box'];
+      isFallback = true;
+    } else {
+        return (
+          <div className="border-2 border-dashed border-red-500 p-4 text-red-500 text-xs bg-red-50">
+            Missing Component: {node.type}
+          </div>
+        );
+    }
+  }
 
   // Resolve Tailwind Classes from Tokens
   const layoutClasses = resolveLayout(node.layout);
@@ -139,22 +181,84 @@ export const NebulaRenderer: React.FC<RendererProps> = ({
     }
   });
 
-  return (
-    <Component {...sanitizedProps} className={combinedClasses} data-nebula-id={node.id}>
+  const VOID_ELEMENTS = ['input', 'img', 'br', 'hr', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'];
+  const isVoid = VOID_ELEMENTS.includes(node.type.toLowerCase());
+  
+  if (isVoid) {
+    delete sanitizedProps.children;
+  }
+
+  const isSelected = selectedNodeId === node.id;
+
+  const innerContent = isVoid ? null : (
+    <>
+      {isFallback && (
+        <div className="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 z-10">
+          Fallback: {node.type}
+        </div>
+      )}
       {node.children.length > 0
-        ? node.children.map(childId => (
+        ? node.children.map((childId: string) => (
             <NebulaRenderer
               key={childId}
               tree={tree}
               nodeId={childId}
               componentMap={componentMap}
               dataContext={dataContext}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
             />
           ))
         : node.props.children
       }
+    </>
+  );
+
+  const content = isVoid ? (
+    <Component 
+      {...sanitizedProps} 
+      className={cn(
+        combinedClasses,
+        isFallback && "border-2 border-dashed border-red-400 overflow-hidden relative"
+      )} 
+      data-nebula-id={node.id}
+    />
+  ) : (
+    <Component 
+      {...sanitizedProps} 
+      className={cn(
+        combinedClasses,
+        isFallback && "border-2 border-dashed border-red-400 overflow-hidden relative"
+      )} 
+      data-nebula-id={node.id}
+    >
+      {innerContent}
     </Component>
   );
+
+  if (onSelectNode) {
+    return (
+      <div 
+        className={cn(
+          "relative group/nebula",
+          isSelected && "ring-2 ring-blue-500 ring-offset-2 z-50 rounded"
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectNode(node.id);
+        }}
+      >
+        {isSelected && (
+           <div className="absolute -top-6 left-0 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-t font-bold whitespace-nowrap z-[60]">
+             {node.type} <span className="opacity-70 font-mono text-[8px]">#{node.id}</span>
+           </div>
+        )}
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 };
 
 // Helper: Convert Layout object to Tailwind strings
