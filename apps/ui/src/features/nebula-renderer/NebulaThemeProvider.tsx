@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { DEFAULT_THEME } from '@repo/nebula';
-import type { NebulaTheme } from '@repo/nebula';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { DEFAULT_THEME } from "@repo/nebula";
+import type { NebulaTheme } from "@repo/nebula";
 
 const ThemeContext = createContext<{
   theme: NebulaTheme;
@@ -18,19 +18,20 @@ export const NebulaThemeProvider: React.FC<{
 
   useEffect(() => {
     const root = document.documentElement;
-    // Colors
-    root.style.setProperty('--nebula-primary', theme.colors.primary);
-    root.style.setProperty('--nebula-secondary', theme.colors.secondary);
-    root.style.setProperty('--nebula-bg', theme.colors.background);
-    root.style.setProperty('--nebula-surface', theme.colors.surface);
-    root.style.setProperty('--nebula-text', theme.colors.text);
-    root.style.setProperty('--nebula-border', theme.colors.border);
-    // Shape
-    root.style.setProperty('--nebula-radius', theme.shape.radius.toString());
-    root.style.setProperty('--nebula-border-width', theme.shape.borderWidth.toString());
-    // Typography
-    root.style.setProperty('--nebula-font', theme.typography.fontFamily);
-    root.style.setProperty('--nebula-base-size', theme.typography.baseSize);
+    // Apply all theme properties as CSS variables without constraints
+    for (const [key, value] of Object.entries(theme)) {
+      if (typeof value === "object") {
+        // Handle nested objects
+        for (const [nestedKey, nestedValue] of Object.entries(value)) {
+          root.style.setProperty(
+            `--nebula-${key}-${nestedKey}`,
+            String(nestedValue)
+          );
+        }
+      } else {
+        root.style.setProperty(`--nebula-${key}`, String(value));
+      }
+    }
   }, [theme]);
 
   return (

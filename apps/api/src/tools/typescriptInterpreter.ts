@@ -169,9 +169,17 @@ if (__actions.length > 0) {
         }
       }
 
+      // If tsx wrote to stderr, it's an error (e.g., syntax error)
+      if (stderr) {
+        return [{
+          type: 'text',
+          text: `❌ Execution Error:\n\nEncountered errors during execution.\n\nStderr: ${stderr}\nStdout: ${finalOutput}`,
+        }];
+      }
+
       return [{
         type: 'text',
-        text: `✅ Code executed successfully.\n\nOutput:\n${finalOutput}\n${stderr ? `\nWarnings/Errors:\n${stderr}` : ''}`,
+        text: `✅ Code executed successfully.\n\nOutput:\n${finalOutput}`,
         // Provide the actions back for the runtime to handle if needed
         // In this architecture, we might need to return them as part of the tool result
         meta: resultActions.length > 0 ? { nebula_actions: resultActions } : undefined

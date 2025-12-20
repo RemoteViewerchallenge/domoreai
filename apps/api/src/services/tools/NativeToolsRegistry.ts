@@ -9,9 +9,16 @@ import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
 import { nebulaTool } from '../../tools/nebulaTool.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
+import { themeEditorTool } from '../../tools/themeEditor.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
+        {
+            name: themeEditorTool.name,
+            handler: themeEditorTool.handler,
+            description: themeEditorTool.description,
+            input_schema: themeEditorTool.inputSchema as any
+        },
         {
             name: nebulaTool.name,
             handler: nebulaTool.handler,

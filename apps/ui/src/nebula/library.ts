@@ -5,29 +5,25 @@ export interface ComponentCategory {
 
 export const ComponentLibrary: ComponentCategory[] = [
   {
-    name: "Standard UI (Shadcn)",
-    components: [
-      "Button", "Input", "Textarea", "Badge", "Slider", "Label", "ScrollArea", 
-      "Card", "CardHeader", "CardTitle", "CardDescription", "CardContent", "CardFooter",
-      "Tabs", "TabsList", "TabsTrigger", "TabsContent"
-    ]
-  },
-  {
-    name: "FlyonUI / Daisy",
-    components: [
-      "btn", "card", "stat", "alert", "modal", "badge", "input", "textarea", "checkbox", "toggle", "range"
-    ]
-  },
-  {
     name: "Nebula Primitives",
-    components: ["Box", "Text", "Icon", "Image"]
+    components: ["Box", "Container", "Grid", "Mosaic", "Text", "Icon", "Image"]
+  },
+  {
+    name: "FlyonUI Components",
+    components: [
+      "btn", "card", "stat", "alert", "modal", "badge", "input", "textarea", 
+      "checkbox", "toggle", "range", "dropdown", "navbar", "footer", "hero"
+    ]
+  },
+  {
+    name: "App Components",
+    components: [
+      "RoleCreatorPanel", "SwappableCard", "CompactRoleSelector", "ThemeEditorPanel",
+      "DatabaseBrowser", "MonacoEditor", "XtermTerminal", "TipTapEditor"
+    ]
   },
   {
     name: "AI & Intelligence",
-    components: ["AiButton", "SuperAiButton", "AiActionTrigger"]
-  },
-  {
-    name: "System Components",
-    components: ["Panel", "ErrorBoundary", "MonacoEditor", "XtermTerminal", "DatabaseBrowser"]
+    components: ["AiButton", "SuperAiButton"]
   }
 ];

@@ -249,8 +249,18 @@ export const orchestratorRouter = createTRPCRouter({
           // 4. Run Execution Loop (Handles tool calling if AI wrote code blocks)
           console.log(`[Orchestrator] Running agent loop...`);
           const { result, logs } = await runtime.runAgentLoop(
-              input.prompt, 
-              async () => aiResponse as string // Pass the already generated response as if it was the first step
+              input.prompt,
+              aiResponse as string,
+              // Pass regeneration callback for retries
+              async (retryPrompt: string) => {
+                console.log(`[Orchestrator] Regenerating with error feedback...`);
+                return await runtime.generateWithContext(
+                  agent,
+                  role.basePrompt,
+                  retryPrompt,
+                  roleId
+                ) as string;
+              }
           );
 
           const finalResult = result || '';

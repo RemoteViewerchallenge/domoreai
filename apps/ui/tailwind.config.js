@@ -8,7 +8,16 @@ export default {
     ],
     safelist: [
       'border-t-2', 'border-l-2', 'border-b-2', 'border-r-2',
-      'border-cyan-400', 'border-lime-400', 'bg-zinc-950'
+      'border-cyan-400', 'border-lime-400', 'bg-zinc-950',
+      {
+        pattern: /bg-(red|green|blue|yellow|purple|pink|amber|cyan|slate|gray|zinc|neutral|stone|orange|lime|emerald|teal|sky|violet|fuchsia|rose)-(100|200|300|400|500|600|700|800|900)/,
+      },
+      {
+        pattern: /from-(red|green|blue|yellow|purple|pink|amber|cyan|slate|gray|zinc|neutral|stone|orange|lime|emerald|teal|sky|violet|fuchsia|rose)-(100|200|300|400|500|600|700|800|900)/,
+      },
+      {
+        pattern: /to-(red|green|blue|yellow|purple|pink|amber|cyan|slate|gray|zinc|neutral|stone|orange|lime|emerald|teal|sky|violet|fuchsia|rose)-(100|200|300|400|500|600|700|800|900)/,
+      },
     ],
     theme: {
         extend: {
