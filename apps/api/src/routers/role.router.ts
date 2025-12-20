@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
+import { ModelSelector } from "../services/ModelSelector.js";
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -95,9 +96,49 @@ export const roleRouter = createTRPCRouter({
       },
     });
 
+    // Resolve Operational Intelligence (Model & Scope)
+    const modelSelector = new ModelSelector();
+
+    // We fetch model names efficiently to avoid N+1 issues where possible,
+    // but ModelSelector logic is complex so we'll do parallel resolution.
+    // In a real high-scale app, we'd cache this or store 'currentModel' in the DB periodically.
+
+    const enrichedRoles = await Promise.all(roles.map(async (role) => {
+       let currentModelName = 'Auto-Detect';
+       try {
+           const modelId = await modelSelector.resolveModelForRole(role as any);
+           // Fetch the friendly name for this model ID
+           // Note: This is an extra DB call per role.
+           // Optimization: We could fetch all models once and lookup, but model registry is large.
+           // Better: ModelSelector could return the object or name.
+           // For now, we'll do a quick lookup.
+           const model = await prisma.model.findUnique({
+               where: { id: modelId },
+               select: { name: true }
+           });
+           if (model) currentModelName = model.name;
+       } catch (e) {
+           currentModelName = 'None Available';
+       }
+
+       // Scope Extraction (Simple Heuristic)
+       let scope = 'Global';
+       const desc = (role.description || '').toLowerCase();
+       if (desc.includes('frontend') || desc.includes('react') || desc.includes('ui')) scope = 'Frontend (src/components)';
+       else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
+       else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
+
+       return {
+           ...role,
+           currentModel: currentModelName,
+           scope: scope,
+           healthScore: 100 // Placeholder for AssessmentService score
+       };
+    }));
+
     // Return roles, or a default role if none exist (prevents UI crash)
-    return roles.length > 0
-      ? roles
+    return enrichedRoles.length > 0
+      ? enrichedRoles
       : [
           {
             id: "default",
@@ -108,6 +149,9 @@ export const roleRouter = createTRPCRouter({
             tools: [],
             metadata: {},
             preferredModels: [],
+            currentModel: 'GPT-4o',
+            scope: 'Global',
+            healthScore: 100
           },
         ];
   }),
