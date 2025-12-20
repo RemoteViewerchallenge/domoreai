@@ -1,6 +1,8 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
+import { chunkText, createEmbedding, vectorStore } from './vector.service.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -13,6 +15,32 @@ const MAPPINGS: Record<string, { contextPath: string; namePath: string; idPath: 
 };
 
 export class UnifiedIngestionService {
+
+  static async processContent(payload: {
+    source: string;
+    content: string;
+    type: string;
+    metadata?: any
+  }): Promise<void> {
+    const chunks = chunkText(payload.content);
+    const vectors = [];
+
+    for (const chunk of chunks) {
+      const embedding = await createEmbedding(chunk);
+      vectors.push({
+        id: uuidv4(),
+        vector: embedding,
+        metadata: {
+          ...payload.metadata,
+          source: payload.source,
+          type: payload.type,
+          chunk: chunk // duplicating content in metadata as per vector.service example
+        }
+      });
+    }
+
+    await vectorStore.add(vectors);
+  }
   
   static async ingestAllModels(modelsDir?: string): Promise<void> {
     const targetDir = modelsDir || path.join(process.cwd(), 'latest_models');

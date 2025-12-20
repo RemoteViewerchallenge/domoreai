@@ -29,6 +29,7 @@
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
     "ignore": "^7.0.5",
+    "vitest": "^2.1.9",
     "vscode-ws-jsonrpc": "^3.5.0",
     "zod": "^3.23.8"
   },
