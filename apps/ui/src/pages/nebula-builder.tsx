@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { NebulaOps, NebulaRenderer, DEFAULT_NEBULA_TREE, type NebulaTree } from '@repo/nebula';
+import { NebulaOps, DEFAULT_NEBULA_TREE } from '@repo/nebula';
+import type { NebulaTree } from '@repo/nebula';
+import { NebulaRenderer } from '../features/nebula-renderer/NebulaRenderer.js';
 import { Button } from '@/components/ui/button.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { Sparkles, Code, Play, Send, Upload } from 'lucide-react';

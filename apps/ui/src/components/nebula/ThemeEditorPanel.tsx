@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNebulaTheme } from '@repo/nebula/src/react/NebulaThemeProvider.js';
+import { useNebulaTheme } from '../../features/nebula-renderer/NebulaThemeProvider.js';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
