@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
-import { Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { trpc } from '../../utils/trpc';
-import { useAnimations } from '../../theme/ThemeProvider';
+import React, { useState } from "react";
+import { Zap } from "lucide-react";
+import { motion } from "framer-motion";
+import { trpc } from "../../utils/trpc.js";
 
 export type AiSource =
-  | { type: 'role'; roleId?: string }
-  | { type: 'coorp-node'; nodeId?: string }
-  | { type: 'vfs'; paths?: string[] }
-  | { type: 'custom'; payload?: Record<string, unknown> };
+  | { type: "role"; roleId?: string }
+  | { type: "coorp-node"; nodeId?: string }
+  | { type: "vfs"; paths?: string[] }
+  | { type: "custom"; payload?: Record<string, unknown> };
 
 interface AiButtonProps {
   source: AiSource;
   defaultRoleId?: string;
-  onResult?: (res: { success: boolean; message: string; data?: Record<string, unknown> }) => void;
+  onResult?: (res: {
+    success: boolean;
+    message: string;
+    data?: Record<string, unknown>;
+  }) => void;
 }
 
 /**
@@ -22,23 +25,23 @@ interface AiButtonProps {
  */
 export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
   const [open, setOpen] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const { enabled: animationsEnabled } = useAnimations();
-  const { mutateAsync: runAi, isLoading } = trpc.ai.runWithContext.useMutation();
+  const [prompt, setPrompt] = useState("");
+  const { mutateAsync: runAi, isLoading } =
+    trpc.ai.runWithContext.useMutation();
 
   const handleRun = async () => {
     try {
       const res = await runAi({ source, roleId: defaultRoleId, prompt });
       onResult?.(res);
       setOpen(false);
-      setPrompt('');
+      setPrompt("");
     } catch (err) {
-      console.error('AI run failed', err);
+      console.error("AI run failed", err);
       // TODO: show user-friendly error message UI
     }
   };
 
-  const MotionWrapper = animationsEnabled ? motion.span : 'span';
+  const MotionWrapper = animationsEnabled ? motion.span : "span";
   const motionProps = animationsEnabled ? { whileHover: { scale: 1.05 } } : {};
 
   return (
@@ -50,7 +53,7 @@ export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
       >
         <MotionWrapper
           {...motionProps}
-          style={{ display: 'inline-flex', alignItems: 'center' }}
+          style={{ display: "inline-flex", alignItems: "center" }}
         >
           <Zap size={14} className="mr-1" />
           <span>AI</span>
@@ -70,7 +73,7 @@ export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
             <button
               onClick={() => {
                 setOpen(false);
-                setPrompt('');
+                setPrompt("");
               }}
               className="px-3 py-1 text-xs rounded bg-[var(--color-background-secondary)] hover:bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
             >
@@ -81,7 +84,7 @@ export function AiButton({ source, defaultRoleId, onResult }: AiButtonProps) {
               disabled={isLoading || !prompt.trim()}
               className="px-3 py-1 text-xs rounded bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? 'Running...' : 'Run'}
+              {isLoading ? "Running..." : "Run"}
             </button>
           </div>
         </div>
