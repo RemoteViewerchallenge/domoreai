@@ -142,7 +142,8 @@ export const createEmbedding = async (text: string): Promise<number[]> => {
     }
 
     try {
-      const response = await axios.post('http://localhost:11434/api/embeddings', {
+      const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+      const response = await axios.post(`${baseUrl}/api/embeddings`, {
         model: 'mxbai-embed-large',
         prompt: text,
       }, { timeout: 10000 }); // Add timeout
