@@ -34,8 +34,9 @@ export class ModelDoctor {
     // Attempt to grab from raw data if available
     else if (rawData && typeof rawData === 'object') {
         const r = rawData as any;
-        const c = r.context_window || r.context_length || r.max_context_length;
-        if (c) context = parseInt(c);
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const c = (r as any).context_window || (r as any).context_length || (r as any).max_context_length;
+        if (c) context = parseInt(String(c));
     }
 
     // Capability Flags

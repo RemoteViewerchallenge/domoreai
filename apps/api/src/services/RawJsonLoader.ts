@@ -83,7 +83,7 @@ export async function autoLoadRawJsonFiles() {
           const vals = keys.map(k => {
             const v = (row as Record<string, unknown>)[k];
             if (v === null || v === undefined) return 'NULL';
-            const s = String(v).replace(/'/g, "''");
+            const s = typeof v === 'object' ? JSON.stringify(v).replace(/'/g, "''") : String(v).replace(/'/g, "''");
             return `'${s}'`;
           }).join(', ');
 

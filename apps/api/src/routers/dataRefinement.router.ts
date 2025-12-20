@@ -686,8 +686,6 @@ export const dataRefinementRouter = createTRPCRouter({
         modelDef += `}\n`;
 
         // Read current schema file
-        const fs = require('fs');
-        const path = require('path');
         const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
         let schemaContent = fs.readFileSync(schemaPath, 'utf8');
 
