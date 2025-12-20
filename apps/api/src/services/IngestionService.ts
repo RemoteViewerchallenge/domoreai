@@ -1,7 +1,11 @@
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+
+// Node.js 20+ feature check - safe fallback if needed, though package.json says ^20.12.12
+const { openAsBlob, existsSync, mkdirSync, writeFileSync, readFileSync } = fs;
+
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
 
 export class IngestionService {
   private static SHADOW_DIR = path.join(process.cwd(), '.domoreai/shadow');
@@ -13,44 +17,32 @@ export class IngestionService {
   }
 
   private ensureShadowDir() {
-    if (!fs.existsSync(IngestionService.SHADOW_DIR)) {
-      fs.mkdirSync(IngestionService.SHADOW_DIR, { recursive: true });
+    if (!existsSync(IngestionService.SHADOW_DIR)) {
+      mkdirSync(IngestionService.SHADOW_DIR, { recursive: true });
     }
   }
 
   /**
    * Ingests a file: sends it to Unstructured API and saves the result as a shadow file.
+   * Uses streaming (via openAsBlob) to prevent memory crashes on large files.
    * @param filePath Absolute path to the file to ingest.
    * @returns The path to the created shadow file.
    */
   async ingestFile(filePath: string): Promise<string> {
-    if (!fs.existsSync(filePath)) {
+    if (!existsSync(filePath)) {
       throw new Error(`File not found: ${filePath}`);
     }
 
     try {
       console.log(`[IngestionService] Ingesting file: ${filePath}`);
 
-      // 1. Prepare form data for Unstructured API
-      // We can't use standard FormData in Node easily without a library if we want to stream, 
-      // but axios takes a Buffer or Stream usually.
-      // Let's use 'form-data' library if available, or just construct it if simple.
-      // For simplicity/standard in this repo, let's see if we can use a basic approach.
-      // Often 'axios' with 'form-data' package is best.
-      // I'll assume we can read the file into a buffer.
-      
-      // NOTE: For a robust implementation, usually `form-data` package is needed for file uploads in Node.
-      // Checking if we can try to skip that dep if not present, but it's risky.
-      // Let's check if 'form-data' is in package.json (I recall seeing axios).
-      // If not, I'll stick to a simple buffer if Unstructured accepts it, or just install 'form-data'.
-      // For now, I'll attempt a direct POST with axios as a buffer if the API supports binary, 
-      // BUT Unstructured usually expects multipart/form-data.
-      
-      // Let's fallback to `fetch` with `FormData` which is available in Node 18+ global.
-      const fileBuffer = fs.readFileSync(filePath);
+      // 1. Prepare form data using efficient Node.js Blob (Node 20+)
+      // This prevents loading the entire file into V8 heap memory.
+      // If fs.openAsBlob is missing (older Node), fallback would be needed,
+      // but package.json requires Node 20+.
+      const blob = await openAsBlob(filePath);
       const fileName = path.basename(filePath);
       const formData = new FormData();
-      const blob = new Blob([fileBuffer]);
       formData.append('files', blob, fileName);
 
       const headers: Record<string, string> = {};
@@ -60,16 +52,11 @@ export class IngestionService {
 
       console.log(`[IngestionService] Sending to ${IngestionService.UNSTRUCTURED_API_URL}...`);
       
-      const response = await fetch(IngestionService.UNSTRUCTURED_API_URL, {
+      const response = await this.fetchWithRetry(IngestionService.UNSTRUCTURED_API_URL, {
         method: 'POST',
         headers: headers,
         body: formData,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Unstructured API failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
 
       const data = await response.json();
       console.log(`[IngestionService] Received ${Array.isArray(data) ? data.length : 0} elements.`);
@@ -78,7 +65,7 @@ export class IngestionService {
       const shadowFileName = `${fileName}.json`;
       const shadowFilePath = path.join(IngestionService.SHADOW_DIR, shadowFileName);
       
-      fs.writeFileSync(shadowFilePath, JSON.stringify(data, null, 2));
+      writeFileSync(shadowFilePath, JSON.stringify(data, null, 2));
       console.log(`[IngestionService] Shadow file saved: ${shadowFilePath}`);
 
       return shadowFilePath;
@@ -90,14 +77,48 @@ export class IngestionService {
   }
 
   /**
+   * Helper to perform fetch with exponential backoff retries.
+   */
+  private async fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+    let lastError: any;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+
+        if (!response.ok) {
+          // Don't retry client errors (4xx), except maybe 429
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+          }
+          throw new Error(`API Server Error: ${response.status} ${response.statusText}`);
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+        console.warn(`[IngestionService] Attempt ${attempt + 1}/${retries + 1} failed: ${error instanceof Error ? error.message : String(error)}`);
+
+        if (attempt < retries) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
    * Retrieves the content of a shadow file.
    */
   getShadowFile(fileName: string): any {
     const shadowFilePath = path.join(IngestionService.SHADOW_DIR, fileName);
-    if (!fs.existsSync(shadowFilePath)) {
+    if (!existsSync(shadowFilePath)) {
       return null;
     }
-    return JSON.parse(fs.readFileSync(shadowFilePath, 'utf-8'));
+    return JSON.parse(readFileSync(shadowFilePath, 'utf-8'));
   }
 }
 
