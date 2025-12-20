@@ -11,6 +11,9 @@ importers:
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.25)(jsdom@27.2.0)
       vscode-ws-jsonrpc:
         specifier: ^3.5.0
         version: 3.5.0
@@ -132,9 +135,6 @@ importers:
       https-proxy-agent:
         specifier: ^7.0.6
         version: 7.0.6
-      ignore:
-        specifier: ^7.0.5
-        version: 7.0.5
       jsdom:
         specifier: ^27.2.0
         version: 27.2.0
@@ -242,7 +242,7 @@ importers:
         specifier: ^8.47.0
         version: 8.47.0(eslint@8.57.1)(typescript@5.9.3)
       vitest:
-        specifier: ^2.0.1
+        specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.25)(jsdom@27.2.0)
 
   apps/ui:
