@@ -247,9 +247,9 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
 
     // --- STANDARD PRIMITIVES ---
 
-    let Component = componentMap[node.type];
+    const Component = componentMap[node.type];
 
-    let isFallback = false;
+    const isFallback = false;
 
     if (!Component) {
       console.warn(`[NebulaRenderer] Missing component: ${node.type}`);
