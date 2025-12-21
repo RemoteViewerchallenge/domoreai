@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-theme.mjs && concurrently \"vite\" \"chokidar 'src/theme/theme.json' -c 'node scripts/generate-theme.mjs'\"",
-    "desktop": "concurrently \"vite\" \"pnpm --filter api run dev\" \"wait-on tcp:5173 tcp:4000 && electron .\"",
+    "desktop": "concurrently \"vite\" \"wait-on tcp:5173 tcp:4000 && electron .\"",
     "build": "node scripts/generate-theme.mjs && vite build",
     "lint": "eslint -c eslint.config.mjs .",
     "lint:fix": "eslint -c eslint.config.mjs . --fix",
