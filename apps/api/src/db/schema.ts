@@ -86,6 +86,10 @@ export const modelCapabilities = pgTable('ModelCapabilities', {
 
 // [NEW] Relations
 export const modelRelations = relations(modelRegistry, ({ one }) => ({
+  provider: one(providerConfigs, {
+    fields: [modelRegistry.providerId],
+    references: [providerConfigs.id],
+  }),
   capabilities: one(modelCapabilities, {
     fields: [modelRegistry.id],
     references: [modelCapabilities.modelId],

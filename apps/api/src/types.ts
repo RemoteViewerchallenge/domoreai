@@ -52,4 +52,5 @@ export interface CardAgentState {
   maxTokens: number;
   userGoal?: string; // Optional context for memory injection
   projectPrompt?: string; // Optional project-specific system prompt
+  tools?: string[];
 }

@@ -384,11 +384,12 @@ export class AgentFactoryService implements IAgentFactory {
       const promptFactory = new PromptFactory(lessonProvider);
       const memoryConfig = role.metadata?.memoryConfig || (rawRole as any)?.memoryConfig;
 
+      const tools = cardConfig.tools || role.tools;
       basePrompt = await promptFactory.build(
           role.name,
           cardConfig.userGoal || '',
           memoryConfig,
-          role.tools,
+          tools,
           cardConfig.projectPrompt,
           constitution
       );
