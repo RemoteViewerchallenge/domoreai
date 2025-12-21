@@ -13,7 +13,7 @@ export default function ThemeStudio() {
            </div>
            <div>
              <h1 className="text-xl font-bold tracking-tight">Theme Studio</h1>
-             <p className="text-xs text-zinc-500">Personalize the visual "Skin" of your operating system.</p>
+             <p className="text-xs text-zinc-500">Personalize the visual &quot;Skin&quot; of your operating system.</p>
            </div>
         </div>
         

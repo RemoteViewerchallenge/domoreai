@@ -171,9 +171,9 @@ export function ConstitutionSettings() {
         </div>
         <p className="text-[10px] text-[var(--color-text-secondary)] mb-3">
           Define strict coding conventions and rules that all agents MUST follow. Examples:
-          <br />• "Always use FlyonUI components, never raw Tailwind"
-          <br />• "No Git Diffs - Always use feature branches"
-          <br />• "Prefer functional components over class components"
+          <br />&quot;Always use FlyonUI components, never raw Tailwind&quot;
+          <br />&quot;No Git Diffs - Always use feature branches&quot;
+          <br />&quot;Prefer functional components over class components&quot;
         </p>
         <textarea
           value={codeRules}
@@ -200,8 +200,8 @@ export function ConstitutionSettings() {
         </div>
         <p className="text-[10px] text-[var(--color-text-secondary)] mb-4">
           Define project-specific terminology so agents use consistent language. Examples:
-          <br />• "SuperNode" = "A file visualizer component"
-          <br />• "Lootbox" = "The tool execution service"
+          <br />&bull; &quot;SuperNode&quot; = &quot;A file visualizer component&quot;
+          <br />&quot;Lootbox&quot; = &quot;The tool execution service&quot;
         </p>
 
         <div className="space-y-2">
@@ -246,7 +246,7 @@ export function ConstitutionSettings() {
       <div className="border border-[var(--color-primary)]/30 rounded-lg p-4 bg-[var(--color-primary)]/5">
         <h4 className="text-xs font-bold text-[var(--color-primary)] uppercase mb-2">⚡ How It Works</h4>
         <ul className="text-[10px] text-[var(--color-text-secondary)] space-y-1">
-          <li>• Constitution rules are prepended to EVERY agent's system prompt</li>
+          <li>• Constitution rules are prepended to EVERY agent&apos;s system prompt</li>
           <li>• Changes take effect immediately for all newly spawned agents</li>
           <li>• Existing agent sessions will not be affected until they restart</li>
           <li>• Code Rules appear first (highest priority) in the prompt hierarchy</li>
