@@ -1,6 +1,18 @@
 import { prisma } from '../db.js';
 import type { Model } from '@prisma/client';
 
+const DEFAULT_CONTEXT_WINDOW = 4096;
+const DEFAULT_PRIORITY = 50;
+
+interface ModelSpecs {
+  costPer1k?: number;
+  contextWindow?: number;
+  context_window?: number;
+  limitRequestRate?: number;
+  rpm_limit?: number;
+}
+
+
 export interface DynamicModel {
   id: string;
   providerConfigId: string;
@@ -94,17 +106,17 @@ export class DynamicModelAdapter {
     try {
       const models = await prisma.model.findMany();
       return models.map((m: Model) => {
-        const specs = (m.specs as any) || {};
+        const specs: ModelSpecs = (m.specs as ModelSpecs) || {};
         return {
           id: m.modelId, // Use modelId as the primary ID for logic
           providerConfigId: m.providerId,
           cost: m.costPer1k ?? specs.costPer1k ?? 0,
-          contextWindow: specs.contextWindow ?? specs.context_window ?? (m as any).contextWindow ?? 4096,
-          priority: 50, // Default priority
+          contextWindow: specs.contextWindow ?? specs.context_window ?? DEFAULT_CONTEXT_WINDOW,
+          priority: DEFAULT_PRIORITY, // Default priority
           group_id: undefined,
           target_usage_percent: undefined,
           error_penalty: false,
-          rpm_limit: specs.limitRequestRate ?? specs.rpm_limit ?? (m as any).limitRequestRate ?? undefined,
+          rpm_limit: specs.limitRequestRate ?? specs.rpm_limit ?? undefined,
           rpd_limit: undefined, // No direct mapping for RPD in standard model
           is_free_tier: m.isFree ?? false,
           metadata: m as unknown as Record<string, unknown>,

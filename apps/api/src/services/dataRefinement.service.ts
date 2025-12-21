@@ -77,14 +77,16 @@ export async function flattenRawData(options: FlattenOptions) {
       const val = originalKey ? (row)[originalKey] : undefined;
 
       if (val === null || val === undefined) return 'NULL';
-      // IMPROVEMENT: If the value is an object or array, store it as a JSONB type
-      // in PostgreSQL for better readability. Otherwise, store as a string.
-      if (typeof val === 'object' && val !== null) {
-        // Escape single quotes within the JSON string
-        const jsonString = JSON.stringify(val).replace(/'/g, "''");
-        return `'${jsonString}'::jsonb`;
+      let s: string;
+      if (typeof val === 'object') {
+        // If it's an object (including arrays), stringify it as JSON
+        s = JSON.stringify(val).replace(/'/g, "''");
+        return `'${s}'::jsonb`; // Store as JSONB
+      } else {
+        // Otherwise, it's a primitive, so convert to string
+        s = String(val).replace(/'/g, "''");
+        return `'${s}'`;
       }
-      return `'${String(val).replace(/'/g, "''")}'`; // This is safe now because objects are handled above
     });
     return `(${vals.join(', ')})`;
   });

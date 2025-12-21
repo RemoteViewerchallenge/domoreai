@@ -2,6 +2,12 @@ import { db, prisma } from '../db.js';
 import { modelRegistry, modelCapabilities } from '../db/schema.js';
 import { eq, and, gte, desc, SQL } from 'drizzle-orm';
 
+const CONTEXT_SAFETY_MARGIN = 0.60;
+const MAX_CANDIDATES = 20;
+const PROBATION_FAILURE_THRESHOLD = 3;
+const PROBATION_USAGE_THRESHOLD = 5;
+
+
 export interface ModelRequirements {
   minContext?: number;
   capabilities?: string[];
@@ -37,7 +43,7 @@ export class ModelSelector {
 
     // 60% Context Guard
     if (estimatedInputTokens) {
-        const safetyMarginContext = Math.ceil(estimatedInputTokens / 0.60);
+        const safetyMarginContext = Math.ceil(estimatedInputTokens / CONTEXT_SAFETY_MARGIN);
         if (safetyMarginContext > minContext) {
             minContext = safetyMarginContext;
             console.log(`[ModelSelector] Increased minContext to ${minContext} based on estimated input of ${estimatedInputTokens} (60% rule).`);
@@ -73,7 +79,7 @@ export class ModelSelector {
         ...capFilters
       ))
       .orderBy(desc(modelCapabilities.contextWindow))
-      .limit(20);
+      .limit(MAX_CANDIDATES);
 
     if (candidates.length === 0) {
       // Emergency Fallback
@@ -136,7 +142,7 @@ export class ModelSelector {
 
         // THE GUARD RAIL:
         // Only bench if they have failed > 3 times AND have tried at least 5 times.
-        if (failureCount > 3 && usageCount > 5) {
+        if (failureCount > PROBATION_FAILURE_THRESHOLD && usageCount > PROBATION_USAGE_THRESHOLD) {
             console.warn(`[ModelSelector] 🛑 Benching ${candidate.modelId} for ${role.id} (Failures: ${failureCount}, Usage: ${usageCount})`);
             continue; // Skip this candidate
         }

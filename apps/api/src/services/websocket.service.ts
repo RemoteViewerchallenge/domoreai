@@ -78,7 +78,7 @@ export class WebSocketService {
         ws.send(JSON.stringify({
           timestamp: new Date().toISOString(),
           type: 'info',
-          message: data.toString() + '\r\n\x1b[32m$ \x1b[0m' // Append prompt after output
+          message: `${data.toString()}\r\n\x1b[32m$ \x1b[0m` // Append prompt after output
         }));
       });
 
