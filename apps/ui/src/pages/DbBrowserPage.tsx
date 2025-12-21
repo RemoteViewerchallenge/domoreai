@@ -33,14 +33,16 @@ export const DbBrowserPage: React.FC = () => {
   // --- MUTATIONS ---
   const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
     onSuccess: (data) => {
-      alert(`Import Successful!\n${data.rowCount} rows processed into "${data.tableName}".`);
+      // eslint-disable-next-line react/no-unescaped-entities
+      alert(`Import Successful!\n${data.rowCount} rows processed into '${data.tableName}'.`);
       refetchTables();
       if (activeTable === data.tableName) refetchData();
       else setActiveTable(data.tableName);
       setShowImportModal(false);
       setPendingImportJson(null);
     },
-    onError: (error) => alert(`Import Failed: ${error.message}`)
+    // eslint-disable-next-line react/no-unescaped-entities
+    onError: (error) => alert(`Import Failed: '${error.message}'`)
   });
 
   const deleteTableMutation = trpc.dataRefinement.deleteTable.useMutation({

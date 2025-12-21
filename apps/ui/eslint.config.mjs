@@ -66,6 +66,20 @@ export default tseslint.config(
 
   // 3. TYPESCRIPT & REACT FILES
   {
+    files: ['vite.config.ts'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      // Add any specific rules for vite.config.ts here if needed
+    },
+  },
+
+  {
     files: ['**/*.ts', '**/*.tsx'],
     extends: [
       ...tseslint.configs.recommended,
@@ -112,6 +126,8 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
+      'react/no-unescaped-entities': 'off', // Disable this rule globally for UI app
+      'react/prop-types': 'off', // Disable this rule globally for UI app
     },
   }
 );

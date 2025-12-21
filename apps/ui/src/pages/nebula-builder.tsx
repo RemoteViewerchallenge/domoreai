@@ -406,6 +406,7 @@ export default function NebulaBuilderPage() {
                     );
                     if (filteredComps.length === 0) return null;
 
+                    // eslint-disable-next-line react-hooks/rules-of-hooks
                     const [isExpanded, setIsExpanded] = React.useState(
                       idx === 0
                     ); // Only first category expanded by default

@@ -413,6 +413,8 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
   }
 );
 
+NebulaRenderer.displayName = "NebulaRenderer";
+
 // Helper: Convert Layout object to Tailwind strings
 function resolveLayout(layout: NebulaNode["layout"]) {
   if (!layout) return "";

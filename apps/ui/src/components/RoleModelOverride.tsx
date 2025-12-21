@@ -75,6 +75,8 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
     ? `${role.hardcodedProviderId}/${role.hardcodedModelId}` 
     : '');
 
+  const escapeQuotes = (text: string) => text.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
   return (
     <div className="space-y-3">
       <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2 flex items-center gap-2">
@@ -96,7 +98,7 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {models.map((model: any) => (
                 <option key={model.id as string} value={`${model.providerId as string}/${model.id as string}`}>
-                  {model.name}
+                  {escapeQuotes(model.name)}
                 </option>
               ))}
             </optgroup>
