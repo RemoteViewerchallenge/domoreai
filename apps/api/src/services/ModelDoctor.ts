@@ -103,7 +103,7 @@ export class ModelDoctor {
     else if (lower.includes('8k')) context = 8192;
     // Attempt to grab from raw data if available
     else if (rawData && typeof rawData === 'object') {
-        const r = rawData as any;
+        const r = rawData;
         const c = r.context_window || r.context_length || r.max_context_length;
         if (c) context = parseInt(c);
     }

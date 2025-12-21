@@ -25,8 +25,8 @@ const AGENT_MAX_ATTEMPTS = 5; // Prevent infinite loops
 // Type extension for Role to include metadata fields
 interface ExtendedRole extends Role {
   metadata: {
-    template?: any;
-    memoryConfig?: any;
+    template?: Record<string, any>;
+    memoryConfig?: Record<string, any>;
     orchestrationConfig?: { 
       requiresCheck: boolean; 
       judgeRoleId?: string; 
@@ -394,7 +394,7 @@ export class AgentFactoryService implements IAgentFactory {
           constitution
       );
     } catch (error) {
-      console.warn(`[AgentFactory] PromptFactory failed for role \"${role.name}\". Falling back to simple role prompt load.`, error);
+      console.warn(`[AgentFactory] PromptFactory failed for role "${role.name}". Falling back to simple role prompt load.`, error);
       basePrompt = await loadRolePrompt(role.name);
     }
 

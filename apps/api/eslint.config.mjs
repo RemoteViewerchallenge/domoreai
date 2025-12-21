@@ -49,7 +49,22 @@ export default tseslint.config(
 
   // 3. TYPESCRIPT FILES (Strict Type Checking)
   {
+    files: ['tests/manual/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      // Add any specific rules for test files here if needed
+    },
+  },
+
+  {
     files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['tests/manual/**/*.ts', 'scripts/**/*.ts'],
     // Use the new tseslint utility to combine configs
     extends: [
       ...tseslint.configs.recommended,
@@ -57,7 +72,7 @@ export default tseslint.config(
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.json', './scripts/tsconfig.json'], // Adjust to your monorepo structure
+        project: ['./tsconfig.json'], // Adjust to your monorepo structure
         tsconfigRootDir: import.meta.dirname,
       },
     },

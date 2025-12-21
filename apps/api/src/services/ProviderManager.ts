@@ -6,6 +6,9 @@ import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
 import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
 
+const MS_PER_SECOND = 1000;
+
+
 interface RawSnapshotData extends LLMModel {
     [key: string]: unknown;
 }
@@ -23,7 +26,7 @@ export class ProviderManager implements IProviderManager {
   }
 
   public markUnhealthy(providerId: string, cooldownSeconds: number) {
-    this.unhealthyProviders.set(providerId, Date.now() + cooldownSeconds * 1000);
+    this.unhealthyProviders.set(providerId, Date.now() + cooldownSeconds * MS_PER_SECOND);
     console.warn(`[ProviderManager] Marked ${providerId} as unhealthy. Cooldown for ${cooldownSeconds}s.`);
   }
 
@@ -192,6 +195,7 @@ export class ProviderManager implements IProviderManager {
           console.error(`[ProviderManager] Failed to get a valid snapshot for ${providerLabel}.`);
           continue;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const models = snapshot.rawData as LLMModel[];
         console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}.`);
 
@@ -275,7 +279,7 @@ export class ProviderManager implements IProviderManager {
    * Helper to flatten provider data from a snapshot into a dynamic table.
    * The snapshotting part is now handled by RawModelService.
    */
-  private async flattenSnapshot(snapshotId: string, providerType: string, models: any[]) {
+  private async flattenSnapshot(snapshotId: string, providerType: string, models: RawSnapshotData[]) {
     // Flatten into a dynamic table. This is the critical step.
     // Table name convention: "{providerType}_models" (e.g. google_models)
     try {

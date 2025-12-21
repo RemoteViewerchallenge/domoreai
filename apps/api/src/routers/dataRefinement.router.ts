@@ -6,6 +6,8 @@ import { ModelDoctor } from '../services/ModelDoctor.js';
 import { spawn, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import TurndownService from 'turndown';
+import * as cheerio from 'cheerio';
 
 // Helper function to map SQL types to Prisma types
 function mapSqlTypeToPrisma(sqlType: string): string {
@@ -686,8 +688,6 @@ export const dataRefinementRouter = createTRPCRouter({
         modelDef += `}\n`;
 
         // Read current schema file
-        const fs = require('fs');
-        const path = require('path');
         const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
         let schemaContent = fs.readFileSync(schemaPath, 'utf8');
 

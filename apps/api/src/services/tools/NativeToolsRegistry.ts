@@ -17,7 +17,7 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
             name: themeEditorTool.name,
             handler: themeEditorTool.handler,
             description: themeEditorTool.description,
-            input_schema: themeEditorTool.inputSchema as any
+            input_schema: themeEditorTool.inputSchema
         },
         {
             name: nebulaTool.name,
@@ -29,7 +29,7 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
           name: typescriptInterpreterTool.name,
           handler: typescriptInterpreterTool.handler,
           description: typescriptInterpreterTool.description,
-          input_schema: typescriptInterpreterTool.inputSchema as any
+          input_schema: typescriptInterpreterTool.inputSchema
         },
         {
             name: 'read_file',

@@ -21,7 +21,7 @@ async function main() {
       console.log(`  Label: ${p.label}`);
       console.log(`  Type: ${p.type}`);
       console.log(`  Enabled: ${p.isEnabled}`);
-      console.log(`  Created: ${p.createdAt}`);
+      console.log(`  Created: ${p.createdAt.toISOString()}`);
       console.log('');
     });
     
