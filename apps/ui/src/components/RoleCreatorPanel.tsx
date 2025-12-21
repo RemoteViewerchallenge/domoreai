@@ -170,8 +170,39 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   }, [registryData]);
 
   const datacenterBreakdown = useMemo(() => {
-    return {} as Record<string, { matched: number; total: number }>;
-  }, []);
+    // Initialize breakdown
+    const stats: Record<string, { matched: number; total: number }> = {};
+    
+    if (!filteredModels || filteredModels.length === 0) return stats;
+
+    filteredModels.forEach((model: any) => {
+        const provider = model.provider_label || model.provider_id || 'Unknown';
+        
+        if (!stats[provider]) {
+            stats[provider] = { matched: 0, total: 0 };
+        }
+        
+        stats[provider].total += 1;
+
+        // "Matched" logic: Check if model meets current form criteria
+        let isMatch = true;
+        
+        // Context Window Check
+        const context = model.specs?.contextWindow || 0;
+        if (context < (formData.minContext || 0)) isMatch = false;
+        if (context > (formData.maxContext || 128000)) isMatch = false;
+
+        // Capabilities Check
+        if (formData.needsVision && !model.specs?.hasVision) isMatch = false;
+        if (formData.needsReasoning && !model.specs?.hasReasoning) isMatch = false;
+        
+        if (isMatch) {
+            stats[provider].matched += 1;
+        }
+    });
+
+    return stats;
+  }, [filteredModels, formData]); // Re-run when models or filters change
 
   const uniqueCategories = useMemo(() => {
     const categories = new Set<string>();

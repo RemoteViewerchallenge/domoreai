@@ -53,16 +53,23 @@ export class ProviderService {
   }
 
   async listAllAvailableModels() {
-    const models = await ProviderManager.getAllModels();
-
-    const providers = await db.query.providerConfigs.findMany({
-      columns: { id: true, label: true },
+    // We query the database, not the raw provider API
+    const models = await db.query.modelRegistry.findMany({
+      where: eq(modelRegistry.isActive, true),
+      with: {
+        provider: true,
+        capabilities: true
+      },
+      orderBy: (model, { desc }) => [desc(model.lastSeenAt)]
     });
-    const providerMap = new Map(providers.map((p) => [p.id, p.label]));
 
     return models.map((model) => ({
-      ...model,
-      providerLabel: providerMap.get(model.providerId || '') || model.providerId || 'unknown',
+      id: model.modelId, // The actual model ID string (e.g. "gpt-4")
+      name: model.modelName || model.modelId,
+      providerId: model.providerId,
+      providerLabel: model.provider.label,
+      // Include capabilities for UI hints if needed
+      contextWindow: model.capabilities?.contextWindow || 0
     }));
   }
 
