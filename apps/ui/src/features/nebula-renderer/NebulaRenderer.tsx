@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import type { NebulaTree, NebulaNode, Alignment } from "@repo/nebula";
 import { cn } from "../../lib/utils.js"; // Adapting to local UI utils
+import { SuperAiButton } from "../../components/ui/SuperAiButton.js";
+import { THEME_SCOPES } from "../../theme/design-tokens.js";
+import { Eye, EyeOff } from "lucide-react";
 
 // 1. The Component Registry (Map JSON 'type' to React Component)
 interface BaseProps {
@@ -21,7 +24,7 @@ interface IconProps extends BaseProps {
   size?: number | string;
 }
 
-const Registry: Record<string, React.FC<any>> = {
+const Registry: Record<string, React.ComponentType<any>> = { // eslint-disable-line @typescript-eslint/no-explicit-any
   Box: ({ className, children, ...props }: BaseProps) => (
     <div className={className} {...props}>
       {children}
@@ -45,7 +48,6 @@ const Registry: Record<string, React.FC<any>> = {
       </button>
     );
   },
-  // Native HTML Mappings
   h1: ({ className, children, ...props }: BaseProps) => (
     <h1 className={cn("text-2xl font-bold", className)} {...props}>
       {children}
@@ -99,8 +101,6 @@ const Registry: Record<string, React.FC<any>> = {
   option: ({ children, ...props }: BaseProps) => (
     <option {...props}>{children}</option>
   ),
-
-  // Custom / Icon placeholder
   Icon: ({ className, size = 16 }: IconProps) => (
     <div
       className={cn(
@@ -117,73 +117,95 @@ const Registry: Record<string, React.FC<any>> = {
 interface RendererProps {
   tree: NebulaTree;
   nodeId?: string; // Entry point, defaults to root
-  componentMap?: Record<string, React.FC<any>>;
+  componentMap?: Record<string, React.ComponentType<any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
   dataContext?: Record<string, unknown>; // Data context for bindings and logic
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string) => void;
 }
 
+// A Context to toggle AI Buttons globally
+export const NebulaContext = React.createContext({
+  showAiOverlay: false,
+  toggleAiOverlay: () => {},
+});
+
+export const NebulaRendererRoot: React.FC<RendererProps> = ({ 
+  tree, 
+  componentMap,
+  dataContext,
+  selectedNodeId,
+  onSelectNode 
+}) => {
+  const [showAiOverlay, setShowAiOverlay] = useState(false); // Default OFF
+
+  return (
+    <NebulaContext.Provider value={{ showAiOverlay, toggleAiOverlay: () => setShowAiOverlay(!showAiOverlay) }}>
+      
+      {/* GLOBAL TOGGLE (Fixed to bottom-left of screen, always visible in Editor) */}
+      <div className="fixed bottom-4 left-4 z-[99999] flex gap-2">
+         <button 
+           onClick={() => setShowAiOverlay(!showAiOverlay)}
+           className={cn(
+             "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-xl transition-all border",
+             showAiOverlay 
+               ? "bg-purple-600 text-white border-purple-400" 
+               : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
+           )}
+         >
+           {showAiOverlay ? <Eye size={14}/> : <EyeOff size={14}/>}
+           {showAiOverlay ? "AI HUD: ON" : "AI HUD: OFF"}
+         </button>
+      </div>
+
+      {/* RENDERER START */}
+      <div className={cn("w-full h-full relative", THEME_SCOPES.app)}>
+         <NebulaRenderer 
+           tree={tree} 
+           nodeId={tree.rootId} 
+           componentMap={componentMap}
+           dataContext={dataContext}
+           selectedNodeId={selectedNodeId}
+           onSelectNode={onSelectNode}
+         />
+      </div>
+
+    </NebulaContext.Provider>
+  );
+};
+
 export const NebulaRenderer: React.FC<RendererProps> = React.memo(
   ({
     tree,
-
     nodeId = tree.rootId,
-
     componentMap = Registry,
-
-    dataContext = {},
-
+    dataContext = {} as Record<string, unknown>,
     selectedNodeId,
-
     onSelectNode,
   }) => {
     const node = tree.nodes[nodeId];
-
-    console.log(
-      "[NebulaRenderer] Rendering node:",
-      node?.id,
-      node?.type,
-      "children:",
-      node?.children?.length || 0
-    );
-
-    // Prevent rendering of empty text nodes
-
-    if (
-      node?.type === "Text" &&
-      (!node.props.content || !node.props.content.trim())
-    ) {
-      return null;
-    }
+    const { showAiOverlay } = React.useContext(NebulaContext);
 
     if (!node) {
       console.log("[NebulaRenderer] Node not found:", nodeId);
       return null;
     }
 
-    console.log(
-      "[NebulaRenderer] Rendering node:",
-      node.id,
-      node.type,
-      "children:",
-      node.children.length
-    );
-
-    // --- LOGIC: LOOPS ---
+    if (
+      node.type === "Text" &&
+      (!node.props.content || !node.props.content.trim())
+    ) {
+      return null;
+    }
 
     if (node.type === "Loop" && node.logic) {
       const items = getNestedValue(dataContext, node.logic.loopData || "", []);
 
       return (
         <>
-          {items.map((item: unknown, index: number) => {
-            // Create new context with iterator variable
-
+          {(items as unknown[]).map((item, index) => {
             const newContext = {
               ...dataContext,
-
               [node.logic!.iterator || "item"]: item,
-
               index,
             };
 
@@ -202,8 +224,6 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
         </>
       );
     }
-
-    // --- LOGIC: CONDITIONS ---
 
     if (node.type === "Condition" && node.logic) {
       const conditionValue = evaluateCondition(
@@ -225,16 +245,11 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
       ) : null;
     }
 
-    // --- CUSTOM COMPONENTS (Black Box) ---
-
     if (node.type === "Component" && node.componentName) {
       const CustomComponent = componentMap[node.componentName];
 
       if (CustomComponent) {
-        // Resolve bindings for props
-
         const resolvedProps = resolveBindings(node, dataContext);
-
         return <CustomComponent {...resolvedProps} />;
       }
 
@@ -245,15 +260,10 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
       );
     }
 
-    // --- STANDARD PRIMITIVES ---
-
     const Component = componentMap[node.type];
-
     const isFallback = false;
 
     if (!Component) {
-      console.warn(`[NebulaRenderer] Missing component: ${node.type}`);
-      // Render fallback gracefully
       return (
         <div className="border border-dashed border-yellow-300 bg-yellow-50 p-2">
           <span className="text-xs text-yellow-700">Missing: {node.type}</span>
@@ -261,66 +271,30 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
       );
     }
 
-    // Resolve Tailwind Classes from Tokens
-
     const layoutClasses = resolveLayout(node.layout);
-
     const styleClasses = resolveStyles(node.style);
-
     const combinedClasses = cn(
       layoutClasses,
       styleClasses,
-      node.props.className
+      node.props.className as string
     );
 
-    // Resolve bindings in props
-
     const resolvedProps = resolveBindings(node, dataContext);
-
-    // Sanitize props: Prevent React from crashing if 'style' is a string
-
     const sanitizedProps = { ...resolvedProps };
-
-    // Remove 'key' prop - React handles this separately
-
     delete sanitizedProps.key;
-
-    // Remove style if it's a string
 
     if (typeof sanitizedProps.style === "string") {
       delete sanitizedProps.style;
     }
 
-    // Remove event handlers that are strings (from JSX parsing)
-
-    // These can't be executed anyway since they're not real functions
-
     Object.keys(sanitizedProps).forEach((key) => {
       if (key.startsWith("on") && typeof sanitizedProps[key] === "string") {
-        console.warn(`[NebulaRenderer] Removing string event handler: ${key}="${sanitizedProps[
-          key
-        ].substring(0, 50)}..."
-
-`);
-
         delete sanitizedProps[key];
       }
     });
 
     const VOID_ELEMENTS = [
-      "input",
-      "img",
-      "br",
-      "hr",
-      "meta",
-      "link",
-      "area",
-      "base",
-      "col",
-      "embed",
-      "source",
-      "track",
-      "wbr",
+      "input", "img", "br", "hr", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr",
     ];
 
     const isVoid = VOID_ELEMENTS.includes(node.type.toLowerCase());
@@ -351,7 +325,7 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
                 onSelectNode={onSelectNode}
               />
             ))
-          : node.props.children}
+          : (node.props.children as React.ReactNode)}
       </>
     );
 
@@ -360,7 +334,6 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
         {...sanitizedProps}
         className={cn(
           combinedClasses,
-
           isFallback &&
             "border-2 border-dashed border-red-400 overflow-hidden relative"
         )}
@@ -371,7 +344,6 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
         {...sanitizedProps}
         className={cn(
           combinedClasses,
-
           isFallback &&
             "border-2 border-dashed border-red-400 overflow-hidden relative"
         )}
@@ -381,17 +353,39 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
       </Component>
     );
 
+    // Resolving Styles using tokens if needed
+    // Note: The UI builder might already be providing these as classes
+    // But we ensure the ghost layer sits above.
+
+    const finalContent = (
+      <div className="relative group/node">
+        {content}
+
+        {/* 2. AI OVERLAY (Only renders if Toggle is ON) */}
+        {showAiOverlay && (
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-[50] outline outline-1 outline-dashed outline-purple-500/30">
+            {/* The Button - Forced Top-Left and Pointer-Events-Auto */}
+            <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-[9999]">
+              <SuperAiButton 
+                contextId={node.id}
+                side="right" // Expands to the right so it doesn't go off-screen
+                className="scale-75 shadow-2xl" 
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+
     if (onSelectNode) {
       return (
         <div
           className={cn(
             "relative group/nebula",
-
             isSelected && "ring-2 ring-blue-500 ring-offset-2 z-50 rounded"
           )}
           onClick={(e) => {
             e.stopPropagation();
-
             onSelectNode(node.id);
           }}
         >
@@ -403,24 +397,21 @@ export const NebulaRenderer: React.FC<RendererProps> = React.memo(
               </span>
             </div>
           )}
-
-          {content}
+          {finalContent}
         </div>
       );
     }
 
-    return content;
+    return finalContent;
   }
 );
 
 NebulaRenderer.displayName = "NebulaRenderer";
 
-// Helper: Convert Layout object to Tailwind strings
 function resolveLayout(layout: NebulaNode["layout"]) {
   if (!layout) return "";
   const classes = [];
 
-  // Mode
   if (layout.mode === "flex") {
     classes.push("flex");
     if (layout.direction === "column") classes.push("flex-col");
@@ -436,12 +427,9 @@ function resolveLayout(layout: NebulaNode["layout"]) {
     if (layout.wrap) classes.push("flex-wrap");
   } else if (layout.mode === "grid") {
     classes.push("grid");
-
-    // Simple columns support only
     if (layout.columns) {
       classes.push(`grid-cols-${layout.columns}`);
     }
-
     classes.push(mapAlignment(layout.justify, "justify"));
     classes.push(mapAlignment(layout.align, "items"));
   } else if (layout.mode === "absolute") {
@@ -481,16 +469,12 @@ function resolveStyles(style: NebulaNode["style"]) {
     .join(" ");
 }
 
-/**
- * Resolve data bindings in node props
- */
 function resolveBindings(
   node: NebulaNode,
-  dataContext: Record<string, any>
-): Record<string, any> {
-  const resolvedProps = { ...node.props };
+  dataContext: Record<string, unknown>
+): Record<string, unknown> {
+  const resolvedProps = { ...node.props } as Record<string, unknown>;
 
-  // Apply bindings
   if (node.bindings && node.bindings.length > 0) {
     node.bindings.forEach((binding) => {
       const value = getNestedValue(
@@ -505,44 +489,32 @@ function resolveBindings(
   return resolvedProps;
 }
 
-/**
- * Get nested value from object using dot notation path
- * Example: getNestedValue({ user: { name: 'John' } }, 'user.name') => 'John'
- */
 function getNestedValue(
-  obj: Record<string, any>,
+  obj: Record<string, unknown>,
   path: string,
-  defaultValue: any = undefined
-): any {
+  defaultValue: unknown = undefined
+): unknown {
   if (!path) return defaultValue;
 
   const keys = path.split(".");
-  let current = obj;
+  let current: unknown = obj;
 
   for (const key of keys) {
-    if (current === null || current === undefined) {
+    if (current && typeof current === "object" && key in current) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
       return defaultValue;
     }
-    current = current[key];
   }
 
   return current !== undefined ? current : defaultValue;
 }
 
-/**
- * Evaluate a simple condition string
- * Supports basic property access and truthiness checks
- * Example: "props.isActive" or "user.isAdmin"
- */
 function evaluateCondition(
   condition: string,
-  dataContext: Record<string, any>
+  dataContext: Record<string, unknown>
 ): boolean {
   if (!condition) return false;
-
-  // Simple property access evaluation
   const value = getNestedValue(dataContext, condition, false);
-
-  // Convert to boolean
   return Boolean(value);
 }

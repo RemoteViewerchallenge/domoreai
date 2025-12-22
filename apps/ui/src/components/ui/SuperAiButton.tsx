@@ -24,7 +24,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   contextId, 
   className, 
   expandUp = false,
-  side = 'left', // Default to left per user request to avoid off-screen overflow
+  side = 'right', // CHANGE DEFAULT TO RIGHT (expands into the screen)
   onGenerate,
   defaultPrompt = ''
 }) => {
@@ -183,10 +183,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            style={side === 'left' ? { right: 16 } : { left: 16 }}
+            style={side === 'left' ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }} // Push OUT, not OVER
             className={cn(
-               "absolute top-0 h-8 flex items-center bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-primary)]/50 overflow-hidden shadow-[0_0_20px_rgba(var(--color-primary),0.3)] z-[1000]",
-               side === 'left' ? "rounded-l-full pr-6 pl-2" : "rounded-r-full pl-6 pr-2"
+               "absolute top-0 h-8 flex items-center bg-zinc-900/95 backdrop-blur border border-purple-500/50 shadow-2xl z-[9999] min-w-[300px]",
+               side === 'left' ? "rounded-l-full pr-4 pl-2" : "rounded-r-full pl-4 pr-2"
             )}
           >
             {/* If Left Side: Input first, then button */}
@@ -241,7 +241,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                className="bg-[var(--color-background-secondary)]/95 backdrop-blur-md border border-[var(--color-border)] p-1 rounded-lg shadow-2xl min-w-[160px]"
+                className={cn(
+                   "bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden z-[9999] min-w-[160px]",
+                   side === 'left' ? "right-0" : "left-0" // Align to the edge of the button
+                )}
             >
                 <div className="grid grid-cols-3 gap-1">
                 <MenuButton 

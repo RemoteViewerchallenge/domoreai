@@ -175,6 +175,12 @@ export class PersistentModelDoctor {
           missingFields['maxOutput'] = (missingFields['maxOutput'] || 0) + 1;
           isComplete = false;
         }
+
+        // [NEW] Confidence Check: If we only have heuristics, we are not "Done"
+        if ((model.capabilities as any).confidence === 'low') {
+          missingFields['low_confidence'] = (missingFields['low_confidence'] || 0) + 1;
+          isComplete = false;
+        }
       }
 
       // Pricing is optional - don't check it

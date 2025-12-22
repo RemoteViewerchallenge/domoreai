@@ -101,6 +101,10 @@ model ModelCapabilities {
   requestsPerMinute Int?
   tokensPerMinute   Int?
 
+  // Metadata
+  confidence        String?  @default("low")
+  source            String?  @default("heuristic")
+
   updatedAt   DateTime @updatedAt
 }
 

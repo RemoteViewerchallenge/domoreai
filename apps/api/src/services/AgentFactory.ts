@@ -292,10 +292,10 @@ export class AgentFactoryService implements IAgentFactory {
             const created = await this.configRepo.createRole({
                 id: gw.id,
                 name: gw.name || 'General Worker',
-                category: gw.category || 'Utility',
+                categoryString: gw.category || 'Utility',
                 basePrompt: gw.basePrompt || 'You are a versatile AI assistant.',
                 tools: gw.tools || [],
-            });
+            } as any);
             role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
             cardConfig.roleId = 'general_worker';
             console.log('[AgentFactory] Seeded general_worker role from roles.json');

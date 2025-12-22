@@ -81,6 +81,10 @@ export const modelCapabilities = pgTable('ModelCapabilities', {
   requestsPerMinute: integer('requestsPerMinute'),
   tokensPerMinute: integer('tokensPerMinute'),
   
+  // Metadata
+  confidence: text('confidence').default('low'), // 'low', 'medium', 'high'
+  source: text('source').default('heuristic'),     // 'heuristic', 'ai_research', 'manual'
+  
   updatedAt: timestamp('updatedAt').defaultNow(),
 });
 

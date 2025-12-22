@@ -8,6 +8,10 @@ import SuperJSON from 'superjson';
 
 import App from './App.js';
 import { trpc } from './utils/trpc.js';
+import { injectThemeScopes } from './theme/design-tokens.js';
+
+// Initialize Theme Scopes
+injectThemeScopes();
 
 const queryClient = new QueryClient();
 const trpcClient = trpc.createClient({
