@@ -31,7 +31,8 @@ export class ModelDoctor {
     if (!model) return;
 
     // Skip if already high confidence and not forced
-    if (!forceResearch && (model as any).capabilities?.confidence === 'high') {
+    const modelWithCaps = model as typeof modelRegistry.$inferSelect & { capabilities?: { confidence?: string } };
+    if (!forceResearch && modelWithCaps.capabilities?.confidence === 'high') {
         console.log(`[ModelDoctor] ⏩ ${model.modelName} already has high-confidence data, skipping.`);
         return;
     }
@@ -114,7 +115,7 @@ export class ModelDoctor {
   }
 
   // 3. Heuristic Fallback
-  public inferSpecs(modelId: string, rawData: any): SpecsResult {
+  public inferSpecs(modelId: string, rawData: unknown): SpecsResult {
     const lower = modelId.toLowerCase();
     
     let context = 0;
@@ -122,12 +123,14 @@ export class ModelDoctor {
     let confidence: 'low' | 'medium' | 'high' = 'low';
     
     if (rawData && typeof rawData === 'object') {
+        const raw = rawData as Record<string, unknown>;
         const ctxKeys = ['context_window', 'context_length', 'max_context_length', 'contextWindow', 'max_tokens', 'max_context_tokens'];
         const outKeys = ['max_output_tokens', 'max_tokens', 'output_token_limit', 'max_completion_tokens'];
 
         for (const key of ctxKeys) {
-            if (rawData[key]) {
-                const val = typeof rawData[key] === 'number' ? rawData[key] : parseInt(rawData[key]);
+            const item = raw[key];
+            if (item) {
+                const val = typeof item === 'number' ? item : parseInt(item as string);
                 if (!isNaN(val) && val > 0) {
                     context = val;
                     confidence = 'medium'; // Metadata is better than name guessing
@@ -137,8 +140,9 @@ export class ModelDoctor {
         }
 
         for (const key of outKeys) {
-            if (rawData[key]) {
-                const val = typeof rawData[key] === 'number' ? rawData[key] : parseInt(rawData[key]);
+            const item = raw[key];
+            if (item) {
+                const val = typeof item === 'number' ? item : parseInt(item as string);
                 if (!isNaN(val) && val > 0) {
                     maxOut = val;
                     break;
@@ -183,10 +187,10 @@ export class ModelDoctor {
   }
 
   // 4. Database Writer
-  public async saveKnowledge(model: any, data: ResearchData, source: string, confidence: string) {
+  public async saveKnowledge(model: typeof modelRegistry.$inferSelect, data: ResearchData, source: string, confidence: string) {
     await db.insert(modelCapabilities)
       .values({
-        id: uuidv4(),
+        id: uuidv4() as string,
         modelId: model.id,
         contextWindow: data.contextWindow || 4096,
         maxOutput: data.maxOutput || 4096,
@@ -227,6 +231,6 @@ export class ModelDoctor {
      return { healed: allModels.length, inferred: 0, researched: 0, failed: 0, skipped: 0 };
   }
   
-  public async heal<T>(data: T, _schema: any): Promise<T> { return data; }
+  public heal<T>(data: T, _schema: unknown): T { return data; }
   async healCapabilities() { return this.healModels(); }
 }

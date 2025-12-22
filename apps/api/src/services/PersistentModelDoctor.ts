@@ -177,7 +177,8 @@ export class PersistentModelDoctor {
         }
 
         // [NEW] Confidence Check: If we only have heuristics, we are not "Done"
-        if ((model.capabilities as any).confidence === 'low') {
+        const capabilities = model.capabilities as (typeof model.capabilities & { confidence: string });
+        if (capabilities.confidence === 'low') {
           missingFields['low_confidence'] = (missingFields['low_confidence'] || 0) + 1;
           isComplete = false;
         }

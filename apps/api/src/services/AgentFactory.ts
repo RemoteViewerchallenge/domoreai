@@ -1,7 +1,8 @@
 import { AssessmentService } from "./AssessmentService.js";
 import { PromptFactory, loadRolePrompt } from "./PromptFactory.js";
 import { PrismaLessonProvider } from "./PrismaLessonProvider.js";
-import { Role } from "@prisma/client";
+import { Role, Model, Prisma } from "@prisma/client";
+import { ModelDef } from "../interfaces/IAgentConfigRepository.js";
 
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
@@ -24,16 +25,17 @@ const AGENT_MAX_ATTEMPTS = 5; // Prevent infinite loops
 
 // Type extension for Role to include metadata fields
 interface ExtendedRole extends Role {
-  metadata: {
-    template?: Record<string, any>;
-    memoryConfig?: Record<string, any>;
-    orchestrationConfig?: { 
-      requiresCheck: boolean; 
-      judgeRoleId?: string; 
-      minPassScore: number 
-    };
-    [key: string]: any;
-  } | null;
+  metadata: Prisma.JsonObject | null;
+}
+
+interface RoleMetadata extends Prisma.JsonObject {
+  template?: Prisma.JsonObject;
+  memoryConfig?: Prisma.JsonObject;
+  orchestrationConfig?: { 
+    requiresCheck: boolean; 
+    judgeRoleId?: string; 
+    minPassScore: number 
+  };
 }
 
 // A simple wrapper ensuring the Agent has a standard .generate() interface
@@ -126,7 +128,8 @@ export class VolcanoAgent implements IAgent {
         // Add backoff for rate limits and server errors
         const status = err.status;
         if (status === 429 || status === 500) {
-          const retryAfter = err.headers?.get?.('retry-after') || String(DEFAULT_RETRY_SECONDS);
+          const headers = err.headers as Record<string, string> | undefined;
+          const retryAfter = headers?.['retry-after'] || String(DEFAULT_RETRY_SECONDS);
           const waitSeconds = Math.min(parseInt(retryAfter, 10) || DEFAULT_RETRY_SECONDS, MAX_RETRY_WAIT);
           console.log(`[VolcanoAgent] Encountered ${status} error. Waiting ${waitSeconds}s before failover.`);
           await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
@@ -187,7 +190,7 @@ export class VolcanoAgent implements IAgent {
 
 export class AgentFactoryService implements IAgentFactory {
   // Static cache to prevent disk spamming
-  private static cachedRoles: any[] | null = null;
+  private static cachedRoles: Record<string, unknown>[] | null = null;
 
   constructor(
     private providerManager: IProviderManager,
@@ -258,10 +261,11 @@ export class AgentFactoryService implements IAgentFactory {
     let role: ExtendedRole | null = null;
     
     if (rawRole) {
-      role = { ...rawRole, metadata: (rawRole as any).metadata || {} } as ExtendedRole;
-      const template = role.metadata?.template || (rawRole as any).template;
+      const metadata = (rawRole.metadata as unknown as RoleMetadata) || {};
+      role = { ...rawRole, metadata: metadata as unknown as Prisma.JsonObject } as ExtendedRole;
+      const template = metadata.template || (rawRole as any).template;
       if (template) {
-         role = { ...role, ...template, metadata: { ...role.metadata, ...template } };
+         role = { ...role, ...template, metadata: { ...metadata, ...template } as unknown as Prisma.JsonObject } as ExtendedRole;
       }
     }
 
@@ -269,7 +273,8 @@ export class AgentFactoryService implements IAgentFactory {
     if (!role && cardConfig.roleId !== 'general_worker') {
       const rawGw = await this.configRepo.getRole('general_worker');
       if (rawGw) {
-        role = { ...rawGw, metadata: (rawGw as any).metadata || {} } as ExtendedRole;
+        const metadata = (rawGw.metadata as unknown as RoleMetadata) || {};
+        role = { ...rawGw, metadata: metadata as unknown as Prisma.JsonObject } as ExtendedRole;
         cardConfig.roleId = 'general_worker';
       }
     }
@@ -281,21 +286,21 @@ export class AgentFactoryService implements IAgentFactory {
             const path = await import('node:path');
             const rolesPath = path.join(process.cwd(), 'packages', 'coc', 'agents', 'roles.json');
             const raw = await fs.readFile(rolesPath, 'utf-8');
-            AgentFactoryService.cachedRoles = JSON.parse(raw);
+            AgentFactoryService.cachedRoles = JSON.parse(raw) as Record<string, unknown>[];
         }
 
         const list = AgentFactoryService.cachedRoles || [];
-        const gw = list.find((r: any) => r.id === 'general_worker');
+        const gw = list.find((r) => r.id === 'general_worker');
 
         if (gw) {
           try {
             const created = await this.configRepo.createRole({
-                id: gw.id,
-                name: gw.name || 'General Worker',
-                categoryString: gw.category || 'Utility',
-                basePrompt: gw.basePrompt || 'You are a versatile AI assistant.',
-                tools: gw.tools || [],
-            } as any);
+                id: gw.id as string,
+                name: (gw.name as string) || 'General Worker',
+                categoryString: (gw.category as string) || 'Utility',
+                basePrompt: (gw.basePrompt as string) || 'You are a versatile AI assistant.',
+                tools: (gw.tools as string[]) || [],
+            });
             role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
             cardConfig.roleId = 'general_worker';
             console.log('[AgentFactory] Seeded general_worker role from roles.json');
@@ -312,7 +317,7 @@ export class AgentFactoryService implements IAgentFactory {
       throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
     }
 
-      let model: any;
+      let model: Model | null = null;
       let effectiveConfig: { modelId: string; temperature?: number; maxTokens?: number } = { modelId: '' };
 
     // 2. Model Resolution Strategy
@@ -320,7 +325,7 @@ export class AgentFactoryService implements IAgentFactory {
       const bestModel = await getBestModel(cardConfig.roleId);
       if (!bestModel) throw new Error("Orchestrator failed to select a model for this agent.");
 
-      model = bestModel.model;
+      model = bestModel.model as Model;
       effectiveConfig = {
           modelId: bestModel.modelId,
           temperature: bestModel.temperature,
@@ -343,11 +348,15 @@ export class AgentFactoryService implements IAgentFactory {
       if (modelDef && !model) {
           console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
           try {
-              model = await this.configRepo.createModel(modelDef as any);
+              model = await this.configRepo.createModel(modelDef);
           } catch (createError) {
                console.error(`[AgentFactory] JIT Creation failed:`, createError);
                throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
           }
+      }
+      
+      if (!model) {
+        throw new Error(`Model '${cardConfig.modelId}' could not be resolved.`);
       }
       
       effectiveConfig = {
@@ -358,6 +367,9 @@ export class AgentFactoryService implements IAgentFactory {
     }
 
     // 3. Configure & Validate Parameters
+    if (!model) {
+      throw new Error(`Runtime Error: Model could not be resolved.`);
+    }
     const [safeParams, _adjustments] = await ModelConfigurator.configure(model, role, effectiveConfig);
 
     // 4. Initialize Provider
@@ -382,13 +394,14 @@ export class AgentFactoryService implements IAgentFactory {
 
       const lessonProvider = new PrismaLessonProvider();
       const promptFactory = new PromptFactory(lessonProvider);
-      const memoryConfig = role.metadata?.memoryConfig || (rawRole as any)?.memoryConfig;
+      const metadata = (role.metadata as unknown as RoleMetadata) || {};
+      const memoryConfig = metadata.memoryConfig || (rawRole as ExtendedRole | null)?.metadata?.memoryConfig;
 
       const tools = cardConfig.tools || role.tools;
       basePrompt = await promptFactory.build(
           role.name,
           cardConfig.userGoal || '',
-          memoryConfig,
+          memoryConfig as { useProjectMemory: boolean } | undefined,
           tools,
           cardConfig.projectPrompt,
           constitution
@@ -398,7 +411,8 @@ export class AgentFactoryService implements IAgentFactory {
       basePrompt = await loadRolePrompt(role.name);
     }
 
-    const orchestrationConfig = role.metadata?.orchestrationConfig || (rawRole as any)?.orchestrationConfig;
+    const metadata = (role.metadata as unknown as RoleMetadata) || {};
+    const orchestrationConfig = metadata.orchestrationConfig || (rawRole as ExtendedRole | null)?.metadata?.orchestrationConfig;
 
     return new VolcanoAgent(
       provider,
@@ -411,7 +425,7 @@ export class AgentFactoryService implements IAgentFactory {
       role.id,
       this.providerManager,
       this.configRepo,
-      orchestrationConfig
+      orchestrationConfig as { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number } | undefined
     );
   }
 }
