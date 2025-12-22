@@ -55,7 +55,7 @@ export const orchestratorRouter = createTRPCRouter({
 
       // 2. Get Columns
       try {
-        const columns = await ctx.prisma.$queryRawUnsafe<any[]>(
+        const columns = await ctx.prisma.$queryRawUnsafe<Record<string, unknown>[]>(
           `SELECT column_name as name, data_type as type 
            FROM information_schema.columns 
            WHERE table_name = '${tableName}' 
@@ -172,7 +172,7 @@ export const orchestratorRouter = createTRPCRouter({
       try {
         const content = await fs.readFile(filePath, 'utf-8');
         return { content };
-      } catch (e) {
+      } catch {
         return { content: null };
       }
     }),
@@ -207,7 +207,7 @@ export const orchestratorRouter = createTRPCRouter({
       contextId: z.string().optional(),
       roleId: z.string().optional(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input, ctx: _ctx }) => {
       console.log(`🚀 [Orchestrator] Dispatching command:`, {
         prompt: input.prompt.substring(0, 100),
         contextId: input.contextId,

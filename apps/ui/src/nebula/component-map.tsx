@@ -33,15 +33,16 @@ import * as Icons from "lucide-react";
 
 // The "Nebula" wrapper for Icons to handle dynamic naming
 interface DynamicIconProps {
-  name: string;
+  name?: string;
   [key: string]: unknown;
 }
 
 const DynamicIcon = ({ name, ...props }: DynamicIconProps) => {
   const Icon =
-    (Icons as unknown as Record<string, React.FC<DynamicIconProps>>)[name] ||
-    Icons.HelpCircle;
-  return <Icon name={name} {...props} />;
+    (Icons as unknown as Record<string, React.FC<any>>)[ // eslint-disable-line @typescript-eslint/no-explicit-any
+      name || "HelpCircle"
+    ] || Icons.HelpCircle;
+  return <Icon {...props} />;
 };
 
 interface NebulaCompProps {
@@ -52,7 +53,7 @@ interface NebulaCompProps {
   [key: string]: unknown;
 }
 
-export const NebulaComponentMap: Record<string, React.FC<any>> = {
+export const NebulaComponentMap: Record<string, React.ComponentType<Record<string, unknown>>> = {
   // Primitives
   Box: ({ className, children, ...props }: NebulaCompProps) => (
     <div className={className} {...props}>
@@ -108,19 +109,19 @@ export const NebulaComponentMap: Record<string, React.FC<any>> = {
   },
 
   // ShadCN Components (Mapped)
-  Button: Button as React.FC<any>,
-  Input: Input as React.FC<any>,
-  Badge: Badge as React.FC<any>,
-  ScrollArea: ScrollArea as React.FC<any>,
-  Label: Label as React.FC<any>,
-  Slider: Slider as React.FC<any>,
-  Textarea: Textarea as React.FC<any>,
+  Button: Button as React.ComponentType<Record<string, unknown>>,
+  Input: Input as React.ComponentType<Record<string, unknown>>,
+  Badge: Badge as React.ComponentType<Record<string, unknown>>,
+  ScrollArea: ScrollArea as React.ComponentType<Record<string, unknown>>,
+  Label: Label as React.ComponentType<Record<string, unknown>>,
+  Slider: Slider as React.ComponentType<Record<string, unknown>>,
+  Textarea: Textarea as React.ComponentType<Record<string, unknown>>,
 
   // Tabs
-  Tabs: Tabs as React.FC<any>,
-  TabsList: TabsList as React.FC<any>,
-  TabsTrigger: TabsTrigger as React.FC<any>,
-  TabsContent: TabsContent as React.FC<any>,
+  Tabs: Tabs as unknown as React.ComponentType<Record<string, unknown>>,
+  TabsList: TabsList as unknown as React.ComponentType<Record<string, unknown>>,
+  TabsTrigger: TabsTrigger as unknown as React.ComponentType<Record<string, unknown>>,
+  TabsContent: TabsContent as unknown as React.ComponentType<Record<string, unknown>>,
 
   // Composites - Already defined above as imports
   // Card: Card as React.FC<any>,
@@ -131,16 +132,16 @@ export const NebulaComponentMap: Record<string, React.FC<any>> = {
   // CardFooter: CardFooter as React.FC<any>,
 
   // AI Components
-  AiButton: AiButton as React.FC<any>,
-  SuperAiButton: SuperAiButton as React.FC<any>,
+  AiButton: AiButton as unknown as React.ComponentType<Record<string, unknown>>,
+  SuperAiButton: SuperAiButton as unknown as React.ComponentType<Record<string, unknown>>,
 
   // Containers & Overlays
-  Panel: Panel as React.FC<any>,
-  Dialog: Dialog as React.FC<any>,
-  DialogTrigger: DialogTrigger as React.FC<any>,
-  DialogContent: DialogContent as React.FC<any>,
-  DialogHeader: DialogHeader as React.FC<any>,
-  DialogTitle: DialogTitle as React.FC<any>,
+  Panel: Panel as unknown as React.ComponentType<Record<string, unknown>>,
+  Dialog: Dialog as unknown as React.ComponentType<Record<string, unknown>>,
+  DialogTrigger: DialogTrigger as unknown as React.ComponentType<Record<string, unknown>>,
+  DialogContent: DialogContent as unknown as React.ComponentType<Record<string, unknown>>,
+  DialogHeader: DialogHeader as unknown as React.ComponentType<Record<string, unknown>>,
+  DialogTitle: DialogTitle as unknown as React.ComponentType<Record<string, unknown>>,
 
   // FlyonUI (Base Mappings)
   btn: ({ className, type, ...props }: NebulaCompProps) => (
@@ -164,14 +165,14 @@ export const NebulaComponentMap: Record<string, React.FC<any>> = {
   ),
 
   // System Components (Black Box Features)
-  DatabaseBrowser: DatabaseBrowser as React.FC<any>,
-  XtermTerminal: (props: any) => (
+  DatabaseBrowser: DatabaseBrowser as React.ComponentType<Record<string, unknown>>,
+  XtermTerminal: (props: Record<string, unknown>) => (
     <XtermTerminal logs={[]} onInput={() => {}} {...props} />
   ),
-  MonacoEditor: (props: any) => (
-    <MonacoEditor content="" onChange={() => {}} {...props} />
+  MonacoEditor: (props: Record<string, unknown>) => (
+    <MonacoEditor value="" onChange={() => {}} {...props} />
   ),
-  TipTapEditor: (props: any) => (
+  TipTapEditor: (props: Record<string, unknown>) => (
     <SmartEditor
       fileName="document.md"
       content=""
@@ -179,11 +180,11 @@ export const NebulaComponentMap: Record<string, React.FC<any>> = {
       {...props}
     />
   ),
-  ErrorBoundary: ErrorBoundary as unknown as React.FC<any>,
+  ErrorBoundary: ErrorBoundary as unknown as React.ComponentType<Record<string, unknown>>,
 
   // Special
-  Icon: DynamicIcon,
-  Image: ({ src, alt, className, ...props }: any) => (
-    <img src={src} alt={alt} className={className} {...props} />
+  Icon: DynamicIcon as unknown as React.ComponentType<Record<string, unknown>>,
+  Image: ({ src, alt, className, ...props }: Record<string, unknown>) => (
+    <img src={src as string} alt={alt as string} className={className as string} {...props} />
   ),
 };

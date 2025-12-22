@@ -1,11 +1,14 @@
 import path from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import monaco from 'vite-plugin-monaco-editor'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const monacoEditorPlugin = require('vite-plugin-monaco-editor').default
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), monaco({})],
+  plugins: [react(), monacoEditorPlugin({})],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

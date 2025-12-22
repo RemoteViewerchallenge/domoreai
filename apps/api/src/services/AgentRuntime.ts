@@ -66,6 +66,7 @@ export class AgentRuntime {
 
     // INJECT LOCAL PROTOCOL INSTANCE INTO THIS CLIENT
     const localProtocol = new LocalCommunicationProtocol();
+    // cspell:disable-next-line
     // Use an interface cast to bypass access restriction on private property in a typesafe manner
     (
       this.client as unknown as IClientWithProtocolRegistry
@@ -162,7 +163,7 @@ export class AgentRuntime {
       await this.client.registerManual({
         name: "system",
         call_template_type: "local",
-        tools: toolsToRegister as any,
+        tools: toolsToRegister as unknown as ToolDefinition[],
       });
 
       // 5. Load Tool Documentation
@@ -191,25 +192,17 @@ export class AgentRuntime {
     initialResponse: string,
     regenerateCallback: (retryPrompt: string) => Promise<string>
   ): Promise<{ result: string; logs: string[] }> {
-    const MAX_RETRIES = 2;
-    let attempt = 0;
-    let lastError: string | null = null;
+    const MAX_TURNS = 5; // Allow up to 5 back-and-forth turns
+    let turn = 0;
     let currentResponse = initialResponse;
+    const allLogs: string[] = [];
 
-    while (attempt <= MAX_RETRIES) {
-      attempt++;
+    // We maintain a "conversation history" effectively by appending new context
+    let contextAccumulator = `Original Goal: ${userGoal}\n\n`;
 
-      // If this is a retry, regenerate with error feedback
-      if (lastError && attempt > 1) {
-        const retryPrompt = `Your previous code failed with this error:\n\n${lastError}\n\nHere is the full response that caused the error:\n\n${currentResponse}\n\nPlease fix the code and try again. Original request: ${userGoal}`;
-        process.stdout.write(
-          `[AgentRuntime] Retry attempt ${attempt}/${
-            MAX_RETRIES + 1
-          } - Calling LLM with error feedback\n`
-        );
-        currentResponse = await regenerateCallback(retryPrompt);
-        process.stdout.write(`[AgentRuntime] Received new response from LLM\n`);
-      }
+    while (turn < MAX_TURNS) {
+      turn++;
+      console.log(`[AgentRuntime] 🔄 Turn ${turn}/${MAX_TURNS}`);
 
       // Convert response to string if it's an object (some providers return objects)
       const responseStr =
@@ -217,184 +210,155 @@ export class AgentRuntime {
           ? currentResponse
           : JSON.stringify(currentResponse);
 
-      // Simpler, more robust code extraction logic
+      // 1. Extract Code
       const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g;
       let match;
       const blocks: string[] = [];
-
       while ((match = codeBlockRegex.exec(responseStr)) !== null) {
-        const block = match[1].trim();
-        if (block) {
-          blocks.push(block);
-        }
+        if (match[1].trim()) blocks.push(match[1].trim());
       }
 
-      let codeToExecute: string | null = null;
-
-      if (blocks.length > 0) {
-        codeToExecute = blocks.join("\n\n");
-      } else {
-        // Fallback for no code blocks at all: check if the whole response is code
-        const isMarkdown = /\*\*|__/.test(responseStr);
-        const hasCodeKeywords =
-          /^(?:import|const|let|var|function|class|await|system\.|nebula\.)/m.test(
-            responseStr.trim()
-          );
-
-        if (!isMarkdown && hasCodeKeywords) {
-          codeToExecute = responseStr;
-        }
+      // Fallback: If no blocks but looks like code
+      let codeToExecute = blocks.join("\n\n");
+      if (
+        !codeToExecute &&
+        /^(?:import|const|let|var|function|class|await|system\.|nebula\.)/m.test(
+          responseStr.trim()
+        )
+      ) {
+        codeToExecute = responseStr;
       }
 
-      // SANITIZE: Remove thinking protocol lines that AI might have included in code block
+      // 2. Sanitize "Thinking" lines (LOCATE/DEFINE/EXECUTE)
       if (codeToExecute) {
-        const lines = codeToExecute.split("\n");
-        const sanitizedLines = lines.filter((line) => {
-          const trimmed = line.trim();
-          // Remove lines that are part of the thinking protocol
-          if (
-            trimmed.startsWith("LOCATE:") ||
-            trimmed.startsWith("DEFINE:") ||
-            trimmed.startsWith("EXECUTE:") ||
-            /^\d+\.\s+(LOCATE|DEFINE|EXECUTE):/.test(trimmed)
-          ) {
-            return false;
-          }
-          return true;
-        });
-        codeToExecute = sanitizedLines.join("\n");
+        codeToExecute = codeToExecute
+          .split("\n")
+          .filter((l) => !/^\s*(\d+\.\s+)?(LOCATE|DEFINE|EXECUTE):/.test(l))
+          .join("\n");
       }
 
-      // Check if response contains nebula operations even without proper code blocks
-      const hasNebulaOps =
-        responseStr.includes("nebula.addNode") ||
-        responseStr.includes("nebula.") ||
-        responseStr.includes("LOCATE:");
-
+      // 🛑 STOP CONDITION: If no code to execute, assume we are done
       if (!codeToExecute || codeToExecute.trim().length === 0) {
-        if (hasNebulaOps) {
-          // Force execution if we detect nebula operations
-          codeToExecute = responseStr;
+        console.log(
+          "[AgentRuntime] ✅ No actionable code found. Assuming final answer."
+        );
+        return { result: responseStr, logs: allLogs };
+      }
+
+      // 3. Execute Code
+      console.log("[AgentRuntime] ⚡ Executing code...");
+      let turnResult = "";
+      let turnLogs: string[] = [];
+
+      try {
+        // Check if we should use the specialized TypeScript interpreter for Nebula Code Mode
+        const useSpecializedInterpreter =
+          codeToExecute.includes("nebula.") || codeToExecute.includes("ast.");
+
+        if (useSpecializedInterpreter) {
           console.log(
-            "[AgentRuntime] Forcing execution despite no code blocks due to nebula operations"
+            "[AgentRuntime] Using specialized Nebula Code Mode interpreter..."
           );
-        } else {
-          // Treat as conversational response - DO NOT EXECUTE
-          process.stdout.write(
-            "[AgentRuntime] No code found or text looks conversational. Skipping execution.\n"
+          const { typescriptInterpreterTool } = await import(
+            "../tools/typescriptInterpreter.js"
           );
-          return { result: responseStr, logs: [] };
-        }
-      }
+          const interpreterResponse = await (
+            typescriptInterpreterTool.handler as (args: {
+              code: string;
+            }) => Promise<{ text: string; meta?: { nebula_actions?: unknown[] } }[]>
+          )({ code: codeToExecute });
 
-      console.log("[AgentRuntime] Executing code in sandbox:\n", codeToExecute);
+          // The interpreter tool returns an array of message objects
+          const firstMessage = interpreterResponse[0];
+          const responseText = firstMessage?.text || "";
+          const actions = firstMessage?.meta?.nebula_actions || [];
 
-      // 2. Check if we should use the specialized TypeScript interpreter for Nebula Code Mode
-      const useSpecializedInterpreter =
-        codeToExecute.includes("nebula.") || codeToExecute.includes("ast.");
-
-      let result = "";
-      let logs: string[] = [];
-
-      if (useSpecializedInterpreter) {
-        process.stdout.write(
-          "[AgentRuntime] Using specialized Nebula Code Mode interpreter...\n"
-        );
-        const { typescriptInterpreterTool } = await import(
-          "../tools/typescriptInterpreter.js"
-        );
-        const interpreterResponse = await (
-          typescriptInterpreterTool.handler as (args: {
-            code: string;
-          }) => Promise<{ text: string; meta?: { nebula_actions?: any[] } }[]>
-        )({ code: codeToExecute });
-
-        // The interpreter tool returns an array of message objects
-        const firstMessage = interpreterResponse[0];
-        const responseText = firstMessage?.text || "";
-        const actions = firstMessage?.meta?.nebula_actions || [];
-
-        // Check if execution failed
-        if (
-          responseText.includes("❌ Execution Error:") ||
-          responseText.includes("ERROR:")
-        ) {
-          lastError = responseText;
-          process.stdout.write(
-            `[AgentRuntime] Execution failed on attempt ${attempt}/${
-              MAX_RETRIES + 1
-            }\n`
-          );
-          process.stdout.write(`[AgentRuntime] Error message:\n${lastError}\n`);
-
-          // If we have retries left, continue the loop
-          if (attempt <= MAX_RETRIES) {
-            continue;
-          } else {
-            // Out of retries, return the error
-            return {
-              result: JSON.stringify([
-                {
-                  type: "text",
-                  content: `Failed after ${
-                    MAX_RETRIES + 1
-                  } attempts. Last error:\n${lastError}`,
-                },
-              ]),
-              logs: [responseText],
-            };
+          // Check if execution failed
+          if (
+            responseText.includes("❌ Execution Error:") ||
+            responseText.includes("ERROR:")
+          ) {
+            throw new Error(responseText);
           }
-        }
 
-        const toolResults: unknown[] = [];
-        // If we have actions, we need to execute them via the nebula tool
-        if (actions.length > 0) {
-          process.stdout.write(
-            `[AgentRuntime] Executing ${actions.length} captured Nebula actions...\n`
-          );
-          for (const action of actions) {
-            const toolOutput = await this.client.callTool(
-              "system.nebula",
-              action
+          const toolResults: unknown[] = [];
+          // If we have actions, we need to execute them via the nebula tool
+          if (actions.length > 0) {
+            console.log(
+              `[AgentRuntime] Executing ${actions.length} captured Nebula actions...`
             );
-            toolResults.push(toolOutput);
+            for (const action of actions) {
+              const toolOutput = (await this.client.callTool(
+                "system.nebula",
+                action as Record<string, unknown>
+              )) as unknown;
+              toolResults.push(toolOutput);
+            }
           }
+
+          // Parse result and logs from the response text
+          const outputMatch = responseText.match(
+            /Output:\n([\s\S]*?)(?:\nWarnings\/Errors:|$)/
+          );
+          const parsedResult = outputMatch
+            ? outputMatch[1].trim()
+            : responseText;
+
+          // Return both the text output and the captured tool results
+          const combinedResult = [
+            { type: "text", content: parsedResult },
+            ...toolResults,
+          ];
+
+          turnResult = JSON.stringify(combinedResult);
+          turnLogs = [responseText];
+        } else {
+          // Standard Sandbox Execution
+          const sandboxResponse = (await this.client.callToolChain(
+            codeToExecute
+          )) as { result: string; logs: string[] };
+          turnResult =
+            sandboxResponse?.result ||
+            "Command executed successfully with no output.";
+          turnLogs = sandboxResponse?.logs || [];
         }
 
-        // Parse result and logs from the response text
-        const outputMatch = responseText.match(
-          /Output:\n([\s\S]*?)(?:\nWarnings\/Errors:|$)/
-        );
-        const parsedResult = outputMatch ? outputMatch[1].trim() : responseText;
-
-        // Return both the text output and the captured tool results
-        // We wrap the text in an object that the frontend will ignore (fails ui_action check)
-        // but can still be displayed as the primary output.
-        const combinedResult: unknown = [
-          { type: "text", content: parsedResult },
-          ...toolResults,
-        ];
-
-        result = JSON.stringify(combinedResult);
-        logs = [responseText];
-
-        // Success! Break out of retry loop
-        return { result, logs };
-      } else {
-        // Standard Sandbox Execution
-        const sandboxResponse = (await this.client.callToolChain(
-          codeToExecute
-        )) as { result: string; logs: string[] };
-        result = sandboxResponse?.result || "";
-        logs = sandboxResponse?.logs || [];
-
-        // Success! Break out of retry loop
-        return { result, logs };
+        allLogs.push(...turnLogs);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        turnResult = `Error: ${errorMessage}`;
+        allLogs.push(turnResult);
       }
+
+      // 4. FEEDBACK LOOP (The Critical Fix)
+      // Instead of returning, we feed the output back to the model
+      const observationPrompt = `
+[SYSTEM_OBSERVATION]
+The code executed.
+Output:
+${turnResult}
+
+Logs:
+${turnLogs.join("\n")}
+
+Instructions:
+1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks).
+2. If you need more information or need to take another step, generate the NEXT code block.
+`;
+
+      // Append observation to context
+      contextAccumulator += `\nAssistant's Code:\n${codeToExecute}\n\nSystem Output:\n${turnResult}\n`;
+
+      console.log(`[AgentRuntime] 🔙 Feeding result back to model...`);
+      currentResponse = await regenerateCallback(
+        contextAccumulator + "\n" + observationPrompt
+      );
     }
 
-    // This should never be reached, but TypeScript needs it
-    return { result: "", logs: [] };
+    return {
+      result: "Max turns reached. Last response: " + currentResponse,
+      logs: allLogs,
+    };
   }
 
   /**
@@ -482,6 +446,7 @@ const btnId = nebula.addNode(parentId, {
   layout: { mode: "flex" }
 });
 
+// cspell:disable-next-line
 // 2. BUILDING COCHLEATED STRUCTURES (Cards)
 const cardId = nebula.addNode("root", { type: "Card", style: { width: "w-80" } });
 const headerId = nebula.addNode(cardId, { type: "CardHeader" });

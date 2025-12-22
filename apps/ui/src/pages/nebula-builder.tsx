@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NebulaOps, DEFAULT_NEBULA_TREE } from "@repo/nebula";
 import type { NebulaTree } from "@repo/nebula";
-import { NebulaRenderer } from "../features/nebula-renderer/NebulaRenderer.js";
+import { NebulaRendererRoot } from "../features/nebula-renderer/NebulaRenderer.js";
 import { NebulaComponentMap } from "@/nebula/component-map.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -507,9 +507,8 @@ export default function NebulaBuilderPage() {
         {/* Center: Canvas */}
         <main className="flex-1 p-4 flex items-center justify-center overflow-auto min-w-0">
           <div className="w-full h-full bg-white shadow-2xl rounded-xl border border-gray-200 overflow-auto">
-            <NebulaRenderer
+            <NebulaRendererRoot
               tree={tree}
-              nodeId={tree.rootId}
               componentMap={NebulaComponentMap}
               selectedNodeId={selectedNodeId}
               onSelectNode={setSelectedNodeId}
