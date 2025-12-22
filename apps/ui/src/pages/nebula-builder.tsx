@@ -113,8 +113,7 @@ export default function NebulaBuilderPage() {
   const targetParentId = selectedNodeId || tree.rootId;
 
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onSuccess: (data: any) => {
+    onSuccess: (data: { success: boolean; message: string; output: unknown; logs?: string[] }) => {
       console.log("[Nebula UI] Dispatch success! Full response:", data);
       if (data.success) {
         toast.success(`Dispatched!`);
@@ -129,17 +128,17 @@ export default function NebulaBuilderPage() {
         if (typeof data.output === "string") {
           try {
             parsedOutput = JSON.parse(data.output);
-          } catch (e) {
+          } catch {
             // Not JSON
           }
         }
 
-        const addNodeActions: { parentId: string; node: any }[] = [];
-        const otherActions: any[] = [];
+        const addNodeActions: { parentId: string; node: { type: NodeType; props?: Record<string, unknown> } }[] = [];
+        const otherActions: { tool: string; action: string; nodeId?: string; update?: Record<string, unknown>; newParentId?: string; index?: number }[] = [];
 
         const processObject = (obj: unknown) => {
           if (obj && typeof obj === "object" && "ui_action" in obj) {
-            const uiAction = (obj as any).ui_action;
+            const uiAction = (obj as { ui_action: { tool: string; action: string; nodeId?: string; update?: Record<string, unknown>; newParentId?: string; index?: number; parentId?: string; node?: any } }).ui_action;
             if (uiAction.tool === "nebula" && uiAction.action === "addNode") {
               addNodeActions.push({
                 parentId: uiAction.parentId,
@@ -209,7 +208,7 @@ export default function NebulaBuilderPage() {
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: { message: string }) => {
       toast.error(`Error: ${err.message}`);
       setLastResponse({ status: "error", message: `Error: ${err.message}` });
     },
@@ -588,7 +587,7 @@ export default function NebulaBuilderPage() {
                         const newProps = JSON.parse(e.target.value);
                         ops.updateNode(selectedNodeId, { props: newProps });
                         toast.success("Props updated");
-                      } catch (_err) {
+                      } catch {
                         toast.error("Invalid JSON");
                       }
                     }}
