@@ -18,6 +18,7 @@ type SuperAiButtonProps = {
   side?: 'left' | 'right'; // Expansion direction
   onGenerate?: (prompt: string) => void;
   defaultPrompt?: string;
+  defaultRoleId?: string;
 };
 
 export const SuperAiButton: React.FC<SuperAiButtonProps> = ({ 
@@ -26,11 +27,12 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   expandUp = false,
   side = 'right', // CHANGE DEFAULT TO RIGHT (expands into the screen)
   onGenerate,
-  defaultPrompt = ''
+  defaultPrompt = '',
+  defaultRoleId
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>();
+  const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(defaultRoleId);
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);

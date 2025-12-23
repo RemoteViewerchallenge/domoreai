@@ -29,5 +29,8 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "references": [
+    { "path": "../../packages/nebula" }
+  ],
   "exclude": ["node_modules", "dist"]
 }

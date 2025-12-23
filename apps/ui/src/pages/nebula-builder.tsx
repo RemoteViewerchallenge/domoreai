@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { NebulaOps, DEFAULT_NEBULA_TREE } from "@repo/nebula";
 import type { NebulaTree } from "@repo/nebula";
 import { NebulaRendererRoot } from "../features/nebula-renderer/NebulaRenderer.js";
-import { NebulaComponentMap } from "@/nebula/component-map.js";
 import { Button } from "@/components/ui/button.js";
 import {
   Tabs,
@@ -69,7 +68,7 @@ const TreeNode = ({
       </div>
       {isExpanded && hasChildren && (
         <div>
-          {node.children.map((childId) => (
+          {node.children.map((childId: string) => (
             <TreeNode
               key={childId}
               nodeId={childId}
@@ -99,7 +98,7 @@ export default function NebulaBuilderPage() {
   const opsRef = useRef<NebulaOps | null>(null);
 
   useEffect(() => {
-    opsRef.current = new NebulaOps(tree, (newTree) => {
+    opsRef.current = new NebulaOps(tree, (newTree: NebulaTree) => {
       console.log(
         "[NebulaBuilder] Tree updated:",
         newTree.nodes ? Object.keys(newTree.nodes).length : 0,
@@ -163,7 +162,7 @@ export default function NebulaBuilderPage() {
             console.log("[NebulaBuilder] Added nodes with IDs:", newIds);
 
             // Force re-render by updating tree manually
-            setTree((currentTree) => {
+            setTree((currentTree: NebulaTree) => {
               const updatedTree = { ...currentTree };
               console.log(
                 "[NebulaBuilder] Tree now has",
@@ -360,7 +359,7 @@ export default function NebulaBuilderPage() {
                 </h4>
                 <div className="bg-black/40 text-green-400 font-mono text-[8px] p-1 rounded border border-white/5 max-h-20 overflow-auto">
                   {tree.imports && tree.imports.length > 0 ? (
-                    tree.imports.map((imp, i) => (
+                    tree.imports.map((imp: string, i: number) => (
                       <div key={i} className="truncate">
                         {imp}
                       </div>
@@ -508,9 +507,6 @@ export default function NebulaBuilderPage() {
           <div className="w-full h-full bg-white shadow-2xl rounded-xl border border-gray-200 overflow-auto">
             <NebulaRendererRoot
               tree={tree}
-              componentMap={NebulaComponentMap}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
             />
           </div>
         </main>
