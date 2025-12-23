@@ -222,8 +222,9 @@ export const orchestratorRouter = createTRPCRouter({
           if (!role) throw new Error(`Role ${roleId} not found`);
 
           // 1. Initialize Runtime with Role Tools
-          console.log(`[Orchestrator] Initializing runtime for role: ${roleId} with tools: [${role.tools.join(', ')}]`);
-          const runtime = await AgentRuntime.create(MONOREPO_ROOT, role.tools);
+          const toolNames = role.tools.map(rt => rt.tool.name).filter(Boolean);
+          console.log(`[Orchestrator] Initializing runtime for role: ${roleId} with tools: [${toolNames.join(', ')}]`);
+          const runtime = await AgentRuntime.create(MONOREPO_ROOT, toolNames);
 
           // 2. Initialize Agent
           const agent = await createVolcanoAgent({

@@ -1,22 +1,22 @@
-import { IAgentConfigRepository } from "../interfaces/IAgentConfigRepository.js";
+import { IAgentConfigRepository, RoleWithTools } from "../interfaces/IAgentConfigRepository.js";
 import { prisma } from "../db.js";
 import { Role, Model, Prisma } from "@prisma/client";
 import type { ModelDef } from "../interfaces/IAgentConfigRepository.js";
 
 export class PrismaAgentConfigRepository implements IAgentConfigRepository {
-  async getRole(roleId: string): Promise<Role | null> {
+  async getRole(roleId: string): Promise<RoleWithTools | null> {
     const include = { tools: { include: { tool: true } } };
     const byId = await prisma.role.findUnique({ where: { id: roleId }, include });
-    if (byId) return byId as unknown as Role;
+    if (byId) return byId as unknown as RoleWithTools;
 
     const byName = await prisma.role.findFirst({
         where: { name: roleId },
         include
     });
-    return byName as unknown as Role;
+    return byName as unknown as RoleWithTools;
   }
 
-  async getEffectiveRole(roleId: string): Promise<Role | null> {
+  async getEffectiveRole(roleId: string): Promise<RoleWithTools | null> {
     const role = await this.getRole(roleId);
     if (!role) return null;
     return role; // Returning Role, caller handles metadata parsing if needed

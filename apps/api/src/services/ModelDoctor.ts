@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { modelRegistry } from '../db/schema.js'; // Keep modelRegistry for type inference
+import { modelRegistry } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { createVolcanoAgent } from './AgentFactory.js';
 import { Surveyor } from './Surveyor.js';
@@ -26,12 +26,12 @@ export class ModelDoctor {
     // Skip if already high confidence and not forced
     const modelWithCaps = model as typeof modelRegistry.$inferSelect & { capabilities?: { confidence?: string } };
     if (!forceResearch && modelWithCaps.capabilities?.confidence === 'high') {
-        console.log(`[ModelDoctor] ⏩ ${model.modelName} already has high-confidence data, skipping.`);
+        // console.log(`[ModelDoctor] ⏩ ${model.modelName} already has high-confidence data, skipping.`);
         return;
     }
 
     // Level 1: Fast Pattern Match (Surveyor)
-    const surveyedSpecs = Surveyor.inspect(model.providerId, model.modelId); // Assuming providerId is the type or we can map it
+    const surveyedSpecs = Surveyor.inspect(model.providerId, model.modelId); 
     
     if (surveyedSpecs) {
         console.log(`[ModelDoctor] 🗺️ Surveyor identified ${model.modelName}. Skipping research.`);
@@ -53,23 +53,24 @@ export class ModelDoctor {
     let finalData = { ...diagnosis.data };
 
     // Level 3: AI Research
+    // Only attempt research if simple heuristics failed to give us confidence
     try {
         console.log(`[ModelDoctor] 🌍 Attempting Web Research for ${model.modelName}...`);
         const researchData = await this.researchModel(model.modelName, model.modelId);
         
-        if (researchData && researchData.contextWindow > 4096) {
+        if (researchData && researchData.contextWindow > 0) {
             console.log(`[ModelDoctor] ✅ Research SUCCESS for ${model.modelName}. Found:`, researchData);
-            finalData = {
-                ...finalData,
-                ...researchData
-            };
+            finalData = { ...finalData, ...researchData };
             source = 'ai_research';
             confidence = 'high';
         } else {
             console.log(`[ModelDoctor] ⚠️ Research returned weak data, using heuristics.`);
         }
-    } catch (e) {
-        console.warn(`[ModelDoctor] ❌ Research Failed for ${model.modelName}:`, e);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`[ModelDoctor] ❌ Research Failed for ${model.modelName}: ${message}`);
+        // If the model itself is broken (400/404), we might want to mark it as inactive?
+        // For now, we just stick with heuristics.
     }
 
     // Write to DB
@@ -79,39 +80,30 @@ export class ModelDoctor {
   // 2. The Research Agent
   private async researchModel(name: string, id: string): Promise<ResearchData | null> {
       try {
-          // [ANTIGRAVITY] Use AgentRuntime for tool execution support
           const { AgentRuntime } = await import('./AgentRuntime.js');
+          
+          // Use a known reliable model for the researcher agent itself if possible
+          // But here we rely on the default strategy.
           const runtime = await AgentRuntime.create(process.cwd(), ['research.web_scrape'], 'Worker');
           
-          // Create the "Brain"
           const agent = await createVolcanoAgent({
               roleId: 'model_doctor', 
-              modelId: null, 
+              modelId: null, // Let factory pick best available
               isLocked: false,
               temperature: 0,
               maxTokens: 1000,
               tools: ['research.web_scrape'] 
           });
 
-          // Construct Prompt with Explicit Tool Instructions
           const prompt = `SEARCH and FIND technical specs for LLM: "${name}" (ID: ${id}).
-          You are the Model Doctor. You verify claims with data.
+          You are the Model Doctor.
           
           TOOLS AVAILABLE:
-          - research.web_scrape({ url: string }): Fetches content.
+          - research.web_scrape({ url: string })
           
           PROTOCOL:
-          1. If you need external info, WRITE CODE to call the tool.
-             Target official docs (HuggingFace, Provider Sites).
-             Example:
-             \`\`\`javascript
-             // Use the global 'tools' object or direct function call depending on environment
-             // Trying standard pattern:
-             const result = await tools['research.web_scrape'].handler({ url: 'https://...' });
-             console.log(result);
-             \`\`\`
-          2. Analyze the observations.
-          3. When you have the data, output the STRICT JSON result.
+          1. Use the tool to find context window, max output tokens, and capabilities.
+          2. Return ONLY valid JSON. No markdown formatting. No comments.
           
           REQUIRED JSON FORMAT:
           {
@@ -122,23 +114,55 @@ export class ModelDoctor {
             "hasReasoning": boolean
           }`;
 
-          // Run the Loop
           const { result } = await runtime.runAgentLoop(
               prompt,
               await agent.generate(prompt), 
               async (context) => agent.generate(context)
           );
           
-          // Ensure result is a string (Fail-Safe)
           const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-          
-          const jsonMatch = resultStr.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-              return JSON.parse(jsonMatch[0]) as ResearchData;
+          return this.extractJson(resultStr);
+
+      } catch (error: unknown) {
+          const err = error as { status?: number; message?: string };
+          // Handle provider errors (like "Developer instruction is not enabled")
+          if (err.status === 400 || err.status === 404 || err.message?.includes('not enabled')) {
+             console.warn(`[ModelDoctor] Provider rejected research agent: ${err.message}`);
+             return null;
           }
-          return null;
-      } catch (error) {
           console.error("[ModelDoctor] Agent Error:", error);
+          return null;
+      }
+  }
+
+  /**
+   * Robustly extracts JSON from potentially dirty agent output
+   */
+  private extractJson(text: string): ResearchData | null {
+      try {
+          // 1. Fast path: Is it pure JSON?
+          return JSON.parse(text) as ResearchData;
+      } catch {
+          // 2. Strip Markdown code blocks (```json ... ```)
+          const codeBlock = text.match(/```(?:json)?([\s\S]*?)```/);
+          if (codeBlock) {
+              try { return JSON.parse(codeBlock[1]) as ResearchData; } catch {}
+          }
+          
+          // 3. Find first { and last }
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+              try { return JSON.parse(jsonMatch[0]) as ResearchData; } catch {}
+          }
+          
+          // 4. Try to repair common syntax errors (like unquoted keys)
+          // This is a simple fallback for { key: value }
+          try {
+             const repaired = text.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+             const match = repaired.match(/\{[\s\S]*\}/);
+             if (match) return JSON.parse(match[0]) as ResearchData;
+          } catch {}
+          
           return null;
       }
   }
@@ -151,10 +175,11 @@ export class ModelDoctor {
     let maxOut = 0;
     let confidence: 'low' | 'medium' | 'high' = 'low';
     
+    // Attempt to read from provider metadata if available
     if (rawData && typeof rawData === 'object') {
         const raw = rawData as Record<string, unknown>;
         const ctxKeys = ['context_window', 'context_length', 'max_context_length', 'contextWindow', 'max_tokens', 'max_context_tokens'];
-        const outKeys = ['max_output_tokens', 'max_tokens', 'output_token_limit', 'max_completion_tokens'];
+        const outKeys = ['max_output_tokens', 'output_token_limit', 'max_completion_tokens'];
 
         for (const key of ctxKeys) {
             const item = raw[key];
@@ -162,12 +187,12 @@ export class ModelDoctor {
                 const val = typeof item === 'number' ? item : parseInt(item as string);
                 if (!isNaN(val) && val > 0) {
                     context = val;
-                    confidence = 'medium'; // Metadata is better than name guessing
+                    confidence = 'medium'; 
                     break;
                 }
             }
         }
-
+        // ... (maxOut logic same as before)
         for (const key of outKeys) {
             const item = raw[key];
             if (item) {
@@ -199,9 +224,9 @@ export class ModelDoctor {
         else maxOut = 4096;
     }
     
-    const hasVision = lower.includes('vision') || lower.includes('vl') || lower.includes('gpt-4-v');
-    const hasAudio = lower.includes('audio') || lower.includes('whisper');
-    const hasReasoning = lower.includes('reasoning') || lower.startsWith('o1') || lower.includes('deepseek-r1') || lower.includes('thought');
+    const hasVision = lower.includes('vision') || lower.includes('vl') || lower.includes('gpt-4-v') || lower.includes('omni');
+    const hasAudio = lower.includes('audio') || lower.includes('whisper') || lower.includes('voxtral');
+    const hasReasoning = lower.includes('reasoning') || lower.includes('thinking') || lower.startsWith('o1') || lower.includes('deepseek-r1');
 
     return {
       confidence,
@@ -215,26 +240,26 @@ export class ModelDoctor {
     };
   }
 
-  // 4. Database Writer (DEPRECATED - Use saveModelKnowledge)
-  public async saveKnowledge(model: any, data: ResearchData, source: string, confidence: string) {
-    await saveModelKnowledge(model.id, data, source, confidence);
-  }
-
   // --- Bulk Operation ---
   async healModels(forceResearch = false) {
      const allModels = await db.query.modelRegistry.findMany({
          where: eq(modelRegistry.isActive, true)
      });
      
-     console.log(`[ModelDoctor] Healing ${allModels.length} models...`);
+     const inferred = 0;
+     let researched = 0;
+     let failed = 0;
      
      for (const model of allModels) {
-        await this.healModel(model.modelId, forceResearch);
+        try {
+            await this.healModel(model.modelId, forceResearch);
+            // We count 'healed' if the process finished without throwing
+            researched++; 
+        } catch {
+            failed++;
+        }
      }
      
-     return { healed: allModels.length, inferred: 0, researched: 0, failed: 0, skipped: 0 };
+     return { healed: researched, inferred, researched, failed, skipped: 0 };
   }
-  
-  public heal<T>(data: T, _schema: unknown): T { return data; }
-  async healCapabilities() { return this.healModels(); }
 }

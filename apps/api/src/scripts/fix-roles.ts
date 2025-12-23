@@ -17,35 +17,45 @@ async function fixRoles() {
     }
 
     // 2. Fetch all roles
-    const roles = await prisma.role.findMany();
+    const roles = await prisma.role.findMany({
+      include: {
+        tools: { include: { tool: true } }
+      }
+    });
     console.log(`Found ${roles.length} roles to update.`);
 
     for (const role of roles) {
-      const updates: any = {};
-      let needsUpdate = false;
-
-      // A. Fix Context Window (Removed feature)
-      // if (!role.maxContext || role.maxContext < 36000) { ... }
-
-      // B. Fix Tools (Add research_browser)
-      const currentTools = role.tools || [];
-      if (!currentTools.includes('research_browser')) {
-        updates.tools = [...currentTools, 'research_browser'];
-        needsUpdate = true;
-      }
-
-      // C. Fix Category (for UI Grouping)
-      if (!role.categoryString) {
-        updates.categoryString = 'General';
-        needsUpdate = true;
-      }
-
-      // Apply Updates
-      if (needsUpdate) {
-        console.log(`Updating Role: ${role.name}...`);
+      // A. Fix Tools (Add research_browser)
+      if (!role.tools.some(rt => rt.tool.name === 'research_browser')) {
+        console.log(`Adding research_browser to Role: ${role.name}...`);
         await prisma.role.update({
           where: { id: role.id },
-          data: updates,
+          data: {
+            tools: {
+              create: {
+                tool: {
+                  connectOrCreate: {
+                    where: { name: 'research_browser' },
+                    create: {
+                      name: 'research_browser',
+                      description: 'Research the web using a browser',
+                      instruction: 'Use this tool to find information on the internet.',
+                      schema: '{}'
+                    }
+                  }
+                }
+              }
+            }
+          },
+        });
+      }
+
+      // B. Fix Category (for UI Grouping)
+      if (!role.categoryString) {
+        console.log(`Setting category to General for Role: ${role.name}...`);
+        await prisma.role.update({
+          where: { id: role.id },
+          data: { categoryString: 'General' },
         });
       }
     }
@@ -59,4 +69,4 @@ async function fixRoles() {
   }
 }
 
-fixRoles();
+void fixRoles();

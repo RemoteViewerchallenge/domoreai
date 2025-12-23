@@ -7,6 +7,49 @@ import type { SandboxTool } from '../types.js';
  * These are only exposed to agents that have been granted these capabilities
  */
 
+interface CreateRoleArgs {
+  name: string;
+  basePrompt: string;
+  tools?: string[];
+}
+
+interface UpdateRoleArgs {
+  roleId: string;
+  updates: {
+    basePrompt?: string;
+    tools?: string[];
+  };
+}
+
+interface DeleteRoleArgs {
+  roleId: string;
+}
+
+interface CreateOrchestrationArgs {
+  name: string;
+  description?: string;
+  tags?: string[];
+  steps: any[];
+}
+
+interface ListOrchestrationsArgs {
+  tags?: string[];
+  activeOnly?: boolean;
+}
+
+interface GetOrchestrationArgs {
+  nameOrId: string;
+}
+
+interface ExecuteOrchestrationArgs {
+  orchestrationId: string;
+  input: Record<string, unknown>;
+}
+
+interface GetExecutionStatusArgs {
+  executionId: string;
+}
+
 export const metaTools: SandboxTool[] = [
   {
     name: 'create_role',
@@ -22,47 +65,36 @@ export const metaTools: SandboxTool[] = [
           type: 'string',
           description: 'System prompt that defines this role\'s behavior and responsibilities',
         },
-        capabilities: {
-          type: 'object',
-          properties: {
-            needsVision: { type: 'boolean', default: false },
-            needsReasoning: { type: 'boolean', default: false },
-            needsCoding: { type: 'boolean', default: false },
-            needsTools: { type: 'boolean', default: false },
-            needsJson: { type: 'boolean', default: false },
-            needsUncensored: { type: 'boolean', default: false },
-          },
-          description: 'Capabilities required for this role',
-        },
-        contextLimits: {
-          type: 'object',
-          properties: {
-            minContext: { type: 'number', description: 'Minimum context window' },
-            maxContext: { type: 'number', description: 'Maximum context window' },
-          },
-        },
         tools: {
           type: 'array',
           items: { type: 'string' },
           description: 'List of MCP tools this role can access (e.g., ["git", "postgres"])',
         },
-        hyperparameters: {
-          type: 'object',
-          properties: {
-            temperature: { type: 'number', minimum: 0, maximum: 2 },
-            maxTokens: { type: 'number' },
-            topP: { type: 'number', minimum: 0, maximum: 1 },
-          },
-        },
       },
       required: ['name', 'basePrompt'],
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as CreateRoleArgs;
+      const toolNames = typedArgs.tools || [];
       const role = await prisma.role.create({
         data: {
-          name: args.name,
-          basePrompt: args.basePrompt,
-          tools: args.tools || [],
+          name: typedArgs.name,
+          basePrompt: typedArgs.basePrompt,
+          tools: {
+            create: toolNames.map(t => ({
+              tool: {
+                connectOrCreate: {
+                  where: { name: t },
+                  create: {
+                    name: t,
+                    description: `Automatically created tool: ${t}`,
+                    instruction: `Use the ${t} tool as needed.`,
+                    schema: '{}'
+                  }
+                }
+              }
+            }))
+          },
         },
       });
 
@@ -86,14 +118,19 @@ export const metaTools: SandboxTool[] = [
           id: true,
           name: true,
           basePrompt: true,
-          tools: true,
+          tools: { include: { tool: true } },
         },
         orderBy: { name: 'asc' },
       });
 
+      const formatted = roles.map(r => ({
+          ...r,
+          tools: r.tools.map(rt => rt.tool.name)
+      }));
+
       return [{
         type: 'text',
-        text: JSON.stringify(roles, null, 2),
+        text: JSON.stringify(formatted, null, 2),
       }];
     },
   },
@@ -115,12 +152,31 @@ export const metaTools: SandboxTool[] = [
       },
       required: ['roleId', 'updates'],
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as UpdateRoleArgs;
+      const toolNames = typedArgs.updates.tools;
       const role = await prisma.role.update({
-        where: { id: args.roleId },
+        where: { id: typedArgs.roleId },
         data: {
-          basePrompt: args.updates.basePrompt,
-          tools: args.updates.tools,
+          basePrompt: typedArgs.updates.basePrompt,
+          ...(toolNames && {
+            tools: {
+              deleteMany: {},
+              create: toolNames.map((t: string) => ({
+                tool: {
+                  connectOrCreate: {
+                    where: { name: t },
+                    create: {
+                      name: t,
+                      description: `Automatically created tool: ${t}`,
+                      instruction: `Use the ${t} tool as needed.`,
+                      schema: '{}'
+                    }
+                  }
+                }
+              }))
+            }
+          })
         },
       });
 
@@ -141,9 +197,10 @@ export const metaTools: SandboxTool[] = [
       },
       required: ['roleId'],
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as DeleteRoleArgs;
       const role = await prisma.role.delete({
-        where: { id: args.roleId },
+        where: { id: typedArgs.roleId },
       });
 
       return [{
@@ -155,72 +212,29 @@ export const metaTools: SandboxTool[] = [
 
   {
     name: 'create_orchestration',
-    description: 'Create a multi-step workflow that chains multiple roles together. Use this to define complex agent workflows.',
+    description: 'Create a multi-step workflow that chains multiple roles together.',
     inputSchema: {
       type: 'object',
       properties: {
-        name: {
-          type: 'string',
-          description: 'Unique name for the orchestration (e.g., "Code Review Pipeline")',
-        },
-        description: {
-          type: 'string',
-          description: 'Description of what this orchestration does',
-        },
-        tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Tags for categorizing this orchestration (e.g., ["coding", "review"])',
-        },
-        steps: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string', description: 'Name of this step' },
-              description: { type: 'string' },
-              order: { type: 'number', description: 'Execution order (0, 1, 2, ...)' },
-              roleName: { type: 'string', description: 'Name of the role to use for this step' },
-              stepType: {
-                type: 'string',
-                enum: ['sequential', 'parallel', 'conditional', 'loop'],
-                description: 'Execution type',
-              },
-              inputMapping: {
-                type: 'object',
-                description: 'Map orchestration context to step input using {{template}} syntax',
-                additionalProperties: { type: 'string' },
-              },
-              outputMapping: {
-                type: 'object',
-                description: 'Map step output to orchestration context',
-              },
-              condition: {
-                type: 'object',
-                description: 'Conditional logic: { field: "path.to.value", operator: ">", value: 0.8 }',
-              },
-              maxRetries: { type: 'number', default: 0 },
-              timeout: { type: 'number', description: 'Timeout in milliseconds' },
-              parallelGroup: { type: 'string', description: 'Group ID for parallel execution' },
-            },
-            required: ['name', 'order'],
-          },
-          description: 'Steps in the orchestration',
-        },
+        name: { type: 'string' },
+        description: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        steps: { type: 'array', items: { type: 'object' } },
       },
       required: ['name', 'steps'],
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as CreateOrchestrationArgs;
       const orchestration = await OrchestrationService.createOrchestration({
-        name: args.name,
-        description: args.description,
-        tags: args.tags || [],
-        steps: args.steps,
+        name: typedArgs.name,
+        description: typedArgs.description,
+        tags: typedArgs.tags || [],
+        steps: typedArgs.steps,
       });
 
       return [{
         type: 'text',
-        text: `✅ Orchestration "${orchestration.name}" created successfully.\nID: ${orchestration.id}\nSteps: ${args.steps.length}`,
+        text: `✅ Orchestration "${orchestration.name}" created successfully.\nID: ${orchestration.id}`,
       }];
     },
   },
@@ -231,21 +245,15 @@ export const metaTools: SandboxTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Filter by tags',
-        },
-        activeOnly: {
-          type: 'boolean',
-          description: 'Only show active orchestrations',
-        },
+        tags: { type: 'array', items: { type: 'string' } },
+        activeOnly: { type: 'boolean' },
       },
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as ListOrchestrationsArgs;
       const orchestrations = await OrchestrationService.listOrchestrations({
-        tags: args.tags,
-        isActive: args.activeOnly,
+        tags: typedArgs.tags,
+        isActive: typedArgs.activeOnly,
       });
 
       const summary = orchestrations.map((o: any) => ({
@@ -271,18 +279,16 @@ export const metaTools: SandboxTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        nameOrId: { type: 'string', description: 'Orchestration name or ID' },
+        nameOrId: { type: 'string' },
       },
       required: ['nameOrId'],
     },
-    handler: async (args: any) => {
-      const orchestration = await OrchestrationService.getOrchestration(args.nameOrId);
+    handler: async (args: unknown) => {
+      const typedArgs = args as GetOrchestrationArgs;
+      const orchestration = await OrchestrationService.getOrchestration(typedArgs.nameOrId);
 
       if (!orchestration) {
-        return [{
-          type: 'text',
-          text: `❌ Orchestration "${args.nameOrId}" not found.`,
-        }];
+        return [{ type: 'text', text: `❌ Orchestration "${typedArgs.nameOrId}" not found.` }];
       }
 
       return [{
@@ -298,23 +304,21 @@ export const metaTools: SandboxTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        orchestrationId: { type: 'string', description: 'ID of the orchestration to execute' },
-        input: {
-          type: 'object',
-          description: 'Input data for the orchestration',
-        },
+        orchestrationId: { type: 'string' },
+        input: { type: 'object' },
       },
       required: ['orchestrationId', 'input'],
     },
-    handler: async (args: any) => {
+    handler: async (args: unknown) => {
+      const typedArgs = args as ExecuteOrchestrationArgs;
       const execution = await OrchestrationService.executeOrchestration(
-        args.orchestrationId,
-        args.input
+        typedArgs.orchestrationId,
+        typedArgs.input
       );
 
       return [{
         type: 'text',
-        text: `✅ Orchestration execution started.\nExecution ID: ${execution.id}\nStatus: ${execution.status}\n\nUse get_execution_status with this ID to check progress.`,
+        text: `✅ Orchestration started. Execution ID: ${execution.id}`,
       }];
     },
   },
@@ -325,84 +329,21 @@ export const metaTools: SandboxTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        executionId: { type: 'string', description: 'Execution ID' },
+        executionId: { type: 'string' },
       },
       required: ['executionId'],
     },
-    handler: async (args: any) => {
-      const execution = await OrchestrationService.getExecutionStatus(args.executionId);
+    handler: async (args: unknown) => {
+      const typedArgs = args as GetExecutionStatusArgs;
+      const execution = await OrchestrationService.getExecutionStatus(typedArgs.executionId);
 
       if (!execution) {
-        return [{
-          type: 'text',
-          text: `❌ Execution "${args.executionId}" not found.`,
-        }];
+        return [{ type: 'text', text: `❌ Execution "${typedArgs.executionId}" not found.` }];
       }
 
-      const status = {
-        status: execution.status,
-        startedAt: execution.startedAt,
-        completedAt: execution.completedAt,
-        output: execution.output,
-        error: execution.error,
-        stepLogs: execution.stepLogs,
-      };
-
       return [{
         type: 'text',
-        text: JSON.stringify(status, null, 2),
-      }];
-    },
-  },
-
-  {
-    name: 'update_orchestration',
-    description: 'Update an orchestration\'s metadata',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        orchestrationId: { type: 'string' },
-        updates: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            tags: { type: 'array', items: { type: 'string' } },
-            isActive: { type: 'boolean' },
-          },
-        },
-      },
-      required: ['orchestrationId', 'updates'],
-    },
-    handler: async (args: any) => {
-      const orchestration = await OrchestrationService.updateOrchestration(
-        args.orchestrationId,
-        args.updates
-      );
-
-      return [{
-        type: 'text',
-        text: `✅ Orchestration "${orchestration.name}" updated successfully.`,
-      }];
-    },
-  },
-
-  {
-    name: 'delete_orchestration',
-    description: 'Delete an orchestration',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        orchestrationId: { type: 'string' },
-      },
-      required: ['orchestrationId'],
-    },
-    handler: async (args: any) => {
-      const orchestration = await OrchestrationService.deleteOrchestration(args.orchestrationId);
-
-      return [{
-        type: 'text',
-        text: `✅ Orchestration "${orchestration.name}" deleted successfully.`,
+        text: JSON.stringify(execution, null, 2),
       }];
     },
   },
@@ -414,9 +355,8 @@ export const metaTools: SandboxTool[] = [
 export async function canUseMetaTools(roleId: string): Promise<boolean> {
   const role = await prisma.role.findUnique({
     where: { id: roleId },
-    select: { tools: true },
+    include: { tools: { include: { tool: true } } },
   });
 
-  // Meta-tools are available if the role includes 'meta' in its tools array
-  return role?.tools.includes('meta') || false;
+  return role?.tools.some(rt => rt.tool.name === 'meta') || false;
 }

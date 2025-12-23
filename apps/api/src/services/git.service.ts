@@ -33,10 +33,10 @@ export class GitService {
       const { git } = this.getGit(vfsToken);
       const log = await git.log({ maxCount: count });
       return log.all;
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Git Log failed: ${error.message}`,
+        message: `Git Log failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -49,15 +49,15 @@ export class GitService {
       await git.checkout(branchName);
       await git.pull();
       return { success: true, branch: branchName };
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Checkout and Pull failed: ${error.message}`,
+        message: `Checkout and Pull failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
 
-  async gitCommit(vfsToken: string, message: string) {
+  async commit(vfsToken: string, message: string) {
     try {
       const { git } = this.getGit(vfsToken);
       const status = await git.status();
@@ -69,10 +69,10 @@ export class GitService {
       await git.add('.');
       const commit = await git.commit(message);
       return { hash: commit.commit, summary: commit.summary };
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Git Commit failed: ${error.message}`,
+        message: `Git Commit failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -90,10 +90,10 @@ export class GitService {
       await git.checkoutLocalBranch(branchName);
       
       return branchName;
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Create Ghost Branch failed: ${error.message}`,
+        message: `Create Ghost Branch failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -103,10 +103,10 @@ export class GitService {
       const { git } = this.getGit(vfsToken);
       await git.checkout(branchName);
       return { success: true, branch: branchName };
-    } catch (error: any) {
+    } catch (error) {
        throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Checkout Branch failed: ${error.message}`,
+        message: `Checkout Branch failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -136,10 +136,10 @@ export class GitService {
       await git.deleteLocalBranch(branchName);
 
       return { success: true, ratified: branchName };
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Ratify Branch failed: ${error.message}`,
+        message: `Ratify Branch failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }
@@ -158,10 +158,22 @@ export class GitService {
         all: interestingBranches,
         current: branchSummary.current
       };
-    } catch (error: any) {
+    } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: `Get Branches failed: ${error.message}`,
+        message: `Get Branches failed: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
+  async discardChanges(vfsToken: string) {
+    try {
+      const { git } = this.getGit(vfsToken);
+      await git.checkout('.');
+      return { success: true };
+    } catch (error) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Discard Changes failed: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   }

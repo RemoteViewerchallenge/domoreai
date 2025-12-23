@@ -80,21 +80,24 @@ export class UnifiedIngestionService {
     for (const { id, provider, rawData } of rawRecords) {
         const mapping = MAPPINGS[provider] || MAPPINGS['openrouter'];
         const castRaw = rawData; 
-        const modelList = Array.isArray(castRaw) ? castRaw : ((castRaw.data || castRaw.models || []) as Record<string, unknown>[]);
+        const rawModelList = Array.isArray(castRaw) ? castRaw : ((castRaw.data || castRaw.models || []) as Record<string, unknown>[]);
         
-        const providerConfig = await this.ensureProviderConfig(provider);
-
-        for (const raw of modelList) {
+        // DEDUPLICATE within the list to avoid duplicate upserts in the same batch
+        const uniqueModelMap = new Map<string, Record<string, unknown>>();
+        for (const raw of rawModelList) {
             const modelIdRaw = this.resolvePath(raw, mapping.idPath);
             if (typeof modelIdRaw !== 'string' && typeof modelIdRaw !== 'number') continue;
-            const modelId = String(modelIdRaw); // Force string
+            const modelId = String(modelIdRaw).trim(); // Normalize: Trim
+            if (!modelId) continue;
+            uniqueModelMap.set(modelId, raw);
+        }
 
-            // --- CRITICAL: PRICING & FILTERING LOGIC ---
-            // 1. Is it a "Fail-Open" Provider? (Groq, Google, Ollama, Mistral) -> ALWAYS FREE
-            // 2. Is it OpenRouter? -> CHECK PRICING OBJECT
+        const providerConfig = await this.ensureProviderConfig(provider);
+
+        for (const [modelId, raw] of uniqueModelMap.entries()) {
+            // ...
             const isFree = this.checkIsFree(provider, raw);
 
-            // cspell:ignore Gatekeeping
             // Gatekeeping: If OpenRouter AND Paid, SKIP IT.
             if (provider === 'openrouter' && !isFree) {
                 continue; 
@@ -103,7 +106,7 @@ export class UnifiedIngestionService {
             // Normalization
             const contextWindow = (this.resolvePath(raw, mapping.contextPath) as number) || 4096;
             const nameRaw = this.resolvePath(raw, mapping.namePath);
-            const name = (typeof nameRaw === 'string' || typeof nameRaw === 'number') ? String(nameRaw) : modelId;
+            const name = (typeof nameRaw === 'string' || typeof nameRaw === 'number') ? String(nameRaw).trim() : modelId;
             const isMultimodal = JSON.stringify(raw).toLowerCase().includes('vision');
 
             // 3. CAPABILITY EXTRACTION
@@ -123,37 +126,44 @@ export class UnifiedIngestionService {
             };
 
             // 4. UPSERT WITH CAPABILITIES (The Missing Link)
-            await prisma.model.upsert({
-                where: { providerId_modelId: { providerId: providerConfig.id, modelId } },
-                create: {
-                    providerId: providerConfig.id,
-                    modelId,
-                    name,
-                    isFree: true, // It passed the gate, so it's free/allowed
-                    isActive: true,
-                    providerData: raw as Prisma.JsonObject, // Store copy here for fast access
-                    specs: { contextWindow, isMultimodal }, // Deprecated but populated for safety
-                    source: 'INDEX',
-                    // [UPDATED] Create the relation immediately
-                    capabilities: {
-                        create: capsData
-                    }
-                },
-                update: {
-                    isActive: true,
-                    isFree: true,
-                    providerData: raw as Prisma.JsonObject,
-                    lastSeenAt: new Date(),
-                    // [UPDATED] Update the relation
-                    capabilities: {
-                        upsert: {
-                            create: capsData,
-                            update: capsData
+            try {
+                await prisma.model.upsert({
+                    where: { providerId_modelId: { providerId: providerConfig.id, modelId } },
+                    create: {
+                        providerId: providerConfig.id,
+                        modelId,
+                        name,
+                        isFree: true,
+                        isActive: true,
+                        providerData: raw as Prisma.JsonObject,
+                        specs: { contextWindow, isMultimodal },
+                        source: 'INDEX',
+                        capabilities: {
+                            create: capsData
+                        }
+                    },
+                    update: {
+                        isActive: true,
+                        isFree: true,
+                        providerData: raw as Prisma.JsonObject,
+                        lastSeenAt: new Date(),
+                        capabilities: {
+                            upsert: {
+                                create: capsData,
+                                update: capsData
+                            }
                         }
                     }
+                });
+                totalIngested++;
+            } catch (err: unknown) {
+                const prismaError = err as { code?: string; message?: string };
+                if (prismaError.code === 'P2002') {
+                    console.warn(`[Ingestion] Skipping model ${modelId} due to unique constraint conflict (likely race condition or duplicate ID in index).`);
+                } else {
+                    console.error(`[Ingestion] Failed to upsert model ${modelId}:`, err);
                 }
-            });
-            totalIngested++;
+            }
         }
         // Mark Raw Record Processed
         await prisma.rawDataLake.update({ where: { id }, data: { processed: true } });

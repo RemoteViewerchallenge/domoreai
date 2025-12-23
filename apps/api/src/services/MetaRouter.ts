@@ -91,7 +91,7 @@ Return your decision as a JSON object with this structure:
   "estimatedDuration": 45,  // Estimated minutes
   "requiredCapabilities": ["coding", "tools"]  // Capabilities needed
 }`,
-          tools: [],
+
           metadata: {
             defaultTemperature: 0.2,  // Low temperature for consistent routing
             defaultMaxTokens: 1024,
@@ -117,17 +117,25 @@ Return your decision as a JSON object with this structure:
     try {
       const response = await routerAgent.generate(routingPrompt);
       
+      // Define interface for the internal LLM response
+      interface RouterResponse {
+        orchestrationName: string | null;
+        confidence: number;
+        reasoning: string;
+        fallbackToSingleAgent: boolean;
+        recommendedRole: string;
+        estimatedDuration: number;
+        requiredCapabilities: string[];
+      }
+
       // Parse JSON response
-      let decision;
+      let decision: RouterResponse;
       try {
         const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          decision = JSON.parse(jsonMatch[0]);
-        } else {
-          decision = JSON.parse(response);
-        }
+        const jsonString = jsonMatch ? jsonMatch[0] : response;
+        decision = JSON.parse(jsonString);
       } catch (parseError) {
-        console.error('[MetaRouter] Failed to parse JSON response:', response);
+        console.error('[MetaRouter] Failed to parse JSON response:', response, parseError);
         // Fallback to single agent
         return {
           orchestrationTemplate: null,
@@ -142,24 +150,26 @@ Return your decision as a JSON object with this structure:
 
       // 7. Find the orchestration ID if a template was selected
       let orchestrationId: string | undefined;
-      if (decision.orchestrationName && !decision.fallbackToSingleAgent) {
+      const orchestrationName = decision.orchestrationName;
+      const fallbackToSingleAgent = decision.fallbackToSingleAgent;
+
+      if (orchestrationName && !fallbackToSingleAgent) {
         const orchestration = orchestrations.find(
-          o => o.name.toLowerCase() === decision.orchestrationName.toLowerCase()
+          o => o.name.toLowerCase() === orchestrationName.toLowerCase()
         );
         orchestrationId = orchestration?.id;
 
         if (!orchestrationId) {
-          console.warn(`[MetaRouter] Orchestration "${decision.orchestrationName}" not found, falling back to single agent`);
-          decision.fallbackToSingleAgent = true;
+          console.warn(`[MetaRouter] Orchestration "${orchestrationName}" not found, falling back to single agent`);
         }
       }
 
       const result: RoutingDecision = {
-        orchestrationTemplate: decision.orchestrationName || null,
+        orchestrationTemplate: orchestrationName || null,
         orchestrationId,
         confidence: decision.confidence || 0.5,
         reasoning: decision.reasoning || 'No reasoning provided',
-        fallbackToSingleAgent: decision.fallbackToSingleAgent !== false,
+        fallbackToSingleAgent: fallbackToSingleAgent !== false || !orchestrationId,
         recommendedRole: decision.recommendedRole || 'general_worker',
         estimatedDuration: decision.estimatedDuration || 30,
         requiredCapabilities: decision.requiredCapabilities || ['text']

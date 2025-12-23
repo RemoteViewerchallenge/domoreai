@@ -156,7 +156,7 @@ export class WebSocketService {
       });
 
       ws.on('close', (code, reason) => {
-        console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason}`);
+        console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason.toString()}`);
         shell.kill();
       });
     });

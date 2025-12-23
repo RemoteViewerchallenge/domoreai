@@ -1,25 +1,20 @@
-import { saveModelKnowledge, ResearchData } from './ModelKnowledgeBase.js';
+import { saveModelKnowledge } from './ModelKnowledgeBase.js';
+
 /**
  * SURVEYOR SERVICE
- * 
- * The "Map of Florida" - Uses regex patterns to instantly identify model capabilities
+ * * The "Map of Florida" - Uses regex patterns to instantly identify model capabilities
  * without burning tokens or making API calls. This is the FAST PATH for data collection.
- * 
- * Strategy: Pattern matching on model names to infer specs
- * - 90% of models follow naming conventions (gemini-1.5-pro, gpt-4o, etc.)
- * - We can instantly map these to known capabilities
- * - Only unknown models need the slower "Cartographer" agent
  */
 
 export interface ModelSpecs {
   contextWindow?: number;
   maxOutput?: number;
-  capabilities: string[]; // e.g. ["text", "vision", "audio_in", "image_gen", "embedding"]
+  capabilities: string[];
   costPer1k?: number;
   rateLimit?: {
-    rpm?: number; // Requests per minute
-    tpm?: number; // Tokens per minute
-    rpd?: number; // Requests per day
+    rpm?: number;
+    tpm?: number;
+    rpd?: number;
   };
 }
 
@@ -28,21 +23,35 @@ interface ProviderPattern {
   specs: ModelSpecs;
 }
 
-/**
- * THE ZONING MAP
- * Each provider has "zones" - model families with shared characteristics
- */
 const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== GOOGLE =====
   google: [
     {
-      pattern: /gemini-2\.0-flash-exp/i,
+      // Covers gemini-2.0-flash, flash-lite, flash-001, etc.
+      pattern: /gemini-2\.?0-flash/i,
       specs: {
         contextWindow: 1000000,
         maxOutput: 8192,
         capabilities: ["text", "vision", "audio_in", "video_in", "tool_use"],
-        costPer1k: 0, // Free tier
-        rateLimit: { rpm: 10, tpm: 4000000, rpd: 1500 }
+        costPer1k: 0.10
+      }
+    },
+    {
+      pattern: /gemini-2\.?0-pro/i,
+      specs: {
+        contextWindow: 2000000, // Anticipated
+        maxOutput: 8192,
+        capabilities: ["text", "vision", "audio_in", "video_in", "tool_use", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /gemini-2\.?5/i,
+      specs: {
+        contextWindow: 1000000,
+        maxOutput: 8192,
+        capabilities: ["text", "vision", "audio_in", "video_in", "tool_use"],
+        costPer1k: 0
       }
     },
     {
@@ -51,8 +60,7 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         contextWindow: 2000000,
         maxOutput: 8192,
         capabilities: ["text", "vision", "audio_in", "video_in", "tool_use"],
-        costPer1k: 1.25, // $1.25 per 1M input tokens
-        rateLimit: { rpm: 360, tpm: 4000000 }
+        costPer1k: 1.25
       }
     },
     {
@@ -61,24 +69,15 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         contextWindow: 1000000,
         maxOutput: 8192,
         capabilities: ["text", "vision", "audio_in", "tool_use"],
-        costPer1k: 0.075, // $0.075 per 1M input tokens
-        rateLimit: { rpm: 1000, tpm: 4000000 }
+        costPer1k: 0.075
       }
     },
     {
-      pattern: /gemini-pro-vision/i,
-      specs: {
-        contextWindow: 16384,
-        capabilities: ["text", "vision"],
-        costPer1k: 0.25
-      }
-    },
-    {
-      pattern: /text-embedding/i,
+      pattern: /embedding/i,
       specs: {
         contextWindow: 2048,
         capabilities: ["embedding"],
-        costPer1k: 0.00001 // Very cheap
+        costPer1k: 0.00001
       }
     }
   ],
@@ -86,13 +85,21 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== OPENAI =====
   openai: [
     {
+      pattern: /o1/i,
+      specs: {
+        contextWindow: 128000,
+        maxOutput: 32768,
+        capabilities: ["text", "reasoning", "tool_use"],
+        costPer1k: 15.00
+      }
+    },
+    {
       pattern: /gpt-4o/i,
       specs: {
         contextWindow: 128000,
         maxOutput: 16384,
         capabilities: ["text", "vision", "tool_use"],
-        costPer1k: 2.50,
-        rateLimit: { rpm: 10000, tpm: 30000000 }
+        costPer1k: 2.50
       }
     },
     {
@@ -105,41 +112,12 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       }
     },
     {
-      pattern: /gpt-3\.5-turbo/i,
+      pattern: /gpt-3\.5/i,
       specs: {
         contextWindow: 16385,
         maxOutput: 4096,
         capabilities: ["text", "tool_use"],
         costPer1k: 0.50
-      }
-    },
-    {
-      pattern: /dall-e/i,
-      specs: {
-        capabilities: ["image_gen"],
-        costPer1k: 20.00 // Per image, not per token
-      }
-    },
-    {
-      pattern: /tts/i,
-      specs: {
-        capabilities: ["text_to_speech"],
-        costPer1k: 15.00 // Per 1M characters
-      }
-    },
-    {
-      pattern: /whisper/i,
-      specs: {
-        capabilities: ["speech_to_text"],
-        costPer1k: 6.00 // Per minute
-      }
-    },
-    {
-      pattern: /text-embedding/i,
-      specs: {
-        contextWindow: 8191,
-        capabilities: ["embedding"],
-        costPer1k: 0.02
       }
     }
   ],
@@ -147,13 +125,12 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== ANTHROPIC =====
   anthropic: [
     {
-      pattern: /claude-3\.5-sonnet/i,
+      pattern: /claude-3\.?5-sonnet/i,
       specs: {
         contextWindow: 200000,
         maxOutput: 8192,
         capabilities: ["text", "vision", "tool_use"],
-        costPer1k: 3.00,
-        rateLimit: { rpm: 50, tpm: 40000 }
+        costPer1k: 3.00
       }
     },
     {
@@ -179,28 +156,36 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== MISTRAL =====
   mistral: [
     {
+      pattern: /voxtral/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "audio_in"], // Voxtral is audio optimized
+        costPer1k: 0.15
+      }
+    },
+    {
+      pattern: /ministral-?3b/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "tool_use"],
+        costPer1k: 0.04
+      }
+    },
+    {
+      pattern: /ministral-?8b/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "tool_use"],
+        costPer1k: 0.10
+      }
+    },
+    {
       pattern: /mistral-large/i,
       specs: {
         contextWindow: 128000,
-        maxOutput: 4096,
+        maxOutput: 8192,
         capabilities: ["text", "tool_use"],
         costPer1k: 2.00
-      }
-    },
-    {
-      pattern: /mistral-medium/i,
-      specs: {
-        contextWindow: 32000,
-        capabilities: ["text"],
-        costPer1k: 0.70
-      }
-    },
-    {
-      pattern: /mistral-small/i,
-      specs: {
-        contextWindow: 32000,
-        capabilities: ["text"],
-        costPer1k: 0.20
       }
     },
     {
@@ -210,27 +195,34 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         capabilities: ["text", "code"],
         costPer1k: 0.30
       }
+    },
+    {
+      pattern: /pixtral/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "vision"],
+        costPer1k: 0.15
+      }
     }
   ],
 
   // ===== GROQ =====
   groq: [
     {
-      pattern: /llama.*70b/i,
+      pattern: /llama-3\.?3-70b/i,
       specs: {
-        contextWindow: 8192,
-        capabilities: ["text"],
-        costPer1k: 0, // Free tier
-        rateLimit: { rpm: 30, tpm: 6000, rpd: 14400 }
+        contextWindow: 128000,
+        maxOutput: 8192, // Groq supports higher output now
+        capabilities: ["text", "tool_use"],
+        costPer1k: 0
       }
     },
     {
-      pattern: /llama.*8b/i,
+      pattern: /llama.*(70b|8b)/i,
       specs: {
         contextWindow: 8192,
         capabilities: ["text"],
-        costPer1k: 0,
-        rateLimit: { rpm: 30, tpm: 7000, rpd: 14400 }
+        costPer1k: 0
       }
     },
     {
@@ -238,21 +230,45 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 32768,
         capabilities: ["text"],
-        costPer1k: 0,
-        rateLimit: { rpm: 30, tpm: 5000, rpd: 14400 }
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /playai-tts/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["text_to_speech"],
+        costPer1k: 0
       }
     }
   ],
-
-  // ===== OLLAMA (Local) =====
-  ollama: [
+  
+  // ===== OPENROUTER / GENERAL =====
+  // Many diverse models appear here, we map common keywords
+  openrouter: [
     {
-      pattern: /.*/i, // Catch-all for local models
+      pattern: /deepseek-r1/i,
       specs: {
-        contextWindow: 4096, // Conservative default
+        contextWindow: 128000,
+        maxOutput: 32768,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0.55
+      }
+    },
+    {
+      pattern: /qwen.*(2\.5|3)/i,
+      specs: {
+        contextWindow: 32768,
         capabilities: ["text"],
-        costPer1k: 0, // Local = free
-        rateLimit: { rpm: 1000, tpm: 1000000 } // No real limits for local
+        costPer1k: 0.1
+      }
+    },
+    {
+      pattern: /gemma-?2/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0.1
       }
     }
   ]
@@ -261,21 +277,49 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
 export class Surveyor {
   /**
    * Inspect a model and return its specs if we can identify it via patterns
-   * @returns ModelSpecs if identified, null if unknown (needs Cartographer)
    */
   static inspect(provider: string, modelName: string): ModelSpecs | null {
     const providerKey = provider.toLowerCase();
-    const rules = PROVIDER_PATTERNS[providerKey] || [];
     
-    // Try each pattern for this provider
-    for (const rule of rules) {
-      if (rule.pattern.test(modelName)) {
-        console.log(`[Surveyor] ✅ Identified ${provider}/${modelName} via pattern`);
-        return rule.specs;
-      }
+    // 1. Try Specific Provider Rules
+    let rules = PROVIDER_PATTERNS[providerKey];
+    
+    // 2. If provider unknown or no match, try OpenRouter/General rules
+    if (!rules && (providerKey.includes('openrouter') || providerKey.includes('router'))) {
+        rules = PROVIDER_PATTERNS['openrouter'];
     }
     
-    // Special case: Extract context window from model name (e.g., "model-128k")
+    // 3. Match
+    if (rules) {
+        for (const rule of rules) {
+          if (rule.pattern.test(modelName)) {
+            console.log(`[Surveyor] ✅ Identified ${provider}/${modelName} via pattern`);
+            return rule.specs;
+          }
+        }
+    }
+    
+    // 4. Fallback: Generic Heuristics (The "Safety Net")
+    // If we missed a pattern, try to infer from common suffixes
+    const lower = modelName.toLowerCase();
+    
+    // Vision?
+    if (lower.includes('vision') || lower.includes('vl') || lower.includes('pixtral') || lower.includes('omni')) {
+        return {
+            contextWindow: 16384, // Safe default for vision models
+            capabilities: ["text", "vision"]
+        };
+    }
+    
+    // Reasoning?
+    if (lower.includes('deepseek-r1') || lower.includes('thinking') || lower.includes('reasoner')) {
+         return {
+            contextWindow: 32768,
+            capabilities: ["text", "reasoning"]
+        };
+    }
+
+    // Context Window from name (e.g., "model-128k")
     const contextMatch = modelName.match(/(\d+)k/i);
     if (contextMatch) {
       const contextK = parseInt(contextMatch[1]);
@@ -292,13 +336,10 @@ export class Surveyor {
 
   /**
    * Bulk survey: Apply patterns to all models in the registry
-   * @returns Count of models successfully surveyed
    */
   static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
     const { prisma } = await import('../db.js');
     
-    // Find all models that are missing capabilities or have low-confidence data
-    // This aligns with PersistentModelDoctor's health check
     const models = await prisma.model.findMany({
       where: {
         isActive: true,
@@ -319,11 +360,10 @@ export class Surveyor {
     console.log(`[Surveyor] 🔍 Inspecting ${models.length} incomplete models...`);
 
     for (const model of models) {
+      // Pass both provider type (e.g. 'google') and explicit provider name if needed
       const specs = this.inspect(model.provider.type, model.modelId);
       
       if (specs) {
-        // [IMPORTANT] Sync with Layer 3 (ModelCapabilities)
-        // Convert Surveyor's ModelSpecs to ResearchData format used by ModelDoctor
         const researchData = {
           contextWindow: specs.contextWindow || 4096,
           maxOutput: specs.maxOutput || 4096,
@@ -332,23 +372,7 @@ export class Surveyor {
           hasReasoning: specs.capabilities.includes('reasoning') || specs.capabilities.includes('thought'),
         };
 
-        // Update the model with surveyed specs (Backward compatibility)
-        await prisma.model.update({
-          where: { id: model.id },
-          data: {
-            specs: {
-              ...specs,
-              source: 'surveyor',
-              surveyedAt: new Date().toISOString()
-            },
-            capabilityTags: specs.capabilities
-          }
-        });
-
-        // Update the NEW ModelCapabilities table (Layer 3)
-        // This is what makes the health check pass!
         await saveModelKnowledge(model.id, researchData, 'surveyor', 'high');
-        
         surveyed++;
       } else {
         unknown++;

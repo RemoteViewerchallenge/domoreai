@@ -1,13 +1,29 @@
-import { db } from "../db.js";
 import { prisma } from "../db.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { createVolcanoAgent } from "./AgentFactory.js";
+import { Prisma } from "@prisma/client";
+
+export interface JudgeAssessment {
+  score: number;
+  passed: boolean;
+  strengths: string[];
+  weaknesses: string[];
+  feedback: string;
+}
+
+interface StepLog {
+  stepName?: string;
+  status?: string;
+  duration?: number;
+  error?: string;
+}
 
 export class AssessmentService {
   
   static async recordFailure(roleId: string, originalPrompt: string, critique: string) {
     // 1. Save to PromptRefinement table
-    const refinement = await (db as any).promptRefinement.create({
+    // @ts-ignore - Prisma types may take a moment to update
+    const refinement = await (prisma as any).promptRefinement.create({
       data: {
         roleId,
         originalPrompt,
@@ -17,7 +33,7 @@ export class AssessmentService {
     });
 
     // 2. Trigger Optimization (Fire and Forget)
-    this.optimizePrompt(refinement.id).catch(err => 
+    void this.optimizePrompt(refinement.id).catch(err => 
       console.error(`[AssessmentService] Optimization failed for ${refinement.id}:`, err)
     );
 
@@ -25,7 +41,8 @@ export class AssessmentService {
   }
 
   static async optimizePrompt(refinementId: string) {
-    const refinement = await (db as any).promptRefinement.findUnique({
+    // @ts-ignore - Prisma types may take a moment to update
+    const refinement = await (prisma as any).promptRefinement.findUnique({
       where: { id: refinementId },
       include: { role: true }
     });
@@ -49,13 +66,9 @@ export class AssessmentService {
     // Use a smart model - Dynamic Selection
     const models = await ProviderManager.getAllModels();
     
-    // [NEW] Dynamic Resilience
-    // 1. Look for models explicitly tagged with 'reasoning' or 'smart' (future-proofing)
-    // 2. Fallback to models that are NOT free (assuming paid = smarter)
-    // 3. Fallback to the largest context window
     const smartModel = models.find(m => m.capabilities?.includes('reasoning')) 
-      || models.find(m => (m.costPer1k || 0) > 0) // Heuristic: Paid models are usually "smarter"
-      || models.sort((a, b) => ((b.specs?.contextWindow || 0) - (a.specs?.contextWindow || 0)))[0] // Fallback: Biggest brain
+      || models.find(m => (m.costPer1k || 0) > 0) 
+      || models.sort((a, b) => ((b.specs?.contextWindow || 0) - (a.specs?.contextWindow || 0)))[0] 
       || models[0];
 
     if (!smartModel) {
@@ -76,7 +89,8 @@ export class AssessmentService {
     });
 
     // Update the record
-    await (db as any).promptRefinement.update({
+    // @ts-ignore - Prisma types may take a moment to update
+    await (prisma as any).promptRefinement.update({
       where: { id: refinementId },
       data: { refinedPrompt: newPrompt }
     });
@@ -86,19 +100,10 @@ export class AssessmentService {
 
   /**
    * Evaluate an orchestration execution using a Judge role
-   * @param executionId - The execution to evaluate
-   * @returns Quality score (0-1) and detailed feedback
    */
-  static async evaluateExecution(executionId: string): Promise<{
-    score: number;
-    feedback: string;
-    passed: boolean;
-    strengths: string[];
-    weaknesses: string[];
-  }> {
+  static async evaluateExecution(executionId: string): Promise<JudgeAssessment> {
     console.log(`[Judge] ⚖️  Evaluating execution: ${executionId}`);
 
-    // 1. Load the execution
     const execution = await prisma.orchestrationExecution.findUnique({
       where: { id: executionId },
       include: {
@@ -125,7 +130,6 @@ export class AssessmentService {
       };
     }
 
-    // 2. Find or create a Judge role
     let judgeRole = await prisma.role.findFirst({
       where: { name: 'Judge' }
     });
@@ -136,24 +140,17 @@ export class AssessmentService {
         data: {
           name: 'Judge',
           basePrompt: `You are an expert Quality Assurance Judge for AI orchestrations.
-
-Your job is to evaluate the quality of orchestration executions by analyzing:
-1. Whether the output matches the input requirements
-2. The efficiency of the workflow (step duration, retries)
-3. The completeness and correctness of the result
-4. Any errors or issues in the execution logs
-
+...
 Return your assessment as a JSON object with this structure:
 {
-  "score": 0.85,  // 0-1 scale
-  "passed": true,  // true if score >= 0.7
+  "score": 0.85,
+  "passed": true,
   "strengths": ["Clear output", "Efficient execution"],
   "weaknesses": ["Minor formatting issue"],
   "feedback": "Overall good execution with room for improvement..."
 }`,
-          tools: [],
           metadata: {
-            defaultTemperature: 0.3,  // Low temperature for consistent grading
+            defaultTemperature: 0.3,
             defaultMaxTokens: 2048,
             defaultResponseFormat: 'json_object'
           }
@@ -161,35 +158,29 @@ Return your assessment as a JSON object with this structure:
       });
     }
 
-    // 3. Create the evaluation prompt
     const evaluationPrompt = this.createEvaluationPrompt(execution);
 
-    // 4. Create Judge agent
     const judgeAgent = await createVolcanoAgent({
       roleId: judgeRole.id,
-      modelId: null,  // Let orchestrator pick best model
+      modelId: null,
       isLocked: false,
       temperature: 0.3,
       maxTokens: 2048
     });
 
-    // 5. Get Judge's assessment
     try {
       const response = await judgeAgent.generate(evaluationPrompt);
       
-      // Parse JSON response
-      let assessment;
+      let assessment: JudgeAssessment;
       try {
-        // Try to extract JSON from the response
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          assessment = JSON.parse(jsonMatch[0]);
+          assessment = JSON.parse(jsonMatch[0]) as JudgeAssessment;
         } else {
-          assessment = JSON.parse(response);
+          assessment = JSON.parse(response) as JudgeAssessment;
         }
       } catch (parseError) {
-        console.error('[Judge] Failed to parse JSON response:', response);
-        // Fallback assessment
+        console.error('[Judge] Failed to parse JSON response:', response, parseError);
         assessment = {
           score: 0.5,
           passed: false,
@@ -209,11 +200,12 @@ Return your assessment as a JSON object with this structure:
         weaknesses: assessment.weaknesses || []
       };
 
-    } catch (error: any) {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       console.error('[Judge] Evaluation failed:', error);
       return {
         score: 0,
-        feedback: `Evaluation error: ${error.message}`,
+        feedback: `Evaluation error: ${msg}`,
         passed: false,
         strengths: [],
         weaknesses: ['Judge evaluation failed']
@@ -221,10 +213,18 @@ Return your assessment as a JSON object with this structure:
     }
   }
 
-  /**
-   * Create the evaluation prompt for the Judge
-   */
-  private static createEvaluationPrompt(execution: any): string {
+  private static createEvaluationPrompt(execution: Prisma.OrchestrationExecutionGetPayload<{
+    include: {
+      orchestration: {
+        include: {
+          steps: true
+        }
+      }
+    }
+  }>): string {
+    const stepLogsRaw = execution.stepLogs;
+    const stepLogs = (Array.isArray(stepLogsRaw) ? stepLogsRaw : []) as StepLog[];
+
     return `Evaluate this orchestration execution:
 
 ORCHESTRATION: ${execution.orchestration.name}
@@ -234,8 +234,8 @@ INPUT:
 ${JSON.stringify(execution.input, null, 2)}
 
 WORKFLOW STEPS:
-${execution.stepLogs?.map((log: any, i: number) => 
-  `${i + 1}. ${log.stepName} - Status: ${log.status}, Duration: ${log.duration}ms${log.error ? `, Error: ${log.error}` : ''}`
+${stepLogs.map((log: StepLog, i: number) => 
+  `${i + 1}. ${log.stepName || 'Unknown Step'} - Status: ${log.status}, Duration: ${log.duration}ms${log.error ? `, Error: ${log.error}` : ''}`
 ).join('\n') || 'No step logs available'}
 
 OUTPUT:
@@ -247,10 +247,7 @@ EXECUTION TIME: ${execution.completedAt ?
 Please evaluate this execution and provide your assessment as a JSON object.`;
   }
 
-  static async getAverageQuality(modelId: string): Promise<number> {
-    // Placeholder: In the future, this will query the 'assessments' table
-    // to find the average pass rate for this model.
-    // For now, we assume neutral quality (0.7)
+  static getAverageQuality(_modelId: string): number {
     return 0.7;
   }
 }

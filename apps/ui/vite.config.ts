@@ -29,12 +29,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@repo/nebula": path.resolve(__dirname, "../../packages/nebula/src"),
-      
-      // Force alias Node.js built-ins to the shim
-      "perf_hooks": path.resolve(__dirname, "./src/shims.js"),
-      "os": path.resolve(__dirname, "./src/shims.js"),
-      "path": path.resolve(__dirname, "./src/shims.js"),
-      "fs": path.resolve(__dirname, "./src/shims.js"), // shim fs if needed
     },
     dedupe: ['react', 'react-dom'],
   },
