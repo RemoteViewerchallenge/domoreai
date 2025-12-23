@@ -4,7 +4,8 @@
 export interface Vector {
   id: string;
   vector: number[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+  similarity?: number;
 }
 
 export class InMemoryVectorStore {
@@ -54,7 +55,14 @@ export class PgVectorStore {
 
   async search(queryVector: number[], topK: number): Promise<Vector[]> {
     const vectorString = `[${queryVector.join(',')}]`;
-    const results = await prisma.$queryRawUnsafe(
+    interface DbVectorResult {
+      id: string;
+      content: string;
+      filePath: string;
+      metadata: Record<string, unknown>;
+      similarity: number;
+    }
+    const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
       `SELECT "id", "content", "filePath", "metadata", 
               1 - ("vector" <=> $1::vector) as similarity
        FROM "VectorEmbedding"
@@ -64,7 +72,7 @@ export class PgVectorStore {
       topK
     );
 
-    return (results as any[]).map((r: any) => ({
+    return results.map((r) => ({
       id: r.id,
       vector: [], // Optimization: don't return the full vector
       metadata: { ...r.metadata, chunk: r.content, filePath: r.filePath },
@@ -125,7 +133,7 @@ const embeddingLimiter = new ConcurrencyLimiter(1); // Limit to 1 concurrent req
 
 export const createEmbedding = async (text: string): Promise<number[]> => {
   if (!text || !text.trim()) {
-    return Array(1024).fill(0);
+    return new Array<number>(1024).fill(0);
   }
 
   return embeddingLimiter.run(async () => {
@@ -143,7 +151,7 @@ export const createEmbedding = async (text: string): Promise<number[]> => {
 
     try {
       const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-      const response = await axios.post(`${baseUrl}/api/embeddings`, {
+      const response = await axios.post<{ embedding: number[] }>(`${baseUrl}/api/embeddings`, {
         model: 'mxbai-embed-large',
         prompt: text,
       }, { timeout: 10000 }); // Add timeout

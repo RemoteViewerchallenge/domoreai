@@ -18,12 +18,55 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     loadChildren 
   } = useCardVFS(id);
   
-  // State
+  // External State & Actions
+  const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
+  const updateCard = useWorkspaceStore(s => s.updateCard);
+  const { data: roles } = trpc.role.list.useQuery();
+  const { data: models } = trpc.model.list.useQuery();
+
+  const availableRoles = useMemo(() => (roles || []).map(r => ({
+    id: r.id,
+    name: r.name,
+    category: r.categoryString || 'Uncategorized'
+  })), [roles]);
+
+  const availableModels = useMemo(() => (models || []).map(m => ({
+    id: m.id,
+    name: m.name || m.id,
+    provider: m.providerId,
+    capabilities: {
+        vision: m.hasVision || false,
+        reasoning: m.hasReasoning || false,
+        coding: m.hasCoding || false
+    }
+  })), [models]);
+
+  // Agent Config State
+  const agentConfig = useMemo(() => {
+    const meta = card?.metadata as { agentConfig?: CardAgentState } | undefined;
+    return meta?.agentConfig || {
+      roleId: card?.roleId || '',
+      modelId: null,
+      isLocked: false,
+      temperature: 0.7,
+      maxTokens: 2048
+    };
+  }, [card]);
+
+  const handleUpdateConfig = useCallback((newConfig: CardAgentState) => {
+    updateCard(id, { 
+        roleId: newConfig.roleId,
+        metadata: { ...card?.metadata, agentConfig: newConfig } 
+    });
+  }, [id, updateCard, card?.metadata]);
+
+  // UI State
   const [activeFile, setActiveFile] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files'>('editor');
   const [showSettings, setShowSettings] = useState(false);
   const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
+  const [terminalLogs, setTerminalLogs] = useState<{message: string; type: 'stdout' | 'stderr' | 'system' | 'input'; roleId: string; timestamp: number}[]>([]);
 
   // Auto-detect code files
   useEffect(() => {
@@ -37,14 +80,26 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   // Load Content
   useEffect(() => {
     if (activeFile && viewMode === 'editor') {
-        readFile(activeFile).then(setContent).catch(() => setContent('')); 
+        void readFile(activeFile).then(setContent).catch(() => setContent('')); 
     }
   }, [activeFile, readFile, viewMode]);
 
-  const handleSave = useCallback(async (val: string) => {
+  const handleSave = useCallback((val: string | undefined) => {
+      if (val === undefined) return;
       setContent(val);
-      if (activeFile) await writeFile(activeFile, val);
+      if (activeFile) {
+          void writeFile(activeFile, val);
+      }
   }, [activeFile, writeFile]);
+
+  const handleTerminalInput = useCallback((input: string) => {
+      setTerminalLogs(prev => [...prev, {
+          message: input,
+          type: 'input',
+          roleId: 'user',
+          timestamp: Date.now()
+      }]);
+  }, []);
 
   const handleRunAgent = useCallback(() => {
       console.log('Running agent...');
@@ -54,8 +109,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   return (
     <div className="flex h-full w-full rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl relative group">
       
-
-
       {/* 2. Main Work Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
           {/* Header */}
@@ -120,7 +173,12 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {/* Settings Overlay */}
              {showSettings && (
                  <div className="absolute top-0 right-0 w-64 h-full bg-zinc-900 border-l border-zinc-800 z-20 overflow-y-auto shadow-2xl animate-in slide-in-from-right">
-                     <AgentSettings cardId={id} />
+                     <AgentSettings 
+                        config={agentConfig}
+                        availableRoles={availableRoles}
+                        availableModels={availableModels}
+                        onUpdate={handleUpdateConfig}
+                     />
                  </div>
              )}
 
@@ -145,15 +203,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 setViewMode('editor');
                             }
                         }}
-                        onCreateNode={createNode}
-                        onRefresh={refresh}
-                        onEmbedDir={ingestDirectory}
+                        onCreateNode={(type, name) => void createNode(type, name)}
+                        onRefresh={() => void refresh()}
+                        onEmbedDir={(path) => void ingestDirectory(path)}
                         onLoadChildren={loadChildren}
                         className="p-2"
                     />
                 </div>
               )}
-             {viewMode === 'terminal' && <XtermTerminal workingDirectory={currentPath} />}
+             {viewMode === 'terminal' && (
+                <XtermTerminal 
+                    workingDirectory={currentPath} 
+                    logs={terminalLogs as TerminalMessage[]}
+                    onInput={handleTerminalInput}
+                />
+             )}
              {viewMode === 'browser' && <BrowserCard />}
 
           </div>

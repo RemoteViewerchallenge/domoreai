@@ -2,17 +2,40 @@ import path from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { createRequire } from 'module'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 const require = createRequire(import.meta.url)
 const monacoEditorPlugin = require('vite-plugin-monaco-editor').default
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), monacoEditorPlugin({})],
+  plugins: [
+    react(),
+    monacoEditorPlugin({}),
+    nodePolyfills({
+       // include: ['path', 'fs', 'os', 'util', 'events', 'assert'], // Use defaults
+       globals: {
+         Buffer: true,
+         global: true,
+         process: true,
+       },
+       protocolImports: true,
+    })
+  ],
+  define: {
+    'process.env': {},
+    // 'process.platform': '"browser"', // Handled by polyfills
+    // 'process.browser': true,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@repo/nebula": path.resolve(__dirname, "../../packages/nebula/src")
+      "@repo/nebula": path.resolve(__dirname, "../../packages/nebula/src"),
+      // Node.js built-ins are handled by vite-plugin-node-polyfills, except perf_hooks
+      "perf_hooks": path.resolve(__dirname, "./src/shims.js"),
+      // "os": path.resolve(__dirname, "./src/shims.js"),
+      // "fs": path.resolve(__dirname, "./src/shims.js"),
+      // "path": path.resolve(__dirname, "./src/shims.js")
     },
     dedupe: ['react', 'react-dom'],
   },

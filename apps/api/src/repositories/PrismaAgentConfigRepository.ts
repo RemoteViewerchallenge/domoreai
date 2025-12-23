@@ -5,7 +5,15 @@ import type { ModelDef } from "../interfaces/IAgentConfigRepository.js";
 
 export class PrismaAgentConfigRepository implements IAgentConfigRepository {
   async getRole(roleId: string): Promise<Role | null> {
-    return prisma.role.findUnique({ where: { id: roleId } });
+    const include = { tools: { include: { tool: true } } };
+    const byId = await prisma.role.findUnique({ where: { id: roleId }, include });
+    if (byId) return byId as unknown as Role;
+
+    const byName = await prisma.role.findFirst({
+        where: { name: roleId },
+        include
+    });
+    return byName as unknown as Role;
   }
 
   async getEffectiveRole(roleId: string): Promise<Role | null> {
@@ -28,14 +36,14 @@ export class PrismaAgentConfigRepository implements IAgentConfigRepository {
         name: modelDef.name || modelDef.id,
         costPer1k: modelDef.costPer1k ?? 0,
         isFree: modelDef.isFree ?? false,
-        providerData: (modelDef.providerData ?? {}) as any,
+        providerData: (modelDef.providerData ?? {}) as Prisma.InputJsonValue,
         specs: {
             contextWindow: modelDef.contextWindow ?? 4096,
             hasVision: modelDef.hasVision ?? false,
             hasReasoning: modelDef.hasReasoning ?? false,
             hasCoding: modelDef.hasCoding ?? false,
             lastUpdated: new Date().toISOString()
-        } as any
+        } as Prisma.InputJsonValue
       }
     });
   }

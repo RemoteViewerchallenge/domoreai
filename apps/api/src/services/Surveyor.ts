@@ -1,3 +1,4 @@
+import { saveModelKnowledge, ResearchData } from './ModelKnowledgeBase.js';
 /**
  * SURVEYOR SERVICE
  * 
@@ -296,25 +297,42 @@ export class Surveyor {
   static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
     const { prisma } = await import('../db.js');
     
-    // Find all models with missing specs
+    // Find all models that are missing capabilities or have low-confidence data
+    // This aligns with PersistentModelDoctor's health check
     const models = await prisma.model.findMany({
       where: {
+        isActive: true,
         OR: [
-          { specs: { equals: {} } },
-          { specs: { equals: null as any } }
+          { capabilities: { is: null } },
+          { capabilities: { confidence: 'low' } }
         ]
       },
-      include: { provider: true }
+      include: { 
+        provider: true,
+        capabilities: true 
+      }
     });
 
     let surveyed = 0;
     let unknown = 0;
 
+    console.log(`[Surveyor] 🔍 Inspecting ${models.length} incomplete models...`);
+
     for (const model of models) {
-      const specs = this.inspect((model as any).provider.type, model.modelId);
+      const specs = this.inspect(model.provider.type, model.modelId);
       
       if (specs) {
-        // Update the model with surveyed specs
+        // [IMPORTANT] Sync with Layer 3 (ModelCapabilities)
+        // Convert Surveyor's ModelSpecs to ResearchData format used by ModelDoctor
+        const researchData = {
+          contextWindow: specs.contextWindow || 4096,
+          maxOutput: specs.maxOutput || 4096,
+          hasVision: specs.capabilities.includes('vision'),
+          hasAudioInput: specs.capabilities.includes('audio_in'),
+          hasReasoning: specs.capabilities.includes('reasoning') || specs.capabilities.includes('thought'),
+        };
+
+        // Update the model with surveyed specs (Backward compatibility)
         await prisma.model.update({
           where: { id: model.id },
           data: {
@@ -326,6 +344,11 @@ export class Surveyor {
             capabilityTags: specs.capabilities
           }
         });
+
+        // Update the NEW ModelCapabilities table (Layer 3)
+        // This is what makes the health check pass!
+        await saveModelKnowledge(model.id, researchData, 'surveyor', 'high');
+        
         surveyed++;
       } else {
         unknown++;

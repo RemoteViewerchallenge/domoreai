@@ -138,10 +138,10 @@ export default function NebulaBuilderPage() {
 
         const processObject = (obj: unknown) => {
           if (obj && typeof obj === "object" && "ui_action" in obj) {
-            const uiAction = (obj as { ui_action: { tool: string; action: string; nodeId?: string; update?: Record<string, unknown>; newParentId?: string; index?: number; parentId?: string; node?: any } }).ui_action;
+            const uiAction = (obj as { ui_action: { tool: string; action: string; nodeId?: string; update?: Record<string, unknown>; newParentId?: string; index?: number; parentId?: string; node: { type: NodeType; props?: Record<string, unknown> } } }).ui_action;
             if (uiAction.tool === "nebula" && uiAction.action === "addNode") {
               addNodeActions.push({
-                parentId: uiAction.parentId,
+                parentId: uiAction.parentId || tree.rootId,
                 node: uiAction.node,
               });
             } else {

@@ -101,7 +101,10 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       // Exclude failed models and providers
       NOT: [
         ...(failedModels.length > 0 ? [{ modelId: { in: failedModels } }] : []),
-        ...(failedProviders.length > 0 ? [{ providerId: { in: failedProviders } }] : [])
+        ...(failedProviders.length > 0 ? [{ providerId: { in: failedProviders } }] : []),
+        // [ANTIGRAVITY] Explicitly exclude embedding models
+        { modelId: { contains: 'embed', mode: 'insensitive' } },
+        { name: { contains: 'embed', mode: 'insensitive' } }
       ]
     };
 

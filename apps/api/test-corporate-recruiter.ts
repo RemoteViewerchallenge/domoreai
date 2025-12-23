@@ -80,4 +80,7 @@ async function main() {
   }
 }
 
-main();
+main().catch(error => {
+  console.error('\n❌ Unhandled error:', error);
+  process.exit(1);
+});
