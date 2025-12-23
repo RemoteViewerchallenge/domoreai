@@ -2,7 +2,7 @@ import { AssessmentService } from "./AssessmentService.js";
 import { PromptFactory, loadRolePrompt } from "./PromptFactory.js";
 import { PrismaLessonProvider } from "./PrismaLessonProvider.js";
 import { Role, Model, Prisma } from "@prisma/client";
-import { ModelDef } from "../interfaces/IAgentConfigRepository.js";
+// import { ModelDef } from "../interfaces/IAgentConfigRepository.js";
 
 import { ProviderManager } from "./ProviderManager.js";
 import { getBestModel } from "../services/modelManager.service.js";
@@ -10,6 +10,7 @@ import { type BaseLLMProvider } from "../utils/BaseLLMProvider.js";
 import { ModelConfigurator } from "./ModelConfigurator.js";
 import { ProviderError, CardAgentState } from "../types.js";
 import { executeWithRateLimit } from '../rateLimiter.js';
+import { AgentRuntime } from './AgentRuntime.js'; // [NEW]
 
 import { IAgentFactory } from "../interfaces/IAgentFactory.js";
 import { IAgent } from "../interfaces/IAgent.js";
@@ -263,7 +264,7 @@ export class AgentFactoryService implements IAgentFactory {
     if (rawRole) {
       const metadata = (rawRole.metadata as unknown as RoleMetadata) || {};
       role = { ...rawRole, metadata: metadata as unknown as Prisma.JsonObject } as ExtendedRole;
-      const template = metadata.template || (rawRole as any).template;
+      const template = metadata.template || (rawRole as Role & { template?: Prisma.JsonObject }).template;
       if (template) {
          role = { ...role, ...template, metadata: { ...metadata, ...template } as unknown as Prisma.JsonObject } as ExtendedRole;
       }
@@ -284,34 +285,72 @@ export class AgentFactoryService implements IAgentFactory {
         if (!AgentFactoryService.cachedRoles) {
             const fs = await import('node:fs/promises');
             const path = await import('node:path');
-            const rolesPath = path.join(process.cwd(), 'packages', 'coc', 'agents', 'roles.json');
+            // path.join with .. to go up from apps/api to root if needed, or absolute path
+            // The error showed cwd was apps/api.
+            // We want /home/guy/mono/packages/coc/agents/roles.json
+            // process.cwd() is usually the project root in our monorepo setup
+            const rolesPath = path.resolve(process.cwd(), 'packages/coc/agents/roles.json');
             const raw = await fs.readFile(rolesPath, 'utf-8');
             AgentFactoryService.cachedRoles = JSON.parse(raw) as Record<string, unknown>[];
         }
 
         const list = AgentFactoryService.cachedRoles || [];
-        const gw = list.find((r) => r.id === 'general_worker');
+        // Try to find the REQUESTED role first
+        const foundRole = list.find((r) => r.id === cardConfig.roleId);
 
-        if (gw) {
-          try {
-            const created = await this.configRepo.createRole({
-                id: gw.id as string,
-                name: (gw.name as string) || 'General Worker',
-                categoryString: (gw.category as string) || 'Utility',
-                basePrompt: (gw.basePrompt as string) || 'You are a versatile AI assistant.',
-                tools: (gw.tools as string[]) || [],
-            });
-            role = { ...created, metadata: (created as any).metadata || {} } as ExtendedRole;
-            cardConfig.roleId = 'general_worker';
-            console.log('[AgentFactory] Seeded general_worker role from roles.json');
-          } catch (createErr) {
-            console.warn('[AgentFactory] Failed to seed general_worker role (might exist):', createErr);
+            if (foundRole) {
+              try {
+                 // Map string[] tools to Prisma nested create
+                 const toolConnections = ((foundRole.tools as string[]) || []).map(t => ({
+                     tool: { connect: { name: t } }
+                 }));
+
+                 const created = await this.configRepo.createRole({
+                    id: foundRole.id as string,
+                    name: (foundRole.name as string) || foundRole.id as string,
+                    categoryString: (foundRole.category as string) || 'Utility',
+                    basePrompt: (foundRole.basePrompt as string) || 'Replaced by system.',
+                    tools: { create: toolConnections },
+                });
+                role = { ...created, metadata: (created as Role & { metadata: Prisma.JsonObject }).metadata || {} } as ExtendedRole;
+                 console.log(`[AgentFactory] JIT Seeded role '${cardConfig.roleId}' from roles.json`);
+              } catch (err) {
+                  // Ignore if exists (race condition)
+              }
+            }
+
+            // Fallback to general_worker if still no role and not requesting it
+            if (!role && cardConfig.roleId !== 'general_worker') {
+                 const gw = list.find((r) => r.id === 'general_worker');
+                 if (gw) {
+                      try {
+                        // SEED GW JUST IN CASE
+                        const gwTools = ((gw.tools as string[]) || []).map(t => ({
+                             tool: { connect: { name: t } }
+                        }));
+                        
+                         await this.configRepo.createRole({
+                            id: gw.id as string,
+                            name: (gw.name as string) || 'General Worker',
+                            categoryString: (gw.category as string) || 'Utility',
+                            basePrompt: (gw.basePrompt as string) || '',
+                            tools: { create: gwTools },
+                        }).catch(() => {});
+                        
+                        // Retrieve it effectively
+                        const rawGw = await this.configRepo.getRole('general_worker');
+                         if (rawGw) {
+                            const metadata = (rawGw.metadata as unknown as RoleMetadata) || {};
+                            role = { ...rawGw, metadata: metadata as unknown as Prisma.JsonObject } as ExtendedRole;
+                            cardConfig.roleId = 'general_worker';
+                         }
+                      } catch (_) {}
+                 }
+            }
+          } catch (_) {
+            console.warn('[AgentFactory] Could not read roles.json to seed default role.');
           }
         }
-      } catch (readErr) {
-        console.warn('[AgentFactory] Could not read roles.json to seed default role:', readErr instanceof Error ? readErr.message : String(readErr));
-      }
-    }
 
     if (!role) {
       throw new Error(`Agent creation failed: Role ID ${cardConfig.roleId} not found.`);
@@ -348,7 +387,20 @@ export class AgentFactoryService implements IAgentFactory {
       if (modelDef && !model) {
           console.log(`[AgentFactory] JIT Creation: Model '${cardConfig.modelId}' not found in DB. Creating...`);
           try {
-              model = await this.configRepo.createModel(modelDef);
+              if (!modelDef.providerId) {
+                  throw new Error(`Model definition for ${modelDef.id} is missing providerId.`);
+              }
+              model = await this.configRepo.createModel({
+                  id: modelDef.id,
+                  providerId: modelDef.providerId,
+                  name: modelDef.name,
+                  costPer1k: modelDef.costPer1k,
+                  isFree: modelDef.isFree,
+                  contextWindow: modelDef.specs?.contextWindow,
+                  hasVision: modelDef.specs?.hasVision,
+                  hasReasoning: modelDef.specs?.hasReasoning,
+                  hasCoding: modelDef.specs?.hasCoding,
+              });
           } catch (createError) {
                console.error(`[AgentFactory] JIT Creation failed:`, createError);
                throw new Error(`Model '${cardConfig.modelId}' not found in database and JIT creation failed.`);
@@ -397,7 +449,11 @@ export class AgentFactoryService implements IAgentFactory {
       const metadata = (role.metadata as unknown as RoleMetadata) || {};
       const memoryConfig = metadata.memoryConfig || (rawRole as ExtendedRole | null)?.metadata?.memoryConfig;
 
-      const tools = cardConfig.tools || role.tools;
+      // Unpack tools from relation if available
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const roleTools = (role as any).tools?.map((rt: any) => rt.tool?.name || rt.toolId).filter(Boolean) || [];
+      const tools = cardConfig.tools || roleTools;
+
       basePrompt = await promptFactory.build(
           role.name,
           cardConfig.userGoal || '',
@@ -427,6 +483,65 @@ export class AgentFactoryService implements IAgentFactory {
       this.configRepo,
       orchestrationConfig as { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number } | undefined
     );
+  }
+
+  /**
+   * Creates a full-fledged AgentRuntime for Swarm operations.
+   * Uses Hybrid Tool Strategy: Manual (UI) + Auto-Injected (Tier).
+   */
+  async createSwarmAgent(roleId: string, rootPath: string = process.cwd()): Promise<AgentRuntime> {
+    const { prisma } = await import('../db.js');
+
+    // 1. Fetch Role AND its manually assigned tools from the UI
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
+      include: { 
+        category: true,
+        tools: { include: { tool: true } } // Fetch the relation
+      }
+    });
+
+    if (!role) throw new Error(`Role ${roleId} not found`);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const typedRole = role as any;
+
+    // 2. Extract Manual Tools (User selections)
+    let finalTools: string[] = [];
+    
+    // Handle both Legacy (string[]) and New (Relation) schema during migration
+    if (Array.isArray(typedRole.tools)) {
+        if (typeof typedRole.tools[0] === 'string') {
+             finalTools = typedRole.tools;
+        } else {
+             finalTools = typedRole.tools.map((rt: any) => rt.tool?.name).filter(Boolean);
+        }
+    }
+
+    // 3. ARCHITECTURAL ENFORCEMENT (Auto-Injection)
+    // Use category relation title if available, else categoryString
+    const tier = typedRole.category?.name || typedRole.categoryString || 'Worker';
+
+    if (tier.includes('Worker')) {
+      // Workers MUST have execution & git
+      // Note: 'execute_script' might be 'terminal_execute' in native tools, assumed user intent
+      finalTools.push('execute_script', 'git_commit', 'read_file');
+    } 
+    else if (tier.includes('Manager')) {
+      // Managers MUST have review tools
+      finalTools.push('git_merge', 'review_diff', 'read_file');
+    } else if (tier.includes('Executive')) {
+        // Executives need high level planning
+        finalTools.push('read_file', 'planner');
+    }
+    
+    // 4. Deduplicate
+    finalTools = [...new Set(finalTools)];
+
+    console.log(`[Factory] Spawning Swarm Agent '${typedRole.name}' (Tier: ${tier}) with tools: [${finalTools.join(', ')}]`);
+
+    // 5. Create Runtime
+    return AgentRuntime.create(rootPath, finalTools, tier);
   }
 }
 

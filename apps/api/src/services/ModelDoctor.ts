@@ -1,16 +1,9 @@
 import { db } from '../db.js';
-import { modelRegistry, modelCapabilities } from '../db/schema.js';
+import { modelRegistry } from '../db/schema.js'; // Keep modelRegistry for type inference
 import { eq } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import { createVolcanoAgent } from './AgentFactory.js';
-
-interface ResearchData {
-  contextWindow: number;
-  maxOutput: number;
-  hasVision: boolean;
-  hasAudioInput: boolean;
-  hasReasoning: boolean;
-}
+import { Surveyor } from './Surveyor.js';
+import { saveModelKnowledge, ResearchData } from './ModelKnowledgeBase.js';
 
 interface SpecsResult {
   confidence: 'low' | 'medium' | 'high';
@@ -37,15 +30,29 @@ export class ModelDoctor {
         return;
     }
 
-    console.log(`[ModelDoctor] 🧐 Examining ${model.modelName}...`);
+    // Level 1: Fast Pattern Match (Surveyor)
+    const surveyedSpecs = Surveyor.inspect(model.providerId, model.modelId); // Assuming providerId is the type or we can map it
+    
+    if (surveyedSpecs) {
+        console.log(`[ModelDoctor] 🗺️ Surveyor identified ${model.modelName}. Skipping research.`);
+        const researchData = {
+            contextWindow: surveyedSpecs.contextWindow || 4096,
+            maxOutput: surveyedSpecs.maxOutput || 4096,
+            hasVision: surveyedSpecs.capabilities.includes('vision'),
+            hasAudioInput: surveyedSpecs.capabilities.includes('audio_in'),
+            hasReasoning: surveyedSpecs.capabilities.includes('reasoning') || surveyedSpecs.capabilities.includes('thought'),
+        };
+        await saveModelKnowledge(model.id, researchData, 'surveyor', 'high');
+        return;
+    }
 
-    // Default Diagnosis (Heuristics)
+    // Level 2: Diagnosis (Heuristics)
     const diagnosis = this.inferSpecs(model.modelId, model.providerData);
     let source: 'heuristic' | 'ai_research' | 'manual' = 'heuristic';
     let confidence: 'low' | 'medium' | 'high' = diagnosis.confidence;
     let finalData = { ...diagnosis.data };
 
-    // Attempt Level 2 Data (AI Research)
+    // Level 3: AI Research
     try {
         console.log(`[ModelDoctor] 🌍 Attempting Web Research for ${model.modelName}...`);
         const researchData = await this.researchModel(model.modelName, model.modelId);
@@ -66,30 +73,47 @@ export class ModelDoctor {
     }
 
     // Write to DB
-    await this.saveKnowledge(model, finalData, source, confidence);
+    await saveModelKnowledge(model.id, finalData, source, confidence);
   }
 
   // 2. The Research Agent
   private async researchModel(name: string, id: string): Promise<ResearchData | null> {
       try {
+          // [ANTIGRAVITY] Use AgentRuntime for tool execution support
+          const { AgentRuntime } = await import('./AgentRuntime.js');
+          const runtime = await AgentRuntime.create(process.cwd(), ['research.web_scrape'], 'Worker');
+          
+          // Create the "Brain"
           const agent = await createVolcanoAgent({
-              roleId: 'researcher', 
-              modelId: null,
+              roleId: 'model_doctor', 
+              modelId: null, 
               isLocked: false,
               temperature: 0,
               maxTokens: 1000,
               tools: ['research.web_scrape'] 
           });
 
+          // Construct Prompt with Explicit Tool Instructions
           const prompt = `SEARCH and FIND technical specs for LLM: "${name}" (ID: ${id}).
-          I need:
-          1. Context Window (token limit, e.g. 128000).
-          2. Max Output Tokens.
-          3. Capabilities (Vision? Audio? Reasoning?).
-
-          Use the 'web_scrape' tool to check official docs (HuggingFace, OpenAI, Anthropic).
+          You are the Model Doctor. You verify claims with data.
           
-          Return STRICT JSON:
+          TOOLS AVAILABLE:
+          - research.web_scrape({ url: string }): Fetches content.
+          
+          PROTOCOL:
+          1. If you need external info, WRITE CODE to call the tool.
+             Target official docs (HuggingFace, Provider Sites).
+             Example:
+             \`\`\`javascript
+             // Use the global 'tools' object or direct function call depending on environment
+             // Trying standard pattern:
+             const result = await tools['research.web_scrape'].handler({ url: 'https://...' });
+             console.log(result);
+             \`\`\`
+          2. Analyze the observations.
+          3. When you have the data, output the STRICT JSON result.
+          
+          REQUIRED JSON FORMAT:
           {
             "contextWindow": number,
             "maxOutput": number,
@@ -98,7 +122,12 @@ export class ModelDoctor {
             "hasReasoning": boolean
           }`;
 
-          const result = await agent.generate(prompt);
+          // Run the Loop
+          const { result } = await runtime.runAgentLoop(
+              prompt,
+              await agent.generate(prompt), 
+              async (context) => agent.generate(context)
+          );
           
           // Ensure result is a string (Fail-Safe)
           const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
@@ -186,34 +215,9 @@ export class ModelDoctor {
     };
   }
 
-  // 4. Database Writer
-  public async saveKnowledge(model: typeof modelRegistry.$inferSelect, data: ResearchData, source: string, confidence: string) {
-    await db.insert(modelCapabilities)
-      .values({
-        id: uuidv4() as string,
-        modelId: model.id,
-        contextWindow: data.contextWindow || 4096,
-        maxOutput: data.maxOutput || 4096,
-        hasVision: !!data.hasVision,
-        hasAudioInput: !!data.hasAudioInput,
-        hasReasoning: !!data.hasReasoning,
-        source: source,
-        confidence: confidence,
-        updatedAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: modelCapabilities.modelId,
-        set: {
-          contextWindow: data.contextWindow,
-          maxOutput: data.maxOutput,
-          hasVision: !!data.hasVision,
-          hasAudioInput: !!data.hasAudioInput,
-          hasReasoning: !!data.hasReasoning,
-          source: source,
-          confidence: confidence,
-          updatedAt: new Date()
-        }
-      });
+  // 4. Database Writer (DEPRECATED - Use saveModelKnowledge)
+  public async saveKnowledge(model: any, data: ResearchData, source: string, confidence: string) {
+    await saveModelKnowledge(model.id, data, source, confidence);
   }
 
   // --- Bulk Operation ---

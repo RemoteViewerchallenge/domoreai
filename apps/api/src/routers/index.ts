@@ -19,6 +19,7 @@ import { volcanoRouter } from './volcano.router.js';
 import { ingestionRouter } from './ingestion.router.js';
 import { agentRouter } from './agent.router.js';
 import { systemHealthRouter } from './systemHealth.router.js';
+import { toolRouter } from './tool.router.js';
 
 
 export const appRouter = createTRPCRouter({
@@ -42,6 +43,7 @@ export const appRouter = createTRPCRouter({
   workspace: workspaceRouter,
   volcano: volcanoRouter,
   systemHealth: systemHealthRouter,
+  tool: toolRouter,
 });
 
 export type AppRouter = typeof appRouter;

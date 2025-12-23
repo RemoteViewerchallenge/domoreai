@@ -13,24 +13,24 @@ import { themeEditorTool } from '../../tools/themeEditor.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
-        {
-            name: themeEditorTool.name,
-            handler: themeEditorTool.handler,
-            description: themeEditorTool.description,
-            input_schema: themeEditorTool.inputSchema
-        },
-        {
-            name: nebulaTool.name,
-            handler: nebulaTool.handler,
-            description: nebulaTool.description,
-            input_schema: nebulaTool.input_schema
-        },
-        {
-          name: typescriptInterpreterTool.name,
-          handler: typescriptInterpreterTool.handler,
-          description: typescriptInterpreterTool.description,
-          input_schema: typescriptInterpreterTool.inputSchema
-        },
+         {
+             name: themeEditorTool.name,
+             handler: themeEditorTool.handler as (args: unknown) => unknown,
+             description: themeEditorTool.description,
+             input_schema: themeEditorTool.inputSchema as Record<string, unknown>
+         },
+         {
+             name: nebulaTool.name,
+             handler: nebulaTool.handler as (args: unknown) => unknown,
+             description: nebulaTool.description,
+             input_schema: nebulaTool.input_schema as Record<string, unknown>
+         },
+         {
+           name: typescriptInterpreterTool.name,
+           handler: typescriptInterpreterTool.handler as (args: unknown) => unknown,
+           description: typescriptInterpreterTool.description,
+           input_schema: typescriptInterpreterTool.inputSchema as Record<string, unknown>
+         },
         {
             name: 'read_file',
             handler: async (args: unknown) => fsTools.readFile(args as { path: string }),
@@ -97,8 +97,9 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
             handler: async (args: unknown) => {
                 // delegate to the centralized terminal tool implementation
                 // Use zod validation instead of casting
-                const parsedArgs = terminalTools.execute.inputSchema.parse(args);
-                return await (terminalTools.execute.handler as any)(parsedArgs);
+                const parsedArgs = terminalTools.execute.inputSchema.parse(args) as { command: string; cwd?: string };
+                const handler = terminalTools.execute.handler as (args: { command: string; cwd?: string }) => Promise<unknown>;
+                return await handler(parsedArgs);
             },
             description: terminalTools.execute.description,
             input_schema: terminalTools.execute.inputSchema as unknown as Record<string, unknown>

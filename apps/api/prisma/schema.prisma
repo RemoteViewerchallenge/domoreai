@@ -141,6 +141,44 @@ model ProviderFailure {
 
   @@unique([providerId, roleId])
 }
+// -----------------------------------------------------------------
+// [NEW] First-Class Tool Definitions
+// Allows you to define "Tool Prompts" and Schemas in the UI
+model Tool {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "git_commit", "search_codebase"
+  description String   @db.Text
+  
+  // The "Tool Prompt" you requested.
+  // Instructions for the Agent on HOW/WHEN to use this tool.
+  // e.g., "Use this for ALL file writes. Do not use fs.writeFile directly."
+  instruction String   @db.Text 
+  
+  // Code Mode Implementation
+  // The actual TypeScript code that runs when this tool is invoked (if custom)
+  // or the signature definition if it's a system tool.
+  implementation String? @db.Text 
+  
+  // Zod Schema for validation (stored as JSON string)
+  schema      String   @db.Text 
+  
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Many-to-Many with Roles
+  roles       RoleTool[]
+}
+
+// Join table for Roles <-> Tools
+model RoleTool {
+  roleId String
+  toolId String
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tool   Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, toolId])
+}
 
 // -----------------------------------------------------------------
 // Stores the Roles for your agents
@@ -150,7 +188,16 @@ model Role {
   name        String   @unique
   description String?  @db.Text
   basePrompt  String   @db.Text
-  tools       String[] @default([]) // Array of tool names
+  // REMOVE: tools String[]
+  // ADD: Relation to Tool table
+  tools       RoleTool[]
+  
+  // ... existing fields ...
+  // tools       String[] @default([]) // Array of tool names 
+  // keeping the old field specifically commented out to avoid data loss confusion if looking at raw DB, 
+  // but for Prisma Schema it must be gone or renamed if we want to use the relation with the same name.
+  // Actually, I will remove strict mapping to avoid confusion and follow the plan.
+  
   categoryString String? @map("category")
   
   // Relations

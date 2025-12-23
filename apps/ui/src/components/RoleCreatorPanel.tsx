@@ -100,7 +100,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const { data: categories, refetch: refetchCategories, isLoading: categoriesLoading, error: categoriesError } = trpc.role.listCategories.useQuery();
   const { data: roles, isLoading: rolesLoading } = trpc.role.list.useQuery();
   const { data: registryData } = trpc.orchestrator.getActiveRegistryData.useQuery();
-  const { data: toolsList } = trpc.orchestrator.listTools.useQuery();
+  const { data: toolsList } = trpc.tool.list.useQuery();
   
   // Mutations
   const createCategoryMutation = trpc.role.createCategory.useMutation({ onSuccess: () => void refetchCategories() });
@@ -1005,17 +1005,12 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                                   setFormData(prev => ({ ...prev, tools: newTools, needsTools: newTools.length > 0 }));
 
                                   if (checked) {
-                                     try {
-                                       // Fetch examples and inject
-                                       const result = await utils.orchestrator.getToolExamples.fetch({ toolName });
-                                       if (result && result.content) {
-                                           setToolPrompts(prev => ({
-                                               ...prev,
-                                               [toolName]: result.content
-                                           }));
-                                       }
-                                     } catch (err) {
-                                       console.error("Failed to fetch tool examples:", err);
+                                     // Use instruction from DB object directly
+                                     if (tool.instruction) {
+                                         setToolPrompts(prev => ({
+                                             ...prev,
+                                             [toolName]: tool.instruction
+                                         }));
                                      }
                                   } else {
                                       setToolPrompts(prev => {

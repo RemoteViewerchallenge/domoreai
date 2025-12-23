@@ -416,6 +416,11 @@ export async function onboardProject(
         
         const fileList = await getTopFiles(dirPath);
         
+        /* 
+        // DISABLED TO PREVENT ROLE EXPLOSION
+        // The user requested to keep roles clean (Volcano Architecture).
+        // AI Recruitment creates too many granular roles.
+
         console.log(`  🤖 Asking AI to staff ${pkg.name || 'project'} in ${path.relative(rootPath, dirPath)}...`);
         
         // Call AI
@@ -485,6 +490,8 @@ export async function onboardProject(
         } else {
             console.log(`  ? AI returned no roles for ${pkgPath}`);
         }
+        */
+        console.log(`  ⏭️  Skipping AI Recruitment for ${pkg.name || 'project'} (Policy: Volcano Architecture Only)`);
 
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);

@@ -21,8 +21,9 @@ export async function loadToolDocs(tools: string[], nativeTools: ToolDefinition[
             docs.push('**Signature:**');
             docs.push('```typescript');
             // Simplified signature generation
-            const props = nativeTool.input_schema?.properties || {};
-            const args = Object.entries(props).map(([k, v]) => `${k}: ${(v).type}`).join(', ');
+            const schema = nativeTool.input_schema as { properties?: Record<string, { type: string }> } | undefined;
+            const props = schema?.properties || {};
+            const args = Object.entries(props).map(([k, v]) => `${k}: ${v.type}`).join(', ');
             docs.push(`await system.${nativeTool.name}({ ${args} })`);
             docs.push('```');
             docs.push('---');
@@ -35,7 +36,7 @@ export async function loadToolDocs(tools: string[], nativeTools: ToolDefinition[
         try {
             const content = await fs.readFile(path.join(toolsDir, `${tool}_examples.md`), 'utf-8');
             docs.push(content);
-        } catch (e) {
+        } catch {
             // Ignore if no doc found
         }
     }

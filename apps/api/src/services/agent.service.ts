@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { AgentRuntime } from "./AgentRuntime.js";
-import { type IAgent } from "../interfaces/IAgent.js";
 import { type CardAgentState } from "../types.js";
-import { createVolcanoAgent, VolcanoAgent } from "./AgentFactory.js";
+import { createVolcanoAgent } from "./AgentFactory.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import {
   getBestModel,
   recordModelFailure,
   recordProviderFailure,
+  type ModelSelectionResult
 } from "./modelManager.service.js";
 
 export const startSessionSchema = z.object({
@@ -76,11 +76,10 @@ export class AgentService {
       const agent = await createVolcanoAgent(agentConfig);
 
       // 2.5 Fetch Role to get Tools and other defaults
-      const roleRecord = await prisma.role.findUnique({
+      const role = await prisma.role.findUnique({
         where: { id: roleId },
       });
-      const role = roleRecord ? ({ ...roleRecord } as any) : null;
-      const tools = role && role.tools ? role.tools : [];
+      const tools = role?.tools || [];
 
       // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);
@@ -152,7 +151,7 @@ export class AgentService {
     const { userPrompt, targetTable, roleName = "sql-query-helper" } = input;
 
     // 1. Try to find an optional role; fall back to base prompt if none
-    let role = null as any;
+    let role = null;
     if (roleName) {
       role = await prisma.role.findFirst({ where: { name: roleName } });
       if (!role) {
@@ -165,7 +164,7 @@ export class AgentService {
     // 2. Build schema context (lightweight)
     let schemaContext = "";
     if (targetTable) {
-      const rows = await prisma.$queryRawUnsafe<any[]>(
+      const rows = await prisma.$queryRawUnsafe<{ column_name: string; data_type: string }[]>(
         `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${targetTable}'`
       );
       schemaContext = rows.length
@@ -180,7 +179,7 @@ export class AgentService {
       .replace("[USER_PROMPT]", userPrompt);
 
     // 4. Select Model using Dynamic Role Criteria
-    let selectedModel;
+    let selectedModel: ModelSelectionResult | null = null;
     try {
       selectedModel = await getBestModel(role?.id, [], []);
     } catch (e) {
@@ -201,11 +200,13 @@ export class AgentService {
       });
 
       if (fallback) {
+        const metadata = (role?.metadata as Record<string, unknown>) || {};
         selectedModel = {
           modelId: fallback.modelId,
           providerId: fallback.providerId,
-          temperature: role?.defaultTemperature ?? 0.1,
-          maxTokens: role?.defaultMaxTokens ?? 1024,
+          model: fallback,
+          temperature: (metadata.defaultTemperature as number) ?? 0.1,
+          maxTokens: (metadata.defaultMaxTokens as number) ?? 1024,
         };
       }
     }
@@ -225,6 +226,7 @@ export class AgentService {
     let queryText = "";
 
     while (attempt < maxAttempts) {
+      if (!selectedModel) break;
       attempt++;
       const provider = ProviderManager.getProvider(selectedModel.providerId);
       if (!provider)
@@ -252,8 +254,8 @@ export class AgentService {
 
         // Success
         break;
-      } catch (err: any) {
-        const errMsg = err && err.message ? String(err.message) : String(err);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         console.warn(
           `[AgentService] Model generation failed for ${selectedModel.modelId} (${selectedModel.providerId}): ${errMsg}`
         );
@@ -312,7 +314,7 @@ export class AgentService {
                 failedProviders
               );
               if (!fallback) throw new Error("No fallback model available");
-              selectedModel = fallback as any;
+              selectedModel = fallback;
               console.log(
                 `[AgentService] Retrying with fallback: ${selectedModel.modelId} (${selectedModel.providerId})`
               );

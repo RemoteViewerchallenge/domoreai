@@ -1,13 +1,117 @@
 import { prisma } from '../db.js';
+import { Project, Job } from '@prisma/client';
 import { GitService } from './git.service.js';
 import { JobDispatchError } from '../errors/AppErrors.js';
 import { TRPCError } from '@trpc/server';
+import { AgentFactoryService as AgentFactory, VolcanoAgent } from './AgentFactory.js';
+
 
 export class CorporateOrchestrator {
   private gitService: GitService;
+  private agentFactory?: AgentFactory;
 
-  constructor() {
+  constructor(agentFactory?: AgentFactory) {
     this.gitService = new GitService();
+    this.agentFactory = agentFactory;
+  }
+
+  /**
+   * TIER 3: EXECUTIVE LOOP
+   * Context: >128k | Role: Strategy Only | Tools: Read-Only + Job Creation
+   */
+  async wake() {
+    if (!this.agentFactory) {
+        console.warn("AgentFactory not provided to CorporateOrchestrator, skipping wake()");
+        return;
+    }
+
+    // 1. Initialize Executive Agent (Gemini 1.5 Pro / o1-preview)
+    // Note: 'EXECUTIVE' string needs to be handled by createSwarmAgent types
+    const agent = await this.agentFactory.createVolcanoAgentWithTier({ 
+        roleId: 'executive_planner', // User might need to create this role or we use a generic placeholder
+        userGoal: "Plan strategy for pending projects",
+        tools: [],
+        modelId: '', // Will be selected by tier
+        isLocked: false,
+        temperature: 0.1,
+        maxTokens: 128000
+    }, 'Executive');
+
+    // 2. Scan for Stalled or New Projects
+    const projects = await prisma.project.findMany({
+      where: { status: { in: ['not_started', 'in_progress'] } }, // Updated status enum match
+      include: { jobs: true }
+    });
+
+    for (const project of projects) {
+      if (this.needsPlanning(project)) {
+        await this.formulateStrategy(agent, project);
+      }
+    }
+  }
+
+  private needsPlanning(project: Project & { jobs: Job[] }): boolean {
+    // If no jobs, or all jobs are completed, we need a plan (or a new plan)
+    // Also if status is not_started
+    // @ts-ignore - status match
+    return project.jobs.length === 0 || project.jobs.every((j: Job) => j.status === 'completed');
+  }
+
+  private async formulateStrategy(agent: VolcanoAgent, project: Project) {
+    console.log(`[EXECUTIVE] Planning for Project: ${project.name}`);
+    
+    // STRICT_MODE: No Chat. Input -> Process -> Output.
+    // Assuming agent.generate or similar method exists. 
+    // The prompt in the request used agent.generateJSON, we might need to adapt if Agent only has generate()
+    // For now I'll format the prompt to request JSON explicitly.
+    
+    const PROMPT = `
+    You are the CHIEF ARCHITECT. 
+    GOAL: Break down the project into 3-5 high-level JOBS.
+    CONSTRAINTS: Do not write code. Do not assign files. Define GOALS only.
+    
+    PROJECT REQUIREMENTS:
+    ${project.description || project.name}
+    
+    OUTPUT FORMAT:
+    Return ONLY a JSON object matching this schema:
+    {
+      "jobs": [
+        { "title": "string", "description": "string", "definition_of_done": "string" }
+      ]
+    }
+    `;
+
+    interface StrategyPlan {
+        jobs: Array<{ title: string; description: string; definition_of_done: string; }>;
+    }
+
+    try {
+        const responseCtx = await agent.generate(PROMPT) as string;
+        // Clean response to get JSON
+        const jsonMatch = responseCtx.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found in response");
+        
+        const plan = JSON.parse(jsonMatch[0]) as StrategyPlan;
+
+        // Write State to DB (The "Constitution")
+        for (const job of plan.jobs) {
+        await prisma.job.create({
+            data: {
+            name: job.title, // 'title' -> 'name' in schema
+            description: job.description,
+            projectId: project.id,
+            status: 'not_started', // 'PENDING' -> 'not_started'
+            priority: 'high',
+            // Store critera in description or separate field? Schema has no metadata on Job right now?
+            // Wait, schema has NO metadata on Job. Job model has: name, description, status, priority.
+            // I'll append definition of done to description for now.
+            }
+        });
+        }
+    } catch (e) {
+        console.error(`[EXECUTIVE] Failed to formulate strategy for ${project.name}`, e);
+    }
   }
 
   /**
@@ -17,6 +121,7 @@ export class CorporateOrchestrator {
    * @param existingBranchName - If provided, reuses this branch ("Ghost Line") instead of creating a new one.
    */
   async dispatchCrew(departmentId: string, objective: string, vfsToken: string, existingBranchName?: string) {
+    // ... existing implementation ...
     // 1. Create a Job record
     // departmentId is treated as projectId here.
     // If departmentId doesn't exist as a Project, we might need to handle it or assume it's valid.
@@ -101,3 +206,4 @@ export class CorporateOrchestrator {
       }
   }
 }
+

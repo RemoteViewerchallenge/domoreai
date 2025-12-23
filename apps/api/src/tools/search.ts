@@ -15,8 +15,11 @@ export const searchCodebaseTool: SandboxTool = {
     // Import dynamically to avoid circular dependencies or aggressive startup loading
     const { vectorStore, createEmbedding } = await import('../services/vector.service.js');
     const queryEmbedding = await createEmbedding(args.query);
-    const results = await vectorStore.search(queryEmbedding, args.limit || 5) as any[];
+    const results = await vectorStore.search(queryEmbedding, args.limit || 5);
     
-    return results.map((r: { metadata: { filePath: string; chunk: string }; similarity: number }) => `File: ${r.metadata.filePath}\nSimilarity: ${r.similarity.toFixed(4)}\nContent:\n${r.metadata.chunk}\n---`).join('\n');
+    return results.map((r) => {
+      const meta = r.metadata as { filePath: string; chunk: string };
+      return `File: ${meta.filePath}\nSimilarity: ${(r.similarity ?? 0).toFixed(4)}\nContent:\n${meta.chunk}\n---`;
+    }).join('\n');
   }
 };
