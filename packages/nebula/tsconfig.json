@@ -5,7 +5,8 @@
     "rootDir": "src",
     "baseUrl": ".",
     "declaration": true,
-    "noEmit": false
+    "noEmit": false,
+    "composite": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

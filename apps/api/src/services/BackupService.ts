@@ -81,8 +81,7 @@ export class BackupService {
     type: BackupMetadata['type'] = 'manual',
     reason?: string
   ): Promise<{ success: boolean; filePath?: string; error?: string }> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `core_db_${type}_${timestamp}.sql`;
+    const fileName = `core_db_${type}.sql`;
     const filePath = path.join(this.backupDir, fileName);
 
     try {

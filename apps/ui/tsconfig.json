@@ -4,7 +4,8 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "composite": true
   },
   "files": [],
   "references": [
