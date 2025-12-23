@@ -53,7 +53,6 @@ export class CorporateOrchestrator {
   private needsPlanning(project: Project & { jobs: Job[] }): boolean {
     // If no jobs, or all jobs are completed, we need a plan (or a new plan)
     // Also if status is not_started
-    // @ts-ignore - status match
     return project.jobs.length === 0 || project.jobs.every((j: Job) => j.status === 'completed');
   }
 
@@ -87,7 +86,7 @@ export class CorporateOrchestrator {
     }
 
     try {
-        const responseCtx = await agent.generate(PROMPT) as string;
+        const responseCtx = await agent.generate(PROMPT);
         // Clean response to get JSON
         const jsonMatch = responseCtx.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error("No JSON found in response");
@@ -109,8 +108,8 @@ export class CorporateOrchestrator {
             }
         });
         }
-    } catch (e) {
-        console.error(`[EXECUTIVE] Failed to formulate strategy for ${project.name}`, e);
+    } catch (e: unknown) {
+        console.error(`[EXECUTIVE] Failed to formulate strategy for ${project.name}`, e instanceof Error ? e.message : String(e));
     }
   }
 

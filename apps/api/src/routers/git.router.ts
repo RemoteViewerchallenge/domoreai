@@ -18,7 +18,7 @@ export const gitRouter = createTRPCRouter({
   commit: protectedProcedure
     .input(commitInputSchema)
     .mutation(({ input }) => {
-      return gitService.gitCommit(input.vfsToken, input.message);
+      return gitService.commit(input.vfsToken, input.message);
     }),
   ratifyBranch: protectedProcedure
     .input(z.object({ vfsToken: z.string(), branch: z.string() }))

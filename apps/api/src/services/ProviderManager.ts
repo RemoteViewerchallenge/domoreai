@@ -75,7 +75,7 @@ export class ProviderManager implements IProviderManager {
             apiKey = process.env.OLLAMA_API_KEY || '';
           } else if (envVar && process.env[envVar]) {
             // Use environment variable directly
-            apiKey = process.env[envVar] as string;
+            apiKey = process.env[envVar] || '';
             console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
           } else {
             // Fall back to decrypting from database
@@ -195,7 +195,6 @@ export class ProviderManager implements IProviderManager {
           console.error(`[ProviderManager] Failed to get a valid snapshot for ${providerLabel}.`);
           continue;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const models = snapshot.rawData as LLMModel[];
         console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}.`);
 

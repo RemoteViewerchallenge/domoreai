@@ -9,36 +9,44 @@ async function addSearchCodebaseToAllRoles() {
   try {
     // Get all roles
     const roles = await prisma.role.findMany({
-      select: {
-        id: true,
-        name: true,
-        tools: true
+      include: {
+        tools: { include: { tool: true } }
       }
     });
 
-    console.log(`Found ${roles.length} roles to update`);
+    console.log(`Found ${roles.length} roles to check`);
 
     let updatedCount = 0;
     let skippedCount = 0;
 
     for (const role of roles) {
-      // Get current tools array
-      const currentTools = Array.isArray(role.tools) ? role.tools : [];
-      
       // Check if search_codebase already exists
-      if (currentTools.includes('search_codebase')) {
+      if (role.tools.some(rt => rt.tool.name === 'search_codebase')) {
         console.log(`  ⏭️  Skipping "${role.name}" - already has search_codebase`);
         skippedCount++;
         continue;
       }
 
-      // Add search_codebase to the tools array
-      const updatedTools = [...currentTools, 'search_codebase'];
-
-      // Update the role
+      // Update the role by adding the tool relation
       await prisma.role.update({
         where: { id: role.id },
-        data: { tools: updatedTools }
+        data: {
+          tools: {
+            create: {
+              tool: {
+                connectOrCreate: {
+                  where: { name: 'search_codebase' },
+                  create: {
+                    name: 'search_codebase',
+                    description: 'Search the codebase for a string',
+                    instruction: 'Use this tool to find relevant code snippets or documentation in the codebase.',
+                    schema: '{}'
+                  }
+                }
+              }
+            }
+          }
+        }
       });
 
       console.log(`  ✅ Updated "${role.name}" - added search_codebase`);

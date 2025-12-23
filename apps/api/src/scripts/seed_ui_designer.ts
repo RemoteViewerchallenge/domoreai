@@ -39,14 +39,23 @@ Your goal is to help the user build beautiful, functional, and consistent React 
     update: {
       name: roleName,
       basePrompt: basePrompt,
-      tools: tools,
+      tools: {
+        deleteMany: {},
+        create: tools.map(t => ({
+          tool: { connect: { name: t } }
+        }))
+      },
       metadata: metadata
     },
     create: {
       id: roleId,
       name: roleName,
       basePrompt: basePrompt,
-      tools: tools,
+      tools: {
+        create: tools.map(t => ({
+          tool: { connect: { name: t } }
+        }))
+      },
       categoryString: 'Engineering & Development',
       metadata: metadata
     }

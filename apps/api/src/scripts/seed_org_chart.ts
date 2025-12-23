@@ -30,13 +30,49 @@ async function main() {
   console.log('🏢 Staffing the Corporation...');
 
   for (const employee of ORG_CHART) {
+    const { tools, ...employeeData } = employee;
     await prisma.role.upsert({
       where: { name: employee.name },
-      update: { ...employee },
-      create: { ...employee }
+      update: { 
+        ...employeeData,
+        tools: {
+          deleteMany: {},
+          create: tools.map(t => ({
+            tool: {
+              connectOrCreate: {
+                where: { name: t },
+                create: {
+                  name: t,
+                  description: `Org tool: ${t}`,
+                  instruction: `Use the ${t} tool for company operations.`,
+                  schema: '{}'
+                }
+              }
+            }
+          }))
+        }
+      },
+      create: { 
+        ...employeeData,
+        tools: {
+          create: tools.map(t => ({
+            tool: {
+              connectOrCreate: {
+                where: { name: t },
+                create: {
+                  name: t,
+                  description: `Org tool: ${t}`,
+                  instruction: `Use the ${t} tool for company operations.`,
+                  schema: '{}'
+                }
+              }
+            }
+          }))
+        }
+      }
     });
     console.log(` -> Hired: ${employee.name}`);
   }
 }
 
-main();
+void main().finally(() => prisma.$disconnect());

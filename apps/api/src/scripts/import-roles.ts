@@ -7,6 +7,12 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+interface Frontmatter {
+  name?: string;
+  description?: string;
+  tools?: string;
+}
+
 async function importRoles() {
   try {
     const agentsDir = path.resolve(__dirname, '../../data/agents/en');
@@ -24,7 +30,7 @@ async function importRoles() {
       // Parse frontmatter
       const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
       
-      let frontmatter: any = {};
+      const frontmatter: Frontmatter & Record<string, string | undefined> = {};
       let body = content;
 
       if (match) {
@@ -40,7 +46,7 @@ async function importRoles() {
           }
         });
       } else {
-        frontmatter = { name: file.replace('.md', '') };
+        frontmatter.name = file.replace('.md', '');
       }
 
       // Parse tools
@@ -54,13 +60,42 @@ async function importRoles() {
         where: { name: frontmatter.name || file.replace('.md', '') },
         update: {
           basePrompt: body,
-          tools: tools,
+          tools: {
+            deleteMany: {},
+            create: tools.map((t: string) => ({
+              tool: {
+                connectOrCreate: {
+                  where: { name: t },
+                  create: {
+                    name: t,
+                    description: `Imported tool: ${t}`,
+                    instruction: `Use the ${t} tool as needed.`,
+                    schema: '{}'
+                  }
+                }
+              }
+            }))
+          },
           metadata: { description: frontmatter.description }
         },
         create: {
           name: frontmatter.name || file.replace('.md', ''),
           basePrompt: body,
-          tools: tools,
+          tools: {
+            create: tools.map((t: string) => ({
+              tool: {
+                connectOrCreate: {
+                  where: { name: t },
+                  create: {
+                    name: t,
+                    description: `Imported tool: ${t}`,
+                    instruction: `Use the ${t} tool as needed.`,
+                    schema: '{}'
+                  }
+                }
+              }
+            }))
+          },
           metadata: { description: frontmatter.description }
         }
       });
@@ -73,12 +108,14 @@ async function importRoles() {
     
     // Show all roles
     const allRoles = await prisma.role.findMany({
-      select: { name: true, tools: true }
+      include: {
+        tools: { include: { tool: true } }
+      }
     });
     
     console.log('\nRoles in database:');
     allRoles.forEach(role => {
-      console.log(`  - ${role.name}: [${role.tools.join(', ')}]`);
+      console.log(`  - ${role.name}: [${role.tools.map(rt => rt.tool.name).join(', ')}]`);
     });
     
     process.exit(0);
@@ -88,4 +125,4 @@ async function importRoles() {
   }
 }
 
-importRoles();
+void importRoles();

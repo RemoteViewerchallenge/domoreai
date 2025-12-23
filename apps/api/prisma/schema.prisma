@@ -214,6 +214,7 @@ model Role {
   // Relations
   modelUsage  ModelUsage[]
   jobs        Job[]
+  promptRefinements PromptRefinement[]
 }
 
 model RoleCategory {
@@ -720,4 +721,18 @@ model KnowledgeVector {
   createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])
+}
+
+// -----------------------------------------------------------------
+// Stores failures and refined prompts for self-healing
+// -----------------------------------------------------------------
+model PromptRefinement {
+  id             String   @id @default(cuid())
+  roleId         String
+  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  originalPrompt String   @db.Text
+  critique       String   @db.Text
+  refinedPrompt  String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

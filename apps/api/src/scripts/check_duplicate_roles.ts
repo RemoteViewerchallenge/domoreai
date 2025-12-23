@@ -11,13 +11,8 @@ async function main() {
         { name: { contains: 'design', mode: 'insensitive' } }
       ]
     },
-    select: {
-      id: true,
-      name: true,
-      categoryString: true,
-      tools: true,
-      createdAt: true,
-      updatedAt: true
+    include: {
+      tools: { include: { tool: true } }
     },
     orderBy: {
       createdAt: 'asc'
@@ -33,7 +28,8 @@ async function main() {
       console.log(`${index + 1}. ${role.name}`);
       console.log(`   ID: ${role.id}`);
       console.log(`   Category: ${role.categoryString || 'None'}`);
-      console.log(`   Tools: [${role.tools.join(', ')}]`);
+      const toolNames = role.tools.map(rt => rt.tool.name);
+      console.log(`   Tools: [${toolNames.join(', ')}]`);
       console.log(`   Created: ${role.createdAt.toISOString()}`);
       console.log(`   Updated: ${role.updatedAt.toISOString()}`);
       console.log('');

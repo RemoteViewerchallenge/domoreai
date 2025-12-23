@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { 
   Code, Globe, Terminal, Play, Settings, Folder
 } from 'lucide-react';
@@ -9,7 +9,10 @@ import XtermTerminal from '../XtermTerminal.js';
 import { BrowserCard } from '../BrowserCard.js';
 import { SuperAiButton } from '../ui/SuperAiButton.js';
 import { FileExplorer } from '../FileExplorer.js';
-import { AgentSettings } from '../settings/AgentSettings.js'; // Ensure this import exists
+import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js'; 
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { trpc } from '../../utils/trpc.js';
+import type { TerminalMessage } from '@repo/common/agent';
 
 export const SwappableCard = memo(({ id }: { id: string }) => {
   const { 
@@ -185,8 +188,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {/* Editor Layer */}
              {viewMode === 'editor' && (
                  editorType === 'monaco' 
-                 ? <MonacoEditor fileName={activeFile} content={content} onChange={handleSave} />
-                 : <SmartEditor fileName={activeFile} content={content} onChange={handleSave} onRun={handleRunAgent} />
+                 ? <MonacoEditor path={activeFile} value={content} onChange={handleSave} />
+                 : <SmartEditor fileName={activeFile} content={content} onChange={(val) => handleSave(val)} onRun={handleRunAgent} />
              )}
              
              {/* Tools */}

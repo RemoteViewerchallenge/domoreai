@@ -223,9 +223,9 @@ export async function canUseTypeScriptInterpreter(roleId: string): Promise<boole
   
   const role = await prisma.role.findUnique({
     where: { id: roleId },
-    select: { tools: true },
+    include: { tools: { include: { tool: true } } },
   });
   
   // TypeScript interpreter is available if the role includes 'typescript_interpreter' in its tools array
-  return role?.tools.includes('typescript_interpreter') || false;
+  return role?.tools.some(rt => rt.tool.name === 'typescript_interpreter') || false;
 }

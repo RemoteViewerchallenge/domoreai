@@ -55,13 +55,14 @@ async function main() {
       },
       include: {
         category: true,
+        tools: { include: { tool: true } },
       },
     });
     
     for (const role of roles) {
       console.log(`\n🎭 Role: ${role.name}`);
       console.log(`   Category: ${role.category?.name || 'N/A'}`);
-      console.log(`   Tools: ${role.tools.join(', ')}`);
+      console.log(`   Tools: ${role.tools.map(rt => rt.tool.name).join(', ')}`);
       console.log(`   Description: ${role.description || 'N/A'}`);
       
       // Show a snippet of the system prompt

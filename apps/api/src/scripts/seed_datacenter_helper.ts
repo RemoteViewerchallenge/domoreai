@@ -33,11 +33,25 @@ Your capabilities include:
 - Automated backup procedures before schema changes
 
 Always prioritize data safety - create backups before making destructive changes, validate queries before execution, and ensure data integrity.`,
-      tools: ['postgres', 'filesystem', 'search_codebase'],
+      tools: {
+        create: ['postgres', 'filesystem', 'search_codebase'].map(t => ({
+          tool: {
+            connectOrCreate: {
+              where: { name: t },
+              create: {
+                name: t,
+                description: `Datacenter tool: ${t}`,
+                instruction: `Use the ${t} tool for database or filesystem operations.`,
+                schema: '{}'
+              }
+            }
+          }
+        }))
+      },
       categoryString: 'Infrastructure & Operations',
     }
   });
   console.log('✅ Datacenter Helper role created or updated.');
 }
 
-main().finally(() => prisma.$disconnect());
+void main().finally(() => prisma.$disconnect());

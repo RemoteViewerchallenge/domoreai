@@ -74,7 +74,6 @@ export async function autoLoadRawJsonFiles() {
         // Insert all rows
         let inserted = 0;
         for (const row of rows) {
-          // FIX: Map column names, renaming 'id' to 'model_id'
           const cols = keys.map(k => {
             if (k === 'id') return `"model_id"`;
             return `"${k}"`;
@@ -82,12 +81,10 @@ export async function autoLoadRawJsonFiles() {
 
           const vals = keys.map(k => {
             const v = (row as Record<string, unknown>)[k];
-            if (v === null || v === undefined) return 'NULL';
-            let s: string;
-            if (typeof v === 'object') {
-              s = JSON.stringify(v).replace(/'/g, "''");
-            } else {
-              s = String(v).replace(/'/g, "''");
+            // Use JSON.stringify for all non-string values to avoid [object Object] warnings.
+            const s = (typeof v === 'string' ? v : JSON.stringify(v === undefined ? null : v)).replace(/'/g, "''");
+            if (v !== null && typeof v === 'object') {
+                return `'${s}'::jsonb`;
             }
             return `'${s}'`;
           }).join(', ');
@@ -107,4 +104,3 @@ export async function autoLoadRawJsonFiles() {
     console.error('[JsonLoader] ❌ Error:', (err as Error).message);
   }
 }
-

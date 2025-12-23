@@ -76,17 +76,13 @@ export async function flattenRawData(options: FlattenOptions) {
       const originalKey = Array.from(columnSet).find(k => sanitizeName(k) === col);
       const val = originalKey ? (row)[originalKey] : undefined;
 
-      if (val === null || val === undefined) return 'NULL';
-      let s: string;
-      if (typeof val === 'object') {
-        // If it's an object (including arrays), stringify it as JSON
-        s = JSON.stringify(val).replace(/'/g, "''");
-        return `'${s}'::jsonb`; // Store as JSONB
-      } else {
-        // Otherwise, it's a primitive, so convert to string
-        s = String(val).replace(/'/g, "''");
-        return `'${s}'`;
+      // Use JSON.stringify for all non-string values to avoid [object Object] warnings.
+      // JSON.stringify(undefined) returns undefined, so we explicitly handle it as null for DB insertion.
+      const s = (typeof val === 'string' ? val : JSON.stringify(val === undefined ? null : val)).replace(/'/g, "''");
+      if (typeof val === 'object' && val !== null) {
+        return `'${s}'::jsonb`;
       }
+      return `'${s}'`;
     });
     return `(${vals.join(', ')})`;
   });

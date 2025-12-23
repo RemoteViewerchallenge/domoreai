@@ -78,8 +78,9 @@ export class AgentService {
       // 2.5 Fetch Role to get Tools and other defaults
       const role = await prisma.role.findUnique({
         where: { id: roleId },
+        include: { tools: { include: { tool: true } } }
       });
-      const tools = role?.tools || [];
+      const tools = role?.tools.map(rt => rt.tool.name) || [];
 
       // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);

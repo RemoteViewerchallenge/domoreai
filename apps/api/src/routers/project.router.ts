@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { prisma } from '../db.js';
 import { ProjectArchitect } from '../services/ProjectArchitect.js';
-import { projects } from '../db/schema.js'; // Ensure proper file extension for NodeNext module resolution
+import { getDefaultAgentFactory } from '../services/AgentFactory.js';
+import { projects } from '../db/schema.js';
 
 export const projectRouter = createTRPCRouter({
   /**
@@ -12,7 +13,7 @@ export const projectRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string(),
-        description: z.string(), // Made description mandatory
+        description: z.string(),
         priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
         jobs: z.array(
           z.object({
@@ -20,10 +21,10 @@ export const projectRouter = createTRPCRouter({
             description: z.string().optional(),
             priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
             roleId: z.string().optional(),
-            dependsOn: z.number().optional(), // Index of the job it depends on in the array
+            dependsOn: z.number().optional(),
             parallelGroup: z.string().optional(),
           })
-        ).optional(), // Made jobs optional
+        ).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -33,18 +34,18 @@ export const projectRouter = createTRPCRouter({
         name,
         description,
         status: 'planning',
-      }).returning() as { id: string }[]; // Ensure type safety without casting to unknown
+      }).returning() as { id: string }[];
 
-      const architect: ProjectArchitect = new ProjectArchitect(); // Explicitly type the architect instance
-      if (project && typeof project.id === 'string') { // Add type guard for project.id
-        architect.draftBlueprint(project.id, description)
+      const architect: ProjectArchitect = new ProjectArchitect(getDefaultAgentFactory());
+      if (project && typeof project.id === 'string') {
+        void architect.draftBlueprint(project.id, description)
           .then(() => console.log("Blueprint complete"))
           .catch(err => console.error("Blueprint failed", err));
       } else {
         console.error("Project creation failed or returned invalid ID.");
       }
 
-      return project; // Ensure safe return of project
+      return project;
     }),
 
   /**
@@ -56,7 +57,7 @@ export const projectRouter = createTRPCRouter({
         createdAt: 'desc',
       },
       include: {
-        jobs: true, // Include jobs for a high-level overview
+        jobs: true,
       },
     });
   }),
@@ -80,7 +81,7 @@ export const projectRouter = createTRPCRouter({
                   errands: true,
                 },
               },
-              role: true, // Include the assigned role information
+              role: true,
             },
           },
         },
@@ -89,7 +90,6 @@ export const projectRouter = createTRPCRouter({
 
   /**
    * Update a project's details.
-   * (Placeholder for future implementation)
    */
   update: publicProcedure
     .input(
@@ -101,20 +101,17 @@ export const projectRouter = createTRPCRouter({
         priority: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Logic to update the project will be implemented here.
+    .mutation(({ input }) => {
       console.log('Updating project:', input);
       return { status: 'ok', message: 'Project update placeholder' };
     }),
 
   /**
    * Delete a project by its ID.
-   * (Placeholder for future implementation)
    */
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      // Logic to delete the project will be implemented here.
+    .mutation(({ input }) => {
       console.log('Deleting project:', input);
       return { status: 'ok', message: 'Project delete placeholder' };
     }),
@@ -133,9 +130,11 @@ export const projectRouter = createTRPCRouter({
         },
       });
       
+      const glossary = (workspace?.glossary as Record<string, string>) || {};
+
       return {
         codeRules: workspace?.codeRules || '',
-        glossary: workspace?.glossary || {},
+        glossary,
       };
     }),
 
@@ -165,7 +164,7 @@ export const projectRouter = createTRPCRouter({
       return {
         success: true,
         codeRules: updated.codeRules,
-        glossary: updated.glossary,
+        glossary: updated.glossary as Record<string, string>,
       };
     }),
 });
