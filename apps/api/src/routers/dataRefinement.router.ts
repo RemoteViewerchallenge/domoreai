@@ -757,7 +757,7 @@ export const dataRefinementRouter = createTRPCRouter({
 
                 // Step 1: Create backup of current schema
                 const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
-                const backupPath = `${schemaPath}.backup.${Date.now()}`;
+                const backupPath = `${schemaPath}.backup`;
                 fs.copyFileSync(schemaPath, backupPath);
                 console.log(`[Rename] Schema backup created at ${backupPath}`);
 

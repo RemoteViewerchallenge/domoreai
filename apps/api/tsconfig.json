@@ -10,7 +10,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true, // <--- It's already here.
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "composite": true
   },
   "include": ["src/**/*", "*.ts"],
   "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"]
