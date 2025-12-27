@@ -40,5 +40,10 @@
     "apps/ui/**/*.{ts,tsx}": [
       "eslint --config apps/ui/eslint.config.mjs --fix"
     ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   }
 }

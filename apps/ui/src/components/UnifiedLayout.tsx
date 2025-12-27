@@ -1,4 +1,5 @@
 import { UnifiedMenuBar } from './UnifiedMenuBar.js';
+import { Toaster } from 'sonner';
 
 export const UnifiedLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -14,6 +15,7 @@ export const UnifiedLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
       
       {/* 3. Global Overlays (Toasts, Modals) can go here */}
+      <Toaster richColors position="bottom-right" theme="dark" />
     </div>
   );
 };

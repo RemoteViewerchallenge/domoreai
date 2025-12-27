@@ -11,7 +11,13 @@ import { trpc } from './utils/trpc.js';
 import { injectThemeScopes } from './theme/design-tokens.js';
 
 // Initialize Theme Scopes
-injectThemeScopes();
+console.log('[main.tsx] Injecting theme scopes...');
+try {
+  injectThemeScopes();
+  console.log('[main.tsx] Theme scopes injected.');
+} catch (e) {
+  console.error('[main.tsx] Failed to inject theme scopes:', e);
+}
 
 const queryClient = new QueryClient();
 const trpcClient = trpc.createClient({
@@ -23,6 +29,7 @@ const trpcClient = trpc.createClient({
   transformer: SuperJSON,
 });
 
+console.log('[main.tsx] Rendering React app...');
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -34,3 +41,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </trpc.Provider>
   </React.StrictMode>
 );
+console.log('[main.tsx] React render called.');

@@ -25,7 +25,20 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
+// Idempotent shutdown helper
+let isShuttingDown = false;
+
 export async function shutdownDb() {
-  await pool.end();
-  await prisma.$disconnect();
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  try {
+    // Only end if not already ended
+    if (!pool.ended) {
+      await pool.end();
+    }
+    await prisma.$disconnect();
+  } catch (err) {
+    console.error('Error during database shutdown:', err);
+  }
 }
