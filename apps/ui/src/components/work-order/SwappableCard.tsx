@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { 
   Code, Globe, Terminal, Play, Settings, Folder
 } from 'lucide-react';
+import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js'; 
 import MonacoEditor from '../MonacoEditor.js';
 import { useCardVFS } from '../../hooks/useCardVFS.js';
@@ -13,6 +14,13 @@ import { AgentSettings, type CardAgentState } from '../settings/AgentSettings.js
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
+
+interface ModelSpecs {
+    hasVision?: boolean;
+    hasReasoning?: boolean;
+    hasCoding?: boolean;
+    [key: string]: unknown;
+}
 
 export const SwappableCard = memo(({ id }: { id: string }) => {
   const { 
@@ -33,16 +41,19 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     category: r.categoryString || 'Uncategorized'
   })), [roles]);
 
-  const availableModels = useMemo(() => (models || []).map(m => ({
-    id: m.id,
-    name: m.name || m.id,
-    provider: m.providerId,
-    capabilities: {
-        vision: m.hasVision || false,
-        reasoning: m.hasReasoning || false,
-        coding: m.hasCoding || false
-    }
-  })), [models]);
+  const availableModels = useMemo(() => (models || []).map(m => {
+    const specs = m.specs as ModelSpecs | null;
+    return {
+        id: m.id,
+        name: m.name || m.id,
+        provider: m.providerId,
+        capabilities: {
+            vision: specs?.hasVision || false,
+            reasoning: specs?.hasReasoning || false,
+            coding: specs?.hasCoding || false
+        }
+    };
+  }), [models]);
 
   // Agent Config State
   const agentConfig = useMemo(() => {
@@ -69,7 +80,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files'>('editor');
   const [showSettings, setShowSettings] = useState(false);
   const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
-  const [terminalLogs, setTerminalLogs] = useState<{message: string; type: 'stdout' | 'stderr' | 'system' | 'input'; roleId: string; timestamp: number}[]>([]);
+  const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
 
   // Auto-detect code files
   useEffect(() => {
@@ -98,14 +109,16 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   const handleTerminalInput = useCallback((input: string) => {
       setTerminalLogs(prev => [...prev, {
           message: input,
-          type: 'input',
-          roleId: 'user',
-          timestamp: Date.now()
+          type: 'command', 
+          timestamp: new Date().toISOString()
       }]);
   }, []);
 
   const handleRunAgent = useCallback(() => {
       console.log('Running agent...');
+      toast.success('Agent run initiated', {
+        description: 'The agent has started processing your request.',
+      });
       // Future: Trigger actual AI run or code execution
   }, []);
 

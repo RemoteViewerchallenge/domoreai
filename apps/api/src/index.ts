@@ -164,7 +164,12 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
   });
 
 
+  let isShuttingDown = false;
+
   const gracefulShutdown = (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
     console.log(`\n${signal} received. Shutting down gracefully...`);
     
     // Stop background services first
@@ -178,6 +183,12 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
       console.log('Database connection closed.');
       process.exit(0);
     });
+
+    // Force exit if graceful shutdown takes too long (e.g. 5s)
+    setTimeout(() => {
+      console.error('Forcing shutdown after timeout...');
+      process.exit(1);
+    }, 5000);
   };
 
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -49,18 +49,41 @@ const createRoleSchema = z.object({
   category: z.string().optional().default('Uncategorized'),
   tools: z.array(z.string()).optional().default([]),
   
-  // Metadata fields (passed as JSON)
-  // We allow these to be passed and will store them in metadata
+  // Metadata fields
   minContext: z.number().int().optional(),
   maxContext: z.number().int().optional(),
-  needsVision: z.boolean().default(false),
-  needsReasoning: z.boolean().default(false),
-  needsCoding: z.boolean().default(false),
-  needsTools: z.boolean().default(false),
-  needsJson: z.boolean().default(false),
-  needsUncensored: z.boolean().default(false),
-  defaultMaxTokens: z.number().int().min(256).optional(),
+  needsVision: z.boolean().optional().default(false),
+  needsReasoning: z.boolean().optional().default(false),
+  needsCoding: z.boolean().optional().default(false),
+  needsTools: z.boolean().optional().default(false),
+  needsJson: z.boolean().optional().default(false),
+  needsUncensored: z.boolean().optional().default(false),
+  needsImageGeneration: z.boolean().optional().default(false),
+  
+  defaultTemperature: z.number().min(0).max(2).optional(),
+  defaultMaxTokens: z.number().int().min(1).optional(),
   defaultTopP: z.number().min(0).max(1).optional(),
+  defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
+  defaultPresencePenalty: z.number().min(-2).max(2).optional(),
+  defaultStop: z.array(z.string()).optional(),
+  defaultSeed: z.number().int().optional(),
+  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
+  
+  terminalRestrictions: z.object({
+    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
+    commands: z.array(z.string())
+  }).optional(),
+  
+  criteria: z.record(z.any()).optional(),
+  orchestrationConfig: z.object({
+    requiresCheck: z.boolean(),
+    judgeRoleId: z.string().optional(),
+    minPassScore: z.number().int()
+  }).optional(),
+  memoryConfig: z.object({
+    useProjectMemory: z.boolean(),
+    readOnly: z.boolean()
+  }).optional(),
 });
 
 const updateRoleSchema = z.object({
@@ -80,8 +103,32 @@ const updateRoleSchema = z.object({
   needsTools: z.boolean().optional(),
   needsJson: z.boolean().optional(),
   needsUncensored: z.boolean().optional(),
-  defaultMaxTokens: z.number().int().min(256).optional(),
+  needsImageGeneration: z.boolean().optional(),
+  
+  defaultTemperature: z.number().min(0).max(2).optional(),
+  defaultMaxTokens: z.number().int().min(1).optional(),
   defaultTopP: z.number().min(0).max(1).optional(),
+  defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
+  defaultPresencePenalty: z.number().min(-2).max(2).optional(),
+  defaultStop: z.array(z.string()).optional(),
+  defaultSeed: z.number().int().optional(),
+  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
+  
+  terminalRestrictions: z.object({
+    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
+    commands: z.array(z.string())
+  }).optional(),
+  
+  criteria: z.record(z.any()).optional(),
+  orchestrationConfig: z.object({
+    requiresCheck: z.boolean(),
+    judgeRoleId: z.string().optional(),
+    minPassScore: z.number().int()
+  }).optional(),
+  memoryConfig: z.object({
+    useProjectMemory: z.boolean(),
+    readOnly: z.boolean()
+  }).optional(),
 });
 
 export const roleRouter = createTRPCRouter({
@@ -108,16 +155,12 @@ export const roleRouter = createTRPCRouter({
        try {
            const modelId = await modelSelector.resolveModelForRole(role as any);
            // Fetch the friendly name for this model ID
-           // Note: This is an extra DB call per role.
-           // Optimization: We could fetch all models once and lookup, but model registry is large.
-           // Better: ModelSelector could return the object or name.
-           // For now, we'll do a quick lookup.
            const model = await prisma.model.findUnique({
                where: { id: modelId },
                select: { name: true }
            });
            if (model) currentModelName = model.name;
-       } catch (e) {
+       } catch {
            currentModelName = 'None Available';
        }
 
@@ -259,29 +302,30 @@ export const roleRouter = createTRPCRouter({
   create: publicProcedure
     .input(createRoleSchema)
     .mutation(async ({ input }) => {
-      // Create metadata object from extra fields
-      const metadata = {
-        minContext: input.minContext,
-        maxContext: input.maxContext,
-        needsVision: input.needsVision,
-        needsReasoning: input.needsReasoning,
-        needsCoding: input.needsCoding,
-        needsTools: input.needsTools,
-        needsJson: input.needsJson,
-        needsUncensored: input.needsUncensored,
-        defaultMaxTokens: input.defaultMaxTokens,
-        defaultTopP: input.defaultTopP,
-      };
+      const { name, basePrompt, category, tools, ...metadata } = input;
+      const categoryName = category || 'Uncategorized';
+
+      const cat = await prisma.roleCategory.upsert({
+        where: { name: categoryName },
+        update: {},
+        create: { name: categoryName }
+      });
+      const categoryId = cat.id;
 
       // Create a new role in the database
       const role = await prisma.role.create({
         data: {
-          name: input.name,
-          basePrompt: input.basePrompt,
-          categoryString: input.category, // Use category string
-          tools: input.tools,
-          metadata: metadata,
-        } as any,
+          name,
+          basePrompt,
+          categoryString: categoryName,
+          categoryId,
+          metadata: metadata as any,
+          tools: {
+            create: tools.map(toolName => ({
+              tool: { connect: { name: toolName } }
+            }))
+          }
+        },
       });
       return role;
     }),
@@ -289,35 +333,53 @@ export const roleRouter = createTRPCRouter({
   update: publicProcedure
     .input(updateRoleSchema)
     .mutation(async ({ input }) => {
-      const { id, ...dataToUpdate } = input;
+      const { id, name, basePrompt, category, categoryString, tools, ...metadataUpdate } = input;
       
-      const { 
-        minContext, maxContext, needsVision, needsReasoning, needsCoding, needsTools, needsJson, needsUncensored, defaultMaxTokens, defaultTopP, 
-        category, categoryString,
-        ...rest 
-      } = dataToUpdate;
-
       // Fetch existing metadata to merge
-      const existing = await prisma.role.findUnique({ where: { id }, select: { metadata: true } });
+      const existing = await prisma.role.findUnique({ 
+        where: { id }, 
+        select: { metadata: true } 
+      });
       const currentMeta = (existing?.metadata as any) || {};
 
       const newMetadata = {
         ...currentMeta,
-        ...(minContext !== undefined && { minContext }),
-        ...(maxContext !== undefined && { maxContext }),
-        ...(needsVision !== undefined && { needsVision }),
-        ...(needsReasoning !== undefined && { needsReasoning }),
-        ...(needsCoding !== undefined && { needsCoding }),
-        ...(needsTools !== undefined && { needsTools }),
-        ...(needsJson !== undefined && { needsJson }),
-        ...(needsUncensored !== undefined && { needsUncensored }),
-        ...(defaultMaxTokens !== undefined && { defaultMaxTokens }),
-        ...(defaultTopP !== undefined && { defaultTopP }),
+        ...metadataUpdate
       };
 
-      const data: any = { ...rest, metadata: newMetadata };
-      if (categoryString) data.categoryString = categoryString;
-      if (category) data.categoryString = category;
+      // Filter out undefined values from data object
+      const data: any = {
+        ...(name !== undefined && { name }),
+        ...(basePrompt !== undefined && { basePrompt }),
+        metadata: newMetadata,
+      };
+
+      // Resolve category if provided
+      const resolvedCategoryName = categoryString || category;
+      if (resolvedCategoryName) {
+        const cat = await prisma.roleCategory.upsert({
+          where: { name: resolvedCategoryName },
+          update: {},
+          create: { name: resolvedCategoryName }
+        });
+        data.categoryId = cat.id;
+        data.categoryString = resolvedCategoryName;
+      }
+
+      // Handle tools update if provided
+      if (tools !== undefined) {
+        // First delete existing tool relations
+        await prisma.roleTool.deleteMany({
+          where: { roleId: id }
+        });
+        
+        // Then create new ones
+        data.tools = {
+          create: tools.map(toolName => ({
+            tool: { connect: { name: toolName } }
+          }))
+        };
+      }
 
       // Update the role in the database
       const role = await prisma.role.update({
@@ -368,7 +430,7 @@ export const roleRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const { roleId, context, name, goal, category, capabilities, tools } = input;
+      const { name, goal, category, capabilities, tools } = input;
 
       // --- NEW: Real AI-Powered Prompt Generation ---
       console.log(`[PromptGen] 🎨 Generating AI prompt for role: "${name}"...`);
