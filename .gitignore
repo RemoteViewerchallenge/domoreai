@@ -64,3 +64,8 @@ apps/api/list_tables.*
 
 # Database backups (timestamped SQL dumps and metadata)
 apps/api/backups/
+# Temporary build artifacts
+*.timestamp-*.mjs
+
+# Debug files
+debug_bashrc.txt
