@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "main": "electron/main.cjs",
-  "browser": {
-    "fs": "./src/shims.cjs"
-  },
+
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-theme.mjs && concurrently \"vite\" \"chokidar 'src/theme/theme.json' -c 'node scripts/generate-theme.mjs'\"",
