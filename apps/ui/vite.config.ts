@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 const monacoEditorPlugin = require('vite-plugin-monaco-editor').default
 
 // Point to our robust shim
-const shimPath = path.resolve(__dirname, "./src/shims.ts");
+const shimPath = path.resolve(__dirname, "./src/shims.js");
 
 export default defineConfig({
   plugins: [
@@ -56,5 +56,11 @@ export default defineConfig({
             '.ts': 'ts'
         }
     }
+  },
+  build: {
+    commonjsOptions: {
+      extensions: ['.js', '.cjs', '.mjs', '.ts', '.tsx'],
+      transformMixedEsModules: true,
+    },
   },
 })
