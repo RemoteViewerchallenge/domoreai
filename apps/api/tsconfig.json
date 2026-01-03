@@ -14,5 +14,9 @@
     "composite": true
   },
   "include": ["src/**/*", "*.ts"],
-  "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"]
+  "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"],
+  "references": [
+    { "path": "../../packages/api-contract" },
+    { "path": "../../packages/mcp-server-vfs" }
+  ]
 }
