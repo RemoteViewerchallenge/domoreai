@@ -230,7 +230,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {viewMode === 'terminal' && (
                 <XtermTerminal 
                     workingDirectory={currentPath} 
-                    logs={terminalLogs as TerminalMessage[]}
+                    logs={terminalLogs}
                     onInput={handleTerminalInput}
                 />
              )}
