@@ -82,10 +82,18 @@ export class ProviderManager implements IProviderManager {
             apiKey = decrypt(config.apiKey);
           }
           
+
+          // Fix for Ollama: If baseURL is missing in DB, default to local.
+          // This prevents "Ollama requires a baseURL" initialization errors.
+          let baseURL = config.baseURL || undefined;
+          if (config.type === 'ollama' && !baseURL) {
+             baseURL = process.env.OLLAMA_HOST || OLLAMA_DEFAULT_HOST;
+          }
+
           const provider = ProviderFactory.createProvider(config.type, {
             id: config.id,
             apiKey,
-            baseURL: config.baseURL || undefined,
+            baseURL,
           });
           this.providers.set(config.id, provider);
           

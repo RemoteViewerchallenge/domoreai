@@ -1,40 +1,40 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
-import { contextManager } from '../services/ContextManager.js';
+import { tokenService } from '../services/TokenService.js';
 
 export const contextRouter = createTRPCRouter({
   getContext: publicProcedure
     .input(z.object({ roleId: z.string() }))
     .query(async ({ input }) => {
-      const ctx = await contextManager.getContext(input.roleId);
+      const ctx = await tokenService.getContext(input.roleId);
       return ctx;
     }),
 
   setContext: publicProcedure
     .input(z.object({ roleId: z.string(), tone: z.string().optional(), style: z.string().optional(), memory: z.record(z.string()).optional() }))
     .mutation(async ({ input }) => {
-      await contextManager.setContext(input.roleId, { tone: input.tone, style: input.style, memory: input.memory as any });
+      await tokenService.setContext(input.roleId, { tone: input.tone, style: input.style, memory: input.memory as any });
       return { success: true };
     }),
 
   setMemoryKey: publicProcedure
     .input(z.object({ roleId: z.string(), key: z.string(), value: z.string() }))
     .mutation(async ({ input }) => {
-      await contextManager.setMemoryKey(input.roleId, input.key, input.value);
+      await tokenService.setMemoryKey(input.roleId, input.key, input.value);
       return { success: true };
     }),
 
   removeMemoryKey: publicProcedure
     .input(z.object({ roleId: z.string(), key: z.string() }))
     .mutation(async ({ input }) => {
-      await contextManager.removeMemoryKey(input.roleId, input.key);
+      await tokenService.removeMemoryKey(input.roleId, input.key);
       return { success: true };
     }),
 
   clearContext: publicProcedure
     .input(z.object({ roleId: z.string() }))
     .mutation(async ({ input }) => {
-      await contextManager.clearContext(input.roleId);
+      await tokenService.clearContext(input.roleId);
       return { success: true };
     }),
 });

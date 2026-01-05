@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { prisma } from '../db.js';
-import { ProjectArchitect } from '../services/ProjectArchitect.js';
+import { WorkflowEngine } from '../services/WorkflowEngine.js';
 import { getDefaultAgentFactory } from '../services/AgentFactory.js';
 import { projects } from '../db/schema.js';
 
@@ -36,7 +36,7 @@ export const projectRouter = createTRPCRouter({
         status: 'planning',
       }).returning() as { id: string }[];
 
-      const architect: ProjectArchitect = new ProjectArchitect(getDefaultAgentFactory());
+      const architect: WorkflowEngine = new WorkflowEngine(getDefaultAgentFactory());
       if (project && typeof project.id === 'string') {
         void architect.draftBlueprint(project.id, description)
           .then(() => console.log("Blueprint complete"))

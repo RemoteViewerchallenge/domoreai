@@ -1,4 +1,4 @@
-import { ModelDoctor } from './ModelDoctor.js';
+import { ModelSpecsRegistry } from './ModelSpecsRegistry.js';
 import { Surveyor } from './Surveyor.js';
 import { backupService } from './BackupService.js';
 
@@ -30,7 +30,7 @@ export class PersistentModelDoctor {
   private isRunning = false;
   private interval: NodeJS.Timeout | null = null;
   private checkIntervalMs = 5 * 60 * 1000; // 5 minutes
-  private doctor: ModelDoctor;
+  private doctor: ModelSpecsRegistry;
 
   // Completion criteria: All models must have these fields
   private requiredFields = [
@@ -40,7 +40,7 @@ export class PersistentModelDoctor {
   ];
 
   constructor() {
-    this.doctor = new ModelDoctor();
+    this.doctor = new ModelSpecsRegistry();
   }
 
   /**

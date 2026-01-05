@@ -20,7 +20,7 @@ interface JobSpec {
   dependsOnJobIndex?: number;
 }
 
-export class ProjectArchitect {
+export class WorkflowEngine {
   constructor(private agentFactory: AgentFactory) {}
 
   /**
@@ -91,7 +91,7 @@ export class ProjectArchitect {
             data: { status: 'in_progress' } 
           });
       } catch (e) {
-          console.error(`[ProjectArchitect] Failed to manage job ${job.id}`, e);
+          console.error(`[WorkflowEngine] Failed to manage job ${job.id}`, e);
       }
     }
   }

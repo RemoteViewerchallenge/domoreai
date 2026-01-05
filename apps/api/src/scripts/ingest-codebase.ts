@@ -1,5 +1,5 @@
 
-import { ingestionAgent } from '../services/IngestionAgent.js';
+import { ingestionService } from '../services/IngestionService.js';
 import path from 'path';
 
 async function main() {
@@ -7,7 +7,7 @@ async function main() {
   console.log(`Starting ingestion for directory: ${rootDir}`);
   
   try {
-    await ingestionAgent.ingestRepository(rootDir);
+    await ingestionService.ingestRepository(rootDir);
     console.log('Ingestion complete.');
   } catch (error) {
     console.error('Ingestion failed:', error);

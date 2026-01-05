@@ -184,12 +184,12 @@ export const vfsRouter = createTRPCRouter({
          }
          
          // Import here to avoid circular deps if any, or just standard import
-         const { ingestionAgent } = await import('../services/IngestionAgent.js');
+         const { ingestionService } = await import('../services/IngestionService.js');
          
          // Trigger ingestion in background? Or await? 
          // User probably wants to know when it starts, but maybe not wait for whole thing?
          // Let's await for now so we can catch immediate errors
-         await ingestionAgent.ingestRepository(input.path);
+         await ingestionService.ingestRepository(input.path);
          
          return { success: true };
        } catch (error) {

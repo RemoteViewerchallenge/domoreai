@@ -6,7 +6,7 @@ import { TRPCError } from '@trpc/server';
 import { AgentFactoryService as AgentFactory, VolcanoAgent } from './AgentFactory.js';
 
 
-export class CorporateOrchestrator {
+export class ProjectScheduler {
   private gitService: GitService;
   private agentFactory?: AgentFactory;
 
@@ -21,7 +21,7 @@ export class CorporateOrchestrator {
    */
   async wake() {
     if (!this.agentFactory) {
-        console.warn("AgentFactory not provided to CorporateOrchestrator, skipping wake()");
+        console.warn("AgentFactory not provided to ProjectScheduler, skipping wake()");
         return;
     }
 
@@ -102,7 +102,7 @@ export class CorporateOrchestrator {
             projectId: project.id,
             status: 'not_started', // 'PENDING' -> 'not_started'
             priority: 'high',
-            // Store critera in description or separate field? Schema has no metadata on Job right now?
+            // Store criteria in description or separate field? Schema has no metadata on Job right now?
             // Wait, schema has NO metadata on Job. Job model has: name, description, status, priority.
             // I'll append definition of done to description for now.
             }
@@ -160,7 +160,7 @@ export class CorporateOrchestrator {
             branchName = await this.gitService.createGhostBranch(vfsToken, job.id, newBranchName);
         }
         // in a real system this would push a message to a queue or call the CoC agent service.
-        console.log(`[CorporateOrchestrator] Crew dispatched to ${branchName} for Job ${job.id}`);
+        console.log(`[ProjectScheduler] Crew dispatched to ${branchName} for Job ${job.id}`);
 
         return {
             jobId: job.id,
