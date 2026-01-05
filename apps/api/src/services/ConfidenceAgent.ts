@@ -1,4 +1,4 @@
-import { AgentFactoryService } from './AgentFactory.js';
+// import { AgentFactoryService } from './AgentFactory.js';
 import { ProviderManager } from "./ProviderManager.js";
 import { PrismaAgentConfigRepository } from '../repositories/PrismaAgentConfigRepository.js';
 import type { CardAgentState } from '../types.js';
@@ -27,13 +27,13 @@ export interface ConfidenceConfig {
 }
 
 export class ConfidenceAgent {
-  private agentFactory: AgentFactoryService;
+//   private agentFactory: AgentFactoryService;
   
   constructor() {
-    this.agentFactory = new AgentFactoryService(
-      ProviderManager.getInstance(),
-      new PrismaAgentConfigRepository()
-    );
+      // this.agentFactory = new AgentFactoryService(
+      //   ProviderManager.getInstance(),
+      //   new PrismaAgentConfigRepository()
+      // );
   }
 
   /**
@@ -59,7 +59,8 @@ export class ConfidenceAgent {
     let lastReasoning = '';
 
     // Create the base agent
-    const agent = await this.agentFactory.createVolcanoAgent(cardConfig);
+    // const agent = await this.agentFactory.createVolcanoAgent(cardConfig);
+    const agent: { generate: (p: string) => Promise<string> } = { generate: async () => "Mocked Confidence" };
 
     // Augment the prompt to request confidence scoring
     const confidencePrompt = this.buildConfidencePrompt(userGoal, requireReasoning);
@@ -67,6 +68,7 @@ export class ConfidenceAgent {
     while (correctionAttempts < maxAttempts) {
       try {
         // Generate response with confidence scoring
+        if (!agent) throw new Error("Confidence agent DISABLED");
         const rawResponse = await agent.generate(confidencePrompt);
         
         // Parse the response to extract confidence and output

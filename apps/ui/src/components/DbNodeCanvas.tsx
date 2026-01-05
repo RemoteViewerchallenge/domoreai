@@ -17,12 +17,12 @@ const TableNode = ({ data, id: _id }: { data: { tableName: string; columns: stri
     const [expanded, setExpanded] = useState(false);
     
     // Fetch schema and sample data on expansion
-    const { data: schema } = trpc.dataRefinement.getTableSchema.useQuery(
+    const { data: schema } = trpc.schema.getTableSchema.useQuery(
         { tableName: data.tableName },
         { enabled: expanded }
     );
     
-    const { data: rows } = trpc.dataRefinement.getTableData.useQuery(
+    const { data: rows } = trpc.schema.getTableData.useQuery(
         { tableName: data.tableName, limit: 10 },
         { enabled: expanded }
     );
@@ -56,7 +56,7 @@ const TableNode = ({ data, id: _id }: { data: { tableName: string; columns: stri
                     {schema && rows ? (
                          <UniversalDataGrid 
                             data={rows.rows} 
-                            headers={schema.columns?.map((c: { column_name: string }) => c.column_name) || []} 
+                            headers={schema.map((c: { name: string }) => c.name) || []} 
                          />
                     ) : (
                         <div className="flex items-center justify-center h-full text-zinc-500 text-xs animate-pulse">
@@ -108,7 +108,7 @@ export const DbNodeCanvas = () => {
   const _reactFlowWrapper = useRef(null);
   
   // Fetch Tables List for Sidebar
-  const { data: tables } = trpc.dataRefinement.listAllTables.useQuery();
+  const { data: tables } = trpc.schema.getTables.useQuery();
 
   // Add Table to Canvas Logic
   const addTableToCanvas = (tableName: string, _event: React.DragEvent | React.MouseEvent) => {
@@ -147,16 +147,16 @@ export const DbNodeCanvas = () => {
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <div className="text-[10px] text-zinc-500 font-bold px-2 py-1 uppercase">Postgres Tables</div>
-            {tables?.map((table: { name: string }) => (
+            {tables?.map((table: string) => (
                 <div 
-                    key={table.name}
+                    key={table}
                     draggable
-                    onDragStart={(e) => e.dataTransfer.setData('application/reactflow/table', table.name)}
-                    onClick={(e) => addTableToCanvas(table.name, e)}
+                    onDragStart={(e) => e.dataTransfer.setData('application/reactflow/table', table)}
+                    onClick={(e) => addTableToCanvas(table, e)}
                     className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-move group transition-colors border border-transparent hover:border-zinc-700/50"
                 >
                     <TableIcon size={12} className="text-zinc-500 group-hover:text-blue-400" />
-                    <span className="text-xs text-zinc-300 group-hover:text-white">{table.name}</span>
+                    <span className="text-xs text-zinc-300 group-hover:text-white">{table}</span>
                     <Plus size={10} className="ml-auto opacity-0 group-hover:opacity-100 text-zinc-500" />
                 </div>
             ))}

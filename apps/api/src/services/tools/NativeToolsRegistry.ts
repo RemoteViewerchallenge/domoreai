@@ -2,7 +2,7 @@ import { ToolDefinition } from '../protocols/LocalProtocol.js';
 import { createFsTools } from '../../tools/filesystem.js';
 import { browserTools } from '../../tools/browser.js';
 import { webScraperTool } from '../../tools/webScraper.js';
-import { complexityTool } from '../../tools/complexityTool.js';
+// import { complexityTool } from '../../tools/complexityTool.js';
 import { terminalTools } from '../../tools/terminal.js';
 import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
@@ -86,12 +86,7 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
           description: webScraperTool.description,
           input_schema: webScraperTool.input_schema
         },
-        {
-          name: complexityTool.name,
-          handler: async (args: unknown) => complexityTool.handler(args as { taskDescription: string }),
-          description: complexityTool.description,
-          input_schema: complexityTool.input_schema
-        },
+
         {
             name: 'terminal_execute',
             handler: async (args: unknown) => {

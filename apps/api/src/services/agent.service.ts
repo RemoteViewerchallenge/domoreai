@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AgentRuntime } from "./AgentRuntime.js";
 import { type CardAgentState } from "../types.js";
-import { createVolcanoAgent } from "./AgentFactory.js";
+import { createVolcanoAgent } from "./VolcanoAgent.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import {
@@ -53,7 +53,7 @@ export class AgentService {
         where: { id: cardId },
         include: { workspace: true },
       });
-      const projectPrompt = card?.systemPrompt || undefined;
+      const projectPrompt = card?.workspace.systemPrompt || undefined;
 
       // Prepend context if available
       let finalUserGoal = userGoal;
@@ -201,13 +201,13 @@ export class AgentService {
       });
 
       if (fallback) {
-        const metadata = (role?.metadata as Record<string, unknown>) || {};
+        const metadata = {}; // (role?.metadata as Record<string, unknown>) || {};
         selectedModel = {
-          modelId: fallback.modelId,
+          modelId: fallback.id,
           providerId: fallback.providerId,
           model: fallback,
-          temperature: (metadata.defaultTemperature as number) ?? 0.1,
-          maxTokens: (metadata.defaultMaxTokens as number) ?? 1024,
+          temperature: ((metadata as any).defaultTemperature as number) ?? 0.1,
+          maxTokens: ((metadata as any).defaultMaxTokens as number) ?? 1024,
         };
       }
     }

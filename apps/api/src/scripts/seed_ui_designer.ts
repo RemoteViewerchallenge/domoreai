@@ -45,7 +45,7 @@ Your goal is to help the user build beautiful, functional, and consistent React 
           tool: { connect: { name: t } }
         }))
       },
-      metadata: metadata
+      // metadata removed
     },
     create: {
       id: roleId,
@@ -56,8 +56,13 @@ Your goal is to help the user build beautiful, functional, and consistent React 
           tool: { connect: { name: t } }
         }))
       },
-      categoryString: 'Engineering & Development',
-      metadata: metadata
+      category: {
+        connectOrCreate: {
+            where: { name: 'Engineering & Development' },
+            create: { name: 'Engineering & Development', order: 1 }
+        }
+      },
+      // metadata removed
     }
   });
 

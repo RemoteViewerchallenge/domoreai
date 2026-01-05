@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from '../components/UniversalDataGrid.js';
 
-import { Database, Table, FileJson, Search, Trash2, Download, Upload, Crown, RefreshCw } from 'lucide-react';
+import { Database, Table, Search, Trash2, Upload, RefreshCw } from 'lucide-react';
 
 export const DbBrowserPage: React.FC = () => {
   const [activeTable, setActiveTable] = useState<string | null>(null);
@@ -20,23 +19,23 @@ export const DbBrowserPage: React.FC = () => {
   });
 
   // --- QUERIES ---
-  const { data: tables, refetch: refetchTables } = trpc.dataRefinement.listAllTables.useQuery();
-  const { data: tableData, refetch: refetchData, isLoading } = trpc.dataRefinement.getTableData.useQuery(
+  const { data: tables, refetch: refetchTables } = trpc.schema.getTables.useQuery();
+  const { data: tableData, refetch: refetchData, isLoading } = trpc.schema.getTableData.useQuery(
     { tableName: activeTable || '', limit: 1000 },
     { enabled: !!activeTable }
   );
-  const { data: tableSchema } = trpc.dataRefinement.getTableSchema.useQuery(
+  const { data: tableSchema } = trpc.schema.getTableSchema.useQuery(
     { tableName: activeTable || '' },
     { enabled: !!activeTable }
   );
 
   // --- MUTATIONS ---
-  const importTableFromJsonMutation = trpc.dataRefinement.importJsonToTable.useMutation({
+  const importTableFromJsonMutation = trpc.schema.importJsonToTable.useMutation({
     onSuccess: (data) => {
       // eslint-disable-next-line react/no-unescaped-entities
       alert(`Import Successful!\n${data.rowCount} rows processed into '${data.tableName}'.`);
-      refetchTables();
-      if (activeTable === data.tableName) refetchData();
+      void refetchTables();
+      if (activeTable === data.tableName) void refetchData();
       else setActiveTable(data.tableName);
       setShowImportModal(false);
       setPendingImportJson(null);
@@ -45,16 +44,16 @@ export const DbBrowserPage: React.FC = () => {
     onError: (error) => alert(`Import Failed: '${error.message}'`)
   });
 
-  const deleteTableMutation = trpc.dataRefinement.deleteTable.useMutation({
+  const deleteTableMutation = trpc.schema.dropTable.useMutation({
     onSuccess: () => {
       setActiveTable(null);
-      refetchTables();
+      void refetchTables();
     }
   });
 
-  const createTableMutation = trpc.dataRefinement.createTable.useMutation({
+  const createTableMutation = trpc.schema.createTable.useMutation({
     onSuccess: (_data, vars) => {
-      refetchTables();
+      void refetchTables();
       setActiveTable(vars.tableName);
     }
   });
@@ -65,8 +64,8 @@ export const DbBrowserPage: React.FC = () => {
     if (name) createTableMutation.mutate({ tableName: name });
   };
 
-  const filteredTables = tables?.filter((t: any) => 
-    t.name.toLowerCase().includes(filterText.toLowerCase())
+  const filteredTables = tables?.filter((t: string) => 
+    t.toLowerCase().includes(filterText.toLowerCase())
   ) || [];
 
   return (
@@ -100,18 +99,18 @@ export const DbBrowserPage: React.FC = () => {
               + New Table
             </button>
             
-            {filteredTables.map((t: any) => (
+            {filteredTables.map((t: string) => (
               <button
-                key={t.name}
-                onClick={() => setActiveTable(t.name)}
+                key={t}
+                onClick={() => setActiveTable(t)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-all ${
-                  activeTable === t.name 
+                  activeTable === t 
                     ? 'bg-blue-600/20 text-blue-200 border border-blue-500/30' 
                     : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
                 }`}
               >
                 <Table size={14} />
-                <span className="truncate">{t.name}</span>
+                <span className="truncate">{t}</span>
               </button>
             ))}
           </div>
@@ -131,7 +130,7 @@ export const DbBrowserPage: React.FC = () => {
                   <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs">
                     {tableData?.rowCount || 0} rows
                   </span>
-                  <button onClick={() => refetchData()} title="Refresh Data" className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors">
+                  <button onClick={() => void refetchData()} title="Refresh Data" className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors">
                     <RefreshCw size={16} />
                   </button>
                 </div>
@@ -174,7 +173,7 @@ export const DbBrowserPage: React.FC = () => {
                 ) : (
                   <UniversalDataGrid 
                     data={(tableData?.rows as any[]) || []} 
-                    headers={tableSchema?.columns?.map((c: any) => c.column_name) || []}
+                    headers={tableSchema?.map((c) => c.name) || []}
                   />
                 )}
               </div>
@@ -221,14 +220,14 @@ export const DbBrowserPage: React.FC = () => {
                    </button>
                    <button 
                      onClick={() => { 
-                       setActiveTable('model_registry'); 
+                       setActiveTable('Model'); 
                        setImportOptions(p => ({ ...p, upsertOnConflict: true, preserveIds: false, useStrictSchema: true }));
-                       alert("Set target to 'model_registry' with Strict Schema enabled.");
+                       alert("Set target to 'Model' with Strict Schema enabled.");
                      }} 
                      className="px-3 py-2 bg-zinc-800 hover:bg-emerald-600/30 border border-zinc-700 hover:border-emerald-500/50 rounded text-xs text-zinc-300 hover:text-emerald-200 transition-all text-left"
                    >
                      <div className="font-bold">System Models</div>
-                     <div className="opacity-50 text-[10px]">Target: model_registry</div>
+                     <div className="opacity-50 text-[10px]">Target: Model</div>
                    </button>
                 </div>
               </div>
@@ -285,6 +284,7 @@ export const DbBrowserPage: React.FC = () => {
               <button 
                 onClick={() => {
                   if (!pendingImportJson) return alert("Please paste JSON or upload a file.");
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                   importTableFromJsonMutation.mutate({ 
                     tableName: activeTable || 'new_table', 
                     jsonString: pendingImportJson, 

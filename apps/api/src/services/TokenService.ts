@@ -139,7 +139,7 @@ export class TokenService {
       // 1. Fetch Model Specs
       const model = await prisma.model.findUnique({ 
         where: { id: modelId },
-        select: { specs: true, name: true }
+        include: { capabilities: true }
       });
 
       if (!model) {
@@ -150,13 +150,14 @@ export class TokenService {
         };
       }
 
-      const specs = model.specs as { contextWindow?: number };
-      const limit = specs?.contextWindow || 8192; // Default if unknown
+      const caps = model.capabilities;
+      const limit = caps?.contextWindow || 8192; // Default if unknown
 
       // 2. Calculate "Weight" - count tokens from files
       const totalTokens = await this.countTokensFromFiles(filePaths);
 
       const utilizationPercent = (totalTokens / limit) * 100;
+
 
       console.log(`⚖️ Context Check for ${model.name}: ${totalTokens} / ${limit} (${utilizationPercent.toFixed(1)}%)`);
 
@@ -218,6 +219,29 @@ export class TokenService {
 
     // Simple heuristic: ~4 chars per token
     return Math.ceil(totalChars / 4);
+  }
+
+  /**
+   * Advanced tokenization using a proper tokenizer (TODO: integrate tiktoken or similar)
+   * For now, uses the simple character-based heuristic
+   */
+  async getTokenLimits(modelId: string): Promise<{ contextWindow: number; maxOutput: number }> {
+    try {
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+        const model = await prisma.model.findUnique({
+            where: { id: modelId },
+            include: { capabilities: true }
+        });
+        if (!model) return { contextWindow: 4096, maxOutput: 4096 };
+        const caps = model.capabilities;
+        return {
+            contextWindow: caps?.contextWindow || 4096,
+            maxOutput: caps?.maxOutput || 4096
+        };
+    } catch (e) {
+        return { contextWindow: 4096, maxOutput: 4096 };
+    }
   }
 
   /**

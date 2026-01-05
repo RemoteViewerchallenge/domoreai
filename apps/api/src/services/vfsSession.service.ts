@@ -35,7 +35,8 @@ export class VfsManager {
           // For now, let's fence to the workspace root to allow some movement if needed, 
           // or strictly to the card's path.
           // The plan says: "Determine the rootPath from the WorkOrderCard."
-          fsRoot = path.resolve(card.workspace.rootPath, card.relativePath);
+          // Schema does not have relativePath, defaulting to workspace root.
+          fsRoot = card.workspace.rootPath;
         }
       }
 

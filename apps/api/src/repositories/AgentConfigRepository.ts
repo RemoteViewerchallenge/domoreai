@@ -15,26 +15,30 @@ export class AgentConfigRepository {
 
   static async getModel(providerId: string, modelId: string): Promise<Model | null> {
     return prisma.model.findUnique({
-      where: { providerId_modelId: { providerId, modelId } }
+      where: { providerId_name: { providerId, name: modelId } }
     });
   }
 
   static async createModel(modelDef: ModelDef): Promise<Model> {
     return prisma.model.create({
       data: {
-        modelId: modelDef.id,
+        // modelId: modelDef.id, // Removed if not in schema
         provider: { connect: { id: modelDef.providerId } },
         name: modelDef.name || modelDef.id,
         // Pack transient/spec fields into the specs JSON
         costPer1k: modelDef.costPer1k ?? 0,
-        isFree: modelDef.isFree ?? false,
+        // isFree: modelDef.isFree ?? false,
         providerData: (modelDef.providerData ?? {}) as unknown as import('@prisma/client/runtime/library').InputJsonValue,
-        specs: {
+        capabilities: {
+          create: {
             contextWindow: modelDef.contextWindow ?? 4096,
             hasVision: modelDef.hasVision ?? false,
-            hasReasoning: modelDef.hasReasoning ?? false,
-            hasCoding: modelDef.hasCoding ?? false,
-            lastUpdated: new Date().toISOString()
+            specs: {
+              hasReasoning: modelDef.hasReasoning ?? false,
+              hasCoding: modelDef.hasCoding ?? false,
+              lastUpdated: new Date().toISOString()
+            }
+          }
         }
       }
     });

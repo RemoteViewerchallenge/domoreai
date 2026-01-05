@@ -1,41 +1,49 @@
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../db.js';
-import { providerConfigs, modelRegistry, modelCapabilities } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { prisma } from '../db.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory, LLMModel } from '../utils/ProviderFactory.js';
-import { ProviderManager } from './ProviderManager.js';
 
 export class ProviderService {
   async listProviders() {
-    return db.select().from(providerConfigs);
+    return prisma.providerConfig.findMany();
   }
 
   // [NEW] Manage Providers via UI
   async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
     const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined;
     
+    // Note: apiKey is removed from DB schema, but we keep the logic structure 
+    // in case we restore it or for consistency with how it was called.
+    // If apiKey column is gone, we cannot save it.
+    // We will assume environment variables handle the key, but we still accept label/type/baseURL.
+    
+    // If 'apiKey' really is gone from ProviderConfig, we skip saving it.
+    // If we want to support storing keys, we need the column back.
+    // Given the migration "Move Keys to Env", we assume DB does NOT store keys.
+    
+    const data = {
+        label: input.label,
+        type: input.type,
+        baseURL: input.baseURL,
+        isEnabled: true,
+        // apiKey: encryptedKey, // Omitted
+    };
+
     if (input.id) {
-       return db.update(providerConfigs)
-         .set({
-           label: input.label,
-           type: input.type,
-           baseURL: input.baseURL,
-           ...(encryptedKey ? { apiKey: encryptedKey } : {}),
-           updatedAt: new Date()
-         })
-         .where(eq(providerConfigs.id, input.id))
-         .returning();
+       return prisma.providerConfig.update({
+         where: { id: input.id },
+         data: {
+            ...data,
+            updatedAt: new Date()
+         }
+       });
     } else {
-       return db.insert(providerConfigs).values({
-         id: uuidv4(),
-         label: input.label,
-         type: input.type,
-         baseURL: input.baseURL,
-         apiKey: encryptedKey || '',
-         isEnabled: true,
-         updatedAt: new Date()
-       }).returning();
+       return prisma.providerConfig.create({
+         data: {
+           id: uuidv4(),
+           ...data
+         }
+       });
     }
   }
 
@@ -49,44 +57,55 @@ export class ProviderService {
   }
 
   async deleteProvider(id: string) {
-    return db.delete(providerConfigs).where(eq(providerConfigs.id, id));
+    return prisma.providerConfig.delete({
+      where: { id }
+    });
   }
 
   async listAllAvailableModels() {
-    // We query the database, not the raw provider API
-    const models = await db.query.modelRegistry.findMany({
-      where: eq(modelRegistry.isActive, true),
-      with: {
+    const models = await prisma.model.findMany({
+      where: { isActive: true },
+      include: {
         provider: true,
         capabilities: true
       },
-      orderBy: (model, { desc }) => [desc(model.lastSeenAt)]
+      orderBy: { lastSeenAt: 'desc' }
     });
 
     return models.map((model) => ({
-      id: model.modelId, // The actual model ID string (e.g. "gpt-4")
-      name: model.modelName || model.modelId,
+      id: model.id, // CUID
+      name: model.name, // Display Name
       providerId: model.providerId,
       providerLabel: model.provider.label,
-      // Include capabilities for UI hints if needed
       contextWindow: model.capabilities?.contextWindow || 0
     }));
   }
 
   // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
   async fetchAndNormalizeModels(providerId: string) {
-      const providerConfig = await db.query.providerConfigs.findFirst({
-        where: eq(providerConfigs.id, providerId),
+      const providerConfig = await prisma.providerConfig.findUnique({
+        where: { id: providerId }
       });
       if (!providerConfig) throw new Error('Provider not found');
 
-      let apiKey: string;
-      try {
-        apiKey = decrypt(providerConfig.apiKey);
-      } catch (error) {
-        console.warn(`Failed to decrypt API key for provider ${providerConfig.id}.`, error);
-        throw new Error('Invalid API key configuration');
+      // API Key Strategy:
+      // 1. Check Env
+      // 2. Check DB (if it existed, but it's gone now)
+      // So we rely on ProviderFactory/Manager to handle Env lookups probably?
+      // But ProviderFactory requires passing apiKey.
+      // So we must fetch it using the new logic ProviderManager.getApiKey used?
+      // ProviderManager.getApiKey is NOT available here directly?
+      // Step 84-88 in original used `decrypt`.
+      // We need to use `process.env`.
+      
+      let apiKey = process.env[`${providerConfig.id.toUpperCase()}_API_KEY`] || '';
+      // Also try type-based convention
+      if (!apiKey) {
+         apiKey = process.env[`${providerConfig.type.toUpperCase()}_API_KEY`] || '';
       }
+      
+      // If still empty and we need it, ProviderFactory might complain unless it handles it.
+      // We will pass what we have.
 
       const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
         id: providerConfig.id,
@@ -98,7 +117,6 @@ export class ProviderService {
       const rawModelList = await providerInstance.getModels();
       console.log(`[Ingestion] Found ${rawModelList.length} models.`);
 
-      // HEURISTIC: Quick detection for Groq/Free models based on ID
       const isLikelyFree = (id: string) => {
          const lower = id.toLowerCase();
          if (providerConfig.type === 'groq') return true; 
@@ -107,63 +125,73 @@ export class ProviderService {
       };
 
       const upsertPromises = rawModelList.map(async (model: LLMModel) => {
-        const modelId = model.id;
-        if (!modelId) return;
+        const modelSlug = model.id; // slug from provider
+        if (!modelSlug) return;
 
         // 1. Create/Update the Core Identity
-        const results = await db.insert(modelRegistry)
-          .values({
-            id: uuidv4(),
-            modelId: modelId,
-            providerId: providerConfig.id,
-            modelName: (model.name as string) || modelId,
-            isFree: isLikelyFree(modelId),
-            providerData: model as any,
-            isActive: true,
-            updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [modelRegistry.modelId, modelRegistry.providerId],
-            set: {
-              isActive: true,
-              lastSeenAt: new Date(),
-              providerData: model as any,
-              updatedAt: new Date(),
-            }
-          })
-          .returning({ id: modelRegistry.id });
+        // We calculate display name
+        const displayName = (model.name as string) || modelSlug;
 
-        const dbModel = results[0];
-        if (!dbModel) return;
+        // Upsert by [providerId, name] unique constraint
+        // Note: Prisma 5.x upsert requires simple unique input. 
+        // If providerId_name is not generated in types yet, we might have issues.
+        // We will try standard access.
+        
+        // Manual upsert because providerId_name constraint might not be recognized by client types yet
+        const existingModel = await prisma.model.findFirst({
+            where: {
+                providerId: providerConfig.id,
+                name: displayName
+            }
+        });
+
+        let dbModel;
+        if (existingModel) {
+            dbModel = await prisma.model.update({
+                where: { id: existingModel.id },
+                data: {
+                    isActive: true,
+                    lastSeenAt: new Date(),
+                    providerData: model as any,
+                    updatedAt: new Date(),
+                }
+            });
+        } else {
+            dbModel = await prisma.model.create({
+                data: {
+                    providerId: providerConfig.id,
+                    name: displayName,
+                    providerData: model as any,
+                    isActive: true,
+                    aiData: {}, 
+                }
+            });
+        }
 
         // 2. Populate/Update the Related Capabilities Table
-        // Use safe defaults (4096)
         const contextWindow = (model.specs?.contextWindow as number) || (model.context_window as number) || 4096;
         const maxOutput = (model.specs?.maxOutput as number) || (model.max_tokens as number) || 4096;
         
-        const hasVision = modelId.toLowerCase().includes('vision') || 
-                         modelId.toLowerCase().includes('vl') || 
+        const hasVision = modelSlug.toLowerCase().includes('vision') || 
+                         modelSlug.toLowerCase().includes('vl') || 
                          !!model.specs?.hasVision;
         
-        await db.insert(modelCapabilities)
-          .values({
-            id: uuidv4(),
-            modelId: dbModel.id,
-            contextWindow,
-            maxOutput,
-            hasVision,
-            hasAudioInput: modelId.toLowerCase().includes('whisper') || modelId.toLowerCase().includes('audio'),
-            updatedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: [modelCapabilities.modelId],
-            set: {
-              contextWindow: contextWindow,
-              maxOutput: maxOutput,
-              hasVision: hasVision,
-              updatedAt: new Date(),
+        await prisma.modelCapabilities.upsert({
+            where: { modelId: dbModel.id },
+            update: {
+                contextWindow,
+                maxOutput,
+                hasVision,
+                updatedAt: new Date(),
+            },
+            create: {
+                 modelId: dbModel.id,
+                 contextWindow,
+                 maxOutput,
+                 hasVision,
+                 // hasAudioInput removed from schema
             }
-          });
+        });
       });
 
       await Promise.all(upsertPromises);

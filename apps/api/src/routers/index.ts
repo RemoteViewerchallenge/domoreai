@@ -1,4 +1,4 @@
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { createTRPCRouter } from '../trpc.js';
 import { gitRouter } from './git.router.js';
 import { providerRouter } from './providers.router.js';
 import { roleRouter } from './role.router.js';
@@ -20,7 +20,7 @@ import { ingestionRouter } from './ingestion.router.js';
 import { agentRouter } from './agent.router.js';
 import { systemHealthRouter } from './systemHealth.router.js';
 import { toolRouter } from './tool.router.js';
-
+import { schemaRouter } from './schema.router.js';
 
 export const appRouter = createTRPCRouter({
   agent: agentRouter,
@@ -44,6 +44,7 @@ export const appRouter = createTRPCRouter({
   volcano: volcanoRouter,
   systemHealth: systemHealthRouter,
   tool: toolRouter,
+  schema: schemaRouter,
 });
 
 export type AppRouter = typeof appRouter;

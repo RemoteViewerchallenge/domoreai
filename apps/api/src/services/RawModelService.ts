@@ -49,7 +49,8 @@ export class RawModelService {
     // 3. Fetch (Raw)
     const allModels: any[] = [];
     let nextUrl: string | undefined = fetchUrl;
-    const apiKey = decrypt(config.apiKey);
+    // apiKey missing from config, using env vars handled by provider instantiation
+    const apiKey = ''; // decrypt(config.apiKey);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 

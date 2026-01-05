@@ -1,30 +1,35 @@
 import { IProviderRepository } from "../interfaces/IProviderRepository.js";
-import { db, prisma } from "../db.js";
-import { providerConfigs } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { prisma } from "../db.js";
 
 export class ProviderRepository implements IProviderRepository {
   async findProviderConfigByLabel(label: string): Promise<any> {
-    return db.query.providerConfigs.findFirst({
-      where: eq(providerConfigs.label, label)
+    return prisma.providerConfig.findFirst({
+      where: { label }
     });
   }
 
   async findProviderConfigById(id: string): Promise<any> {
-    return db.query.providerConfigs.findFirst({
-      where: eq(providerConfigs.id, id)
+    return prisma.providerConfig.findUnique({
+      where: { id }
     });
   }
 
   async createProviderConfig(values: any): Promise<void> {
-    await db.insert(providerConfigs).values(values);
+    // Drizzle's values might not match Prisma's exactly if types differ, but structurally should be close.
+    // 'values' is likely { id, label, type, isEnabled, ... }
+    await prisma.providerConfig.create({
+      data: values
+    });
   }
 
   async getEnabledProviderConfigs(): Promise<any[]> {
-    return db.select().from(providerConfigs).where(eq(providerConfigs.isEnabled, true));
+    return prisma.providerConfig.findMany({
+      where: { isEnabled: true }
+    });
   }
 
   async upsertModel(data: any): Promise<void> {
+    // Already using Prisma, ensuring data structure compatibility
     await prisma.model.upsert(data);
   }
 }

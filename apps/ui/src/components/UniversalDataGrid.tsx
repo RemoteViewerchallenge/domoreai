@@ -23,10 +23,12 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   const [tempHeaderVal, setTempHeaderVal] = useState('');
 
   const columns = useMemo(() => {
+    // Prioritize headers if provided (allows controlling order/visibility), otherwise infer from data
+    if (headers && headers.length > 0) {
+        return headers;
+    }
     if (data && data.length > 0) {
       return Object.keys(data[0]);
-    } else if (headers && headers.length > 0) {
-      return headers;
     }
     return [];
   }, [data, headers]);
@@ -66,9 +68,12 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
     };
   }, [resizing]);
 
-  if (!data || data.length === 0) return (
+  // [CHANGED] Only return "NO DATA" if we truly have no data AND no columns to show
+  const hasData = data && data.length > 0;
+  
+  if (!hasData && columns.length === 0) return (
     <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-secondary)] bg-zinc-900/20 border border-zinc-800/50 rounded-lg m-2">
-        <span className="text-xs font-mono">NO DATA FOUND</span>
+        <span className="text-xs font-mono">NO DATA & NO SCHEMA</span>
     </div>
   );
 
@@ -141,17 +146,26 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800/50">
-          {data.map((row, rowIndex) => (
-            <tr key={rowIndex} className="transition-colors group hover:bg-[var(--color-background)]/30">
-              {columns.map((col) => (
-                <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-[var(--color-border)]/30 last:border-r-0 overflow-hidden text-[var(--color-text)] whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
-                  <span className="opacity-90 group-hover:opacity-100">
-                    {(row[col] === null || row[col] === undefined) ? '' : (typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] as any))}
-                  </span>
+          {/* [CHANGED] Render empty state row if no data, otherwise render rows */}
+          {!hasData ? (
+            <tr>
+                <td colSpan={columns.length} className="p-8 text-center text-zinc-600 italic border-r border-[var(--color-border)]/30">
+                    Empty Table (Ready for Data)
                 </td>
-              ))}
             </tr>
-          ))}
+          ) : (
+            data.map((row, rowIndex) => (
+                <tr key={rowIndex} className="transition-colors group hover:bg-[var(--color-background)]/30">
+                {columns.map((col) => (
+                    <td key={`${rowIndex}-${col}`} className="p-1.5 border-r border-[var(--color-border)]/30 last:border-r-0 overflow-hidden text-[var(--color-text)] whitespace-nowrap" style={{ width: columnWidths[col] || 150 }}>
+                    <span className="opacity-90 group-hover:opacity-100">
+                        {(row[col] === null || row[col] === undefined) ? '' : (typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] as any))}
+                    </span>
+                    </td>
+                ))}
+                </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>

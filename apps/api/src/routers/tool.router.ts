@@ -55,7 +55,7 @@ export const toolRouter = createTRPCRouter({
                 instruction: input.instruction,
                 schema: input.schema,
                 isEnabled: input.isEnabled,
-                implementation: input.implementation
+                // implementation: input.implementation
             }
         });
     }),

@@ -8,13 +8,13 @@ import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
-import { db, shutdownDb } from './db.js'; 
-import { llmRouter } from './routers/llm.router.js';
+import { prisma as db, shutdownDb } from './db.js'; 
+// import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
 import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
-import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
+// import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, ENCRYPTION_KEY_LENGTH, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
 
 // Initialize Telemetry
@@ -94,7 +94,7 @@ async function startServer() {
   }
 
   // Mount RESTful API routers
-  app.use('/llm', llmRouter);
+  // app.use('/llm', llmRouter);
 
   // Global error handler for REST routes
   // This should be the last middleware added
@@ -117,11 +117,11 @@ async function startServer() {
           id: true,
           name: true,
           providerId: true,
-          isFree: true
+          costPer1k: true
         }
       });
       
-      const freeModels = allModels.filter(m => m.isFree);
+      const freeModels = allModels.filter(m => m.costPer1k === 0);
       const freeByProvider = freeModels.reduce((acc, m) => {
         const provider = m.providerId;
         acc[provider] = (acc[provider] || 0) + 1;
@@ -156,11 +156,11 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
     }
 
     // Start persistent model doctor
-    try {
-      await persistentModelDoctor.start();
-    } catch (err) {
-      console.warn('⚠️ Persistent model doctor failed to start:', err);
-    }
+    // try {
+    //   await persistentModelDoctor.start();
+    // } catch (err) {
+    //   console.warn('⚠️ Persistent model doctor failed to start:', err);
+    // }
   });
 
 
@@ -174,7 +174,7 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
     
     // Stop background services first
     backupService.stop();
-    persistentModelDoctor.stop();
+    // persistentModelDoctor.stop();
     
     server.close(async () => {
       console.log('HTTP server closed.');      
