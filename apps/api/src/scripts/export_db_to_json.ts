@@ -9,25 +9,19 @@ async function exportTablesToJson() {
 
   // List of tables to export (add more as needed)
   const tables = [
-    'Model',
-    'Role',
     'ProviderConfig',
-    'ModelConfig',
+    'Model',
+    'ModelCapabilities',
     'ModelFailure',
     'ProviderFailure',
-    'ModelUsage',
-    'RawDataLake',
-    'FlattenedTable',
-    'TableMapping',
-    'Workspace',
-    'WorkOrderCard',
-    'Job'
+    'ModelUsage'
   ];
 
   for (const table of tables) {
     try {
-      // Dynamically call prisma[table].findMany()
-      const data = await (prisma as any)[table.toLowerCase()].findMany();
+      // Dynamically call prisma[table] using camelCase
+      const modelName = table.charAt(0).toLowerCase() + table.slice(1);
+      const data = await (prisma as any)[modelName].findMany();
       const filePath = path.join(backupDir, `${table}.json`);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
       console.log(`✅ Exported ${table} to ${filePath}`);

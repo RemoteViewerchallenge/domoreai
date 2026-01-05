@@ -1,0 +1,68 @@
+[
+  {
+    "id": "google-ai",
+    "label": "Google AI Studio (Env)",
+    "type": "google",
+    "apiKey": "26ce802156de9507d7cd1f0903e90a8e:9646cdee21e3309c6c741626abe417b1fa847948bc348d5c54f7ccc126e61919576b29650847cba5888750805071562e",
+    "baseURL": "",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T08:40:36.592Z",
+    "updatedAt": "2025-12-22T08:40:36.592Z"
+  },
+  {
+    "id": "mistral-api",
+    "label": "Mistral API (Env)",
+    "type": "mistral",
+    "apiKey": "c2240e130bb1802654c3fe431d0082f8:82c6af4350d5e81e533260fa9169a227b9c0f974380acd8f45581a3d22457aee56441b349bd4d7938798921af32677e8",
+    "baseURL": "",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T08:40:36.601Z",
+    "updatedAt": "2025-12-22T08:40:36.601Z"
+  },
+  {
+    "id": "openrouter-env",
+    "label": "OpenRouter (Env)",
+    "type": "openrouter",
+    "apiKey": "1cb69e2b85c9b9aa3cef6b05b951efae:59e61b1f732effafd19b6c8349e2dc778bb84e76127e0ad9a4a941a037c6dc2d91f4675b1cb8ad0060ce7739fbc1dce925474cb4d0a5bf889231997068e84fc14008f7f5bfbbc9c733063de41424e28b",
+    "baseURL": "https://openrouter.ai/api/v1",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T08:40:36.608Z",
+    "updatedAt": "2025-12-22T08:40:36.608Z"
+  },
+  {
+    "id": "groq-env",
+    "label": "Groq (Env)",
+    "type": "groq",
+    "apiKey": "9c2fa6ac17613f2c1c22dba9f37fc6ab:bc9e6b3860b83199aa15ac456942b7dc948c2059ffb3f90aa95c6512e18f5582d70046d0a10d58287ca343590140c0f7c0bad1982df0012651d6d4a7104ebade",
+    "baseURL": "https://api.groq.com/openai/v1",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T08:40:36.614Z",
+    "updatedAt": "2025-12-22T08:40:36.614Z"
+  },
+  {
+    "id": "9062c21b-f2fc-496a-80f2-e3c77f281e33",
+    "label": "ollama",
+    "type": "ollama",
+    "apiKey": "PLACEHOLDER",
+    "baseURL": "",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T09:23:22.055Z",
+    "updatedAt": "2025-12-22T09:23:22.055Z"
+  },
+  {
+    "id": "ollama-local",
+    "label": "Ollama (Local)",
+    "type": "ollama",
+    "apiKey": "",
+    "baseURL": "http://127.0.0.1:11434",
+    "isEnabled": true,
+    "requestsPerMinute": 60,
+    "createdAt": "2025-12-22T23:36:21.711Z",
+    "updatedAt": "2025-12-22T23:36:21.711Z"
+  }
+]
