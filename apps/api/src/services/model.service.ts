@@ -2,7 +2,7 @@ import { prisma } from '../db.js';
 import { z } from 'zod';
 import { modelInputSchema } from '@repo/api-contract';
 import type { Prisma } from '@prisma/client';
-import { ModelDoctor } from './ModelDoctor.js';
+import { ModelSpecsRegistry } from './ModelSpecsRegistry.js';
 
 type ModelInput = z.infer<typeof modelInputSchema>;
 
@@ -289,7 +289,7 @@ export class ModelService {
   }
 
   async runDoctor(force: boolean = false) {
-    const doctor = new ModelDoctor();
+    const doctor = new ModelSpecsRegistry();
     return await doctor.healModels(force);
   }
 }

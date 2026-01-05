@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
 import { encrypt } from '../utils/encryption.js'; 
 import { ProviderManager } from '../services/ProviderManager.js'; 
-import { ModelDoctor } from '../services/ModelDoctor.js';
+import { ModelSpecsRegistry } from '../services/ModelSpecsRegistry.js';
 import { spawn, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -455,7 +455,7 @@ export const dataRefinementRouter = createTRPCRouter({
       }))
       .mutation(async ({ ctx, input }) => {
         // Instantiate ModelDoctor with no arguments (constructor expects none now)
-        const doctor = new ModelDoctor();
+        const doctor = new ModelSpecsRegistry();
 
         if (input.modelId) {
           const result = await doctor.healModel(input.modelId);
@@ -474,7 +474,7 @@ export const dataRefinementRouter = createTRPCRouter({
     healModel: protectedProcedure
       .input(z.object({ modelId: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const doctor = new ModelDoctor();
+        const doctor = new ModelSpecsRegistry();
         const result = await doctor.healModel(input.modelId);
         return result;
       }),

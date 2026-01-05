@@ -3,7 +3,7 @@ import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
 import { mcpOrchestrator } from "./McpOrchestrator.js";
 import { metaTools } from "../tools/meta.js";
-import { contextManager } from "./ContextManager.js";
+import { tokenService } from "./TokenService.js";
 import {
   LocalCommunicationProtocol,
   LocalCallTemplateSerializer,
@@ -28,7 +28,7 @@ export class AgentRuntime {
   private client!: CodeModeUtcpClient;
   private fsTools: ReturnType<typeof createFsTools>;
   private rootPath: string;
-  private contextManager = contextManager;
+  private contextManager = tokenService;
   private toolDocs: string = "";
   // [NEW] Track tier
   private tier: string = 'Worker'; 
@@ -37,7 +37,7 @@ export class AgentRuntime {
     this.rootPath = rootPath;
     this.fsTools = createFsTools(rootPath);
     // use the shared contextManager singleton
-    this.contextManager = contextManager;
+    this.contextManager = tokenService;
     this.tier = tier;
   }
 

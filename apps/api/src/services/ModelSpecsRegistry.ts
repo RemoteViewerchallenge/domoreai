@@ -10,7 +10,7 @@ interface SpecsResult {
   data: ResearchData;
 }
 
-export class ModelDoctor {
+export class ModelSpecsRegistry {
 
   // 1. Public Entry: Heal specific model
   async healModel(modelId: string, forceResearch = false) {
@@ -26,7 +26,7 @@ export class ModelDoctor {
     // Skip if already high confidence and not forced
     const modelWithCaps = model as typeof modelRegistry.$inferSelect & { capabilities?: { confidence?: string } };
     if (!forceResearch && modelWithCaps.capabilities?.confidence === 'high') {
-        // console.log(`[ModelDoctor] ⏩ ${model.modelName} already has high-confidence data, skipping.`);
+        // console.log(`[ModelSpecsRegistry] ⏩ ${model.modelName} already has high-confidence data, skipping.`);
         return;
     }
 
@@ -34,7 +34,7 @@ export class ModelDoctor {
     const surveyedSpecs = Surveyor.inspect(model.providerId, model.modelId); 
     
     if (surveyedSpecs) {
-        console.log(`[ModelDoctor] 🗺️ Surveyor identified ${model.modelName}. Skipping research.`);
+        console.log(`[ModelSpecsRegistry] 🗺️ Surveyor identified ${model.modelName}. Skipping research.`);
         const researchData = {
             contextWindow: surveyedSpecs.contextWindow || 4096,
             maxOutput: surveyedSpecs.maxOutput || 4096,
@@ -55,20 +55,20 @@ export class ModelDoctor {
     // Level 3: AI Research
     // Only attempt research if simple heuristics failed to give us confidence
     try {
-        console.log(`[ModelDoctor] 🌍 Attempting Web Research for ${model.modelName}...`);
+        console.log(`[ModelSpecsRegistry] 🌍 Attempting Web Research for ${model.modelName}...`);
         const researchData = await this.researchModel(model.modelName, model.modelId);
         
         if (researchData && researchData.contextWindow > 0) {
-            console.log(`[ModelDoctor] ✅ Research SUCCESS for ${model.modelName}. Found:`, researchData);
+            console.log(`[ModelSpecsRegistry] ✅ Research SUCCESS for ${model.modelName}. Found:`, researchData);
             finalData = { ...finalData, ...researchData };
             source = 'ai_research';
             confidence = 'high';
         } else {
-            console.log(`[ModelDoctor] ⚠️ Research returned weak data, using heuristics.`);
+            console.log(`[ModelSpecsRegistry] ⚠️ Research returned weak data, using heuristics.`);
         }
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
-        console.warn(`[ModelDoctor] ❌ Research Failed for ${model.modelName}: ${message}`);
+        console.warn(`[ModelSpecsRegistry] ❌ Research Failed for ${model.modelName}: ${message}`);
         // If the model itself is broken (400/404), we might want to mark it as inactive?
         // For now, we just stick with heuristics.
     }
@@ -96,7 +96,7 @@ export class ModelDoctor {
           });
 
           const prompt = `SEARCH and FIND technical specs for LLM: "${name}" (ID: ${id}).
-          You are the Model Doctor.
+          You are the Model Specs Registry.
           
           TOOLS AVAILABLE:
           - research.web_scrape({ url: string })
@@ -127,10 +127,10 @@ export class ModelDoctor {
           const err = error as { status?: number; message?: string };
           // Handle provider errors (like "Developer instruction is not enabled")
           if (err.status === 400 || err.status === 404 || err.message?.includes('not enabled')) {
-             console.warn(`[ModelDoctor] Provider rejected research agent: ${err.message}`);
+             console.warn(`[ModelSpecsRegistry] Provider rejected research agent: ${err.message}`);
              return null;
           }
-          console.error("[ModelDoctor] Agent Error:", error);
+          console.error("[ModelSpecsRegistry] Agent Error:", error);
           return null;
       }
   }

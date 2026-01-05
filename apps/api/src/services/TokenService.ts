@@ -12,7 +12,7 @@ export type ContextState = {
  * - In-memory Map backed by a JSON file for optional persistence
  * - Safe, simple persistence (no DB migrations required)
  */
-export class ContextManager {
+export class TokenService {
   private store: Map<string, ContextState>;
   private persistFile: string | null;
 
@@ -39,7 +39,7 @@ export class ContextManager {
         }
       }
     } catch (err) {
-      console.warn('[ContextManager] Failed to load context store:', err);
+      console.warn('[TokenService] Failed to load context store:', err);
     }
   }
 
@@ -51,7 +51,7 @@ export class ContextManager {
       for (const [k, v] of this.store.entries()) obj[k] = v;
       fs.writeFileSync(this.persistFile, JSON.stringify(obj, null, 2), 'utf8');
     } catch (err) {
-      console.warn('[ContextManager] Failed to persist context store:', err);
+      console.warn('[TokenService] Failed to persist context store:', err);
     }
   }
 
@@ -187,7 +187,7 @@ export class ContextManager {
         }
       };
     } catch (error) {
-      console.error('[ContextManager] Context validation failed:', error);
+      console.error('[TokenService] Context validation failed:', error);
       return {
         fit: false,
         action: 'ERROR',
@@ -209,10 +209,10 @@ export class ContextManager {
           const content = fs.readFileSync(filePath, 'utf8');
           totalChars += content.length;
         } else {
-          console.warn(`[ContextManager] File not found: ${filePath}`);
+          console.warn(`[TokenService] File not found: ${filePath}`);
         }
       } catch (error) {
-        console.warn(`[ContextManager] Failed to read ${filePath}:`, error);
+        console.warn(`[TokenService] Failed to read ${filePath}:`, error);
       }
     }
 
@@ -233,4 +233,4 @@ export class ContextManager {
 
 
 // Export a singleton for app-wide usage (AgentRuntime will use this)
-export const contextManager = new ContextManager();
+export const tokenService = new TokenService();
