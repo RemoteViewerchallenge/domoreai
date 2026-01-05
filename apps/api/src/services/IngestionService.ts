@@ -11,7 +11,7 @@ import { getWebSocketService } from './websocket.singleton.js';
 class IngestionService {
   private pdfParse: any;
   private ignoreFilter: any;
-  private readonly repoRoot = '/home/guy/mono';
+  private readonly repoRoot = process.cwd();
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
   private readonly binaryExtensions = ['.pdf', '.docx', '.png'];
 
@@ -46,7 +46,7 @@ class IngestionService {
   }
 
   private async readGitIgnore(): Promise<string> {
-    const rootPath = '/home/guy/mono'; // Hardcoded root path for now.  Ideally, this would be passed in.
+    const rootPath = process.cwd();
     const gitignorePath = path.join(rootPath, '.gitignore');
     return await fs.readFile(gitignorePath, 'utf-8');
   }
