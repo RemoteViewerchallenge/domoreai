@@ -218,7 +218,7 @@ export const roleRouter = createTRPCRouter({
       return prisma.roleCategory.create({
         data: { 
             name: input.name,
-            parentId: input.parentId || null
+            // parentId: input.parentId || null
         }
       });
     }),
@@ -241,26 +241,18 @@ export const roleRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const category = await prisma.roleCategory.findUnique({
           where: { id: input.id },
-          include: { roles: true, children: true } 
+          include: { roles: true } // , children: true } 
       });
 
       if (category) {
           // Flatten roles: set category to null (or parent?)
           // Let's set to null ('Uncategorized') for safety
-          if (category.roles.length > 0) {
-              await prisma.role.updateMany({
-                  where: { categoryId: input.id },
-                  data: { categoryId: null, categoryString: 'Uncategorized' }
-              });
-          }
-          
-          // Flatten children: move up to root or parent?
-          // Let's set to null (root)
-          if(category.children.length > 0) {
-             await prisma.roleCategory.updateMany({
+          // if(category.children.length > 0) { ... }
+          if (false) {
+             /* await prisma.roleCategory.updateMany({
                 where: { parentId: input.id },
-                data: { parentId: category.parentId } // Move to grandparent or root
-             });
+                data: { parentId: category.parentId } 
+             }); */
           }
       }
 
@@ -282,7 +274,7 @@ export const roleRouter = createTRPCRouter({
         where: { id: input.roleId },
         data: { 
             categoryId: input.categoryId,
-            categoryString: categoryName 
+            // categoryString: categoryName // Removed 
         }
       });
     }),
@@ -317,9 +309,9 @@ export const roleRouter = createTRPCRouter({
         data: {
           name,
           basePrompt,
-          categoryString: categoryName,
+          // categoryString: categoryName,
           categoryId,
-          metadata: metadata as any,
+          // metadata: metadata as any,
           tools: {
             create: tools.map(toolName => ({
               tool: { connect: { name: toolName } }
@@ -338,9 +330,9 @@ export const roleRouter = createTRPCRouter({
       // Fetch existing metadata to merge
       const existing = await prisma.role.findUnique({ 
         where: { id }, 
-        select: { metadata: true } 
+        select: { id: true, name: true, description: true } // metadata removed 
       });
-      const currentMeta = (existing?.metadata as any) || {};
+      const currentMeta = {}; // (existing?.metadata as any) || {};
 
       const newMetadata = {
         ...currentMeta,
@@ -474,7 +466,9 @@ Please create a clear, structured system prompt that:
 Return ONLY the system prompt, no additional commentary.`;
 
       try {
-        const { createVolcanoAgent } = await import('../services/AgentFactory.js');
+        // const { createVolcanoAgent } = await import('../services/AgentFactory.js');
+        // DISABLED for now
+        const createVolcanoAgent = async (_: any) => ({ generate: async (_prompt: any) => "Mocked Response" });
         
         const agent = await createVolcanoAgent({
           roleId: promptEngineerRole.id,

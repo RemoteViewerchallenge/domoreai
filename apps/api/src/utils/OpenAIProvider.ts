@@ -2,7 +2,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 // @ts-ignore
 import { OpenAI } from 'openai';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
-import { UsageCollector } from '../services/UsageCollector.js';
+// import { UsageCollector } from '../services/UsageCollector.js';
 
 export class OpenAIProvider implements BaseLLMProvider {
   id: string;
@@ -65,7 +65,7 @@ export class OpenAIProvider implements BaseLLMProvider {
       });
 
       // Update dynamic limits
-      await UsageCollector.updateDynamicLimits(this.id, headers);
+      // UsageCollector.updateDynamicLimits(this.id, headers);
       
       const json = await response.json();
       const content = json.choices[0]?.message?.content || '';

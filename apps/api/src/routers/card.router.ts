@@ -66,14 +66,14 @@ export const cardRouter = createTRPCRouter({
             action: input.action,
             actionData: input.actionData,
             icon: input.icon,
-            color: input.color,
+            // color: input.color,
           },
           update: {
             label: input.label,
             action: input.action,
             actionData: input.actionData,
             icon: input.icon,
-            color: input.color,
+            // color: input.color,
           }
         });
 
@@ -132,19 +132,18 @@ export const cardRouter = createTRPCRouter({
           return { success: true };
         }
 
-        const assignment = await ctx.prisma.componentRole.upsert({
+        // Remove existing assignment first (simulation of upsert without unique index)
+        await ctx.prisma.componentRole.deleteMany({
           where: {
-            cardId_component: {
-              cardId: input.cardId,
-              component: input.component
-            }
-          },
-          create: {
+            cardId: input.cardId,
+            component: input.component
+          }
+        });
+
+        const assignment = await ctx.prisma.componentRole.create({
+          data: {
             cardId: input.cardId,
             component: input.component,
-            roleId: input.roleId
-          },
-          update: {
             roleId: input.roleId
           }
         });

@@ -1,6 +1,6 @@
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
-import { UsageCollector } from '../services/UsageCollector.js';
+// import { UsageCollector } from '../services/UsageCollector.js';
 
 export class MistralProvider implements BaseLLMProvider {
   id: string;
@@ -72,7 +72,7 @@ export class MistralProvider implements BaseLLMProvider {
       response.headers.forEach((value, key) => {
         headers[key.toLowerCase()] = value;
       });
-      await UsageCollector.updateDynamicLimits(this.id, headers);
+      // UsageCollector.updateDynamicLimits(this.id, headers);
 
       if (!response.ok) {
         const errorData = await response.json();

@@ -17,7 +17,12 @@ Your capabilities include:
 - Automated backup procedures before schema changes
 
 Always prioritize data safety - create backups before making destructive changes, validate queries before execution, and ensure data integrity.`,
-      categoryString: 'Infrastructure & Operations',
+      category: {
+        connectOrCreate: {
+            where: { name: 'Infrastructure & Operations' },
+            create: { name: 'Infrastructure & Operations', order: 5 }
+        }
+      },
     },
     create: {
       name: 'Datacenter Helper',
@@ -48,7 +53,12 @@ Always prioritize data safety - create backups before making destructive changes
           }
         }))
       },
-      categoryString: 'Infrastructure & Operations',
+      category: {
+        connectOrCreate: {
+            where: { name: 'Infrastructure & Operations' },
+            create: { name: 'Infrastructure & Operations', order: 5 }
+        }
+      },
     }
   });
   console.log('✅ Datacenter Helper role created or updated.');

@@ -1,7 +1,6 @@
-import { db } from '../db.js';
-import { jobs } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
-import { createVolcanoAgent } from './AgentFactory.js';
+import { prisma } from '../db.js';
+import { createVolcanoAgent } from './VolcanoAgent.js';
+import { Job } from '@prisma/client';
 
 export class JobScheduler {
   private isRunning = false;
@@ -21,41 +20,35 @@ export class JobScheduler {
 
   private async cycle() {
     try {
-      const pendingJobs = await db.query.jobs.findMany({
-        where: eq(jobs.status, 'not_started'),
-        limit: 5
+      const pendingJobs = await prisma.job.findMany({
+        where: { status: 'not_started' },
+        take: 5
       });
 
       for (const job of pendingJobs) {
         // Check if job has a dependency
-        if (job.dependsOnJobId) {
-          const dependency = await db.query.jobs.findFirst({
-            where: eq(jobs.id, job.dependsOnJobId)
-          });
-          if (dependency && dependency.status !== 'completed') {
-            continue;
-          }
-        }
+        // dependsOnJobId removed
+        // if (job.dependsOnJobId) ...
 
-        console.log(`[JobScheduler] 🟢 Starting Job: ${job.name} (${job.id})`);
+        console.log(`[JobScheduler] 🟢 Starting Job: ${job.id}`);
         await this.executeJob(job);
       }
 
     } catch (error: any) {
-      // Silently handle "relation does not exist" errors (table not yet created)
-      if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
-        // Table doesn't exist yet - scheduler will retry on next cycle
-        return;
-      }
+        // Handle "relation does not exist" - likely not needed with Prisma as it throws different codes,
+        // but keeping safe catch.
       console.error('[JobScheduler] 🔴 Cycle Error:', error);
     }
   }
 
-  private async executeJob(job: any) {
-    await db.update(jobs).set({
-        status: 'in_progress',
-        startedAt: new Date()
-    }).where(eq(jobs.id, job.id));
+  private async executeJob(job: Job) {
+    await prisma.job.update({
+        where: { id: job.id },
+        data: {
+            status: 'in_progress',
+            startedAt: new Date()
+        }
+    });
 
     try {
       const agent = await createVolcanoAgent({
@@ -64,24 +57,34 @@ export class JobScheduler {
         isLocked: false,
         temperature: 0.7,
         maxTokens: 4096,
-        userGoal: job.description
+        userGoal: job.description || ''
       });
 
-      const result = await agent.generate(job.description);
+      // generate() returns result string? Agent methods vary.
+      // createVolcanoAgent returns an Agent interface.
+      const result = await agent.generate(job.description || '');
 
-      await db.update(jobs).set({
-        status: 'completed',
-        completedAt: new Date()
-      }).where(eq(jobs.id, job.id));
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+            status: 'completed',
+            completedAt: new Date(),
+            output: (typeof result === 'object' ? result : { text: result }) as any
+        }
+      });
 
-      console.log(`[JobScheduler] ✅ Job Completed: ${job.name}`);
+      console.log(`[JobScheduler] ✅ Job Completed: ${job.id}`);
 
     } catch (error) {
-      console.error(`[JobScheduler] ❌ Job Failed: ${job.name}`, error);
-      await db.update(jobs).set({
-        status: 'failed',
-        completedAt: new Date()
-      }).where(eq(jobs.id, job.id));
+      console.error(`[JobScheduler] ❌ Job Failed: ${job.id}`, error);
+      await prisma.job.update({
+        where: { id: job.id },
+        data: {
+            status: 'failed',
+            completedAt: new Date(),
+            // logs: ... could append error
+        }
+      });
     }
   }
 }

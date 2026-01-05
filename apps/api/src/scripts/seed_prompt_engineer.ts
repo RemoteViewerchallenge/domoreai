@@ -40,7 +40,12 @@ async function main() {
     where: { name: 'Prompt Engineer' },
     update: {
       basePrompt: `You are a Prompt Engineer. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
-      categoryString: 'Specialized Workers',
+      category: {
+        connectOrCreate: {
+            where: { name: 'Specialized Workers' },
+            create: { name: 'Specialized Workers', order: 2 }
+         }
+      },
       tools: {
         deleteMany: {}, // Clean slate
         create: toolConnections
@@ -49,7 +54,12 @@ async function main() {
     create: {
       name: 'Prompt Engineer',
       basePrompt: `You are a Prompt Engineer. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
-      categoryString: 'Specialized Workers',
+      category: {
+        connectOrCreate: {
+            where: { name: 'Specialized Workers' },
+            create: { name: 'Specialized Workers', order: 2 }
+        }
+      },
       tools: {
         create: toolConnections
       }

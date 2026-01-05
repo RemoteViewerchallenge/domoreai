@@ -1,4 +1,4 @@
-import { saveModelKnowledge } from './ModelKnowledgeBase.js';
+// import { saveModelKnowledge } from './ModelKnowledgeBase.js';
 
 /**
  * SURVEYOR SERVICE
@@ -334,19 +334,14 @@ export class Surveyor {
     return null;
   }
 
-  /**
-   * Bulk survey: Apply patterns to all models in the registry
-   */
   static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
     const { prisma } = await import('../db.js');
     
+    // Find models that exist but have no capabilities record
     const models = await prisma.model.findMany({
       where: {
-        isActive: true,
-        OR: [
-          { capabilities: { is: null } },
-          { capabilities: { confidence: 'low' } }
-        ]
+        isActive: true, // Only scan active models
+        capabilities: { is: null }
       },
       include: { 
         provider: true,
@@ -360,19 +355,33 @@ export class Surveyor {
     console.log(`[Surveyor] 🔍 Inspecting ${models.length} incomplete models...`);
 
     for (const model of models) {
-      // Pass both provider type (e.g. 'google') and explicit provider name if needed
-      const specs = this.inspect(model.provider.type, model.modelId);
+      // Use model.name as the identifier to check patterns against
+      const specs = this.inspect(model.provider.type, model.name);
       
       if (specs) {
-        const researchData = {
+        // Prepare Capabilities Data
+        const capsData = {
           contextWindow: specs.contextWindow || 4096,
           maxOutput: specs.maxOutput || 4096,
           hasVision: specs.capabilities.includes('vision'),
           hasAudioInput: specs.capabilities.includes('audio_in'),
-          hasReasoning: specs.capabilities.includes('reasoning') || specs.capabilities.includes('thought'),
+          supportsFunctionCalling: specs.capabilities.includes('tool_use'),
+          supportsJsonMode: false
         };
 
-        await saveModelKnowledge(model.id, researchData, 'surveyor', 'high');
+        // Inline Save Logic ( upsert ModelCapabilities )
+        await prisma.modelCapabilities.upsert({
+            where: { modelId: model.id },
+            create: {
+                modelId: model.id,
+                ...capsData
+            },
+            update: {
+                ...capsData,
+                updatedAt: new Date()
+            }
+        });
+        
         surveyed++;
       } else {
         unknown++;

@@ -5,13 +5,13 @@
     "target": "es2022",
     "module": "NodeNext", // Added for dynamic import support
     "outDir": "dist",
-    "declaration": true, // Add this to generate .d.ts files
-    "declarationMap": true, // Good for debugging types
+    "declaration": false, // Add this to generate .d.ts files
+    "declarationMap": false, // Good for debugging types
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true, // <--- It's already here.
     "allowImportingTsExtensions": false,
-    "composite": true
+    "composite": false
   },
   "include": ["src/**/*", "*.ts"],
   "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"],

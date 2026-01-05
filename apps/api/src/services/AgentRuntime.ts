@@ -11,7 +11,7 @@ import {
 } from "./protocols/LocalProtocol.js";
 import { getNativeTools } from "./tools/NativeToolsRegistry.js";
 import { loadToolDocs } from "./tools/ToolDocumentationLoader.js";
-import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js"; // [NEW]
+// import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js";
 
 // Register the protocol globally (idempotent)
 // ... existing registration code (lines 16-19) ...
@@ -448,12 +448,12 @@ items.forEach(item => {
   async executeTask(jobId: string, vfsToken: string, taskContext: string) {
     if (this.tier !== 'Worker') throw new Error("Only Workers execute tasks.");
     
-    const gitTool = CreateGitAwareWorkerTools(jobId, vfsToken);
+    // const gitTool = CreateGitAwareWorkerTools(jobId, vfsToken);
     
     await this.client.registerManual({
         name: "volcano", // Separate namespace for dynamic tools
         call_template_type: "local",
-        tools: [gitTool]
+        tools: [] // [gitTool]
     });
 
     const SYSTEM_PROMPT = `

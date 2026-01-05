@@ -64,7 +64,7 @@ export class ProviderManager implements IProviderManager {
         'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
       };
 
-      for (const config of configs) {
+    for (const config of configs) {
         try {
           // Try to use environment variable first (avoids decryption issues)
           let apiKey = '';
@@ -78,8 +78,14 @@ export class ProviderManager implements IProviderManager {
             apiKey = process.env[envVar] || '';
             console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
           } else {
-            // Fall back to decrypting from database
-            apiKey = decrypt(config.apiKey);
+            // NEW: Fallback via convention for any other provider ID
+            const conventionKey = `${config.id.toUpperCase()}_API_KEY`;
+            if (process.env[conventionKey]) {
+                apiKey = process.env[conventionKey] || '';
+                console.log(`[ProviderManager] Using ${conventionKey} from environment for ${config.label}`);
+            } else {
+                console.warn(`[ProviderManager] ⚠️ No API Key found for ${config.label}. Please set ${conventionKey} in .env`);
+            }
           }
           
 
@@ -134,17 +140,17 @@ export class ProviderManager implements IProviderManager {
            // e.g., "OpenRouter (Env)" -> "openrouter-env"
            const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-           const now = new Date();
-           await this.repository.createProviderConfig({
-             id: stableId,
-             label: map.label,
-             type: map.type,
-             apiKey: encrypt(key),
-             baseURL: map.url || '',
-             isEnabled: true,
-             createdAt: now,
-             updatedAt: now
-           });
+             const now = new Date();
+             await this.repository.createProviderConfig({
+               id: stableId,
+               label: map.label,
+               type: map.type,
+               // apiKey: encrypt(key), // REMOVED: Keys are now in env only
+               baseURL: map.url || '',
+               isEnabled: true,
+               createdAt: now,
+               updatedAt: now
+             });
         }
       }
     }
@@ -330,16 +336,16 @@ export class ProviderManager implements IProviderManager {
             const existing = await this.repository.findProviderConfigById(providerId);
             if (!existing) {
               const now = new Date();
-              await this.repository.createProviderConfig({
-                id: providerId,
-                label: 'Ollama (Local)',
-                type: 'ollama',
-                apiKey: encrypt(''),
-                baseURL: ollamaHost,
-                isEnabled: true,
-                createdAt: now,
-                updatedAt: now
-              });
+                await this.repository.createProviderConfig({
+                 id: providerId,
+                 label: 'Ollama (Local)',
+                 type: 'ollama',
+                 // apiKey: encrypt(''), // REMOVED
+                 baseURL: ollamaHost,
+                 isEnabled: true,
+                 createdAt: now,
+                 updatedAt: now
+               });
               console.log('[ProviderManager] Registered local Ollama provider in DB.');
             }
 

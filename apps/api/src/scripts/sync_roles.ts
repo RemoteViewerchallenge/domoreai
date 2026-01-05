@@ -73,7 +73,12 @@ async function main() {
                 where: { id: roleDef.id },
                 update: {
                     name: roleDef.name,
-                    categoryString: roleDef.category,
+                    category: {
+                        connectOrCreate: {
+                            where: { name: roleDef.category },
+                            create: { name: roleDef.category, order: 99 }
+                        }
+                    },
                     basePrompt: roleDef.basePrompt,
                     // tools relation update logic:
                     tools: {
@@ -84,7 +89,12 @@ async function main() {
                 create: {
                     id: roleDef.id,
                     name: roleDef.name,
-                    categoryString: roleDef.category,
+                    category: {
+                        connectOrCreate: {
+                            where: { name: roleDef.category },
+                            create: { name: roleDef.category, order: 99 }
+                        }
+                    },
                     basePrompt: roleDef.basePrompt,
                     tools: {
                         create: toolConnections

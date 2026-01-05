@@ -23,27 +23,31 @@ export class PrismaAgentConfigRepository implements IAgentConfigRepository {
   }
 
   async getModel(providerId: string, modelId: string): Promise<Model | null> {
-    return prisma.model.findUnique({
-      where: { providerId_modelId: { providerId, modelId } }
+    return prisma.model.findFirst({
+      where: { providerId, name: modelId }
     });
   }
 
   async createModel(modelDef: ModelDef): Promise<Model> {
     return prisma.model.create({
       data: {
-        modelId: modelDef.id,
+        // modelId: modelDef.id,
         provider: { connect: { id: modelDef.providerId } },
         name: modelDef.name || modelDef.id,
         costPer1k: modelDef.costPer1k ?? 0,
-        isFree: modelDef.isFree ?? false,
+        // isFree: modelDef.isFree ?? false,
         providerData: (modelDef.providerData ?? {}) as Prisma.InputJsonValue,
-        specs: {
+        capabilities: {
+          create: {
             contextWindow: modelDef.contextWindow ?? 4096,
             hasVision: modelDef.hasVision ?? false,
-            hasReasoning: modelDef.hasReasoning ?? false,
-            hasCoding: modelDef.hasCoding ?? false,
-            lastUpdated: new Date().toISOString()
-        } as Prisma.InputJsonValue
+            specs: {
+              hasReasoning: modelDef.hasReasoning ?? false,
+              hasCoding: modelDef.hasCoding ?? false,
+              lastUpdated: new Date().toISOString()
+            } as Prisma.InputJsonValue
+          }
+        }
       }
     });
   }

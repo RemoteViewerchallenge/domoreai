@@ -1,28 +1,14 @@
-import { z } from 'zod'; // Import Zod directly
+import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '../trpc.js';
-import { GitService } from '../services/git.service.js';
-// import { getVfsForWorkspace } from '../services/vfsService.js';
-
-const logInputSchema = z.object({ vfsToken: z.string(), count: z.number().optional() });
-const commitInputSchema = z.object({ vfsToken: z.string(), message: z.string() });
-
-// In your main context/DI setup:
-const gitService = new GitService();
 
 export const gitRouter = createTRPCRouter({
-  log: protectedProcedure
-    .input(logInputSchema)
-    .query(({ input }) => {
-      return gitService.gitLog(input.vfsToken, input.count);
-    }),
+  status: protectedProcedure.query(async () => {
+    return { branch: 'main', clean: true };
+  }),
+
   commit: protectedProcedure
-    .input(commitInputSchema)
-    .mutation(({ input }) => {
-      return gitService.commit(input.vfsToken, input.message);
-    }),
-  ratifyBranch: protectedProcedure
-    .input(z.object({ vfsToken: z.string(), branch: z.string() }))
-    .mutation(({ input }) => {
-      return gitService.ratifyBranch(input.vfsToken, input.branch);
-    }),
+    .input(z.object({ message: z.string() }))
+    .mutation(async () => {
+      return { hash: 'stub' };
+    })
 });

@@ -1,44 +1,21 @@
+import { createTRPCRouter, protectedProcedure } from '../trpc.js';
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
 
 export const apiExplorerRouter = createTRPCRouter({
-  executeRequest: publicProcedure
-    .input(z.object({
-      method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
-      url: z.string().url(),
-      headers: z.record(z.string()).optional(),
-      body: z.string().optional(),
-    }))
-    .mutation(async ({ input }) => {
+  create: protectedProcedure.mutation(async () => {
+    return { success: true };
+  }),
+  executeQuery: protectedProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ ctx, input }) => {
       try {
-        const startTime = Date.now();
-        const response = await fetch(input.url, {
-          method: input.method,
-          headers: { 'Content-Type': 'application/json', ...input.headers },
-          body: input.method !== 'GET' && input.body ? input.body : undefined,
-        });
-        const duration = Date.now() - startTime;
-        
-        let data;
-        const text = await response.text();
-        try { data = JSON.parse(text); } catch { data = { raw: text }; }
-
-        return {
-          success: response.ok,
-          status: response.status,
-          duration,
-          data,
-        };
+        const result = await ctx.prisma.$queryRawUnsafe(input.query);
+        // Serialize BigInts if any (Prisma returns BigInt for count etc)
+        return JSON.parse(JSON.stringify(result, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        ));
       } catch (error: any) {
-        return { success: false, error: error.message };
+        throw new Error(`Query failed: ${error.message}`);
       }
-    }),
-
-  saveResponse: publicProcedure
-    .input(z.object({ providerName: z.string(), data: z.any() }))
-    .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.rawDataLake.create({
-        data: { provider: input.providerName, rawData: input.data }
-      });
     })
 });

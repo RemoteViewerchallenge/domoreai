@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Save, Database, Trash2, Plus, X, Settings, Code } from 'lucide-react';
+import { Play, Save, Database, Trash2, Plus, X, Settings } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 
 interface VisualQueryBuilderProps {
@@ -31,14 +31,9 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   const [mode, setMode] = useState<'schema' | 'saved'>('schema');
   const [sql, setSql] = useState('');
   const [newTableName, setNewTableName] = useState('');
-  const [newModelName, setNewModelName] = useState('');
   const [newQueryName, setNewQueryName] = useState('');
   const [showSaveTable, setShowSaveTable] = useState(false);
   const [showSaveQuery, setShowSaveQuery] = useState(false);
-
-  // Visual Query State - REMOVED
-  // const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  // const [filters, setFilters] = useState<{ col: string; op: string; val: string }[]>([]);
 
   // Schema State
   const [newColName, setNewColName] = useState('');
@@ -47,56 +42,23 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
   // --- API ---
   const utils = trpc.useContext();
   
-  // Get columns for the active table
-  const { data: tableData } = trpc.dataRefinement.getTableData.useQuery(
-    { tableName: activeTable, limit: 1 },
-    { enabled: !!activeTable }
-  );
-  
   // Get schema for the active table
-  const { data: tableSchema } = trpc.dataRefinement.getTableSchema.useQuery(
+  const { data: tableSchema } = trpc.schema.getTableSchema.useQuery(
     { tableName: activeTable },
     { enabled: !!activeTable }
   );
-  
-  // Get all tables for AI context
-  const { data: allTables } = trpc.dataRefinement.listAllTables.useQuery();
-  
-  const columns = tableData?.rows?.[0] ? Object.keys(tableData.rows[0]) : [];
 
   // Schema Mutations
-  const addColumnMutation = trpc.dataRefinement.addColumn.useMutation({
+  const addColumnMutation = trpc.schema.addColumn.useMutation({
     onSuccess: () => {
-      utils.dataRefinement.getTableData.invalidate();
-      utils.dataRefinement.getTableSchema.invalidate();
+      void utils.schema.getTableSchema.invalidate();
       setNewColName('');
     }
   });
 
-  const dropColumnMutation = trpc.dataRefinement.dropColumn.useMutation({
+  const dropColumnMutation = trpc.schema.dropColumn.useMutation({
     onSuccess: () => {
-      utils.dataRefinement.getTableData.invalidate();
-      utils.dataRefinement.getTableSchema.invalidate();
-    }
-  });
-
-  const generatePrismaModelMutation = trpc.dataRefinement.generatePrismaModel.useMutation({
-    onSuccess: (data) => {
-      alert(data.message);
-    }
-  });
-
-  const renameTableModelMutation = trpc.dataRefinement.renameTableModel.useMutation({
-    onSuccess: (data) => {
-      alert(data.message);
-      utils.dataRefinement.getTableData.invalidate();
-      utils.dataRefinement.getTableSchema.invalidate();
-    }
-  });
-
-  const regeneratePrismaClientMutation = trpc.dataRefinement.regeneratePrismaClient.useMutation({
-    onSuccess: (data) => {
-      alert(data.message);
+      void utils.schema.getTableSchema.invalidate();
     }
   });
 
@@ -109,7 +71,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
     try {
       // Include table schema in the prompt for better AI understanding
       const schemaInfo = tableSchema ? 
-        `Table "${activeTable}" schema:\n${tableSchema.columns.map(col => `- ${col.column_name}: ${col.data_type} ${col.is_nullable === 'YES' ? '(nullable)' : '(not null)'}`).join('\n')}` : 
+        `Table "${activeTable}" schema:\n${tableSchema.map(col => `- ${col.name}: ${col.type} ${col.nullable ? '(nullable)' : '(not null)'}`).join('\n')}` : 
         `Table "${activeTable}" (schema not available)`;
       
       const enhancedPrompt = `${aiPrompt}\n\n${schemaInfo}`;
@@ -131,11 +93,6 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
     // Reset when table changes
     setSql(`SELECT * FROM "${activeTable}" LIMIT 100`);
   }, [activeTable]);
-
-  // Auto-generate SQL when visual controls change
-  useEffect(() => {
-    // Removed visual query functionality
-  }, [activeTable, mode]);
 
   // --- HANDLERS ---
   const handleExecute = () => {
@@ -225,21 +182,19 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                          <th className="p-3">Column Name</th>
                          <th className="p-3">Type</th>
                          <th className="p-3">Nullable</th>
-                         <th className="p-3">Default</th>
                          <th className="p-3">Action</th>
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-zinc-800">
-                       {tableSchema?.columns?.map(col => (
-                         <tr key={col.column_name} className="group hover:bg-zinc-800/50">
-                           <td className="p-3 text-zinc-300 font-mono">{col.column_name}</td>
-                           <td className="p-3 text-zinc-400 text-sm">{col.data_type}</td>
-                           <td className="p-3 text-zinc-400 text-sm">{col.is_nullable === 'YES' ? 'Yes' : 'No'}</td>
-                           <td className="p-3 text-zinc-400 text-sm font-mono">{col.column_default || '-'}</td>
+                       {tableSchema?.map(col => (
+                         <tr key={col.name} className="group hover:bg-zinc-800/50">
+                           <td className="p-3 text-zinc-300 font-mono">{col.name}</td>
+                           <td className="p-3 text-zinc-400 text-sm">{col.type}</td>
+                           <td className="p-3 text-zinc-400 text-sm">{col.nullable ? 'Yes' : 'No'}</td>
                            <td className="p-3">
-                             {col.column_name !== 'id' && col.column_name !== 'createdAt' && (
+                             {col.name !== 'id' && col.name !== 'createdAt' && (
                                <button 
-                                 onClick={() => { if(confirm(`Drop column "${col.column_name}"?`)) dropColumnMutation.mutate({ tableName: activeTable, columnName: col.column_name }) }}
+                                 onClick={() => { if(confirm(`Drop column "${col.name}"?`)) dropColumnMutation.mutate({ tableName: activeTable, columnName: col.name }) }}
                                  className="text-zinc-600 hover:text-red-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                >
                                  <Trash2 size={14} /> Drop
@@ -270,7 +225,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                        <option value="JSONB">JSON</option>
                      </select>
                      <button 
-                       onClick={() => addColumnMutation.mutate({ tableName: activeTable, columnName: newColName, type: newColType })}
+                       onClick={() => addColumnMutation.mutate({ tableName: activeTable, columnName: newColName, type: newColType as any })}
                        disabled={!newColName}
                        className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-4 py-2 rounded font-bold flex items-center gap-2"
                      >
@@ -279,106 +234,6 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                    </div>
                 </div>
 
-                <div className="bg-zinc-900/50 p-4 rounded border border-zinc-800 border-dashed">
-                   <h4 className="font-bold text-[var(--color-text-secondary)] mb-3">Generate Prisma Model</h4>
-                   <p className="text-xs text-zinc-400 mb-3">Add this table to your Prisma schema for type-safe database access.</p>
-                   <div className="flex gap-2">
-                     <button 
-                       onClick={() => generatePrismaModelMutation.mutate({ tableName: activeTable })}
-                       disabled={generatePrismaModelMutation.isLoading}
-                       className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 rounded font-bold flex items-center gap-2"
-                     >
-                       <Code size={16} />
-                       {generatePrismaModelMutation.isLoading ? 'Generating...' : 'Generate Model'}
-                     </button>
-                     <button 
-                       onClick={() => regeneratePrismaClientMutation.mutate()}
-                       disabled={regeneratePrismaClientMutation.isLoading}
-                       className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded font-bold flex items-center gap-2"
-                     >
-                       <Settings size={16} />
-                       {regeneratePrismaClientMutation.isLoading ? 'Regenerating...' : 'Regenerate Client'}
-                     </button>
-                   </div>
-                   {generatePrismaModelMutation.data && (
-                     <div className="mt-3 p-3 bg-green-900/20 border border-green-800 rounded text-green-300 text-xs font-mono">
-                       ✅ {generatePrismaModelMutation.data.message}
-                     </div>
-                   )}
-                   {generatePrismaModelMutation.error && (
-                     <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded text-red-300 text-xs">
-                       ❌ {generatePrismaModelMutation.error.message}
-                     </div>
-                   )}
-                   {regeneratePrismaClientMutation.data && (
-                     <div className="mt-3 p-3 bg-blue-900/20 border border-blue-800 rounded text-blue-300 text-xs font-mono">
-                       🔄 {regeneratePrismaClientMutation.data.message}
-                     </div>
-                   )}
-                   {regeneratePrismaClientMutation.error && (
-                     <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded text-red-300 text-xs">
-                       ❌ {regeneratePrismaClientMutation.error.message}
-                     </div>
-                   )}
-                </div>
-
-                <div className="bg-zinc-900/50 p-4 rounded border border-zinc-800 border-dashed">
-                   <h4 className="font-bold text-[var(--color-text-secondary)] mb-3">Rename Table & Model</h4>
-                   <p className="text-xs text-zinc-400 mb-3">Rename the database table and corresponding Prisma model.</p>
-                   <div className="grid grid-cols-2 gap-3 mb-3">
-                     <div>
-                       <label className="block text-xs text-zinc-400 mb-1">New Table Name</label>
-                       <input
-                         type="text"
-                         value={newTableName}
-                         onChange={(e) => setNewTableName(e.target.value)}
-                         placeholder="e.g., roles"
-                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-xs text-zinc-400 mb-1">New Model Name</label>
-                       <input
-                         type="text"
-                         value={newModelName}
-                         onChange={(e) => setNewModelName(e.target.value)}
-                         placeholder="e.g., Role"
-                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
-                       />
-                     </div>
-                   </div>
-                   <button 
-                     onClick={() => {
-                       if (!newTableName.trim() || !newModelName.trim()) {
-                         alert('Please provide both new table and model names');
-                         return;
-                       }
-                       renameTableModelMutation.mutate({
-                         oldTableName: activeTable,
-                         newTableName: newTableName.trim(),
-                         oldModelName: activeTable.charAt(0).toUpperCase() + activeTable.slice(1), // Assume PascalCase
-                         newModelName: newModelName.trim()
-                       });
-                       setNewTableName('');
-                       setNewModelName('');
-                     }}
-                     disabled={renameTableModelMutation.isLoading}
-                     className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-4 py-2 rounded font-bold flex items-center gap-2"
-                   >
-                     <Database size={16} />
-                     {renameTableModelMutation.isLoading ? 'Renaming...' : 'Rename Table & Model'}
-                   </button>
-                   {renameTableModelMutation.data && (
-                     <div className="mt-3 p-3 bg-green-900/20 border border-green-800 rounded text-green-300 text-xs font-mono">
-                       ✅ {renameTableModelMutation.data.message}
-                     </div>
-                   )}
-                   {renameTableModelMutation.error && (
-                     <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded text-red-300 text-xs">
-                       ❌ {renameTableModelMutation.error.message}
-                     </div>
-                   )}
-                </div>
              </div>
           </div>
         )}
@@ -463,7 +318,7 @@ export const VisualQueryBuilder: React.FC<VisualQueryBuilderProps> = ({
                 rows={8}
               />
               <button
-                onClick={handleGenerateQuery}
+                onClick={() => void handleGenerateQuery()}
                 disabled={generateQueryMutation.isLoading || !aiPrompt}
                 className="px-4 py-2 rounded bg-blue-600 disabled:opacity-50 hover:bg-blue-500 text-white font-bold"
               >
