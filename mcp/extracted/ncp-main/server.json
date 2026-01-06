@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json",
+  "name": "io.github.portel-dev/ncp",
+  "description": "Natural Context Provider (NCP) - 1 MCP to rule them all. Your MCPs, supercharged. Find any tool instantly, load on demand, run on schedule, ready for any client. Smart loading saves tokens and energy.",
+  "icon": "icon.svg",
+  "repository": {
+    "url": "https://github.com/portel-dev/ncp",
+    "source": "github"
+  },
+  "version": "2.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@portel/ncp",
+      "version": "2.0.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "NCP_DEBUG",
+          "description": "Enable debug logging for troubleshooting",
+          "default": "false"
+        },
+        {
+          "name": "NCP_MODE",
+          "description": "Operating mode: 'mcp' for AI assistant integration or 'cli' for command-line",
+          "default": "mcp"
+        },
+        {
+          "name": "NO_COLOR",
+          "description": "Disable colored output in logs and CLI",
+          "default": "false"
+        }
+      ]
+    }
+  ]
+}

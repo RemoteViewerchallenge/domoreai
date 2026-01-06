@@ -1,0 +1,46 @@
+{
+    "mcpServers": {
+        "sqlite": {
+            "command": "uvx",
+            "description": "Database operations with SQLite, e.g., describe, create, and query tables.",
+            "args": [
+                "mcp-server-sqlite",
+                "--db-path",
+                "database.db"
+            ]
+        },
+        "github": {
+            "command": "npx",
+            "description": "GitHub operations for code projects, e.g., create, modify, or search repositories, issues, and code.",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-github"
+            ]
+        },
+        "filesystem": {
+            "command": "npx",
+            "description": "Filesystem operations on your files, e.g., search, copy, move, and delete files.",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "/path/to/filesystem",
+                "/path/to/current/project"
+            ]
+        },
+        "jira": {
+            "description": "Project management and issue tracking, e.g., get, modify, or search projects, issues, bugs, etc.",
+            "command": "npx",
+            "args": [
+                "-y",
+                "openapi-mcp-server@1.1.0",
+                "/path/to/openapi-specs/jira-openapi.json"
+            ],
+            "env": {
+                "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Basic [base64 encoded version of: <YOUR.JIRA.EMAIL@YOUR.JIRA.TOKEN>]\"}",
+                "JIRA_HOST": "your_workspace.atlassian.net",
+                "JIRA_EMAIL": "you_email@example.com",
+                "JIRA_API_TOKEN": "YOUR.JIRA.TOKEN"
+            }
+        }
+    }
+}

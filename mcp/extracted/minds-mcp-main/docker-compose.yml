@@ -1,0 +1,15 @@
+services:
+  minds-mcp:
+    build: .
+    ports:
+      - "${FASTMCP_PORT:-8000}:${FASTMCP_PORT:-8000}"
+    environment:
+      - FASTMCP_HOST=${FASTMCP_HOST:-0.0.0.0}
+      - FASTMCP_PORT=${FASTMCP_PORT:-8000}
+      - FASTMCP_DEBUG=${FASTMCP_DEBUG:-false}
+      - FASTMCP_LOG_LEVEL=${FASTMCP_LOG_LEVEL:-INFO}
+      - FASTMCP_SSE_PATH=${FASTMCP_SSE_PATH:-/sse}
+      - FASTMCP_MESSAGE_PATH=${FASTMCP_MESSAGE_PATH:-/messages/}
+      - MINDS_BASE_URL=${MINDS_BASE_URL:-https://mdb.ai}
+      - MINDS_API_KEY=${MINDS_API_KEY:-}
+    restart: unless-stopped
