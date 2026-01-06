@@ -3,11 +3,18 @@ import { IRegistryClient } from "../interfaces/IRegistryClient.js";
 export class RegistryClient implements IRegistryClient {
   listServers(): Promise<{ name: string; description?: string }[]> {
     return Promise.resolve([
-      { name: 'filesystem', description: 'Surgical file editing with insert/replace operations' },
-      { name: 'git', description: 'Git history, diffs, and repository management' },
-      { name: 'postgres', description: 'Database inspection and query optimization' },
-      { name: 'playwright', description: 'Browser automation and visual testing' },
-      { name: 'language-server', description: 'LSP features: go-to-definition, find-references' }
+      { name: 'filesystem', description: 'System: Surgical file editing' },
+      { name: 'git', description: 'System: Git history and operations' },
+      { name: 'postgres', description: 'System: Database inspection' },
+      { name: 'playwright', description: 'System: UI verification' },
+      { name: 'language-server', description: 'System: LSP Intelligence' },
+      { name: 'roundtable', description: 'Orchestration: Model coordination' },
+      { name: 'ncp', description: 'Discovery: Semantic tool management' },
+      { name: 'context7', description: 'Grounding: Documentation fetching' },
+      { name: 'mastra', description: 'Workflow: Process control' },
+      { name: 'deepwiki', description: 'Knowledge: Deep research' },
+      { name: 'docker', description: 'Execution: Sandboxed environment' },
+      { name: 'memory', description: 'Memory: Knowledge Graph' }
     ]);
   }
 
@@ -16,23 +23,20 @@ export class RegistryClient implements IRegistryClient {
 
     const configs: Record<string, { command: string; args: string[]; env?: Record<string, string> }> = {
       // 1. Perception Layer (Filesystem)
-      // Provides 'update_file' (surgical edits) and 'list_files'
       'filesystem': {
-        command: 'npx',
-        args: ['-y', '@cyanheads/filesystem-mcp-server'],
+        command: 'sh',
+        args: ['-c', 'cd /home/guy/mono/mcp/extracted/filesystem-mcp-server-main && npx tsx src/index.ts'],
         env: {}
       },
       
       // 2. Operational History (Git)
-      // Provides 'git_diff', 'git_log', 'git_status'
       'git': {
-        command: 'npx',
-        args: ['-y', 'git-mcp-server'],
+        command: 'sh',
+        args: ['-c', 'cd /home/guy/mono/mcp/extracted/git-mcp-server-main && npx tsx src/index.ts'],
         env: {}
       },
       
       // 3. Database Layer (Postgres)
-      // Provides 'query', 'get_schema', 'explain_analyze'
       'postgres': {
         command: 'npx',
         args: ['-y', '@henkey/postgres-mcp-server'],
@@ -42,20 +46,66 @@ export class RegistryClient implements IRegistryClient {
       },
 
       // 4. UI Verification (Playwright)
-      // Provides 'navigate', 'click', 'screenshot'
       'playwright': {
         command: 'npx',
         args: ['-y', '@automatalabs/mcp-server-playwright'],
         env: {}
       },
 
-      // 5. Cognition Layer (LSP)
-      // Provides 'go_to_definition', 'find_references'
-      // *Requires binary to be in PATH*
+      // 5. Cognition (Language Server)
       'language-server': {
-        command: 'mcp-language-server',
-        args: [],
+        command: 'sh',
+        args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-language-server-main && ./mcp-language-server'],
         env: {}
+      },
+
+      // 6. Orchestration (Roundtable)
+      'roundtable': {
+         command: 'uv',
+         args: ['run', '--directory', '/home/guy/mono/mcp/extracted/roundtable-main', 'roundtable-mcp-server'],
+         env: {}
+      },
+
+      // 7. Discovery (NCP)
+      'ncp': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/ncp-main && npx tsx src/index.ts'],
+         env: {}
+      },
+
+      // 8. Grounding (Context7)
+      'context7': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/context7-master/packages/mcp && node dist/index.js'],
+         env: {}
+      },
+
+      // 9. Workflow (Mastra)
+      'mastra': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mastra-main/packages/mcp && node dist/index.js'],
+         env: {}
+      },
+
+      // 10. Knowledge (DeepWiki)
+      'deepwiki': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/deepwiki-mcp-main && npx tsx src/index.ts'],
+         env: {}
+      },
+
+      // 11. Execution (Docker)
+      'docker': {
+         command: 'uv',
+         args: ['run', '--directory', '/home/guy/mono/mcp/extracted/mcp-server-docker-main', 'mcp-server-docker'],
+         env: {}
+      },
+      
+      // 12. Memory (KnowledgeGraph)
+      'memory': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/knowledgegraph-mcp-main && node dist/index.js'],
+         env: {}
       }
     };
 

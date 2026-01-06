@@ -94,6 +94,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({}); // NEW: Track folder expansion
 
   // tRPC hooks
   const utils = trpc.useContext();
@@ -255,7 +256,36 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     });
 
     return { roots, uncategorizedRoles };
+    return { roots, uncategorizedRoles };
   }, [categories, roles]);
+
+  // NEW: Group Tools by Server
+  const groupedTools = useMemo(() => {
+    if (!toolsList) return {};
+    const groups: Record<string, typeof toolsList> = {};
+    
+    toolsList.forEach(tool => {
+        let serverName = 'Other';
+        // Try to extract from [MCP: servername]
+        const mcpMatch = tool.description?.match(/^\[MCP: (.+?)\]/);
+        if (mcpMatch) {
+            serverName = mcpMatch[1];
+        } else if (tool.name.includes('_')) {
+             // Fallback: git_read_file -> git
+             serverName = tool.name.split('_')[0];
+        }
+
+        if (!groups[serverName]) groups[serverName] = [];
+        groups[serverName].push(tool);
+    });
+
+    // Sort tools within groups
+    Object.keys(groups).forEach(key => {
+        groups[key].sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    return groups;
+  }, [toolsList]);
 
   // Loading state
   if (categoriesLoading || rolesLoading) {
@@ -966,14 +996,16 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 </div>
                 
                 {/* Tools Selection - Compact Multi-Select */}
+                {/* Tools Selection - Folders */}
                 <div>
                   <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2 flex items-center gap-2">
                     <Wrench size={12} /> Tools ({formData.tools.length} selected)
                   </h3>
-                  <div className="border border-[var(--color-border)] rounded bg-[var(--color-background-secondary)]/50 max-h-32 overflow-y-auto">
+                  <div className="border border-[var(--color-border)] rounded bg-[var(--color-background-secondary)]/50 max-h-96 overflow-y-auto">
                     <div className="p-2 space-y-1">
-                      {/* Manual Meta Tool Option */}
-                      <label className="flex items-center gap-2 p-1 hover:bg-[var(--color-background-secondary)] rounded cursor-pointer transition-all text-[10px]">
+                      
+                      {/* Meta Control */}
+                      <label className="flex items-center gap-2 p-1 hover:bg-[var(--color-background-secondary)] rounded cursor-pointer transition-all text-[10px] border-b border-[var(--color-border)] mb-2 pb-2">
                         <input
                           type="checkbox"
                           checked={formData.tools.includes('meta')}
@@ -988,44 +1020,115 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                         <span className={`font-bold uppercase ${formData.tools.includes('meta') ? 'text-[var(--color-error)]' : 'text-[var(--color-text-muted)]'}`}>SYSTEM: META CONTROL</span>
                       </label>
 
-                      {toolsList?.map((tool) => (
-                        <label key={tool.name} className="flex items-center gap-2 p-1 hover:bg-[var(--color-background-secondary)] rounded cursor-pointer transition-all text-[10px]">
-                          <input
-                            type="checkbox"
-                            checked={formData.tools.includes(tool.name)}
-                            onChange={(e) => {
-                              void (async () => {
-                                  const checked = e.target.checked;
-                                  const toolName = tool.name;
-                                  
-                                  const newTools = checked
-                                    ? [...formData.tools, toolName]
-                                    : formData.tools.filter(t => t !== toolName);
-                                  
-                                  setFormData(prev => ({ ...prev, tools: newTools, needsTools: newTools.length > 0 }));
+                      {/* Render Tool Groups */}
+                      {Object.entries(groupedTools).sort().map(([server, tools]) => {
+                          const isExpanded = expandedFolders[server] !== false; // Default open? No, let's default open for now
+                          const serverTools = tools.map(t => t.name);
+                          const selectedCount = tools.filter(t => formData.tools.includes(t.name)).length;
+                          const allSelected = selectedCount === tools.length;
+                          const someSelected = selectedCount > 0 && selectedCount < tools.length;
 
-                                  if (checked) {
-                                     // Use instruction from DB object directly
-                                     if (tool.instruction) {
-                                         setToolPrompts(prev => ({
-                                             ...prev,
-                                             [toolName]: tool.instruction
-                                         }));
-                                     }
-                                  } else {
-                                      setToolPrompts(prev => {
-                                          const newState = { ...prev };
-                                          delete newState[toolName];
-                                          return newState;
-                                      });
-                                  }
-                              })();
-                            }}
-                            className="w-3 h-3 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-warning)] focus:ring-[var(--color-warning)]"
-                          />
-                          <span className={`font-bold uppercase ${formData.tools.includes(tool.name) ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-muted)]'}`}>{tool.name}</span>
-                        </label>
-                      ))}
+                          return (
+                            <div key={server} className="border border-[var(--color-border)] rounded bg-[var(--color-background)] mb-1 overflow-hidden">
+                                {/* Header */}
+                                <div className="flex items-center justify-between p-1 bg-[var(--color-background-secondary)]/30 hover:bg-[var(--color-background-secondary)] transition-colors">
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => setExpandedFolders(prev => ({ ...prev, [server]: !isExpanded }))}
+                                            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                                        >
+                                            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                        </button>
+                                        
+                                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpandedFolders(prev => ({ ...prev, [server]: !isExpanded }))}>
+                                            <Folder size={12} className={selectedCount > 0 ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"} />
+                                            <span className="text-[10px] font-bold uppercase text-[var(--color-text)]">{server}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] text-[var(--color-text-muted)] mr-2">{selectedCount}/{tools.length}</span>
+                                        {/* Select All Checkbox */}
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            ref={input => { if (input) input.indeterminate = someSelected; }}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                let newTools = [...formData.tools];
+                                                const promptsToUpdate: Record<string, string> = {};
+
+                                                if (checked) {
+                                                    // Add all
+                                                    tools.forEach(t => {
+                                                        if (!newTools.includes(t.name)) {
+                                                            newTools.push(t.name);
+                                                            if (t.instruction) promptsToUpdate[t.name] = t.instruction;
+                                                        }
+                                                    });
+                                                    setToolPrompts(prev => ({ ...prev, ...promptsToUpdate }));
+                                                } else {
+                                                    // Remove all
+                                                    newTools = newTools.filter(t => !serverTools.includes(t));
+                                                    setToolPrompts(prev => {
+                                                        const next = { ...prev };
+                                                        serverTools.forEach(t => delete next[t]);
+                                                        return next;
+                                                    });
+                                                }
+                                                setFormData({ ...formData, tools: newTools, needsTools: newTools.length > 0 });
+                                            }}
+                                            className="w-3 h-3 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                {isExpanded && (
+                                    <div className="p-1 pl-6 border-t border-[var(--color-border)] space-y-1 bg-[var(--color-background)]/50">
+                                        {tools.map(tool => (
+                                            <label key={tool.name} className="flex items-center gap-2 p-1 hover:bg-[var(--color-background-secondary)] rounded cursor-pointer transition-all text-[10px] group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.tools.includes(tool.name)}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        const toolName = tool.name;
+
+                                                        const newTools = checked
+                                                            ? [...formData.tools, toolName]
+                                                            : formData.tools.filter(t => t !== toolName);
+
+                                                        setFormData({ ...formData, tools: newTools, needsTools: newTools.length > 0 });
+
+                                                        if (checked) {
+                                                            if (tool.instruction) {
+                                                                setToolPrompts(prev => ({
+                                                                    ...prev,
+                                                                    [toolName]: tool.instruction
+                                                                }));
+                                                            }
+                                                        } else {
+                                                            setToolPrompts(prev => {
+                                                                const newState = { ...prev };
+                                                                delete newState[toolName];
+                                                                return newState;
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="w-3 h-3 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-warning)] focus:ring-[var(--color-warning)]"
+                                                />
+                                                <span className={`font-mono ${formData.tools.includes(tool.name) ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]'}`}>
+                                                    {tool.name}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                          );
+                      })}
+
                     </div>
                   </div>
                 </div>
