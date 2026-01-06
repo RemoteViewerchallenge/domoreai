@@ -1,0 +1,116 @@
+# Dependencies
+node_modules/
+dist/
+coverage/
+
+# Build artifacts
+*.mcpb
+*.dxt
+*.tgz
+
+# Local configuration
+.env
+.env.local
+*.local.*
+.claude.local.md
+
+# Sensitive tokens and credentials
+.mcpregistry_*
+*_token
+*_secret
+*.key
+*.pem
+
+# Cache and temp files
+.ncp/
+.ncp-back/
+back.ncp/
+*.cache
+*.tmp
+*.temp
+*.backup.*
+
+# Claude-specific configuration (personal, not for OSS)
+.claude/
+
+# AI and draft content
+*.prd.md
+*.draft.md
+*.ai.md
+*.notes.md
+*.temp.md
+
+# Session documentation (move to commercial repo)
+SESSION-*.md
+IMPLEMENTATION-*.md
+CLEANUP-*.md
+TEST-PLAN.md
+TESTING-*.md
+
+# Test and script files
+*.test.js
+*.script.js
+!jest.config.js
+!test/**/*.test.ts
+
+# Large generated test data files (can be regenerated with scripts)
+src/testing/real-mcp-definitions.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Scripts directory (development files not for release)
+scripts/
+!scripts/*.cjs
+!scripts/*.ts
+!scripts/*.sh
+!scripts/cleanup/
+!scripts/test-*.js
+!scripts/test-*.sh
+!scripts/patch-dxt-zip.sh
+!scripts/build-dxt-clean.sh
+
+# Ignore image files in project root (temporary screenshots)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+
+# Keep documentation images
+!docs/images/**
+
+# User runtime data (created when users run NCP)
+.ncp/
+~/.ncp/
+
+# Development artifacts (use ncp-dev-workspace instead)
+/profiles/
+/ecosystem-repo-setup/
+test-*.js
+test-*.mjs
+experiment-*.js
+*-ecosystem.json
+
+# Backup and old files (should not be committed)
+*-OLD.ts
+*-backup.ts
+*-OLD.js
+*-backup.js
+
+# Date-prefixed conversation exports (move to ~/Projects/ncp/ instead of deleting!)
+# See .conversation-exports.md for details
+2025-*.txt
+test-configs/
+.claude/settings.local.json
+.claude/settings.local.json

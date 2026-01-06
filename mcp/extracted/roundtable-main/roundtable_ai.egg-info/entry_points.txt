@@ -1,0 +1,3 @@
+[console_scripts]
+roundtable-ai = roundtable_mcp_server.server:main
+roundtable-mcp-server = roundtable_mcp_server.server:main
