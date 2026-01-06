@@ -8,23 +8,42 @@ const sanitize = (str: string) => {
   return `"${str}"`;
 };
 
+// --- Interfaces for Raw Queries ---
+interface PostgresColumn {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+}
+
+interface PostgresTable {
+  tablename: string;
+}
+
+interface TableCount {
+  count: bigint | number;
+}
+
+interface ToRegClass {
+  reg: string | null;
+}
+
 export const schemaRouter = createTRPCRouter({
   // 1. Get Table Schema (Crucial for seeing empty tables)
   getTableSchema: publicProcedure
     .input(z.object({ tableName: z.string() }))
     .query(async ({ input }) => {
       // Postgres query to get column details
-      const result = await prisma.$queryRawUnsafe<any[]>(`
+      const result = await prisma.$queryRawUnsafe<PostgresColumn[]>(`
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns 
         WHERE table_name = $1
         ORDER BY ordinal_position;
       `, input.tableName);
       return result.map(r => ({
-        name: r.column_name as string,
-        column_name: r.column_name as string, // Alias for frontend compatibility
-        type: r.data_type as string,
-        data_type: r.data_type as string, // Alias for frontend compatibility
+        name: r.column_name,
+        column_name: r.column_name, // Alias for frontend compatibility
+        type: r.data_type,
+        data_type: r.data_type, // Alias for frontend compatibility
         nullable: r.is_nullable === 'YES',
         is_nullable: r.is_nullable // Alias
       }));
@@ -81,14 +100,14 @@ export const schemaRouter = createTRPCRouter({
     
   // 5. Get Tables (For the Sidebar)
   getTables: publicProcedure.query(async () => {
-    const result = await prisma.$queryRaw`
+    const result = await prisma.$queryRaw<PostgresTable[]>`
       SELECT tablename 
       FROM pg_catalog.pg_tables 
       WHERE schemaname = 'public' 
       AND tablename NOT LIKE '_prisma_%'
       ORDER BY tablename;
     `;
-    return (result as any[]).map((r: any) => r.tablename as string);
+    return result.map(r => r.tablename);
   }),
 
   // 6. Create Table (Basic)
@@ -112,14 +131,28 @@ export const schemaRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const tableName = sanitize(input.tableName);
       // Use queryRawUnsafe to select from dynamic table name
-      const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ${tableName} LIMIT ${input.limit}`);
-      const countResult = await prisma.$queryRawUnsafe<any[]>(`SELECT COUNT(*) as count FROM ${tableName}`);
+      const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`SELECT * FROM ${tableName} LIMIT ${input.limit}`);
+      const countResult = await prisma.$queryRawUnsafe<TableCount[]>(`SELECT COUNT(*) as count FROM ${tableName}`);
       
       // Handle BigInt serialization
-      const serializedRows = JSON.parse(JSON.stringify(rows, (_, v) => typeof v === 'bigint' ? v.toString() : v));
+      const serializedRows = JSON.parse(JSON.stringify(rows, (_, v) => typeof v === 'bigint' ? v.toString() : v)) as Record<string, unknown>[];
       const rowCount = Number(countResult[0]?.count || 0);
 
       return { rows: serializedRows, rowCount };
+    }),
+
+  // 7.5. Export Table Data (Dump)
+  exportTable: publicProcedure
+    .input(z.object({ tableName: z.string() }))
+    .mutation(async ({ input }) => {
+      const tableName = sanitize(input.tableName);
+      // Limit to 10k rows for now to prevent OOM on large tables
+      const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`SELECT * FROM ${tableName} LIMIT 10000`);
+      
+      // Handle BigInt serialization
+      const serializedRows = JSON.parse(JSON.stringify(rows, (_, v) => typeof v === 'bigint' ? v.toString() : v)) as Record<string, unknown>[];
+      
+      return serializedRows;
     }),
 
   // 8. Import JSON to Table
@@ -148,12 +181,17 @@ export const schemaRouter = createTRPCRouter({
         });
       }
 
-      let data: any[];
+      let data: Record<string, unknown>[];
       try {
-        data = JSON.parse(jsonString);
-        if (!Array.isArray(data)) {
-            if (typeof data === 'object' && data !== null) data = [data]; 
-            else throw new Error('Root must be array or object');
+        const parsed = JSON.parse(jsonString) as unknown;
+        if (!Array.isArray(parsed)) {
+            if (typeof parsed === 'object' && parsed !== null) {
+              data = [parsed as Record<string, unknown>];
+            } else {
+              throw new Error('Root must be array or object');
+            }
+        } else {
+          data = parsed as Record<string, unknown>[];
         }
       } catch {
         throw new TRPCError({
@@ -199,5 +237,114 @@ export const schemaRouter = createTRPCRouter({
       }
 
       return { success: true, rowCount: insertedCount, tableName };
+    }),
+
+  // 9. Create Table From JSON (Inference)
+  createTableFromJson: publicProcedure
+    .input(z.object({ 
+      tableName: z.string(), 
+      jsonString: z.string()
+    }))
+    .mutation(async ({ input }) => {
+      const { tableName, jsonString } = input;
+      const safeTableName = sanitize(tableName);
+
+      // 1. Parse Data
+      let data: Record<string, unknown>[];
+      try {
+        const parsed = JSON.parse(jsonString) as unknown;
+        if (!Array.isArray(parsed)) {
+            if (typeof parsed === 'object' && parsed !== null) {
+              data = [parsed as Record<string, unknown>]; 
+            } else {
+              throw new Error('Root must be array or object');
+            }
+        } else {
+          data = parsed as Record<string, unknown>[];
+        }
+      } catch {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid JSON' });
+      }
+
+      if (data.length === 0) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Empty JSON array' });
+
+      // Check if table exists
+      try {
+        const existing = await prisma.$queryRawUnsafe<ToRegClass[]>(`SELECT to_regclass('${safeTableName}') as reg;`);
+        if (existing[0]?.reg) {
+             throw new TRPCError({ code: 'CONFLICT', message: `Table "${tableName}" already exists. Please delete it or rename your file.` });
+        }
+      } catch (e) {
+        if (e instanceof TRPCError) throw e;
+        // Ignore other errors here, proceed to create try
+      }
+
+      try {
+          // 2. Infer Schema from First Row (Simple Strategy)
+          const firstRow = data[0];
+          const columnsToCreate: { name: string, type: string }[] = [];
+          const standardCols = ['id', 'createdAt', 'updatedAt'];
+
+          for (const [key, value] of Object.entries(firstRow)) {
+              if (standardCols.includes(key)) continue; 
+              
+              let type = 'TEXT';
+              if (typeof value === 'boolean') type = 'BOOLEAN';
+              else if (typeof value === 'number') {
+                 type = Number.isInteger(value) ? 'INTEGER' : 'DOUBLE PRECISION';
+              } else if (typeof value === 'object' && value !== null) {
+                 type = 'JSONB';
+              }
+              columnsToCreate.push({ name: key, type });
+          }
+
+          // 3. Create Shell Table
+          await prisma.$executeRawUnsafe(`
+            CREATE TABLE ${safeTableName} (
+              "id" TEXT PRIMARY KEY,
+              "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          // 4. Add Inferred Columns
+          for (const col of columnsToCreate) {
+              const safeCol = sanitize(col.name);
+              await prisma.$executeRawUnsafe(`ALTER TABLE ${safeTableName} ADD COLUMN IF NOT EXISTS ${safeCol} ${col.type};`);
+          }
+
+          // 5. Insert Data
+          let insertedCount = 0;
+          for (const row of data) {
+             if (!row.id) row.id = Math.random().toString(36).substring(2, 15);
+             
+             const keys = Object.keys(row);
+             if (keys.length === 0) continue;
+
+             const cols = keys.map(k => `"${k}"`).join(', ');
+             const vals = keys.map(k => {
+                 const v = row[k];
+                 if (v === null) return 'NULL';
+                 if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`; 
+                 if (typeof v === 'object') return `'${JSON.stringify(v)}'`;
+                 if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+                 if (typeof v === 'number') return v;
+                 return 'NULL';
+             }).join(', ');
+
+             await prisma.$executeRawUnsafe(`INSERT INTO ${safeTableName} (${cols}) VALUES (${vals});`);
+             insertedCount++;
+          }
+
+          return { success: true, tableName, rowCount: insertedCount };
+
+      } catch (e: unknown) {
+          console.error("Create Table Failed:", e);
+          const msg = e instanceof Error ? e.message : 'Failed to create table from JSON';
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: msg
+          });
+      }
     })
 });

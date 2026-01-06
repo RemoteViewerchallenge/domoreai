@@ -14,7 +14,16 @@ export class RegistryClient implements IRegistryClient {
       { name: 'mastra', description: 'Workflow: Process control' },
       { name: 'deepwiki', description: 'Knowledge: Deep research' },
       { name: 'docker', description: 'Execution: Sandboxed environment' },
-      { name: 'memory', description: 'Memory: Knowledge Graph' }
+      { name: 'memory', description: 'Memory: Knowledge Graph' },
+      { name: 'tavily', description: 'Web Search: Tavily Search' },
+      { name: 'serena', description: 'Coding: Agent Toolkit' },
+      { name: 'openspec', description: 'SDLC: Spec-Driven Development' },
+      { name: 'graphiti', description: 'Memory: Temporal Knowledge Graph' },
+      { name: 'sentry', description: 'Monitoring: Sentry Error Tracking' },
+      { name: 'linear', description: 'Project Management: Linear Issues' },
+      { name: 'jira', description: 'Project Management: Jira Issues' },
+      { name: 'mindsdb', description: 'Data: AI Database' },
+      { name: 'langgraph', description: 'Workflow: LangGraph Agents' }
     ]);
   }
 
@@ -105,6 +114,69 @@ export class RegistryClient implements IRegistryClient {
       'memory': {
          command: 'sh',
          args: ['-c', 'cd /home/guy/mono/mcp/extracted/knowledgegraph-mcp-main && node dist/index.js'],
+         env: {}
+      },
+
+      // 13. Web Search (Tavily)
+      'tavily': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-server-tavily-main && uv run tavily-search'],
+         env: {}
+      },
+
+      // 14. Coding Agent (Serena)
+      'serena': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/serena-main && uv run serena-mcp-server'],
+         env: {}
+      },
+
+      // 15. SDLC (OpenSpec)
+      'openspec': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/openspec-main && node dist/cli/index.js'],
+         env: {}
+      },
+
+      // 16. Temporal Graph (Graphiti)
+      'graphiti': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/graphiti-main && uv run -m mcp_server'],
+         env: {}
+      },
+
+      // 17. Monitoring (Sentry)
+      'sentry': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/sentry-mcp-main && node packages/mcp-server/dist/index.js'],
+         env: {}
+      },
+
+      // 18. Project Management (Linear)
+      'linear': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-linear-main && node dist/index.js'],
+         env: {}
+      },
+
+      // 19. Project Management (Jira)
+      'jira': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-atlassian-main && uv run mcp-atlassian'],
+         env: {}
+      },
+
+      // 20. AI Database (MindsDB)
+      'mindsdb': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/minds-mcp-main && uv run server.py'],
+         env: {}
+      },
+
+      // 21. Workflow Agents (LangGraph)
+      'langgraph': {
+         command: 'sh',
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/langgraph-mcp-main && uv run -m langgraph_mcp'],
          env: {}
       }
     };

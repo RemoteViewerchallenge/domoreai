@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { UniversalDataGrid } from './UniversalDataGrid.js';
 import { 
   Database, Table, Plus, Trash2, RefreshCw, 
-  Columns, Lock
+  Columns, Lock, Download, Upload
 } from 'lucide-react';
 
 // A Wrapper for Cell Data that handles Protection
@@ -48,11 +48,98 @@ export const DatabaseBrowser: React.FC = () => {
     }
   });
 
+
+  const importJson = trpc.schema.importJsonToTable.useMutation({
+    onSuccess: (data) => {
+        alert(`Successfully imported ${data.rowCount} rows!`);
+        void utils.apiExplorer.invalidate();
+        void tablesQuery.refetch();
+    },
+    onError: (err) => {
+        alert(`Import Failed: ${err.message}`);
+    }
+  });
+  
+  const createTableJson = trpc.schema.createTableFromJson.useMutation({
+    onSuccess: (data) => {
+        alert(`Successfully created table "${data.tableName}" with ${data.rowCount} rows!`);
+        void utils.schema.getTables.invalidate();
+        setSelectedTable(data.tableName);
+    },
+    onError: (err) => {
+        alert(`Failed to create table: ${err.message}`);
+    }
+  });
+
+  const exportTable = trpc.schema.exportTable.useMutation({
+    onSuccess: (data, variables) => {
+        // Trigger Download
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${variables.tableName}-${new Date().toISOString()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+  });
+
   // Dialog State
   const [showAddCol, setShowAddCol] = useState(false);
   const [newColName, setNewColName] = useState('');
   const [newColType, setNewColType] = useState('TEXT');
   const [isProtected, setIsProtected] = useState(false);
+
+  // File Inputs Refs
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const createFileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTable) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        const text = ev.target?.result as string;
+        if (text) {
+             await importJson.mutateAsync({ 
+                tableName: selectedTable, 
+                jsonString: text,
+                options: { upsertOnConflict: true }
+            });
+            // Reset input
+            if (importFileRef.current) importFileRef.current.value = '';
+        }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleFileCreate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Derive table name from filename
+    // e.g. "My Data.json" -> "my_data"
+    const derivedName = file.name
+        .replace(/\.[^/.]+$/, "") // Remove extension
+        .replace(/[^a-zA-Z0-9_]/g, "_") // Replace special chars
+        .toLowerCase();
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        const text = ev.target?.result as string;
+        if (text && derivedName) {
+            await createTableJson.mutateAsync({
+                tableName: derivedName,
+                jsonString: text
+            });
+            // Reset input
+            if (createFileRef.current) createFileRef.current.value = '';
+        }
+    };
+    reader.readAsText(file);
+  };
 
   const handleAddColumn = async () => {
     if (!selectedTable || !newColName) return;
@@ -92,6 +179,21 @@ export const DatabaseBrowser: React.FC = () => {
     }
   };
 
+  const handleCreateNewTableClick = () => {
+    createFileRef.current?.click();
+  };
+
+  const handleExport = async () => {
+    if (!selectedTable) return;
+    try {
+        await exportTable.mutateAsync({ tableName: selectedTable });
+    } catch (error) {
+        console.error('Failed to export:', error);
+    }
+  };
+
+
+
   // Helper to merge Schema Headers with Data Keys
   const columns = useMemo(() => {
     if (schemaQuery.data) return schemaQuery.data.map((c: any) => c.name);
@@ -104,6 +206,9 @@ export const DatabaseBrowser: React.FC = () => {
 
   return (
     <div className="flex h-full w-full bg-[#09090b] text-zinc-300 font-mono text-xs">
+      {/* Hidden File Inputs */}
+      <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleFileImport} />
+      <input type="file" ref={createFileRef} className="hidden" accept=".json" onChange={handleFileCreate} />
       
       {/* SIDEBAR: Table List */}
       <div className="w-64 border-r border-zinc-800 flex flex-col">
@@ -111,9 +216,18 @@ export const DatabaseBrowser: React.FC = () => {
           <span className="font-bold flex items-center gap-2">
             <Database size={14} className="text-indigo-400"/> SCHEMA
           </span>
-          <button onClick={() => void tablesQuery.refetch()} className="p-1 hover:bg-zinc-800 rounded">
-            <RefreshCw size={12} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+                onClick={handleCreateNewTableClick} 
+                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
+                title="Create New Table"
+            >
+                <Plus size={12} />
+            </button>
+            <button onClick={() => void tablesQuery.refetch()} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white">
+                <RefreshCw size={12} />
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
@@ -159,6 +273,27 @@ export const DatabaseBrowser: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Import/Export */}
+                    <div className="flex items-center gap-1 mr-4 border-r border-zinc-800 pr-4">
+                        <button 
+                            onClick={() => importFileRef.current?.click()}
+                            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+                            title="Import JSON"
+                        >
+                            <Upload size={14} />
+                        </button>
+                        <button 
+                            onClick={() => void handleExport()}
+                            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
+                            title="Export JSON"
+                        >
+                            {exportTable.isLoading ? (
+                                <RefreshCw size={14} className="animate-spin" />
+                            ) : (
+                                <Download size={14} />
+                            )}
+                        </button>
+                    </div>
                     <button 
                         onClick={() => setShowAddCol(true)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-medium transition-colors"
@@ -274,6 +409,9 @@ export const DatabaseBrowser: React.FC = () => {
             </div>
         </div>
       )}
+      
+      {/* IMPORT MODAL REMOVED */}
+      {/* CREATE TABLE MODAL REMOVED */}
 
     </div>
   );
