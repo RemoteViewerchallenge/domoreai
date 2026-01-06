@@ -50,7 +50,7 @@ async function startServer() {
       origin: process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGIN,
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
 
   // Setup tRPC endpoint
   app.use(

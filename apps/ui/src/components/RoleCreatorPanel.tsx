@@ -94,7 +94,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({}); // NEW: Track folder expansion
+  const [expandedFolderId, setExpandedFolderId] = useState<string | null>(null); // NEW: Track folder expansion (Accordion style)
 
   // tRPC hooks
   const utils = trpc.useContext();
@@ -1022,7 +1022,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
 
                       {/* Render Tool Groups */}
                       {Object.entries(groupedTools).sort().map(([server, tools]) => {
-                          const isExpanded = expandedFolders[server] !== false; // Default open? No, let's default open for now
+                          const isExpanded = expandedFolderId === server;
                           const serverTools = tools.map(t => t.name);
                           const selectedCount = tools.filter(t => formData.tools.includes(t.name)).length;
                           const allSelected = selectedCount === tools.length;
@@ -1034,13 +1034,13 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                                 <div className="flex items-center justify-between p-1 bg-[var(--color-background-secondary)]/30 hover:bg-[var(--color-background-secondary)] transition-colors">
                                     <div className="flex items-center gap-2">
                                         <button 
-                                            onClick={() => setExpandedFolders(prev => ({ ...prev, [server]: !isExpanded }))}
+                                            onClick={() => setExpandedFolderId(isExpanded ? null : server)}
                                             className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                                         >
                                             {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                                         </button>
                                         
-                                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpandedFolders(prev => ({ ...prev, [server]: !isExpanded }))}>
+                                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setExpandedFolderId(isExpanded ? null : server)}>
                                             <Folder size={12} className={selectedCount > 0 ? "text-[var(--color-primary)]" : "text-[var(--color-text-muted)]"} />
                                             <span className="text-[10px] font-bold uppercase text-[var(--color-text)]">{server}</span>
                                         </div>

@@ -1,0 +1,4 @@
+[
+  {"name": "Alice", "role": "admin", "active": true},
+  {"name": "Bob", "role": "user", "active": false}
+]
