@@ -14,5 +14,12 @@ export const modelRouter = createTRPCRouter({
     
   sync: protectedProcedure.mutation(async () => {
       return { synced: 0 };
-  })
+  }),
+
+  runDoctor: protectedProcedure
+    .input(z.object({ force: z.boolean().optional() }).optional())
+    .mutation(async () => {
+        // Stubbed for now
+        return { success: true };
+    })
 });

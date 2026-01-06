@@ -140,6 +140,11 @@ export const roleRouter = createTRPCRouter({
       },
       include: {
         category: true, // Include the category object
+        tools: {
+            include: {
+                tool: true
+            }
+        }
       },
     });
 
@@ -173,6 +178,7 @@ export const roleRouter = createTRPCRouter({
 
        return {
            ...role,
+           tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
            currentModel: currentModelName,
            scope: scope,
            healthScore: 100 // Placeholder for AssessmentService score
