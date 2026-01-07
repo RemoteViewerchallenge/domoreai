@@ -1,4 +1,0 @@
- id | activeTableName | strategies | createdAt | updatedAt 
-----+-----------------+------------+-----------+-----------
-(0 rows)
-
