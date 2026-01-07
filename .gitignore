@@ -71,4 +71,5 @@ apps/api/backups/
 debug_bashrc.txt
 
 # MCP Downloads and Extracted Repos
+mcp/extracted/
 # mcp/
