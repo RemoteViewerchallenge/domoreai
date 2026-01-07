@@ -1,3 +1,0 @@
-"""
-Claudable services module.
-"""
