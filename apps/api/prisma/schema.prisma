@@ -1,206 +1,234 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// =================================================================
-// 1. CONFIGURATION & IDENTITY
-// =================================================================
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
 
 model ProviderConfig {
-  // We keep 'id' as the provider name (e.g. "openai", "google")
-  id          String   @id 
-  label       String
-  type        String   // "chat", "embedding"
-  
-  // apiKey removed
-  
-  baseURL     String?
-  isEnabled   Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  models      Model[]
+  id        String   @id
+  label     String
+  type      String
+  baseURL   String?
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Model     Model[]
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  rootPath  String   
-  
-  // The "Constitution"
-  systemPrompt String? @db.Text
-  codeRules    String? @db.Text 
-  glossary     Json?   @default("{}")
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  cards     WorkOrderCard[]
+  id           String          @id @default(cuid())
+  name         String
+  rootPath     String
+  systemPrompt String?
+  codeRules    String?
+  glossary     Json?           @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  cards        WorkOrderCard[]
 }
 
-// =================================================================
-// 2. THE MODEL REGISTRY (PRESERVED - NO CHANGES)
-// =================================================================
+
+
+model ModelRegistry {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+  
+  providerId      String?  @map("provider_id")
+  model_id        String?
+  name            String?  @map("model_name")
+  
+  providerData    Json?    @map("provider_data")
+  aiData          Json?    @map("ai_data")
+  specs           Json?
+  
+  isFree          Boolean? @map("is_free")
+  cost_per_1k     String?
+  
+  updated_at      String?
+  capability_tags Json?
+  first_seen_at   String?
+  last_seen_at    String?
+  source          String?
+
+  isActive        Boolean? @map("is_active")
+
+  // No relations for the ghost table
+  @@map("model_registry")
+}
 
 model Model {
-  // Keeping CUIDs to prevent data loss since you like how this works
-  id           String   @id @default(cuid())
+  id              String   @id @default(cuid())
   
-  providerId   String 
-  provider     ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerId      String 
+  provider        ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  name         String // Display name
+  name            String 
   
-  // The "Triple Layer" Data Strategy
-  providerData Json   @default("{}") 
-  aiData       Json   @default("{}") 
+  providerData    Json   @default("{}") 
+  aiData          Json   @default("{}") 
 
-  capabilities ModelCapabilities?
-
-  isActive     Boolean @default(true)
-  costPer1k    Float?
+  isActive        Boolean @default(true)
+  costPer1k       Float?
   
-  firstSeenAt  DateTime @default(now())
-  lastSeenAt   DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   modelUsage       ModelUsage[]
   knowledgeVectors KnowledgeVector[]
+  capabilities     ModelCapabilities?
   
-  @@unique([providerId, name]) // This prevents duplicate models
+  @@unique([providerId, name])
+}
+
+model RoleVariant {
+  id              String   @id @default(cuid())
+  roleId          String
+  role            Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  identityConfig  Json     @default("{}")
+  cortexConfig    Json     @default("{}")
+  contextConfig   Json     @default("{}")
+  governanceConfig Json    @default("{}")
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  assessments     RoleAssessment[]
+}
+
+model RoleAssessment {
+  id          String      @id @default(cuid())
+  variantId   String
+  variant     RoleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  
+  taskId      String
+  metric      String
+  score       Float
+  feedback    String?     @db.Text
+  
+  createdAt   DateTime    @default(now())
 }
 
 model ModelCapabilities {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  // Hard Specs
-  contextWindow Int?   @default(4096)
-  maxOutput     Int?   @default(4096)
+  id                      String   @id @default(cuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @default(now()) @updatedAt
   
-  // Capabilities
-  hasVision         Boolean @default(false)
-  supportsFunctionCalling Boolean @default(false)
-  supportsJsonMode  Boolean @default(false)
+  modelId                 String?  @unique
+  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
   
-  specs             Json?   @default("{}")
+  specs                   Json?    @default("{}")
+  contextWindow           Int?
+  maxOutput               Int?
+  hasVision               Boolean?
+  hasAudioInput           Boolean?
+  hasAudioOutput          Boolean?
+  isMultimodal            Boolean?
+  supportsFunctionCalling Boolean?
+  supportsJsonMode        Boolean?
+  tokenizer               String?
+  paramCount              String?
+  requestsPerMinute       String?
+  tokensPerMinute         String?
+  hasImageGen             Boolean?
+  hasTTS                  Boolean?
+  hasReasoning            Boolean?
+  confidence              String?
+  source                  String?
 
-  updatedAt   DateTime @updatedAt
+  @@map("modelcapabilities")
 }
 
 model ModelUsage {
-  id             String    @id @default(cuid())
-  createdAt      DateTime  @default(now())
-  modelId        String
-  roleId         String
-  
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  modelId          String
+  roleId           String
   promptTokens     Int?
   completionTokens Int?
-  cost             Float     @default(0)
-  
-  usageMetrics     Json?     @default("{}") 
-  responseHeaders  Json?     
+  cost             Float    @default(0)
+  usageMetrics     Json?    @default("{}")
+  responseHeaders  Json?
   metadata         Json?
-
-  model          Model       @relation(fields: [modelId], references: [id])
-  role           Role        @relation(fields: [roleId], references: [id])
+  model            Model    @relation(fields: [modelId], references: [id])
+  role             Role     @relation(fields: [roleId], references: [id])
 }
 
-// =================================================================
-// 3. AGENTS & ROLES (Core)
-// =================================================================
-
 model Role {
-  id          String   @id @default(cuid()) // Keeping CUIDs for now
-  name        String   @unique
-  description String?  @db.Text
-  basePrompt  String   @db.Text
-  
-  categoryId  String?
-  category    RoleCategory? @relation(fields: [categoryId], references: [id])
-  
-  tools       RoleTool[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  modelUsage  ModelUsage[]
-  jobs        Job[]
+  id                String             @id @default(cuid())
+  name              String             @unique
+  description       String?
+  basePrompt        String
+  categoryId        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  jobs              Job[]
+  modelUsage        ModelUsage[]
   promptRefinements PromptRefinement[]
+  category          RoleCategory?      @relation(fields: [categoryId], references: [id])
+  tools             RoleTool[]
+  variants          RoleVariant[]
 }
 
 model RoleCategory {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  order     Int      @default(0)
-  roles     Role[]
+  id    String @id @default(cuid())
+  name  String @unique
+  order Int    @default(0)
+  roles Role[]
 }
 
 model Tool {
-  id          String   @id @default(cuid())
-  name        String   @unique 
-  description String   @db.Text
-  instruction String   @db.Text 
-  schema      String   @db.Text 
-  isEnabled   Boolean  @default(true)
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String
+  instruction String
+  schema      String
+  isEnabled   Boolean    @default(true)
   roles       RoleTool[]
 }
 
 model RoleTool {
   roleId String
   toolId String
-  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  tool   Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
 
   @@id([roleId, toolId])
 }
 
-// =================================================================
-// 4. EXECUTION (Cleaned up Job table)
-// =================================================================
-
 model Job {
-  id          String   @id @default(cuid())
-  type        String   
-  status      String   @default("pending")
-  priority    String   @default("medium")
-  
-  description String?  @db.Text
+  id          String    @id @default(cuid())
+  type        String
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  description String?
   roleId      String?
-  role        Role?    @relation(fields: [roleId], references: [id])
-
-  input       Json?    @default("{}")
-  output      Json?    
-  logs        Json?    @default("[]") 
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  input       Json?     @default("{}")
+  output      Json?
+  logs        Json?     @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   startedAt   DateTime?
   completedAt DateTime?
+  role        Role?     @relation(fields: [roleId], references: [id])
 }
 
 model KnowledgeVector {
-  id          String   @id @default(cuid())
-  
-  // Context
-  entityType  String   // "file", "memory"
-  entityId    String   // path or ID
-  content     String   @db.Text 
-  
-  // Vector Data
-  modelId     String
-  model       Model    @relation(fields: [modelId], references: [id])
-  vector      Float[]  // PGVector array
-  dimensions  Int      
-  
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  content    String
+  modelId    String
+  vector     Float[]
+  dimensions Int
+  createdAt  DateTime @default(now())
+  model      Model    @relation(fields: [modelId], references: [id])
 
   @@index([entityType, entityId])
 }
@@ -212,65 +240,74 @@ model FileIndex {
 }
 
 model WorkOrderCard {
-  id          String   @id @default(cuid())
-  title       String
-  description String?  @db.Text
-  
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  
-  // "Context Intelligence" Bag
-  contextStats   Json? 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  workspaceId  String
+  contextStats Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
 }
 
 model PromptRefinement {
   id             String   @id @default(cuid())
   roleId         String
-  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
-  originalPrompt String   @db.Text
-  critique       String   @db.Text
-  refinedPrompt  String?  @db.Text
-  
+  originalPrompt String
+  critique       String
+  refinedPrompt  String?
   createdAt      DateTime @default(now())
+  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
 }
 
 model ModelFailure {
-  id         String   @id @default(cuid())
-  providerId String
-  modelId    String
-  failures   Int      @default(0)
+  id           String   @id @default(cuid())
+  providerId   String
+  modelId      String
+  failures     Int      @default(0)
   lastFailedAt DateTime @updatedAt
+
   @@unique([providerId, modelId])
 }
 
-// =================================================================
-// 5. UI CONFIG (Keep if your UI relies on them)
-// =================================================================
-
 model CardConfig {
-  cardId      String   @id
-  customButtons CustomButton[]
+  cardId         String          @id
   componentRoles ComponentRole[]
+  customButtons  CustomButton[]
 }
 
 model CustomButton {
-  id          String   @id @default(cuid())
-  cardId      String
-  cardConfig  CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
-  label       String
-  action      String   
-  actionData  String
-  icon        String?
+  id         String     @id @default(cuid())
+  cardId     String
+  label      String
+  action     String
+  actionData String
+  icon       String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
 }
 
 model ComponentRole {
-  id          String   @id @default(cuid())
-  cardId      String
-  cardConfig  CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
-  component   String   
-  roleId      String?
+  id         String     @id @default(cuid())
+  cardId     String
+  component  String
+  roleId     String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+}
+
+
+
+model google_models_example {
+  id                         String   @id
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @default(now())
+  name                       String?
+  displayName                String?
+  description                String?
+  inputTokenLimit            Int?
+  outputTokenLimit           Int?
+  supportedGenerationMethods Json?
+  temperature                Int?
+  topP                       Float?
+  topK                       Int?
+  maxTemperature             Int?
 }
