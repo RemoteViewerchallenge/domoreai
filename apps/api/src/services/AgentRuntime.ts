@@ -318,18 +318,36 @@ Instructions:
     agent: { generate: (prompt: string) => Promise<unknown> },
     baseSystemPrompt: string,
     prompt: string,
-    roleId?: string
+    roleId?: string,
+    sessionId?: string
   ) {
     const roleContext = roleId
       ? await this.contextManager.getContext(roleId)
       : { tone: "", style: "", memory: {} };
+    
+    // Fetch Conversation History
+    let historyStr = "";
+    if (sessionId) {
+        const history = await this.contextManager.getHistory(sessionId);
+        if (history.length > 0) {
+            historyStr = "## Conversation History:\n" + 
+                history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n\n");
+        }
+        // Record the NEW user prompt immediately? 
+        // Or record it after success? 
+        // Let's record it now so it's in history for next time if we crash? 
+        // But if we record it now, and then "generate", the model might see it?
+        // No, we are constructing the prompt NOW by fetching history first.
+        // So the CURRENT prompt is NOT in history yet. That's correct.
+    }
+
     const memoryStr = Object.entries(roleContext.memory || {})
       .map(([k, v]) => `${k}: ${v}`)
       .join("\n");
 
     let enhancedSystemPrompt = `${baseSystemPrompt || ""}\n\n${
       roleContext.tone || ""
-    }\n\n${memoryStr}`.trim();
+    }\n\n${memoryStr}\n\n${historyStr}`.trim();
 
     // Inject Tool Documentation
     if (this.toolDocs) {
@@ -437,8 +455,19 @@ items.forEach(item => {
     }
 
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
+    
     // Delegate to the provided agent/provider
-    return agent.generate(finalPrompt);
+    const result = await agent.generate(finalPrompt);
+
+    // Record History (if session active)
+    if (sessionId && typeof result === 'string') {
+        const userMsg = prompt; // Original user prompt
+        const assistantMsg = result;
+        await this.contextManager.addMessage(sessionId, 'user', userMsg);
+        await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
+    }
+
+    return result;
   }
 
   /**

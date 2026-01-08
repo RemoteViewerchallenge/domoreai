@@ -107,9 +107,34 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
         // Write initial prompt with working directory
         term.write(formatPrompt(workingDirectory));
 
-        // Handle user input
+        // Local Line Buffer state
+        let inputBuffer = '';
+
+        // Handle user input with local echo and buffering
         term.onData((data) => {
-            onInput(data);
+            const code = data.charCodeAt(0);
+
+            // Enter key (13 for \r)
+            if (code === 13) {
+                term.write('\r\n');
+                if (inputBuffer.trim()) {
+                    onInput(inputBuffer.trim());
+                }
+                inputBuffer = '';
+                term.write(formatPrompt(workingDirectory));
+            } 
+            // Backspace (127)
+            else if (code === 127) {
+                if (inputBuffer.length > 0) {
+                    inputBuffer = inputBuffer.slice(0, -1);
+                    term.write('\b \b');
+                }
+            } 
+            // Normal printable characters
+            else if (code >= 32 && code <= 126) {
+                inputBuffer += data;
+                term.write(data);
+            }
         });
         
         // Focus the terminal

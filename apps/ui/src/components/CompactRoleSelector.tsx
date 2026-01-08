@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { Briefcase, Code, Shield, Sparkles, User } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils.js';
 import { trpc } from '../utils/trpc.js';
 
@@ -7,17 +6,6 @@ type CompactRoleSelectorProps = {
   onSelect?: (roleId: string) => void;
   selectedRoleId?: string;
   lockedCategory?: string;
-};
-
-// Icon mapping for categories
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  'Frontend Department': <Code size={12} />,
-  'Backend Department': <Code size={12} />,
-  'Engineering': <Code size={12} />,
-  'Executive': <Briefcase size={12} />,
-  'Operations': <Shield size={12} />,
-  'AI': <Sparkles size={12} />,
-  'Uncategorized': <User size={12} />,
 };
 
 const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ 
@@ -37,7 +25,9 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     const grouped: Record<string, typeof roles> = {};
     
     roles.forEach((role) => {
-      const category = role.categoryString || role.category?.name || 'Uncategorized';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = role as any;
+      const category = r.category?.name || r.categoryString || 'Uncategorized';
       if (!grouped[category]) {
         grouped[category] = [];
       }
@@ -52,7 +42,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
   }, [categorizedRoles]);
 
   // Auto-select first category or current category or locked category
-  React.useEffect(() => {
+  useEffect(() => {
     // 1. If Locked, force it
     if (lockedCategory) {
         if (activeCategory !== lockedCategory) setActiveCategory(lockedCategory);
@@ -63,7 +53,9 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     if (selectedRoleId && roles) {
         const role = roles.find(r => r.id === selectedRoleId);
         if (role) {
-            const cat = role.categoryString || role.category?.name || 'Uncategorized';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const r = role as any;
+            const cat = r.category?.name || r.categoryString || 'Uncategorized';
             if (activeCategory !== cat) {
                 setActiveCategory(cat);
             }
@@ -75,7 +67,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-32 text-[10px] text-[var(--color-text-secondary)]">
+      <div className="flex items-center justify-center p-4 text-[10px] text-[var(--color-text-secondary)]">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
           Loading roles...
@@ -86,7 +78,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
 
   if (!roles || roles.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-[10px] text-[var(--color-text-secondary)]">
+      <div className="flex items-center justify-center p-4 text-[10px] text-[var(--color-text-secondary)]">
         No roles found
       </div>
     );
@@ -99,7 +91,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
       {/* Category Icons (Left Column) */}
       <div className="w-8 flex flex-col items-center bg-[var(--color-background)]/50 border-r border-[var(--color-border)] py-1 gap-1">
         {categories.map((category) => {
-          const icon = CATEGORY_ICONS[category] || <User size={12} />;
+          const firstLetter = category.charAt(0).toUpperCase();
           const isActive = activeCategory === category;
           
           return (
@@ -107,14 +99,14 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
               key={category}
               onClick={() => setActiveCategory(category)}
               className={cn(
-                "p-1.5 rounded transition-all",
+                "w-6 h-6 flex items-center justify-center rounded-sm transition-all font-bold text-[10px]",
                 isActive 
-                  ? "bg-[var(--color-primary)]/20 text-[var(--color-primary)] shadow-sm" 
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-white/5"
+                  ? "bg-[var(--color-primary)] text-[var(--color-background)] shadow-sm" 
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-white/5 bg-[var(--color-background-secondary)]"
               )}
               title={category}
             >
-              {icon}
+              {firstLetter}
             </button>
           );
         })}
@@ -129,28 +121,30 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
         ) : (
           currentRoles.map((role) => {
             const isSelected = selectedRoleId === role.id;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const r = role as any;
             
             return (
               <button
                 key={role.id}
                 onClick={() => onSelect?.(role.id)}
                 className={cn(
-                  "w-full text-left px-2 py-1.5 transition-all border-b border-[var(--color-border)]/30 last:border-0 truncate text-[10px]",
+                  "w-full text-left px-2 py-1.5 transition-all border-b border-[var(--color-border)]/30 last:border-0 truncate text-[10px] block",
                   isSelected
-                    ? "bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium"
-                    : "text-[var(--color-text)] hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)]"
+                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-primary)]/5 hover:text-[var(--color-primary)]"
                 )}
-                title={role.description || role.name}
+                title={r.description || r.name}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 w-full">
                   {isSelected && (
-                    <div className="w-1 h-1 rounded-full bg-[var(--color-primary)]" />
+                    <div className="w-1 h-1 rounded-full bg-[var(--color-primary)] flex-shrink-0" />
                   )}
-                  <span className="truncate">{role.name}</span>
+                  <span className="truncate flex-1">{r.name}</span>
                 </div>
-                {role.description && (
+                {r.description && (
                   <div className="text-[9px] text-[var(--color-text-secondary)] truncate mt-0.5 opacity-70">
-                    {role.description}
+                    {r.description}
                   </div>
                 )}
               </button>

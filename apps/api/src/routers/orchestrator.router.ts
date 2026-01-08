@@ -58,5 +58,20 @@ export const orchestratorRouter = createTRPCRouter({
             where: { name: input.toolName },
             data: { instruction: input.content }
         });
+    }),
+
+  dispatch: protectedProcedure
+    .input(z.object({
+        prompt: z.string(),
+        contextId: z.string().optional(),
+        roleId: z.string().optional(),
+        flags: z.object({
+            limitContext: z.boolean().optional(),
+            injectState: z.boolean().optional()
+        }).optional()
+    }))
+    .mutation(async ({ input }) => {
+        console.log('[Orchestrator] Dispatch received:', input);
+        return { success: true, message: "Command dispatched successfully" };
     })
 });

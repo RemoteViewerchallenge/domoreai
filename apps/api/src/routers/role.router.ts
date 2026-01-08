@@ -437,13 +437,13 @@ export const roleRouter = createTRPCRouter({
       // --- NEW: Real AI-Powered Prompt Generation ---
       console.log(`[PromptGen] 🎨 Generating AI prompt for role: "${name}"...`);
 
-      // 1. Find the Prompt Engineer role
-      const promptEngineerRole = await prisma.role.findFirst({
-        where: { name: 'Prompt Engineer' },
+      // 1. Find the Prompt Improver role
+      const promptImproverRole = await prisma.role.findFirst({
+        where: { name: 'Prompt Improver' },
       });
 
-      if (!promptEngineerRole) {
-        console.warn('[PromptGen] ⚠️ Prompt Engineer role not found, falling back to template');
+      if (!promptImproverRole) {
+        console.warn('[PromptGen] ⚠️ Prompt Improver role not found, falling back to template');
         // Fallback to template if role doesn't exist
         return generateTemplatePrompt(name, goal, category, capabilities);
       }

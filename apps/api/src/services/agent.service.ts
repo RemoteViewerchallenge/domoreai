@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { AgentRuntime } from "./AgentRuntime.js";
-import { type CardAgentState } from "../types.js";
-import { createVolcanoAgent } from "./VolcanoAgent.js";
+import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import {
@@ -26,6 +25,7 @@ export const startSessionSchema = z.object({
       targetDir: z.string().optional(),
     })
     .optional(),
+  sessionId: z.string().optional(),
 });
 
 export type StartSessionInput = z.infer<typeof startSessionSchema>;
@@ -62,7 +62,7 @@ export class AgentService {
       }
 
       // 1. Create the agent configuration
-      const agentConfig: any = {
+      const agentConfig: AgentConfig = {
         roleId,
         modelId: modelConfig.modelId || null,
         providerId: modelConfig.providerId || undefined,
@@ -91,16 +91,17 @@ export class AgentService {
       //    Captured 'agent' variable is used, allowing hot-swapping on fallback.
       const llmCallback = async (prompt: string): Promise<string> => {
         const basePrompt = role?.basePrompt || "";
-        return (await runtime.generateWithContext(
+        return runtime.generateWithContext(
           agent,
           basePrompt,
           prompt,
-          roleId
-        )) as string;
+          roleId,
+          sessionId 
+        ) as Promise<string>;
       };
 
       // 5. Start the agent loop (Synchronous for now to ensure UI update)
-      const sessionId = `session-${cardId}-${Date.now()}`;
+      const sessionId = input.sessionId || `session-${cardId}-${Date.now()}`;
 
       // Get initial response first, with Fallback Logic
       let initialResponse = "";
@@ -111,9 +112,9 @@ export class AgentService {
         try {
            initialResponse = await llmCallback(userGoal);
            break; // Success
-        } catch (err: any) {
+        } catch (err: unknown) {
            const isLastAttempt = attempt === MAX_RETIES;
-           const msg = err?.message || String(err);
+           const msg = err instanceof Error ? err.message : String(err);
            const isProviderError = /provider|not found|model/i.test(msg);
 
            if (isLastAttempt || !isProviderError) {
@@ -241,13 +242,13 @@ export class AgentService {
       });
 
       if (fallback) {
-        const metadata = {}; // (role?.metadata as Record<string, unknown>) || {};
+        const metadata = ((role as any)?.metadata as Record<string, unknown>) || {};
         selectedModel = {
           modelId: fallback.id,
           providerId: fallback.providerId,
           model: fallback,
-          temperature: ((metadata as any).defaultTemperature as number) ?? 0.1,
-          maxTokens: ((metadata as any).defaultMaxTokens as number) ?? 1024,
+          temperature: (metadata.defaultTemperature as number) || 0.1,
+          maxTokens: (metadata.defaultMaxTokens as number) || 1024,
         };
       }
     }
@@ -310,7 +311,7 @@ export class AgentService {
               selectedModel.modelId,
               role?.id
             );
-            await recordProviderFailure(selectedModel.providerId, role?.id);
+            recordProviderFailure(selectedModel.providerId, role?.id);
           } catch (recErr) {
             console.warn(
               "[AgentService] Failed to persist model/provider failure:",
