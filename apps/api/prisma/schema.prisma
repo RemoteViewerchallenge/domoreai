@@ -170,6 +170,7 @@ model Tool {
   instruction String
   schema      String
   isEnabled   Boolean    @default(true)
+  serverId    String?
   roles       RoleTool[]
 }
 
