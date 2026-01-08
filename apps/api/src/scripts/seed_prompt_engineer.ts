@@ -37,9 +37,9 @@ async function main() {
 
   // 3. Upsert Role
   await prisma.role.upsert({
-    where: { name: 'Prompt Engineer' },
+    where: { name: 'Prompt Improver' },
     update: {
-      basePrompt: `You are a Prompt Engineer. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
+      basePrompt: `You are a Prompt Improver. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
       category: {
         connectOrCreate: {
             where: { name: 'Specialized Workers' },
@@ -52,8 +52,8 @@ async function main() {
       }
     },
     create: {
-      name: 'Prompt Engineer',
-      basePrompt: `You are a Prompt Engineer. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
+      name: 'Prompt Improver',
+      basePrompt: `You are a Prompt Improver. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
       category: {
         connectOrCreate: {
             where: { name: 'Specialized Workers' },
@@ -65,7 +65,7 @@ async function main() {
       }
     }
   });
-  console.log('✅ Prompt Engineer role created or updated.');
+  console.log('✅ Prompt Improver role created or updated.');
 }
 
 main().finally(() => prisma.$disconnect());

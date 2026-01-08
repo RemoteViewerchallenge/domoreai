@@ -17,12 +17,6 @@ import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
 import { RoleEditorCard } from './RoleEditorCard.js';
 
-interface ModelSpecs {
-    hasVision?: boolean;
-    hasReasoning?: boolean;
-    hasCoding?: boolean;
-    [key: string]: unknown;
-}
 
 export const SwappableCard = memo(({ id }: { id: string }) => {
   const { 
@@ -34,8 +28,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   // External State & Actions
   const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
   const updateCard = useWorkspaceStore(s => s.updateCard);
-  const { data: roles } = trpc.role.list.useQuery();
-  const { data: models } = trpc.model.list.useQuery();
   
   // Agent Mutations
   const startSessionMutation = trpc.agent.startSession.useMutation();
@@ -66,6 +58,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files' | 'config'>('editor');
   const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
   const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
+  // Persistent Session ID
+  const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
 
   // Auto-detect code files
   useEffect(() => {
@@ -91,15 +85,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       }
   }, [activeFile, writeFile]);
 
-  const handleTerminalInput = useCallback((input: string) => {
-      setTerminalLogs(prev => [...prev, {
-          message: input,
-          type: 'command', 
-          timestamp: new Date().toISOString()
-      }]);
-  }, []);
-
-  const handleRunAgent = useCallback(async () => {
+  const runAgent = useCallback(async (goal: string) => {
       if (!agentConfig.roleId) {
           toast.error("Role Required", { description: "Please select a role in the settings before running." });
           setViewMode('config');
@@ -112,22 +98,22 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
           // Construct Input
           const input = {
               cardId: id,
-              userGoal: content || "Process the current file", // Default if empty
+              userGoal: goal,
               roleId: agentConfig.roleId,
+              sessionId, // Persistent Session
               modelConfig: {
                   modelId: agentConfig.modelId || undefined,
                   temperature: agentConfig.temperature,
                   maxTokens: agentConfig.maxTokens
               },
               context: {
-                  targetDir: currentPath // Pass current working directory
+                  targetDir: currentPath 
               }
           };
 
           const session = await startSessionMutation.mutateAsync(input);
           
           toast.success("Agent Finished", { id: 'agent-run' });
-          console.log("Agent Logs:", session.logs);
           
           // Append logs to terminal
           if (session.logs && session.logs.length > 0) {
@@ -137,23 +123,38 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                   timestamp: new Date().toISOString()
               }));
               setTerminalLogs(prev => [...prev, ...logMessages]);
-              // Also show the result if available
-              if (session.result) {
-                   setTerminalLogs(prev => [...prev, {
-                       message: `\n--- Result ---\n${session.result}\n`,
-                       type: 'success',
-                       timestamp: new Date().toISOString()
-                   }]);
-              }
-              // Switch to terminal to show output
-              setViewMode('terminal');
           }
+           // Also show the result if available (Agent Service returns result separately from logs)
+          if (session.result) {
+                setTerminalLogs(prev => [...prev, {
+                    message: `\n> ${session.result}\n`,
+                    type: 'info',
+                    timestamp: new Date().toISOString()
+                }]);
+          }
+          // Switch to terminal
+          setViewMode('terminal');
 
       } catch (err) {
           console.error(err);
           toast.error("Agent Failed", { id: 'agent-run', description: (err as Error).message });
       }
-  }, [id, content, agentConfig, startSessionMutation, currentPath]);
+  }, [id, agentConfig, startSessionMutation, currentPath, sessionId]);
+
+  const handleRunClick = useCallback(() => {
+      void runAgent(content || "Process the current file");
+  }, [runAgent, content]);
+
+  const handleTerminalInput = useCallback((input: string) => {
+      // Echo user command to log
+      setTerminalLogs(prev => [...prev, {
+          message: `$ ${input}`,
+          type: 'command', 
+          timestamp: new Date().toISOString()
+      }]);
+      // Run agent with this input
+      void runAgent(input);
+  }, [runAgent]);
 
   return (
     <div className="flex h-full w-full rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-xl relative group">
@@ -188,7 +189,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
                 {/* Run Agent Button */}
                 <button 
-                    onClick={handleRunAgent}
+                    onClick={handleRunClick}
                     className="p-1.5 rounded hover:bg-green-900/30 text-green-500 transition-colors"
                     title="Run Agent"
                 >
@@ -225,7 +226,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {viewMode === 'editor' && (
                  editorType === 'monaco' 
                  ? <MonacoEditor path={activeFile} value={content} onChange={handleSave} />
-                 : <SmartEditor fileName={activeFile} content={content} onChange={(val) => handleSave(val)} onRun={handleRunAgent} />
+                 : <SmartEditor fileName={activeFile} content={content} onChange={(val) => handleSave(val)} onRun={handleRunClick} />
              )}
              
              {/* Tools */}

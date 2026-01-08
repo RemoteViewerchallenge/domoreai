@@ -162,15 +162,18 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
 
     console.log(`✅ Selected model: ${selected.provider.label}/${selected.name} (free: ${isFree})`);
 
+    // Use external ID from providerData, fallback to name, never usage internal CUID
+    const externalId = (selected.providerData as unknown as { id?: string })?.id || selected.name;
+
     return {
-      modelId: selected.id, // Map id -> modelId
+      modelId: externalId, 
       internalId: selected.id,
       providerId: selected.providerId,
       name: selected.name,
       isFree: isFree,
       source: 'registry', 
       provider: selected.provider,
-      specs: {}, // Capabilities in relation, fetch if needed
+      specs: {},
     };
   } catch (error) {
     console.error('Failed to select model from registry:', error);
@@ -185,8 +188,11 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
       include: { provider: true },
     });
     if (!fallback) return null;
+    
+    const externalId = (fallback.providerData as unknown as { id?: string })?.id || fallback.name;
+    
     return {
-      modelId: fallback.id,
+      modelId: externalId,
       providerId: fallback.providerId,
       model: fallback,
       temperature: DEFAULT_MODEL_TEMP,
@@ -216,8 +222,9 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
   });
 
   if (fallbackModel) {
+      const externalId = (fallbackModel.providerData as unknown as { id?: string })?.id || fallbackModel.name;
       return {
-          modelId: fallbackModel.id,
+          modelId: externalId,
           providerId: fallbackModel.providerId,
           model: fallbackModel,
           temperature: DEFAULT_MODEL_TEMP,

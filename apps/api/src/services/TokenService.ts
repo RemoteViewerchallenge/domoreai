@@ -14,10 +14,12 @@ export type ContextState = {
  */
 export class TokenService {
   private store: Map<string, ContextState>;
+  private sessionStore: Map<string, Array<{ role: string; content: string; timestamp: number }>>;
   private persistFile: string | null;
 
   constructor(persistFile?: string | null) {
     this.store = new Map();
+    this.sessionStore = new Map();
     this.persistFile = persistFile || path.join(process.cwd(), 'data', 'context_store.json');
     this.loadFromDisk();
   }
@@ -113,6 +115,25 @@ export class TokenService {
   async clearContext(roleId: string): Promise<void> {
     this.store.delete(roleId);
     this.saveToDisk();
+  }
+
+  // --- Session History Management ---
+  async addMessage(sessionId: string, role: string, content: string): Promise<void> {
+      if (!sessionId) return;
+      const history = this.sessionStore.get(sessionId) || [];
+      history.push({ role, content, timestamp: Date.now() });
+      this.sessionStore.set(sessionId, history);
+      // Optional: Persist session history efficiently? 
+      // For now, we keep it in-memory for the session duration or until restart.
+      // Ideally, dump to disk too if valuable.
+  }
+
+  async getHistory(sessionId: string): Promise<Array<{ role: string; content: string }>> {
+      return this.sessionStore.get(sessionId) || [];
+  }
+
+  async clearSession(sessionId: string): Promise<void> {
+      this.sessionStore.delete(sessionId);
   }
 
   /**

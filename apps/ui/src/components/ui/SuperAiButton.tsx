@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Settings, User, Zap, ArrowRight, X, Eye, EyeOff, Database } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
@@ -7,12 +7,12 @@ import { trpc } from '../../utils/trpc.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
 // Lazy load the role selector
-const CompactRoleSelector = React.lazy(() => import('../CompactRoleSelector.js'));
+import CompactRoleSelector from '../CompactRoleSelector.js';
 
 type ButtonState = 'idle' | 'active' | 'menu' | 'role_select' | 'config';
 
 type SuperAiButtonProps = {
-  contextId?: string; // The local context ID (e.g. "users-table", "terminal-1")
+  contextId?: string | Record<string, unknown>; // The local context ID (e.g. "users-table", "terminal-1")
   className?: string;
   expandUp?: boolean;
   side?: 'left' | 'right'; // Expansion direction
@@ -76,7 +76,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     // Construct the full payload
     const payload = {
         prompt,
-        contextId: contextId || aiContext.scope, // Prefer local context, fallback to global
+        // Prefer local context (stringified if object), fallback to global
+        contextId: typeof contextId === 'object' ? JSON.stringify(contextId) : (contextId || aiContext.scope), 
         roleId: selectedRoleId,
         // Include flags if needed by the backend
         flags: {
@@ -113,6 +114,13 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 
   // Determine button aesthetic based on context
   const isContextLimited = aiContext.isLimiting;
+  
+  // Visual Feedback for Context
+  const contextLabel = useMemo(() => {
+      if (!contextId) return "Global System";
+      if (typeof contextId === 'string') return contextId;
+      return "Local Context";
+  }, [contextId]);
 
   return (
     <div className={cn("relative inline-flex z-[1000]", className)}>
@@ -125,15 +133,15 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         onClick={() => setState(state === 'idle' ? 'active' : 'idle')}
         onContextMenu={handleRightClick}
         className={cn(
-          "h-8 w-8 flex items-center justify-center rounded-full transition-all border relative z-[1001]",
-          "shadow-lg hover:shadow-xl hover:scale-110 active:scale-95",
+          "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[1001]", // Square & Smaller (h-7 w-7 matches SwappableCard)
+          "shadow-sm hover:shadow-md active:scale-95 group",
           state !== 'idle'
             ? "bg-[var(--color-background-secondary)] border-[var(--color-primary)] text-[var(--color-primary)]" 
             : isContextLimited 
                 ? "bg-zinc-700 text-zinc-300 border-zinc-600"
                 : "bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white border-transparent"
         )}
-        title={contextId ? `AI Context: ${contextId}` : "AI Command Center (Right-click for menu)"}
+        title={`AI Context: ${contextLabel} (Right-click for menu)`}
       >
         <AnimatePresence mode="wait">
           {state === 'menu' || state === 'role_select' || state === 'config' ? (
@@ -144,7 +152,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
               exit={{ rotate: 90, opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <X size={16} />
+              <X size={14} />
             </motion.div>
           ) : (
             <motion.div
@@ -155,7 +163,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
               transition={{ duration: 0.15 }}
               className="relative"
             >
-              <Sparkles size={16} className={cn(isContextLimited && "opacity-50")} />
+              <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
               {state === 'idle' && !isContextLimited && (
                 <motion.div
                   className="absolute inset-0"
@@ -169,7 +177,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                     ease: "easeInOut",
                   }}
                 >
-                  <Sparkles size={16} />
+                  <Sparkles size={14} />
                 </motion.div>
               )}
             </motion.div>
@@ -187,8 +195,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             style={side === 'left' ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }} // Push OUT, not OVER
             className={cn(
-               "absolute top-0 h-8 flex items-center bg-zinc-900/95 backdrop-blur border border-purple-500/50 shadow-2xl z-[9999] min-w-[300px]",
-               side === 'left' ? "rounded-l-full pr-4 pl-2" : "rounded-r-full pl-4 pr-2"
+               "absolute top-0 h-7 flex items-center bg-zinc-900/95 backdrop-blur border border-purple-500/50 shadow-2xl z-[9999] min-w-[300px]",
+               side === 'left' ? "rounded-l-md pr-4 pl-2" : "rounded-r-md pl-4 pr-2"
             )}
           >
             {/* If Left Side: Input first, then button */}
@@ -205,7 +213,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                 }, 200);
               }}
               className="flex-1 min-w-0 bg-transparent text-[var(--color-text)] text-xs px-2 focus:outline-none placeholder:text-[var(--color-text-secondary)]/50"
-              placeholder={`Ask AI about ${contextId || 'Global Context'}...`}
+              placeholder={`Ask AI about ${contextLabel}...`}
             />
             
             <button 
@@ -221,10 +229,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 >
-                  <Sparkles size={14} />
+                  <Sparkles size={12} />
                 </motion.div>
               ) : (
-                <ArrowRight size={14} />
+                <ArrowRight size={12} />
               )}
             </button>
           </motion.div>
@@ -281,7 +289,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="w-64 bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg shadow-2xl overflow-hidden"
+            className="w-80 bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex justify-between items-center px-2 py-1.5 bg-[var(--color-background)]/30 border-b border-[var(--color-border)]">
@@ -297,12 +305,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             </div>
 
             {/* Content */}
-            <div className="max-h-64 overflow-y-auto custom-scrollbar">
-              <React.Suspense fallback={
-                <div className="p-3 text-[10px] text-[var(--color-text-secondary)]">
-                  Loading...
-                </div>
-              }>
+            <div className="max-h-80 overflow-y-auto custom-scrollbar">
                 {state === 'role_select' && (
                   <CompactRoleSelector 
                     onSelect={handleRoleSelect}
@@ -314,7 +317,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                      <div className="p-2 bg-[var(--color-background)]/50 rounded mb-2">
                         <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] mb-1">
                             <span>Target Scope:</span>
-                            <span className="font-mono text-[var(--color-text)]">{contextId || 'Global'}</span>
+                            <span className="font-mono text-[var(--color-text)] truncate max-w-[120px]" title={contextLabel}>{contextLabel}</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
                             <span>Selected Role:</span>
@@ -357,7 +360,6 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                      </button>
                   </div>
                 )}
-              </React.Suspense>
             </div>
           </motion.div>
         </div>
