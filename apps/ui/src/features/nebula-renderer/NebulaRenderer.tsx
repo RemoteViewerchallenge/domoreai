@@ -1,22 +1,59 @@
-import React, { useState, useContext, createContext } from "react";
+import React, { useState, useContext, createContext, useEffect } from "react";
 import type { NebulaTree } from "@repo/nebula"; // Ensure @repo/nebula types are available
 import { cn } from "../../lib/utils.js";
 import { resolveComponent } from "../../nebula/component-map.js";
 import { SuperAiButton } from "../../components/ui/SuperAiButton.js";
 import { Eye, EyeOff } from "lucide-react";
 
-// --- CONTEXT FOR AI OVERLAY ---
-export const NebulaContext = createContext({
-  showAiOverlay: true, // Default ON for builder
+// --- CONTEXT FOR AI OVERLAY & FORM BINDINGS ---
+interface NebulaContextType {
+  showAiOverlay: boolean;
+  toggleAiOverlay: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bindings: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setBinding: (key: string, value: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handleAction: (action: string, payload?: any) => void;
+}
+
+export const NebulaContext = createContext<NebulaContextType>({
+  showAiOverlay: true,
   toggleAiOverlay: () => {},
+  bindings: {},
+  setBinding: () => {},
+  handleAction: () => {},
 });
 
 // --- THE ROOT CONTAINER ---
-export const NebulaRendererRoot: React.FC<{ tree: NebulaTree }> = ({ tree }) => {
+interface NebulaRootProps {
+  tree: NebulaTree;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialBindings?: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onAction?: (action: string, payload?: any, bindings?: Record<string, any>) => void;
+}
+
+export const NebulaRendererRoot: React.FC<NebulaRootProps> = ({ tree, initialBindings = {}, onAction }) => {
   const [showAiOverlay, setShowAiOverlay] = useState(true);
+  const [bindings, setBindings] = useState(initialBindings);
+
+  const setBinding = (key: string, value: any) => {
+    setBindings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleAction = (action: string, payload?: any) => {
+      onAction?.(action, payload, bindings);
+  };
 
   return (
-    <NebulaContext.Provider value={{ showAiOverlay, toggleAiOverlay: () => setShowAiOverlay(!showAiOverlay) }}>
+    <NebulaContext.Provider value={{ 
+        showAiOverlay, 
+        toggleAiOverlay: () => setShowAiOverlay(!showAiOverlay),
+        bindings,
+        setBinding,
+        handleAction
+    }}>
       
       {/* 1. RENDER THE ACTUAL UI TREE */}
       <div className="w-full h-full relative isolate">
@@ -64,7 +101,7 @@ interface RendererNode {
 const NebulaNodeRenderer = ({ tree, nodeId }: { tree: NebulaTree, nodeId: string }) => {
   // Cast to RendererNode to support extra properties like className and nested meta
   const node = tree.nodes[nodeId] as unknown as RendererNode;
-  const { showAiOverlay } = useContext(NebulaContext);
+  const { showAiOverlay, bindings, setBinding, handleAction } = useContext(NebulaContext);
   if (!node) return null;
 
   // Resolve Style (Map generic tokens to CSS)
@@ -95,6 +132,35 @@ const NebulaNodeRenderer = ({ tree, nodeId }: { tree: NebulaTree, nodeId: string
     childrenToRender = null; // Text component handles content via props
   }
 
+  // --- AUTOMAGIC DATA BINDING ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const finalProps: any = { ...node.props, id: node.id };
+  
+  // 1. Value Binding
+  if (finalProps['data-binding']) {
+      const key = finalProps['data-binding'];
+      finalProps.value = bindings[key] || '';
+      
+      // Handle standard inputs
+      finalProps.onChange = (e: any) => {
+          const val = e.target ? e.target.value : e; // Support generic 'onChange' components too
+          setBinding(key, val);
+      };
+      // Handle badge/button selection logic if needed (simple toggle or set)
+      if (node.componentName === 'Badge') {
+           finalProps.onClick = () => setBinding(key, finalProps['data-value']);
+           // Highlight if selected
+           if (bindings[key] === finalProps['data-value']) {
+               finalProps.className = cn(finalProps.className, "bg-purple-600 text-white border-purple-400");
+           }
+      }
+  }
+
+  // 2. Action Binding
+  if (finalProps['data-action']) {
+      finalProps.onClick = () => handleAction(finalProps['data-action']);
+  }
+
   return (
     <>
       <div 
@@ -103,7 +169,7 @@ const NebulaNodeRenderer = ({ tree, nodeId }: { tree: NebulaTree, nodeId: string
         style={style}
       >
         {/* RENDER THE COMPONENT */}
-        <ComponentToRender {...node.props} id={node.id}>
+        <ComponentToRender {...finalProps}>
            {childrenToRender}
         </ComponentToRender>
 
@@ -115,7 +181,7 @@ const NebulaNodeRenderer = ({ tree, nodeId }: { tree: NebulaTree, nodeId: string
                 defaultRoleId={node.meta?.aiConfig?.defaultRole || 'developer'} 
                 side="right" // Expand right to avoid clipping
                 className="scale-75 shadow-xl"
-             />
+              />
           </div>
         )}
         

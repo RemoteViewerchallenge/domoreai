@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
@@ -31,99 +31,76 @@ model Workspace {
   cards        WorkOrderCard[]
 }
 
-
-
 model ModelRegistry {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
-  
   providerId      String?  @map("provider_id")
   model_id        String?
   name            String?  @map("model_name")
-  
   providerData    Json?    @map("provider_data")
   aiData          Json?    @map("ai_data")
   specs           Json?
-  
   isFree          Boolean? @map("is_free")
   cost_per_1k     String?
-  
   updated_at      String?
   capability_tags Json?
   first_seen_at   String?
+  isActive        Boolean? @map("is_active")
   last_seen_at    String?
   source          String?
 
-  isActive        Boolean? @map("is_active")
-
-  // No relations for the ghost table
   @@map("model_registry")
 }
 
 model Model {
-  id              String   @id @default(cuid())
-  
-  providerId      String 
-  provider        ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
-
-  name            String 
-  
-  providerData    Json   @default("{}") 
-  aiData          Json   @default("{}") 
-
-  isActive        Boolean @default(true)
-  costPer1k       Float?
-  
-  firstSeenAt     DateTime @default(now())
-  lastSeenAt      DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  id               String             @id @default(cuid())
+  providerId       String
+  name             String
+  providerData     Json               @default("{}")
+  aiData           Json               @default("{}")
+  isActive         Boolean            @default(true)
+  costPer1k        Float?
+  firstSeenAt      DateTime           @default(now())
+  lastSeenAt       DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  provider         ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
   modelUsage       ModelUsage[]
   knowledgeVectors KnowledgeVector[]
   capabilities     ModelCapabilities?
-  
+
   @@unique([providerId, name])
 }
 
 model RoleVariant {
-  id              String   @id @default(cuid())
-  roleId          String
-  role            Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
-  identityConfig  Json     @default("{}")
-  cortexConfig    Json     @default("{}")
-  contextConfig   Json     @default("{}")
-  governanceConfig Json    @default("{}")
-  
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  
-  assessments     RoleAssessment[]
+  id               String           @id @default(cuid())
+  roleId           String
+  identityConfig   Json             @default("{}")
+  cortexConfig     Json             @default("{}")
+  contextConfig    Json             @default("{}")
+  governanceConfig Json             @default("{}")
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assessments      RoleAssessment[]
 }
 
 model RoleAssessment {
-  id          String      @id @default(cuid())
-  variantId   String
-  variant     RoleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  
-  taskId      String
-  metric      String
-  score       Float
-  feedback    String?     @db.Text
-  
-  createdAt   DateTime    @default(now())
+  id        String      @id @default(cuid())
+  variantId String
+  taskId    String
+  metric    String
+  score     Float
+  feedback  String?
+  createdAt DateTime    @default(now())
+  variant   RoleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 }
 
 model ModelCapabilities {
   id                      String   @id @default(cuid())
   createdAt               DateTime @default(now())
   updatedAt               DateTime @default(now()) @updatedAt
-  
   modelId                 String?  @unique
-  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  
-  specs                   Json?    @default("{}")
   contextWindow           Int?
   maxOutput               Int?
   hasVision               Boolean?
@@ -141,6 +118,8 @@ model ModelCapabilities {
   hasReasoning            Boolean?
   confidence              String?
   source                  String?
+  specs                   Json?    @default("{}")
+  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")
 }
@@ -168,6 +147,7 @@ model Role {
   categoryId        String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  metadata          Json?              @default("{}")
   jobs              Job[]
   modelUsage        ModelUsage[]
   promptRefinements PromptRefinement[]
@@ -293,8 +273,6 @@ model ComponentRole {
   roleId     String?
   cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
 }
-
-
 
 model google_models_example {
   id                         String   @id

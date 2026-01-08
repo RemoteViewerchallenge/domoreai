@@ -16,7 +16,7 @@ import DataCenter from './pages/DataCenter.js';
 import InterfaceStudio from './pages/InterfaceStudio.js';
 import Constitution from './pages/Constitution.js';
 import ThemeStudio from './pages/ThemeStudio.js';
-import NebulaBuilderPage from './pages/nebula-builder.js';
+import RoleCreatorPage from './pages/RoleCreatorPage.js'; // Ensure default export or named import match
 
 // Sub-routes (if any specific ones remain)
 import FileLocationPage from './pages/FileLocationPage.js';
@@ -28,7 +28,8 @@ export default function App() {
         <ErrorBoundary>
           <Routes>
             {/* Standalone Routes (No UnifiedLayout) */}
-            <Route path="/nebula" element={<NebulaBuilderPage />} />
+            {/* Standalone Routes (No UnifiedLayout) */}
+            {/* <Route path="/nebula" element={<NebulaBuilderPage />} /> */}
 
             {/* Core OS Routes (With UnifiedLayout) */}
             <Route path="/" element={<UnifiedLayout><LaunchPad /></UnifiedLayout>} />
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="/ui-studio" element={<UnifiedLayout><InterfaceStudio /></UnifiedLayout>} />
             <Route path="/settings" element={<UnifiedLayout><Constitution /></UnifiedLayout>} />
             <Route path="/theme-studio" element={<UnifiedLayout><ThemeStudio /></UnifiedLayout>} />
+            <Route path="/role-studio" element={<UnifiedLayout><RoleCreatorPage /></UnifiedLayout>} />
             <Route path="/setup" element={<UnifiedLayout><FileLocationPage /></UnifiedLayout>} />
             
             {/* Catch-all */}

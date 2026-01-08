@@ -6,6 +6,7 @@ import { trpc } from '../utils/trpc.js';
 type CompactRoleSelectorProps = {
   onSelect?: (roleId: string) => void;
   selectedRoleId?: string;
+  lockedCategory?: string;
 };
 
 // Icon mapping for categories
@@ -21,7 +22,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 
 const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ 
   onSelect,
-  selectedRoleId 
+  selectedRoleId,
+  lockedCategory
 }) => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -49,10 +51,16 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     return Object.keys(categorizedRoles).sort();
   }, [categorizedRoles]);
 
-  // Auto-select first category or current category
+  // Auto-select first category or current category or locked category
   React.useEffect(() => {
+    // 1. If Locked, force it
+    if (lockedCategory) {
+        if (activeCategory !== lockedCategory) setActiveCategory(lockedCategory);
+        return;
+    }
+
+    // 2. If Selected Role, verify category
     if (selectedRoleId && roles) {
-        // Find category of selected role
         const role = roles.find(r => r.id === selectedRoleId);
         if (role) {
             const cat = role.categoryString || role.category?.name || 'Uncategorized';
@@ -63,7 +71,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     } else if (categories.length > 0 && !activeCategory) {
       setActiveCategory(categories[0]);
     }
-  }, [categories, activeCategory, selectedRoleId, roles]);
+  }, [categories, activeCategory, selectedRoleId, roles, lockedCategory]);
 
   if (isLoading) {
     return (

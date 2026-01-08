@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
 
 // Define a basic interface for the expected data structure.
@@ -54,7 +54,7 @@ export async function logUsage(data: RawProviderOutput) {
 
         cost: cost ?? 0.0,
 
-        metadata: { ...metadata, userId } as any, // Store userId in metadata
+        metadata: { ...metadata, userId } as Prisma.InputJsonValue, // Store userId in metadata
       },
     });
     console.log('Usage log created:', newLog.id);
@@ -79,9 +79,9 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     }
 
     const metadata = {}; // (role.metadata as any) || {};
-    const capabilities = (metadata as any).capabilities || [];
+    const _capabilities = ((metadata as Record<string, any>).capabilities as string[]) || [];
 
-    const whereClause: any = {
+    const whereClause: Prisma.ModelWhereInput = {
       isActive: true,
       provider: {
         isEnabled: true
@@ -112,7 +112,52 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       return null;
     }
 
-    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    // Intelligent Selection: Provider LRU -> Model LRU
+    
+    // 1. Fetch usage stats
+    const candidateIds = candidates.map(c => c.id);
+    const usageStats = await prisma.modelUsage.groupBy({
+        by: ['modelId'],
+        where: { modelId: { in: candidateIds } },
+        _max: { createdAt: true }
+    });
+
+    // 2. Map model usages
+    const modelUsageMap = new Map<string, number>();
+    usageStats.forEach(stat => {
+        if (stat.modelId && stat._max.createdAt) {
+            modelUsageMap.set(stat.modelId, stat._max.createdAt.getTime());
+        }
+    });
+
+    // 3. Compute Provider Usage (Max timestamp of any model in that provider)
+    const providerUsageMap = new Map<string, number>();
+    for (const c of candidates) {
+        const mTime = modelUsageMap.get(c.id) || 0;
+        const pTime = providerUsageMap.get(c.providerId) || 0;
+        if (mTime > pTime) { // We want the *latest* usage to represent the provider's "freshness"
+            providerUsageMap.set(c.providerId, mTime);
+        }
+    }
+
+    // 4. Sort Candidates
+    candidates.sort((a, b) => {
+        const pTimeA = providerUsageMap.get(a.providerId) || 0;
+        const pTimeB = providerUsageMap.get(b.providerId) || 0;
+
+        // Primary Sort: Provider Usage (Oldest first)
+        if (pTimeA !== pTimeB) {
+            return pTimeA - pTimeB;
+        }
+
+        // Secondary Sort: Model Usage (Oldest first)
+        const mTimeA = modelUsageMap.get(a.id) || 0;
+        const mTimeB = modelUsageMap.get(b.id) || 0;
+        return mTimeA - mTimeB;
+    });
+
+    // 5. Select Winner
+    const selected = candidates[0];
     const isFree = (selected.costPer1k === 0);
 
     console.log(`✅ Selected model: ${selected.provider.label}/${selected.name} (free: ${isFree})`);
@@ -188,7 +233,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 /**
  * Increment persistent failure counts for a model (used to avoid retries across restarts)
  */
-export async function recordModelFailure(providerId: string, modelId: string, roleId?: string) {
+export async function recordModelFailure(providerId: string, modelId: string, _roleId?: string) {
   try {
     // Manual upsert to avoid type issues with unique constraints
     const existing = await prisma.modelFailure.findFirst({
@@ -211,8 +256,8 @@ export async function recordModelFailure(providerId: string, modelId: string, ro
   }
 }
 
-export async function recordProviderFailure(providerId: string, roleId?: string) {
+export function recordProviderFailure(_providerId: string, _roleId?: string) {
   // ProviderFailure table does not exist in schema.
   // Skipping recording.
-  console.warn(`[Provider Failure] Skipping record for provider ${providerId} (schema table missing)`);
+  console.warn(`[Provider Failure] Skipping record for provider ${_providerId} (schema table missing)`);
 }

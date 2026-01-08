@@ -1,9 +1,13 @@
-import { useState, useMemo, FC } from 'react';
+import { useState, useMemo } from 'react';
+import type { FC } from 'react';
 import { trpc } from '../utils/trpc.js';
-import { Cpu, Save, X } from 'lucide-react';
+import { Cpu, Save, X, Filter } from 'lucide-react';
 import type { Role } from '@prisma/client';
+import DualRangeSlider from './DualRangeSlider.js';
 
 interface RoleModelOverrideProps {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - Prisma types might not be updated yet
   role: Role & {
     hardcodedModelId?: string | null;
     hardcodedProviderId?: string | null;
@@ -26,6 +30,15 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
       : ''
   );
 
+  // Filter States
+  const [minContext, setMinContext] = useState(0);
+  const [maxContext, setMaxContext] = useState(200000);
+  const [needsVision, setNeedsVision] = useState(false);
+  const [needsReasoning, setNeedsReasoning] = useState(false);
+  const [needsTTS, setNeedsTTS] = useState(false);
+  const [needsEmbedding, setNeedsEmbedding] = useState(false);
+
+
   // 4. tRPC mutation to update the role
   const utils = trpc.useContext();
   const updateRoleMutation = trpc.role.update.useMutation({
@@ -38,10 +51,33 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
     },
   });
 
-  // 5. Group models by datacenter for a clean, organized dropdown
+  // 5. Group models by datacenter AND FILTER them
   const groupedModels = useMemo(() => {
     if (!availableModels) return {};
-    return availableModels.reduce((acc: Record<string, typeof availableModels>, model) => {
+    
+    // Filter first
+    const filtered = availableModels.filter((model: any) => {
+        // Context Window
+        // Backend returns `contextWindow` at root level, not in specs
+        const ctx = model.contextWindow || model.specs?.contextWindow || 0;
+        if (ctx < minContext || ctx > maxContext) return false;
+
+        // Vision
+        if (needsVision && !model.specs?.hasVision) return false;
+        
+        // Reasoning
+        if (needsReasoning && !model.specs?.hasReasoning) return false;
+
+        // Capabilities strings (TTS, Embedding)
+        // Assume capabilities is an array of strings like ['tts', 'embedding', 'chat']
+        const caps = (model.capabilities || []) as string[];
+        if (needsTTS && !caps.includes('tts')) return false;
+        if (needsEmbedding && !caps.includes('embedding')) return false;
+
+        return true;
+    });
+
+    return filtered.reduce((acc: Record<string, typeof availableModels>, model) => {
       const datacenterLabel = model.providerLabel || 'Unknown Datacenter';
       if (!acc[datacenterLabel]) {
         acc[datacenterLabel] = [];
@@ -49,7 +85,7 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
       acc[datacenterLabel].push(model);
       return acc;
     }, {} as Record<string, typeof availableModels>);
-  }, [availableModels]);
+  }, [availableModels, minContext, maxContext, needsVision, needsReasoning, needsTTS, needsEmbedding]);
 
   // 6. Handler to save the override
   const handleSaveOverride = () => {
@@ -76,29 +112,54 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
     : '');
 
   const escapeQuotes = (text: string) => text.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const totalModels = Object.values(groupedModels).reduce((sum, list) => sum + list.length, 0);
 
   return (
     <div className="space-y-3">
       <h3 className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2 flex items-center gap-2">
         <Cpu size={12} /> Direct Model Assignment
       </h3>
-      <p className="text-[10px] text-[var(--color-text-muted)] mb-3">
-        Override dynamic model selection by assigning a specific model to this role. Leave as "Dynamic Selection" to use the registry filtering system.
-      </p>
+      
+      {/* FILTER UI */}
+      <div className="p-3 border border-[var(--color-border)] rounded bg-[var(--color-background-secondary)]/30 space-y-3">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-2">
+            <Filter size={10} /> Filter Available Models
+        </div>
+        
+        <DualRangeSlider 
+            min={0} max={200000} step={1000}
+            value={[minContext, maxContext]}
+            onChange={([min, max]) => { setMinContext(min); setMaxContext(max); }}
+            label="Context Range"
+            unit="tk"
+        />
+
+        <div className="grid grid-cols-2 gap-2">
+             <label className="flex items-center gap-2 text-[10px] cursor-pointer"><input type="checkbox" checked={needsVision} onChange={e => setNeedsVision(e.target.checked)} className="accent-[var(--color-primary)]"/> Vision</label>
+             <label className="flex items-center gap-2 text-[10px] cursor-pointer"><input type="checkbox" checked={needsReasoning} onChange={e => setNeedsReasoning(e.target.checked)} className="accent-[var(--color-primary)]"/> Reasoning</label>
+             <label className="flex items-center gap-2 text-[10px] cursor-pointer"><input type="checkbox" checked={needsTTS} onChange={e => setNeedsTTS(e.target.checked)} className="accent-[var(--color-primary)]"/> TTS</label>
+             <label className="flex items-center gap-2 text-[10px] cursor-pointer"><input type="checkbox" checked={needsEmbedding} onChange={e => setNeedsEmbedding(e.target.checked)} className="accent-[var(--color-primary)]"/> Embedding</label>
+        </div>
+      </div>
       
       <div className="border border-[var(--color-border)] rounded p-3 bg-[var(--color-background-secondary)]/50 space-y-3">
+        <div className="flex justify-between items-center text-[10px] text-[var(--color-text-muted)] uppercase font-bold mb-1">
+            <span>Select Model</span>
+            <span className={totalModels === 0 ? "text-[var(--color-error)]" : "text-[var(--color-success)]"}>{totalModels} Available</span>
+        </div>
         <select
           value={selectedOverride}
           onChange={(e) => setSelectedOverride(e.target.value)}
-          disabled={isLoadingModels || updateRoleMutation.isLoading}
+          disabled={isLoadingModels || updateRoleMutation.isLoading || totalModels === 0}
           className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] text-xs rounded focus:outline-none focus:border-[var(--color-primary)] transition-colors"
         >
+          <option value="">-- Dynamic Selection (No Override) --</option>
           {Object.entries(groupedModels).map(([datacenterLabel, models]) => (
             <optgroup label={datacenterLabel} key={datacenterLabel}>
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {models.map((model: any) => (
                 <option key={model.id as string} value={`${model.providerId as string}/${model.id as string}`}>
-                  {escapeQuotes(model.name)}
+                  {escapeQuotes(model.name)} {model.contextWindow ? `(${Math.round(model.contextWindow/1000)}k)` : ''}
                 </option>
               ))}
             </optgroup>
