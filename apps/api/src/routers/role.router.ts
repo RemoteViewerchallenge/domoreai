@@ -5,6 +5,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
 import { ModelSelector } from "../services/ModelSelector.js";
+import { RoleFactoryService } from "../services/RoleFactoryService.js";
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -97,6 +98,8 @@ const updateRoleSchema = z.object({
   // Metadata fields
   minContext: z.number().int().optional().nullable(),
   maxContext: z.number().int().optional().nullable(),
+  hardcodedModelId: z.string().optional().nullable(),
+  hardcodedProviderId: z.string().optional().nullable(),
   needsVision: z.boolean().optional(),
   needsReasoning: z.boolean().optional(),
   needsCoding: z.boolean().optional(),
@@ -317,7 +320,8 @@ export const roleRouter = createTRPCRouter({
           basePrompt,
           // categoryString: categoryName,
           categoryId,
-          // metadata: metadata as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          metadata: metadata as any,
           tools: {
             create: tools.map(toolName => ({
               tool: { connect: { name: toolName } }
@@ -336,9 +340,9 @@ export const roleRouter = createTRPCRouter({
       // Fetch existing metadata to merge
       const existing = await prisma.role.findUnique({ 
         where: { id }, 
-        select: { id: true, name: true, description: true } // metadata removed 
+        select: { id: true, name: true, description: true, metadata: true } 
       });
-      const currentMeta = {}; // (existing?.metadata as any) || {};
+      const currentMeta = (existing?.metadata as any) || {};
 
       const newMetadata = {
         ...currentMeta,
@@ -509,6 +513,52 @@ Return ONLY the system prompt, no additional commentary.`;
         message: "Project onboarding complete",
         ...stats,
       };
+    }),
+
+  /**
+   * FACTORY 4.0: Create a new DNA Variant
+   */
+  createVariant: publicProcedure
+    .input(z.object({
+        roleId: z.string(),
+        intent: z.object({
+            name: z.string(),
+            description: z.string(),
+            domain: z.string(),
+            complexity: z.enum(['LOW', 'MEDIUM', 'HIGH'])
+        })
+    }))
+    .mutation(async ({ input }) => {
+        const factory = new RoleFactoryService();
+        // Ensure the Architect exists (Just in case)
+        await factory.ensureArchitectRole();
+
+        let targetRoleId = input.roleId;
+
+        // Verify if 'default' or missing - resolve to a "Base Agent"
+        if (targetRoleId === 'default' || !targetRoleId) {
+            // Find or create "General Assistant"
+            const baseName = "General Assistant";
+            let baseRole = await prisma.role.findFirst({ where: { name: baseName } });
+            
+            if (!baseRole) {
+                // Ensure category
+                let cat = await prisma.roleCategory.findUnique({ where: { name: 'Assistant' } });
+                if (!cat) cat = await prisma.roleCategory.create({ data: { name: 'Assistant', order: 1 } });
+
+                baseRole = await prisma.role.create({
+                    data: {
+                        name: baseName,
+                        description: "A capable general-purpose AI assistant.",
+                        categoryId: cat.id,
+                        basePrompt: "You are a helpful AI assistant."
+                    }
+                });
+            }
+            targetRoleId = baseRole.id;
+        }
+        
+        return factory.createRoleVariant(targetRoleId, input.intent);
     }),
 
 });

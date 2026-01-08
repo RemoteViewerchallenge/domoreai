@@ -34,7 +34,27 @@ export class OpenAIProvider implements BaseLLMProvider {
                     isFree = true;
                 }
             }
-            return { id: m.id, providerId: this.id, isFree, providerData: m, ...m };
+            let contextWindow = 4096;
+            // OpenRouter uses 'context_length', others might use 'context_window'
+            if (m.context_length) contextWindow = m.context_length;
+            else if (m.context_window) contextWindow = m.context_window;
+
+            // Normalize specs
+            const specs = {
+                contextWindow,
+                maxOutput: m.max_completion_tokens || 4096,
+                hasVision: m.id.toLowerCase().includes('vision') || m.id.toLowerCase().includes('vl'),
+                hasReasoning: m.id.toLowerCase().includes('r1') || m.id.toLowerCase().includes('reasoning')
+            };
+
+            return { 
+                id: m.id, 
+                providerId: this.id, 
+                isFree, 
+                providerData: m, 
+                specs,
+                name: m.name || m.id // Ensure name is populated
+            };
         });
     } catch (e) {
         console.error("Failed to fetch OpenAI models", e);

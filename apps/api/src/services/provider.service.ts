@@ -72,13 +72,28 @@ export class ProviderService {
       orderBy: { lastSeenAt: 'desc' }
     });
 
-    return models.map((model) => ({
-      id: model.id, // CUID
-      name: model.name, // Display Name
-      providerId: model.providerId,
-      providerLabel: model.provider.label,
-      contextWindow: model.capabilities?.contextWindow || 0
-    }));
+    return models.map((model) => {
+        const capabilities: string[] = ['chat']; // Base capability
+        if (model.capabilities?.hasVision) capabilities.push('vision');
+        if (model.capabilities?.hasReasoning) capabilities.push('reasoning');
+        if (model.capabilities?.hasTTS) capabilities.push('tts');
+        
+        return {
+              id: model.id, // CUID
+              name: model.name, // Display Name
+              providerId: model.providerId,
+              providerLabel: model.provider.label,
+              contextWindow: model.capabilities?.contextWindow || 0,
+              // Frontend expects these flattened or in specs
+              specs: {
+                  contextWindow: model.capabilities?.contextWindow || 0,
+                  maxOutput: model.capabilities?.maxOutput || 0,
+                  hasVision: !!model.capabilities?.hasVision,
+                  hasReasoning: !!model.capabilities?.hasReasoning,
+              },
+              capabilities
+        };
+    });
   }
 
   // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
@@ -127,6 +142,12 @@ export class ProviderService {
       const upsertPromises = rawModelList.map(async (model: LLMModel) => {
         const modelSlug = model.id; // slug from provider
         if (!modelSlug) return;
+
+        // [USER-REQ] OpenRouter: Only ingest FREE models to reduce noise (user reports 513 -> 163 models)
+        if (providerConfig.type === 'openrouter') {
+             // 'isFree' populated by OpenAIProvider (patched) or isLikelyFree
+             if (!model.isFree) return;
+        }
 
         // 1. Create/Update the Core Identity
         // We calculate display name

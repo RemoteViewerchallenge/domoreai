@@ -18,7 +18,7 @@ export class VolcanoAgent {
   }
 
   async generate(prompt: string): Promise<string> {
-    const { modelId, temperature, maxTokens, roleId } = this.config;
+    const { modelId, temperature, maxTokens } = this.config;
     
     // Auto-select provider if not explicit (simplified)
     // For now assume modelId is fully qualified or we can look it up.
@@ -51,12 +51,17 @@ export class VolcanoAgent {
     // ProviderManager global usage?
     
     // Let's require providerId for now or try to split modelId if it's "provider:model" format
-    let providerId = 'openai'; // default?
+    let providerId = this.config.providerId || ''; 
     let actualModelId = modelId || 'gpt-4o';
 
-    // Try to detect provider from modelId if simple
-    if (modelId?.includes('/')) {
+    // Try to detect provider from modelId if simple and providerId is missing
+    if (!providerId && modelId?.includes('/')) {
         [providerId, actualModelId] = modelId.split('/');
+    }
+
+    if (!providerId) {
+        // Fallback default only if absolutely no info
+        providerId = 'openai'; 
     }
     
     // Get Provider
@@ -74,6 +79,6 @@ export class VolcanoAgent {
   }
 }
 
-export async function createVolcanoAgent(config: AgentConfig): Promise<VolcanoAgent> {
-  return new VolcanoAgent(config);
+export function createVolcanoAgent(config: AgentConfig): Promise<VolcanoAgent> {
+  return Promise.resolve(new VolcanoAgent(config));
 }

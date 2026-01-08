@@ -17,7 +17,7 @@ export const startSessionSchema = z.object({
     providerId: z.string().optional(),
     modelId: z.string().optional(),
     temperature: z.number().min(0).max(2).default(0.7),
-    maxTokens: z.number().int().min(256).max(32000).default(2048),
+    maxTokens: z.number().int().min(256).max(128000).default(2048),
   }),
   userGoal: z.string().min(1, "User goal/prompt is required"),
   cardId: z.string(),
@@ -62,9 +62,10 @@ export class AgentService {
       }
 
       // 1. Create the agent configuration
-      const agentConfig: CardAgentState = {
+      const agentConfig: any = {
         roleId,
         modelId: modelConfig.modelId || null,
+        providerId: modelConfig.providerId || undefined,
         isLocked: !!modelConfig.modelId, // Lock if model is explicitly provided
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
@@ -73,7 +74,7 @@ export class AgentService {
       };
 
       // 2. Create the Volcano agent
-      const agent = await createVolcanoAgent(agentConfig);
+      let agent = await createVolcanoAgent(agentConfig);
 
       // 2.5 Fetch Role to get Tools and other defaults
       const role = await prisma.role.findUnique({
@@ -87,6 +88,7 @@ export class AgentService {
 
       // 4. Define the LLM callback that uses our Volcano agent and enriches
       //    the system prompt with role context from the runtime's ContextManager.
+      //    Captured 'agent' variable is used, allowing hot-swapping on fallback.
       const llmCallback = async (prompt: string): Promise<string> => {
         const basePrompt = role?.basePrompt || "";
         return (await runtime.generateWithContext(
@@ -100,8 +102,46 @@ export class AgentService {
       // 5. Start the agent loop (Synchronous for now to ensure UI update)
       const sessionId = `session-${cardId}-${Date.now()}`;
 
-      // Get initial response first
-      const initialResponse = await llmCallback(userGoal);
+      // Get initial response first, with Fallback Logic
+      let initialResponse = "";
+      const failedModels: string[] = [];
+      const MAX_RETIES = 3;
+
+      for (let attempt = 0; attempt <= MAX_RETIES; attempt++) {
+        try {
+           initialResponse = await llmCallback(userGoal);
+           break; // Success
+        } catch (err: any) {
+           const isLastAttempt = attempt === MAX_RETIES;
+           const msg = err?.message || String(err);
+           const isProviderError = /provider|not found|model/i.test(msg);
+
+           if (isLastAttempt || !isProviderError) {
+             throw err; // Give up
+           }
+
+           // Log and Fallback
+           console.warn(`[AgentService] Initial generation failed: ${msg}. Attempting fallback...`);
+           
+           if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
+
+           // Select new model
+           const fallback = await getBestModel(roleId, failedModels);
+           if (!fallback) throw new Error("No fallback models available.");
+
+           // Update Config
+           agentConfig.modelId = fallback.modelId;
+           agentConfig.providerId = fallback.providerId;
+           agentConfig.temperature = fallback.temperature;
+           // agentConfig.maxTokens = fallback.maxTokens; // Keep user pref for length? Or use model default?
+           // Keep user pref for now unless it exceeds model limit (which we can't easily check here without specs)
+
+           console.log(`[AgentService] Switched to fallback model: ${fallback.modelId}`);
+
+           // Re-create agent
+           agent = await createVolcanoAgent(agentConfig);
+        }
+      }
 
       // Execute the agent loop and wait for result
       const { result, logs } = await runtime.runAgentLoop(

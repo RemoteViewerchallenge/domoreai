@@ -29,6 +29,8 @@ export interface CompletionRequest {
   messages: Message[];
   temperature?: number;
   max_tokens?: number;
+  response_format?: { type: 'text' | 'json_object' };
+  [key: string]: unknown;
 }
 
 export interface BaseLLMProvider {
