@@ -9,6 +9,7 @@ const createToolSchema = z.object({
   instruction: z.string().min(1, "Instruction (Tool Prompt) is required."),
   schema: z.string().min(2, "Schema must be a valid JSON string (Zod).").default("{}"),
   isEnabled: z.boolean().default(true),
+  serverId: z.string().optional(),
   implementation: z.string().optional(),
 });
 
@@ -19,6 +20,7 @@ const updateToolSchema = z.object({
   instruction: z.string().optional(),
   schema: z.string().optional(),
   isEnabled: z.boolean().optional(),
+  serverId: z.string().optional(),
   implementation: z.string().optional(),
 });
 
@@ -55,6 +57,7 @@ export const toolRouter = createTRPCRouter({
                 instruction: input.instruction,
                 schema: input.schema,
                 isEnabled: input.isEnabled,
+                serverId: input.serverId,
                 // implementation: input.implementation
             }
         });

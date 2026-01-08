@@ -12,7 +12,8 @@
     "lint": "eslint -c eslint.config.mjs .",
     "lint:fix": "eslint -c eslint.config.mjs . --fix",
     "preview": "vite preview",
-    "tailwind:init": "tailwindcss init -p"
+    "tailwind:init": "tailwindcss init -p",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",

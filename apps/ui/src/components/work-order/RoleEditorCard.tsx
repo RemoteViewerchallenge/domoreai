@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import DualRangeSlider from '../DualRangeSlider.js';
 import CompactRoleSelector from '../CompactRoleSelector.js';
+import { RoleToolSelector } from '../role/RoleToolSelector.js'; // NEW
+import { useModelFilter } from '../../hooks/useModelFilter.js'; // NEW
+import type { Model } from '@/types/role.js'; // NEW
 
 // Tabs
 type EditorTab = 'tuning' | 'brain' | 'dna';
@@ -34,7 +37,8 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
         contextWindow: 4096, 
         modelId: null as string | null,
         providerId: null as string | null,
-        genes: {} as Record<string, string>
+        genes: {} as Record<string, string>,
+        tools: [] as string[] // NEW
     });
 
     const handleRoleSelect = (newRoleId: string) => {
@@ -75,27 +79,19 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
     const [reqReasoning, setReqReasoning] = useState(false);
 
     const { data: models } = trpc.providers.listAllAvailableModels.useQuery();
-    
-    const filteredModels = useMemo(() => {
-        if (!models) return [];
-        return models.filter((m: any) => {
-            const ctx = m.contextWindow || m.specs?.contextWindow || 0;
-            if (ctx < minCtx || ctx > maxCtx) return false;
-            if (reqVision && !m.specs?.hasVision) return false;
-            // if (reqReasoning && !m.specs?.hasReasoning) return false; 
-            return true;
-        });
-    }, [models, minCtx, maxCtx, reqVision]);
+    const { data: toolsList } = trpc.tool.list.useQuery(); // NEW
 
-    const groupedModels = useMemo(() => {
-        const groups: Record<string, typeof filteredModels> = {};
-        filteredModels.forEach(m => {
-            const p = m.providerLabel || 'Unknown';
-            if (!groups[p]) groups[p] = [];
-            groups[p].push(m);
-        });
-        return groups;
-    }, [filteredModels]);
+    // Use shared hook
+    const { filteredModels, groupedModels } = useModelFilter(models as Model[], {
+        minContext: minCtx,
+        maxContext: maxCtx,
+        needsVision: reqVision,
+        needsReasoning: reqReasoning
+    });
+    
+    // Legacy mapping for UI if needed, but hook provides groupedModels directly
+    // const filteredModels = useMemo(...) -> replaced by hook
+    // const groupedModels = useMemo(...) -> replaced by hook
 
     const currentRoleName = useMemo(() => {
         return roles?.find(r => r.id === roleId)?.name || 'Select Role...';
@@ -270,11 +266,13 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
 
                 {/* 3. DNA Editor (Raw) */}
                 {activeTab === 'dna' && (
-                    <div className="h-full flex flex-col p-4 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-2">
-                         {/* Placeholder for future deep editing */}
-                         <div className="flex-1 flex items-center justify-center text-zinc-600 italic">
-                             Advanced DNA editing (System Prompt, Tools) enabled for role: {currentRoleName}
-                         </div>
+                    <div className="h-full flex flex-col p-4 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-2 overflow-y-auto">
+                         <h4 className="text-xs font-bold text-zinc-400 uppercase mb-4">Capabilities & Tools</h4>
+                         <RoleToolSelector 
+                            availableTools={toolsList as any[] || []}
+                            selectedTools={dna.tools}
+                            onChange={(tools) => setDna(prev => ({ ...prev, tools }))}
+                         />
                     </div>
                 )}
             </div>

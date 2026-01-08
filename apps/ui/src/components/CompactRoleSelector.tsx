@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils.js';
 import { trpc } from '../utils/trpc.js';
+import type { Role } from '../types/role.js';
 
 type CompactRoleSelectorProps = {
   onSelect?: (roleId: string) => void;
@@ -25,8 +26,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
     const grouped: Record<string, typeof roles> = {};
     
     roles.forEach((role) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const r = role as any;
+      const r = role as unknown as Role;
       const category = r.category?.name || r.categoryString || 'Uncategorized';
       if (!grouped[category]) {
         grouped[category] = [];
@@ -121,8 +121,7 @@ const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({
         ) : (
           currentRoles.map((role) => {
             const isSelected = selectedRoleId === role.id;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const r = role as any;
+            const r = role as unknown as Role;
             
             return (
               <button

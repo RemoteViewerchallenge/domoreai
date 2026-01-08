@@ -123,7 +123,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   }, [contextId]);
 
   return (
-    <div className={cn("relative inline-flex z-[1000]", className)}>
+// Replaced z-[9999] with z-50
+    <div className={cn("relative inline-flex z-50", className)}>
       {/* Main Button */}
       <button
         ref={(node) => {
@@ -133,7 +134,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         onClick={() => setState(state === 'idle' ? 'active' : 'idle')}
         onContextMenu={handleRightClick}
         className={cn(
-          "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[1001]", // Square & Smaller (h-7 w-7 matches SwappableCard)
+          "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Square & Smaller (h-7 w-7 matches SwappableCard)
           "shadow-sm hover:shadow-md active:scale-95 group",
           state !== 'idle'
             ? "bg-[var(--color-background-secondary)] border-[var(--color-primary)] text-[var(--color-primary)]" 
@@ -195,7 +196,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             style={side === 'left' ? { right: '100%', marginRight: 8 } : { left: '100%', marginLeft: 8 }} // Push OUT, not OVER
             className={cn(
-               "absolute top-0 h-7 flex items-center bg-zinc-900/95 backdrop-blur border border-purple-500/50 shadow-2xl z-[9999] min-w-[300px]",
+               "absolute top-0 h-7 flex items-center bg-zinc-900/95 backdrop-blur border border-purple-500/50 shadow-2xl z-[60] min-w-[300px]",
                side === 'left' ? "rounded-l-md pr-4 pl-2" : "rounded-r-md pl-4 pr-2"
             )}
           >
@@ -244,7 +245,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         <div 
             ref={refs.setFloating}
             style={floatingStyles}
-            className="z-[9999]" // Force high z-index
+            className="z-[60]" // Force high z-index
         >
             <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
@@ -252,7 +253,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 className={cn(
-                   "bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden z-[9999] min-w-[160px]",
+                   "bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden z-[60] min-w-[160px]",
                    side === 'left' ? "right-0" : "left-0" // Align to the edge of the button
                 )}
             >
@@ -282,7 +283,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         <div 
             ref={refs.setFloating}
             style={floatingStyles}
-            className="z-[9999]"
+            className="z-[60]"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
