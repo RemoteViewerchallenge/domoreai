@@ -27,7 +27,7 @@ async function main() {
   console.log(`📂 Target directory: ${modelsDir}\n`);
   
   try {
-    await UnifiedIngestionService.ingestAllModels(modelsDir);
+    await UnifiedIngestionService.ingestAllModels(modelsDir, true);
     console.log('\n✅ Ingestion completed successfully!');
     process.exit(0);
   } catch (error) {

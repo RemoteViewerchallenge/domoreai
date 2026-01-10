@@ -60,14 +60,14 @@ export class VolcanoAgent {
     }
 
     if (!providerId) {
-        // Fallback default only if absolutely no info
+        console.warn(`[VolcanoAgent] ⚠️ No providerId explicit or inferable for model '${actualModelId}'. Defaulting to 'openai' (generic).`);
         providerId = 'openai'; 
     }
     
     // Get Provider
     const provider = ProviderManager.getProvider(providerId);
     if (!provider) {
-        throw new Error(`Provider ${providerId} not found for agent execution`);
+        throw new Error(`Provider '${providerId}' not found for agent execution (Model: ${actualModelId}). Available providers: ${Array.from((ProviderManager as any).instance.providers.keys()).join(', ')}`);
     }
     
     return await provider.generateCompletion({

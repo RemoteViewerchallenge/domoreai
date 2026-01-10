@@ -34,7 +34,7 @@ export class UnifiedIngestionService {
           ...payload.metadata,
           source: payload.source,
           type: payload.type,
-          chunk: chunk // duplicating content in metadata as per vector.service example
+          chunk: chunk
         }
       });
     }
@@ -42,7 +42,7 @@ export class UnifiedIngestionService {
     await vectorStore.add(vectors);
   }
   
-  static async ingestAllModels(modelsDir?: string): Promise<void> {
+  static async ingestAllModels(modelsDir?: string, force: boolean = false): Promise<void> {
     const targetDir = modelsDir || path.join(process.cwd(), 'latest_models');
     let files: string[] = [];
     try { files = await fs.readdir(targetDir); } catch { return; }
@@ -50,12 +50,34 @@ export class UnifiedIngestionService {
     console.log(`🚀 Starting Unified Ingestion...`);
 
     // PHASE 1: Raw Data Lake (Anti-Corruption)
-    // RawDataLake table is missing in current schema. skipping phase 1 persistence.
-    // We will just process the files directly.
+    try {
+        const { autoLoadRawJsonFiles } = await import('./RawJsonLoader.js');
+        await autoLoadRawJsonFiles();
+    } catch (err) {
+        console.error('Phase 1 (Raw Data Lake) failed:', err);
+    }
     
-    // PHASE 2: Application Processing (Gatekeeper)
-    let totalIngested = 0;
+    // Check if we need to ingest (36h Cooldown)
+    // NOTE: We only skip if we have models. If DB is empty, we must run.
+    const lastUpdate = await prisma.model.findFirst({
+        select: { updatedAt: true },
+        orderBy: { updatedAt: 'desc' }
+    });
 
+    const thirtySixHoursAgo = new Date(Date.now() - 36 * 60 * 60 * 1000);
+    
+    if (!force && lastUpdate && lastUpdate.updatedAt > thirtySixHoursAgo) {
+        console.log(`[UnifiedIngestionService] Skipping ingestion. Last update was ${lastUpdate.updatedAt.toISOString()} (within 36h).`);
+        return;
+    }
+
+    console.log('[UnifiedIngestionService] Starting Smart Sync Ingestion...');
+    
+    // PHASE 2 & 3: Application Processing & Reconciliation
+    let totalIngested = 0;
+    const validModelIdsByProvider: Record<string, Set<string>> = {};
+
+    // 1. Collect Valid Models from Raw Sources
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
       const providerMatch = file.match(/^(google|openrouter|groq|ollama|mistral)/);
@@ -69,6 +91,9 @@ export class UnifiedIngestionService {
       const castRaw = rawData; 
       const rawModelList = Array.isArray(castRaw) ? castRaw : ((castRaw.data || castRaw.models || []) as Record<string, unknown>[]);
         
+      // Initialize Set for this provider if not exists
+      if (!validModelIdsByProvider[provider]) validModelIdsByProvider[provider] = new Set();
+      
       const uniqueModelMap = new Map<string, Record<string, unknown>>();
       for (const raw of rawModelList) {
           const modelIdRaw = this.resolvePath(raw, mapping.idPath);
@@ -80,120 +105,163 @@ export class UnifiedIngestionService {
 
       const providerConfig = await this.ensureProviderConfig(provider);
 
+      // Upsert Valid & Track
       for (const [modelId, raw] of uniqueModelMap.entries()) {
           const isFree = this.checkIsFree(provider, raw);
 
-          if (provider === 'openrouter' && !isFree) {
-              continue; 
-          }
+          // STRICT FILTER: OpenRouter (Must be truly free)
+          // Other providers are Fail-Open (assumed free/valid if not explicitly paid)
+          if (provider === 'openrouter' && !isFree) { continue; }
 
+          // Track VALID Slug for Reconciliation
+          validModelIdsByProvider[provider].add(modelId);
+
+          // ALIGNMENT: Context Window
           const contextWindow = (this.resolvePath(raw, mapping.contextPath) as number) || 4096;
-          // Use modelId as the unique name (slug) if name mapping fails or to ensure uniqueness
           const nameRaw = this.resolvePath(raw, mapping.namePath);
-          // For current schema, 'name' is the unique identifier combined with providerId.
-          // We will use modelId (slug) as name to ensure stability.
-          // We'll store the display name in providerData if needed.
-          const name = modelId; // Force use of slug as name
-
-          const isMultimodal = JSON.stringify(raw).toLowerCase().includes('vision');
-
-          const modelIdLower = modelId.toLowerCase();
-          const rawStr = JSON.stringify(raw).toLowerCase();
+          const displayName = (typeof nameRaw === 'string' && nameRaw.length > 0) ? nameRaw : modelId;
+          const slug = modelId; // DB 'name' column is the unique slug
+          const cost = isFree ? 0 : 0.002; 
           
-          /* Capability tags - not in relation, but we can compute them */
-          // Schema assumes capabilities relation?
-          // model.capabilities is a one-to-one or one-to-many?
-          // Schema Step 271: model ModelCapabilities { ... } @relation(fields: [modelId], references: [id])
-          
-          const costPer1k = isFree ? 0 : 0.002; // Placeholder cost if not free
-
           try {
-              // Manual upsert using providerId + name(slug)
-              const existing = await prisma.model.findFirst({
-                  where: {
-                          providerId: providerConfig.id,
-                          name: name
+              // Upsert Model
+              const model = await prisma.model.upsert({
+                where: {
+                  providerId_name: {
+                    providerId: providerConfig.id,
+                    name: slug
+                  }
+                },
+                update: {
+                  isActive: true,
+                  costPer1k: cost,
+                  providerData: { ...(raw as object), displayName } as Prisma.JsonObject,
+                  lastSeenAt: new Date(), // Mark as seen now
+                  updatedAt: new Date()
+                },
+                  create: {
+                      providerId: providerConfig.id,
+                      name: slug,
+                      // displayName: displayName, // NOT IN SCHEMA
+                      isActive: true,
+                      costPer1k: cost,
+                      providerData: { ...(raw as object), displayName } as Prisma.JsonObject,
+                      aiData: {}
                   }
               });
 
-              if (existing) {
-                  await prisma.model.update({
-                      where: { id: existing.id },
-                      data: {
-                          isActive: true,
-                          costPer1k: costPer1k,
-                          providerData: raw as Prisma.JsonObject,
-                          lastSeenAt: new Date(),
-                          // Capabilities update logic would go here if needed
-                      }
-                  });
-              } else {
-                  await prisma.model.create({
-                      data: {
-                          providerId: providerConfig.id,
-                          name: name,
-                          isActive: true,
-                          costPer1k: costPer1k,
-                          providerData: raw as Prisma.JsonObject,
-                          aiData: {},
-                          // capabilities: ...
-                      }
-                  });
-              }
+              // Upsert Capabilities
+              await prisma.modelCapabilities.upsert({
+                  where: { modelId: model.id },
+                  create: {
+                      modelId: model.id,
+                      contextWindow: contextWindow,
+                      isMultimodal: JSON.stringify(raw).toLowerCase().includes('vision'),
+                  },
+                  update: {
+                      contextWindow: contextWindow
+                  }
+              });
+              
               totalIngested++;
           } catch (err) {
               console.error(`[Ingestion] Failed to upsert model ${modelId}:`, err);
           }
       }
     }
-    console.log(`✅ Ingestion Complete. Available Models: ${totalIngested}`);
+
+    // 2. RECONCILIATION: Delete/Archive models not in valid set
+    console.log('[UnifiedIngestionService] Running Reconciliation (Diff Sync)...');
+    
+    // Iterate over known providers to clean up
+    const providers = Object.keys(MAPPINGS);
+    for (const provider of providers) {
+        const validSlugs = validModelIdsByProvider[provider] || new Set();
+        
+        // Find DB Models for this provider
+        // We use the slug (name column) for comparison
+        const dbModels = await prisma.model.findMany({
+            where: { providerId: provider },
+            select: { id: true, name: true } 
+        });
+
+        const toRemove = dbModels.filter(m => !validSlugs.has(m.name));
+        
+        if (toRemove.length > 0) {
+            console.log(`[UnifiedIngestionService] ${provider}: Found ${toRemove.length} obsolete/invalid models. Cleanup started.`);
+            const idsToRemove = toRemove.map(m => m.id);
+            
+            // Delete Unused
+            const deleted = await prisma.model.deleteMany({
+                where: {
+                    id: { in: idsToRemove },
+                    modelUsage: { none: {} },
+                    knowledgeVectors: { none: {} }
+                }
+            });
+            console.log(`[UnifiedIngestionService] ${provider}: Hard Deleted ${deleted.count} unused models.`);
+            
+            // Deactivate Used but Obsolete
+            const deactivated = await prisma.model.updateMany({
+                where: {
+                    id: { in: idsToRemove },
+                    isActive: true
+                },
+                data: { isActive: false }
+            });
+            if (deactivated.count > 0) {
+                 console.log(`[UnifiedIngestionService] ${provider}: Deactivated ${deactivated.count} used models.`);
+            }
+        }
+    }
+
+    console.log(`✅ Ingestion Complete. Total Valid Models: ${totalIngested}`);
   }
 
   // The Logic you specifically asked for
   private static checkIsFree(provider: string, raw: Record<string, unknown>): boolean {
-      // Whitelist
-      if (['groq', 'ollama', 'mistral', 'google'].includes(provider)) return true;
-
-      // Strict OpenRouter Check
+      // 1. OpenRouter Policy: Strict Price Filter
       if (provider === 'openrouter') {
-          // If pricing is missing, assume paid.
           const pricing = raw.pricing as Record<string, unknown> | undefined;
-          if (!pricing) return false;
+          if (!pricing) return false; // If no pricing info, assume paid/invalid
           
-          // Cast values to ensure we aren't fooled by strings
           const prompt = Number(pricing.prompt);
           const completion = Number(pricing.completion);
           
-          // EXACT ZERO CHECK
+          // STRICT: Both must be exactly 0
           return prompt === 0 && completion === 0;
       }
-      return false;
+
+      // 2. Everyone Else (Google, Groq, Ollama, Mistral): Assumed Free
+      // We interpret "Free" as "Available to use without per-token charges in this context"
+      // or simply complying with the user's request to treat them as free.
+      return true;
   }
 
-  // Placeholder - waiting for views
   // Helpers
   private static resolvePath(obj: Record<string, unknown>, path: string): unknown {
       return path.split('.').reduce((o: unknown, k) => {
           if (o && typeof o === 'object' && k in o) {
-             return (o as Record<string, unknown>)[k];
+              return (o as Record<string, unknown>)[k];
           }
           return undefined;
       }, obj);
   }
 
   private static async ensureProviderConfig(type: string) {
-      const existing = await prisma.providerConfig.findFirst({ where: { type } });
+      const existing = await prisma.providerConfig.findUnique({ where: { id: type } });
       if (existing) return existing;
-      // apiKey removed from schema
+      
+      const likely = await prisma.providerConfig.findFirst({ where: { type } });
+      if (likely) return likely;
+
       return await prisma.providerConfig.create({
           data: { 
-            id: type, // ID is the provider name
+            id: type, 
             label: type, 
             type, 
             baseURL: '', 
-            isEnabled: true,
-            // @ts-ignore - Schema says removed but types insist?
-            apiKey: 'disabled' 
+            isEnabled: true
           }
       });
   }

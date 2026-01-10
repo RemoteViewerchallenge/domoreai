@@ -481,7 +481,7 @@ Return ONLY the system prompt, no additional commentary.`;
         const createVolcanoAgent = async (_: any) => ({ generate: async (_prompt: any) => "Mocked Response" });
         
         const agent = await createVolcanoAgent({
-          roleId: promptEngineerRole.id,
+          roleId: promptImproverRole.id,
           modelId: null, // CRITICAL: Setting modelId to null forces getBestModel to run.
           isLocked: false, // Let the system dynamically choose the best model
           temperature: 0.7,
@@ -489,7 +489,7 @@ Return ONLY the system prompt, no additional commentary.`;
         });
 
         // 6. Generate with the Prompt Engineer's instructions
-        const fullRequest = `${promptEngineerRole.basePrompt}\n\n---\n\n${request}`;
+        const fullRequest = `${promptImproverRole.basePrompt}\n\n---\n\n${request}`;
         
         console.log('[PromptGen] 🤖 Calling LLM...');
         const generatedPrompt = await agent.generate(fullRequest);
