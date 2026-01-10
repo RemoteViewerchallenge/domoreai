@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
+import { ModelSelector } from "./ModelSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import {
@@ -61,12 +62,55 @@ export class AgentService {
         finalUserGoal = `Context: Target Directory: ${context.targetDir}\n\n${userGoal}`;
       }
 
-      // 1. Create the agent configuration
+      // 1. Resolve Configuration (Auto-Detect Provider)
+      let resolvedModelId = modelConfig.modelId || null;
+      let resolvedProviderId = modelConfig.providerId || undefined;
+
+      // If we have a modelId but no provider, try to find it in the DB
+      if (resolvedModelId && !resolvedProviderId) {
+          // Use findFirst because 'name' might not be globally unique or indexed as a single unique field
+          const modelRecord = await prisma.model.findFirst({
+              where: { name: resolvedModelId }, 
+              select: { providerId: true }
+          });
+          if (modelRecord) {
+              resolvedProviderId = modelRecord.providerId;
+              console.log(`[AgentService] Auto-resolved provider '${resolvedProviderId}' for model '${resolvedModelId}'`);
+          } else if (resolvedModelId.includes('/')) {
+              // Try split strategy "provider/model"
+              const [p] = resolvedModelId.split('/');
+              if (ProviderManager.hasProvider(p)) {
+                  resolvedProviderId = p;
+                  // We keep the full slug as modelId usually, unless provider expects distinct
+                  console.log(`[AgentService] inferred provider '${p}' from slug '${resolvedModelId}'`);
+              }
+          }
+      }
+
+      // If NO model is specified, use ModelSelector immediately to pick the best one
+      if (!resolvedModelId) {
+        try {
+           console.log('[AgentService] No model specified. Using ModelSelector to pick best available...');
+           const selector = new ModelSelector();
+           const safeRole = await prisma.role.findUnique({ where: { id: roleId } }) || { id: 'default', metadata: {} };
+           const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
+           
+           const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, select: { name: true, providerId: true } });
+           if (bestModel) {
+               resolvedModelId = bestModel.name;
+               resolvedProviderId = bestModel.providerId;
+               console.log(`[AgentService] Selected Best Model: ${resolvedModelId} (${resolvedProviderId})`);
+           }
+        } catch (e) {
+           console.warn('[AgentService] Failed to auto-select model:', e);
+        }
+      }
+
       const agentConfig: AgentConfig = {
         roleId,
-        modelId: modelConfig.modelId || null,
-        providerId: modelConfig.providerId || undefined,
-        isLocked: !!modelConfig.modelId, // Lock if model is explicitly provided
+        modelId: resolvedModelId,
+        providerId: resolvedProviderId,
+        isLocked: !!modelConfig.modelId, // Lock if model was explicitly provided in input
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
         userGoal: finalUserGoal, // Pass user goal for memory injection
@@ -126,18 +170,26 @@ export class AgentService {
            
            if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
 
-           // Select new model
-           const fallback = await getBestModel(roleId, failedModels);
+           // Select new model using ModelSelector (Context Aware)
+           console.log('[AgentService] Fallback Strategy: Using ModelSelector for Context-Aware Selection');
+           const selector = new ModelSelector();
+           const safeRole = role || { id: 'default', metadata: {} } as any;
+           
+           // We pass 'failedModels' (which contains Slugs) to exclude them
+           const fallbackId = await selector.resolveModelForRole(safeRole, 0, failedModels);
+           const fallback = await prisma.model.findUnique({ 
+               where: { id: fallbackId }, 
+               include: { provider: true } 
+           });
+
            if (!fallback) throw new Error("No fallback models available.");
 
            // Update Config
-           agentConfig.modelId = fallback.modelId;
+           agentConfig.modelId = fallback.name; // Use Slug
            agentConfig.providerId = fallback.providerId;
-           agentConfig.temperature = fallback.temperature;
-           // agentConfig.maxTokens = fallback.maxTokens; // Keep user pref for length? Or use model default?
-           // Keep user pref for now unless it exceeds model limit (which we can't easily check here without specs)
-
-           console.log(`[AgentService] Switched to fallback model: ${fallback.modelId}`);
+           // agentConfig.temperature = check if defined? Default to current
+           
+           console.log(`[AgentService] Switched to fallback model: ${fallback.name} (Context-Safe)`);
 
            // Re-create agent
            agent = await createVolcanoAgent(agentConfig);
