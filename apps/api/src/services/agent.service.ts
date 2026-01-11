@@ -4,6 +4,7 @@ import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
 import { ModelSelector } from "./ModelSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
+import type { Role } from "@prisma/client";
 import {
   getBestModel,
   recordModelFailure,
@@ -43,6 +44,14 @@ Constraints:
 1. Only output the raw SQL query text. Do NOT include any markdown, commentary, or explanation (e.g., do not use \`\`\`sql ... \`\`\`).
 2. Only use SELECT statements. Do not use INSERT, DELETE, DROP, or ALTER.
 `;
+
+export interface ExtendedRole extends Role {
+  needsVision?: boolean;
+  needsCoding?: boolean;
+  needsReasoning?: boolean;
+  needsTools?: boolean;
+  variants?: unknown[]; 
+}
 
 export class AgentService {
   async startSession(input: StartSessionInput) {
@@ -92,7 +101,8 @@ export class AgentService {
         try {
            console.log('[AgentService] No model specified. Using ModelSelector to pick best available...');
            const selector = new ModelSelector();
-           const safeRole = await prisma.role.findUnique({ where: { id: roleId } }) || { id: 'default', metadata: {} };
+           const safeRole = (await prisma.role.findUnique({ where: { id: roleId } })) || ({ id: 'default', metadata: {} } as unknown as Role);
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
            const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
            
            const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, select: { name: true, providerId: true } });
@@ -121,11 +131,41 @@ export class AgentService {
       let agent = await createVolcanoAgent(agentConfig);
 
       // 2.5 Fetch Role to get Tools and other defaults
-      const role = await prisma.role.findUnique({
+      const rawRole = await prisma.role.findUnique({
         where: { id: roleId },
-        include: { tools: { include: { tool: true } } }
+        include: { 
+            tools: { include: { tool: true } },
+            variants: { where: { isActive: true }, take: 1 } // Fetch DNA
+        }
       });
-      const tools = role?.tools.map(rt => rt.tool.name) || [];
+      
+      
+      // Flatten DNA (Shared Logic with Router)
+      let role: ExtendedRole | null = null;
+      
+      if (rawRole) {
+          role = { ...rawRole } as ExtendedRole;
+          
+          if (rawRole.variants && rawRole.variants.length > 0) {
+              const v = rawRole.variants[0];
+              // Safely cast JSON config
+              const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
+              const identity = (v.identityConfig && typeof v.identityConfig === 'object') ? v.identityConfig as Record<string, unknown> : {};
+              
+              const caps: string[] = Array.isArray(cortex.capabilities) ? cortex.capabilities as string[] : [];
+   
+              role.needsVision = caps.includes('vision');
+              role.needsCoding = caps.includes('coding');
+              role.needsReasoning = caps.includes('reasoning');
+              role.needsTools = caps.includes('tools');
+              
+              if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
+                  role.basePrompt = identity.systemPromptDraft;
+              }
+          }
+      }
+
+      const tools = rawRole?.tools.map(rt => rt.tool.name) || [];
 
       // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);
@@ -173,10 +213,11 @@ export class AgentService {
            // Select new model using ModelSelector (Context Aware)
            console.log('[AgentService] Fallback Strategy: Using ModelSelector for Context-Aware Selection');
            const selector = new ModelSelector();
-           const safeRole = role || { id: 'default', metadata: {} } as any;
+           const safeRole = (role ? role : ({ id: 'default', metadata: {} } as ExtendedRole));
            
            // We pass 'failedModels' (which contains Slugs) to exclude them
-           const fallbackId = await selector.resolveModelForRole(safeRole, 0, failedModels);
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+           const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
            const fallback = await prisma.model.findUnique({ 
                where: { id: fallbackId }, 
                include: { provider: true } 
@@ -294,6 +335,7 @@ export class AgentService {
       });
 
       if (fallback) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
         const metadata = ((role as any)?.metadata as Record<string, unknown>) || {};
         selectedModel = {
           modelId: fallback.id,
