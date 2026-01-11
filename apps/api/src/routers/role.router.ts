@@ -1,4 +1,15 @@
 import { z } from "zod";
+import type { Role } from "@prisma/client";
+
+interface RouterExtendedRole extends Role {
+    needsVision?: boolean;
+    needsCoding?: boolean;
+    needsReasoning?: boolean;
+    needsTools?: boolean;
+    needsJson?: boolean;
+    needsImageGeneration?: boolean;
+    variants?: unknown[]; 
+}
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
@@ -6,6 +17,7 @@ import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
 import { ModelSelector } from "../services/ModelSelector.js";
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
+
 
 // Helper function for template-based prompt generation (fallback)
 function generateTemplatePrompt(
@@ -147,6 +159,10 @@ export const roleRouter = createTRPCRouter({
             include: {
                 tool: true
             }
+        },
+        variants: {
+            where: { isActive: true },
+            take: 1
         }
       },
     });
@@ -161,6 +177,7 @@ export const roleRouter = createTRPCRouter({
     const enrichedRoles = await Promise.all(roles.map(async (role) => {
        let currentModelName = 'Auto-Detect';
        try {
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
            const modelId = await modelSelector.resolveModelForRole(role as any);
            // Fetch the friendly name for this model ID
            const model = await prisma.model.findUnique({
@@ -179,8 +196,42 @@ export const roleRouter = createTRPCRouter({
        else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
        else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
 
+       // DNA Fusion: Overlay Variant Config if available
+       const activeVariant = role.variants?.[0];
+       const fusedRole = { ...role } as RouterExtendedRole;
+
+       if (activeVariant) {
+           // Safely cast JSON config with type check
+           const cortexConfig = (activeVariant.cortexConfig && typeof activeVariant.cortexConfig === 'object') 
+                ? activeVariant.cortexConfig as Record<string, unknown> 
+                : {};
+           const identityConfig = (activeVariant.identityConfig && typeof activeVariant.identityConfig === 'object') 
+                ? activeVariant.identityConfig as Record<string, unknown> 
+                : {};
+
+           const capabilities = Array.isArray(cortexConfig.capabilities) ? cortexConfig.capabilities as string[] : [];
+
+           // 1. Overlay Capabilities (DNA -> Legacy Boolean Flags)
+           fusedRole.needsVision = capabilities.includes('vision');
+           fusedRole.needsCoding = capabilities.includes('coding');
+           fusedRole.needsReasoning = capabilities.includes('reasoning');
+           fusedRole.needsTools = capabilities.includes('tools');
+           fusedRole.needsJson = capabilities.includes('json');
+           fusedRole.needsImageGeneration = capabilities.includes('image_generation') || capabilities.includes('dalle');
+           
+           // 2. Overlay Context Window (DNA Context Range -> Legacy Metadata)
+           if (cortexConfig.contextRange) {
+               // Map context range if needed, e.g. fusedRole.maxContext = ...
+           }
+
+           // 3. Overlay System Prompt (DNA Identity -> Legacy basePrompt)
+           if (typeof identityConfig.systemPromptDraft === 'string' && identityConfig.systemPromptDraft) {
+               fusedRole.basePrompt = identityConfig.systemPromptDraft;
+           }
+       }
+
        return {
-           ...role,
+           ...fusedRole,
            tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
            currentModel: currentModelName,
            scope: scope,
@@ -235,9 +286,10 @@ export const roleRouter = createTRPCRouter({
   updateCategory: publicProcedure
     .input(z.object({ id: z.string(), name: z.string().min(1).optional(), parentId: z.string().nullable().optional() }))
     .mutation(async ({ input }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {};
       if (input.name) data.name = input.name;
-      if (input.parentId !== undefined) data.parentId = input.parentId;
+      if (input.parentId !== undefined) data.parentId = input.parentId || null;
 
       return prisma.roleCategory.update({
         where: { id: input.id },
@@ -273,10 +325,8 @@ export const roleRouter = createTRPCRouter({
   moveRoleToCategory: publicProcedure
     .input(z.object({ roleId: z.string(), categoryId: z.string().nullable() }))
     .mutation(async ({ input }) => {
-      let categoryName = 'Uncategorized';
       if (input.categoryId) {
-          const cat = await prisma.roleCategory.findUnique({ where: { id: input.categoryId }});
-          if (cat) categoryName = cat.name;
+          await prisma.roleCategory.findUnique({ where: { id: input.categoryId }});
       }
       
       return prisma.role.update({
@@ -320,7 +370,7 @@ export const roleRouter = createTRPCRouter({
           basePrompt,
           // categoryString: categoryName,
           categoryId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
           metadata: metadata as any,
           tools: {
             create: tools.map(toolName => ({
@@ -342,6 +392,7 @@ export const roleRouter = createTRPCRouter({
         where: { id }, 
         select: { id: true, name: true, description: true, metadata: true } 
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       const currentMeta = (existing?.metadata as any) || {};
 
       const newMetadata = {
@@ -350,6 +401,7 @@ export const roleRouter = createTRPCRouter({
       };
 
       // Filter out undefined values from data object
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {
         ...(name !== undefined && { name }),
         ...(basePrompt !== undefined && { basePrompt }),
@@ -365,7 +417,6 @@ export const roleRouter = createTRPCRouter({
           create: { name: resolvedCategoryName }
         });
         data.categoryId = cat.id;
-        data.categoryString = resolvedCategoryName;
       }
 
       // Handle tools update if provided
@@ -478,7 +529,8 @@ Return ONLY the system prompt, no additional commentary.`;
       try {
         // const { createVolcanoAgent } = await import('../services/AgentFactory.js');
         // DISABLED for now
-        const createVolcanoAgent = async (_: any) => ({ generate: async (_prompt: any) => "Mocked Response" });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await
+        const createVolcanoAgent = async (_: any) => ({ generate: async (__prompt: any) => "Mocked Response" });
         
         const agent = await createVolcanoAgent({
           roleId: promptImproverRole.id,
