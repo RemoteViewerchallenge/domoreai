@@ -56,7 +56,7 @@ export class NebulaOps {
 
         // Link to Parent
         if (draft.nodes[parentId]) {
-          draft.nodes[parentId].children.push(newId);
+          (draft.nodes[parentId].children as any[]).push(newId);
         }
       });
     });
@@ -110,7 +110,7 @@ export class NebulaOps {
 
       // Link to Parent
       if (draft.nodes[parentId]) {
-        draft.nodes[parentId].children.push(newId);
+        (draft.nodes[parentId].children as any[]).push(newId);
       }
     });
 
@@ -373,13 +373,13 @@ export class NebulaOps {
       // Remove from old parent
       const oldParent = draft.nodes[node.parentId!];
       if (oldParent) {
-        oldParent.children = oldParent.children.filter((id) => id !== nodeId);
+        oldParent.children = (oldParent.children as any[]).filter((id) => id !== nodeId);
       }
 
       // Add to new parent
       const newParent = draft.nodes[targetParent];
       if (newParent) {
-        newParent.children.splice(targetIndex, 0, nodeId);
+        (newParent.children as any[]).splice(targetIndex, 0, nodeId);
         node.parentId = targetParent;
       }
     });
@@ -400,14 +400,14 @@ export class NebulaOps {
       const deleteRecursive = (id: NebulaId) => {
         const n = draft.nodes[id];
         if (!n) return;
-        n.children.forEach(deleteRecursive);
+        (n.children as any[]).forEach(deleteRecursive);
         delete draft.nodes[id];
       };
 
       // Unlink from parent
       const parentId = draft.nodes[nodeId]?.parentId;
       if (parentId && draft.nodes[parentId]) {
-        draft.nodes[parentId].children = draft.nodes[parentId].children.filter(
+        draft.nodes[parentId].children = (draft.nodes[parentId].children as any[]).filter(
           (id) => id !== nodeId
         );
       }
@@ -433,7 +433,7 @@ export class NebulaOps {
 
       // 2. Link fragment root to parent
       if (draft.nodes[parentId]) {
-        draft.nodes[parentId].children.push(fragment.rootId);
+        (draft.nodes[parentId].children as any[]).push(fragment.rootId);
       }
 
       // 3. Merge Imports & Exports (set union)

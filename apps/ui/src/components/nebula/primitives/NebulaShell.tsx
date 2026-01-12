@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { injectCssVariables } from '../design-system/cssVariables.js';
-import AgentWorkbench from '../pages/AgentWorkbench.js';
+import { injectCssVariables } from '../../../design-system/cssVariables.js';
+import AgentWorkbench from '../../../pages/AgentWorkbench.js';
 
 export function NebulaShell() {
   // Inject Nebula Physics on mount

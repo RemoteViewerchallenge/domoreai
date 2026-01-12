@@ -26,7 +26,9 @@ export default function GeneratedPage() {
   private renderNode(node: NebulaNode, tree: NebulaTree): string {
     // Handle Logic Nodes: Loops
     if (node.type === 'Loop' && node.logic) {
-      const childJsx = node.children[0] ? this.renderNode(tree.nodes[node.children[0]], tree) : '';
+      const firstChild = node.children[0];
+      const childId = typeof firstChild === 'string' ? firstChild : (firstChild as any)?.id;
+      const childJsx = childId ? this.renderNode(tree.nodes[childId], tree) : '';
       return `{${node.logic.loopData}.map((${node.logic.iterator}, index) => (
         ${childJsx}
       ))}`;
@@ -34,7 +36,9 @@ export default function GeneratedPage() {
 
     // Handle Logic Nodes: Conditions
     if (node.type === 'Condition' && node.logic) {
-      const childJsx = node.children[0] ? this.renderNode(tree.nodes[node.children[0]], tree) : '';
+      const firstChild = node.children[0];
+      const childId = typeof firstChild === 'string' ? firstChild : (firstChild as any)?.id;
+      const childJsx = childId ? this.renderNode(tree.nodes[childId], tree) : '';
       return `{${node.logic.condition} && (
         ${childJsx}
       )}`;
@@ -92,7 +96,10 @@ export default function GeneratedPage() {
     let childrenJSX = '';
     if (hasRecursiveChildren) {
         childrenJSX = node.children
-        .map(childId => this.renderNode(tree.nodes[childId], tree))
+        .map(childOrId => {
+            const cid = typeof childOrId === 'string' ? childOrId : (childOrId as any).id;
+            return this.renderNode(tree.nodes[cid], tree);
+        })
         .join('\n');
     } else if (node.props.children) {
         childrenJSX = typeof node.props.children === 'string' ? node.props.children : '{...}';
@@ -117,7 +124,8 @@ export default function GeneratedPage() {
     }
   }
 
-  private resolveClassNames(style: StyleTokens): string {
+  private resolveClassNames(style?: StyleTokens): string {
+      if (!style) return '';
       // Reuse logic from Renderer or a shared util
       return [
         style.padding,

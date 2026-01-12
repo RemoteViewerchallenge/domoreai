@@ -1,7 +1,7 @@
 
 import { Routes, Route } from "react-router-dom";
 import './App.css';
-import { NebulaShell } from './nebula/NebulaShell.js';
+import { NebulaShell } from './components/nebula/primitives/NebulaShell.js';
 import { Toaster } from './components/ui/toaster.js';
 import { ThemeProvider } from './theme/ThemeProvider.js';
 import { FileSystemProvider } from './stores/FileSystemStore.js';
