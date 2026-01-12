@@ -22,6 +22,7 @@ interface CortexConfig {
     contextRange: { min: number; max: number };
     reflectionEnabled: boolean;
     capabilities: string[];
+    tools: string[]; // List of tool names
 }
 
 interface ContextConfig {
@@ -69,6 +70,11 @@ export class RoleFactoryService {
         // 4. Context Strategy (LLM)
         // Defines MEMORY access.
         const contextConfig = await this.contextArchitect(provider, intent);
+
+        // 5. Tool Architect (LLM)
+        // Determines which MCP or System tools this role needs.
+        const suggestedTools = await this.toolArchitect(provider, intent);
+        cortexConfig.tools = suggestedTools;
 
         // 5. Persist the DNA
         const variant = await prisma.roleVariant.create({
@@ -161,7 +167,8 @@ export class RoleFactoryService {
                 orchestration: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
                 contextRange: { min: 4096, max: 8192 },
                 reflectionEnabled: false,
-                capabilities: caps
+                capabilities: caps,
+                tools: []
             };
         }
     }
@@ -226,6 +233,52 @@ export class RoleFactoryService {
                 assessmentStrategy: 'LINT_ONLY',
                 enforcementLevel: 'WARN_ONLY'
             };
+        }
+    }
+
+    /**
+     * MODULE E: Tools (The Extensions)
+     * "What can I do?"
+     */
+    private async toolArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<string[]> {
+        // 1. Get all available tools from the database (including newly synced MCP tools)
+        const dbTools = await prisma.tool.findMany({
+            where: { isEnabled: true },
+            select: { name: true, description: true }
+        });
+
+        const toolsList = dbTools.map((t: { name: string; description: string }) => `- ${t.name}: ${t.description}`).join('\n');
+
+        const prompt = `
+        You are the Tool Architect.
+        Select the most appropriate tools for this new AI Agent from the available inventory.
+        
+        Intent:
+        - Domain: ${intent.domain}
+        - Description: ${intent.description}
+        - Complexity: ${intent.complexity}
+
+        AVAILABLE TOOLS:
+        ${toolsList}
+
+        Output JSON with keys:
+        - selectedTools: string[] (The names of the tools you want to assign)
+        `;
+
+        try {
+            const raw = await provider.generateCompletion({
+                modelId: 'gpt-4o',
+                messages: [{ role: 'user', content: prompt }],
+                response_format: { type: "json_object" }
+            });
+            const result = JSON.parse(raw) as { selectedTools: string[] };
+            // Filter to make sure we only returned tools that actually exist
+            const validNames = new Set(dbTools.map((t: { name: string }) => t.name));
+            return result.selectedTools.filter(name => validNames.has(name));
+        } catch (e: unknown) {
+            console.warn("Tool Architect failed, falling back to basic tools.", e);
+            // Default fallback
+            return ['filesystem', 'terminal'];
         }
     }
 

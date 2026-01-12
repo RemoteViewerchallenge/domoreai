@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { prisma } from '../db.js';
 
 export interface AgentLesson {
   rule: string;
@@ -31,7 +32,7 @@ export async function loadRolePrompt(roleName: string): Promise<string> {
     }
     
     return content;
-  } catch (error) {
+  } catch {
     // If file doesn't exist, return a default prompt
     console.warn(`[PromptFactory] Role prompt not found for "${roleName}", using default`);
     return `You are a helpful ${roleName}. Assist the user with their request.`;
@@ -78,57 +79,30 @@ export class PromptFactory {
       ? `\n## 🧠 PREVIOUS LESSONS\n${lessons.map(l => `- ${l.rule}`).join('\n')}`
       : '';
 
-    // 3. Load Tool Definitions & Examples
+    // 3. Load Tool Definitions from DB
     let toolSection = '';
-    try {
-      // Resolve path to .domoreai/tools
-      let rootDir = process.cwd();
-      if (rootDir.endsWith('apps/api')) {
-          rootDir = path.resolve(rootDir, '../../');
-      }
-      
-      const toolsDir = path.join(rootDir, '.domoreai/tools');
-      
-      const files = await fs.readdir(toolsDir).catch(() => []);
-      
-      let toolDefs = '';
-      let toolExamples = '';
+    if (tools && tools.length > 0) {
+      try {
+        const dbTools = await prisma.tool.findMany({
+          where: {
+            name: { in: tools },
+            isEnabled: true
+          },
+          select: { name: true, instruction: true }
+        });
 
-      for (const file of files) {
-          // If tools list is provided, only include files that start with one of the tool names
-          let shouldInclude = true;
-          if (tools && tools.length > 0) {
-             const serverName = file.split('.')[0].split('_')[0];
-             if (!tools.includes(serverName)) {
-                 shouldInclude = false;
-             }
-          }
-
-          if (shouldInclude) {
-              if (file.endsWith('.d.ts')) {
-                  const content = await fs.readFile(path.join(toolsDir, file), 'utf-8');
-                  toolDefs += content + '\n';
-              }
-              if (file.endsWith('_examples.md')) {
-                  const content = await fs.readFile(path.join(toolsDir, file), 'utf-8');
-                  toolExamples += content + '\n';
-              }
-          }
-      }
-
-      if (toolDefs) {
-        toolSection = `
+        if (dbTools.length > 0) {
+          const toolDefs = dbTools.map(t => t.instruction).join('\n');
+          toolSection = `
 ## 🛠️ AVAILABLE TOOLS (TYPE DEFINITIONS)
 \`\`\`typescript
 ${toolDefs}
 \`\`\`
-
-## 💡 USAGE EXAMPLES
-${toolExamples}
 `;
+        }
+      } catch (err) {
+        console.warn('[PromptFactory] Failed to load tools from DB:', err);
       }
-    } catch {
-      // Ignore errors if tools directory doesn't exist or can't be read
     }
 
     // 4. Project Specific Prompt

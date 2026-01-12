@@ -8,11 +8,11 @@ import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
-import { prisma as db, shutdownDb } from './db.js'; 
+import { shutdownDb } from './db.js'; 
 // import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
-import { scheduler } from './services/JobScheduler.js';
+// import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, ENCRYPTION_KEY_LENGTH, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
@@ -106,8 +106,9 @@ async function startServer() {
     });
   });
 
-  server.listen(port, async () => {
-    console.log(`API server listening at ${API_HOST}:${port}`);
+  server.listen(port, () => {
+    (async () => {
+      console.log(`API server listening at ${API_HOST}:${port}`);
     
     // Display free model inventory
     try {
@@ -155,12 +156,21 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
       console.warn('⚠️ Backup service failed to start:', err);
     }
 
+    // [NEW] Trigger Background MCP Tool Sync
+    // This ensures the UI reflects any new MCP servers added to RegistryClient
+    void import('./services/McpToolSyncService.js').then(({ McpToolSyncService }) => {
+      void McpToolSyncService.syncAllTools()
+        .then(stats => console.log(`[McpSync] Startup sync complete. Tools: ${stats.tools}`))
+        .catch(err => console.error('[McpSync] Startup sync failed:', err));
+    });
+
     // Start persistent model doctor
     // try {
     //   await persistentModelDoctor.start();
     // } catch (err) {
     //   console.warn('⚠️ Persistent model doctor failed to start:', err);
     // }
+    })();
   });
 
 
@@ -176,12 +186,14 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
     backupService.stop();
     // persistentModelDoctor.stop();
     
-    server.close(async () => {
-      console.log('HTTP server closed.');      
+    server.close(() => {
+      (async () => {
+        console.log('HTTP server closed.');      
       wsService.close(); // Assuming WebSocketService has a .close() method
       await shutdownDb();
       console.log('Database connection closed.');
-      process.exit(0);
+        process.exit(0);
+      })();
     });
 
     // Force exit if graceful shutdown takes too long (e.g. 5s)
@@ -201,4 +213,4 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
 // JobScheduler will gracefully handle missing tables when enabled.
 
 console.log('Server starting... (Force Restart 2)');
-startServer();
+void startServer();
