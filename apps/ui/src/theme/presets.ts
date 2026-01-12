@@ -48,6 +48,23 @@ export const darkTheme: Theme = {
       },
     },
   },
+  components: {
+    menuBar: {
+      height: '3.5rem',
+      background: 'rgba(24, 24, 27, 0.8)',
+      backdropBlur: '12px',
+      itemGap: '0.5rem',
+      fontSize: '10px',
+    },
+    floatingNav: {
+      buttonSize: '3rem',
+      iconSize: '1.25rem',
+      radius: '9999px',
+      background: 'rgba(24, 24, 27, 0.9)',
+      offsetBottom: '2rem',
+      offsetLeft: '2rem',
+    }
+  },
   timestamp: Date.now(),
 };
 
@@ -98,6 +115,23 @@ export const lightTheme: Theme = {
         'status.success': 'CheckCircle',
       },
     },
+  },
+  components: {
+    menuBar: {
+      height: '3.5rem',
+      background: 'rgba(255, 255, 255, 0.8)',
+      backdropBlur: '12px',
+      itemGap: '0.5rem',
+      fontSize: '10px',
+    },
+    floatingNav: {
+      buttonSize: '3rem',
+      iconSize: '1.25rem',
+      radius: '9999px',
+      background: 'rgba(255, 255, 255, 0.9)',
+      offsetBottom: '2rem',
+      offsetLeft: '2rem',
+    }
   },
   timestamp: Date.now(),
 };

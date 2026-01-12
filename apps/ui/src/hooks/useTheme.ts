@@ -1,34 +1,20 @@
-import { useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
+import { useThemeContext } from '../theme/ThemeProvider.js';
 import { useCallback } from 'react';
 
-// Mapping needed because the old useTheme hook return structure 
-// matches the old Context, but now we are using the NewUIThemeProvider.
-// We proxy the calls to the new provider.
-
-// Original ThemeContextValue interface:
-// interface ThemeContextValue {
-//   theme: Theme;
-//   setTheme: (partial: Partial<Theme>) => void;
-//   applyPreset: (preset: ThemePreset) => void;
-//   resetToDefault: () => void;
-// }
+// Adapter to match old hook signature if necessary, 
+// or simply expose what we have if the consumer is flexible.
 
 export const useTheme = () => {
-  const { theme, setTheme: setNewTheme } = useNewUITheme();
+  const { theme, setTheme: setContextTheme, resetToDefault } = useThemeContext();
 
-  // Adapter to match old hook signature if necessary, 
-  // or simply expose what we have if the consumer is flexible.
-  // WorkSpace.tsx expects: { theme, setTheme }
-  
-  // The old setTheme took a partial. The new one takes a SetStateAction.
-  // We need to adapt it.
+  // The old useTheme might have expected different arguments, but we'll map it simple for now.
+  // The context's setTheme takes Partial<Theme>
   const setTheme = useCallback((partial: any) => {
-     setNewTheme((prev) => ({ ...prev, ...partial }));
-  }, [setNewTheme]);
+     setContextTheme(partial);
+  }, [setContextTheme]);
   
   // Mock other functions if needed by legacy components
   const applyPreset = useCallback(() => console.warn('applyPreset not implemented in adapter'), []);
-  const resetToDefault = useCallback(() => console.warn('resetToDefault not implemented in adapter'), []);
 
   return { theme, setTheme, applyPreset, resetToDefault };
 };
