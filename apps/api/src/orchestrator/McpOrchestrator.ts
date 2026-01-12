@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { RegistryClient } from './mcp-registry-client.js';
+import { RegistryClient } from '../services/mcp-registry-client.js';
 import { SandboxTool } from '../types.js';
 import { searchCodebaseTool } from '../tools/search.js';
 import { IMcpOrchestrator } from '../interfaces/IMcpOrchestrator.js';
@@ -10,6 +10,12 @@ interface ActiveServer {
   client: Client;
   transport: StdioClientTransport;
   lastUsed: number;
+}
+
+interface McpToolResult {
+  content?: Array<{ type: string; text?: string }>;
+  isError?: boolean;
+  error?: unknown;
 }
 
 export class McpOrchestrator implements IMcpOrchestrator {
@@ -76,21 +82,23 @@ export class McpOrchestrator implements IMcpOrchestrator {
           });
 
           // If the MCP protocol returned an application-level error, THROW so generated code's try/catch can handle it
-          if (result && typeof result === 'object' && (result.isError || (result as any).error)) {
+          const mcpResult = result as unknown as McpToolResult;
+          if (mcpResult && (mcpResult.isError || mcpResult.error)) {
             console.warn(`[MCP] Tool Logic Error from ${serverName}:${tool.name}:`, result);
-            throw new Error(`MCP Tool Error: ${JSON.stringify(result.content ?? result)}`);
+            throw new Error(`MCP Tool Error: ${JSON.stringify(mcpResult.content ?? result)}`);
           }
 
           // Unwrap single text content for convenience
-          if (result && result.content && Array.isArray(result.content) && result.content.length === 1 && result.content[0].type === 'text') {
-            return result.content[0].text;
+          if (mcpResult && mcpResult.content && Array.isArray(mcpResult.content) && mcpResult.content.length === 1 && mcpResult.content[0].type === 'text') {
+            return mcpResult.content[0].text;
           }
 
-          return result.content ?? result;
+          return mcpResult.content ?? result;
 
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`[MCP] Protocol Error calling ${serverName}:${tool.name}:`, error);
-          throw new Error(`Failed to execute ${safeName}: ${error.message || String(error)}`);
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to execute ${safeName}: ${message}`);
         }
       }
     };
@@ -134,7 +142,7 @@ export class McpOrchestrator implements IMcpOrchestrator {
 
       // Document the server
       // We run this in background so it doesn't block startup
-      import('./ToolDocumenter.js').then(({ ToolDocumenter }) => {
+      void import('../services/ToolDocumenter.js').then(({ ToolDocumenter }) => {
         void ToolDocumenter.documentServer(serverName, client).catch(err => {
           console.error(`[Orchestrator] Failed to document ${serverName}:`, err);
         });
