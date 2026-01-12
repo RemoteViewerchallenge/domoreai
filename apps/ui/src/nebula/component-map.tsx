@@ -9,6 +9,7 @@ import { ModelContextSelector } from '../features/nebula-renderer/components/Mod
 import { RoleModelOverride } from '../components/RoleModelOverride.js';
 import { TokenIcon } from '@/components/nebula/TokenIcon.js';
 import { ThemeManager } from '@/components/nebula/ThemeManager.js';
+import { NebulaShell } from './NebulaShell.js';
 
 import { Input } from '../components/ui/input.js';
 import { Button } from '../components/ui/button.js';
@@ -52,7 +53,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   'ModelContextSelector': ModelContextSelector,
   'RoleModelOverride': RoleModelOverride,
   'TokenIcon': TokenIcon,
-  'ThemeManager': ThemeManager
+  'ThemeManager': ThemeManager,
+  'NebulaShell': NebulaShell
 };
 
 export const resolveComponent = (name: string) => {

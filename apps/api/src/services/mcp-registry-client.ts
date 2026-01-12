@@ -8,22 +8,13 @@ export class RegistryClient implements IRegistryClient {
       { name: 'postgres', description: 'System: Database inspection' },
       { name: 'playwright', description: 'System: UI verification' },
       { name: 'language-server', description: 'System: LSP Intelligence' },
-      { name: 'roundtable', description: 'Orchestration: Model coordination' },
-      { name: 'ncp', description: 'Discovery: Semantic tool management' },
       { name: 'context7', description: 'Grounding: Documentation fetching' },
-      { name: 'mastra', description: 'Workflow: Process control' },
-      { name: 'deepwiki', description: 'Knowledge: Deep research' },
       { name: 'docker', description: 'Execution: Sandboxed environment' },
       { name: 'memory', description: 'Memory: Knowledge Graph' },
-      { name: 'tavily', description: 'Web Search: Tavily Search' },
-      { name: 'serena', description: 'Coding: Agent Toolkit' },
-      { name: 'openspec', description: 'SDLC: Spec-Driven Development' },
-      { name: 'graphiti', description: 'Memory: Temporal Knowledge Graph' },
-      { name: 'sentry', description: 'Monitoring: Sentry Error Tracking' },
-      { name: 'linear', description: 'Project Management: Linear Issues' },
-      { name: 'jira', description: 'Project Management: Jira Issues' },
-      { name: 'mindsdb', description: 'Data: AI Database' },
-      { name: 'langgraph', description: 'Workflow: LangGraph Agents' }
+      { name: 'planning', description: 'Strategy: Software Planning Tool' },
+      { name: 'deep-research', description: 'Research: Deep Web & Academic Search' },
+      { name: 'commander', description: 'System: Process & Fuzzy Search' },
+      { name: 'linear', description: 'Project Management: Linear Issues' }
     ]);
   }
 
@@ -33,15 +24,15 @@ export class RegistryClient implements IRegistryClient {
     const configs: Record<string, { command: string; args: string[]; env?: Record<string, string> }> = {
       // 1. Perception Layer (Filesystem)
       'filesystem': {
-        command: 'sh',
-        args: ['-c', 'cd /home/guy/mono/mcp/extracted/filesystem-mcp-server-main && npx tsx src/index.ts'],
+        command: 'node',
+        args: ['/home/guy/mono/apps/api/node_modules/@cyanheads/filesystem-mcp-server/dist/index.js'],
         env: {}
       },
       
       // 2. Operational History (Git)
       'git': {
-        command: 'sh',
-        args: ['-c', 'cd /home/guy/mono/mcp/extracted/git-mcp-server-main && npx tsx src/index.ts'],
+        command: 'node',
+        args: ['/home/guy/mono/apps/api/node_modules/git-mcp-server/build/index.js'],
         env: {}
       },
       
@@ -63,50 +54,33 @@ export class RegistryClient implements IRegistryClient {
 
       // 5. Cognition (Language Server)
       'language-server': {
-        command: 'sh',
-        args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-language-server-main && ./mcp-language-server'],
-        env: {}
-      },
-
-      // 6. Orchestration (Roundtable)
-      'roundtable': {
-         command: 'uv',
-         args: ['run', '--directory', '/home/guy/mono/mcp/extracted/roundtable-main', 'roundtable-mcp-server'],
+         command: '/home/guy/mono/mcp/extracted/mcp-language-server-main/mcp-language-server',
+         args: [
+             '-lsp', '/home/guy/mono/apps/api/node_modules/.bin/typescript-language-server', 
+             '-workspace', '/home/guy/mono',
+             '--', 
+             '--stdio'
+         ],
          env: {}
       },
 
-      // 7. Discovery (NCP)
-      'ncp': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/ncp-main && npx tsx src/index.ts'],
-         env: {}
-      },
+
 
       // 8. Grounding (Context7)
       'context7': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/context7-master/packages/mcp && node dist/index.js'],
+         command: 'node',
+         args: ['/home/guy/mono/mcp/extracted/context7-master/packages/mcp/dist/index.js'],
          env: {}
       },
 
-      // 9. Workflow (Mastra)
-      'mastra': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mastra-main/packages/mcp && node dist/index.js'],
-         env: {}
-      },
+
 
       // 10. Knowledge (DeepWiki)
-      'deepwiki': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/deepwiki-mcp-main && npx tsx src/index.ts'],
-         env: {}
-      },
 
       // 11. Execution (Docker)
       'docker': {
-         command: 'uv',
-         args: ['run', '--directory', '/home/guy/mono/mcp/extracted/mcp-server-docker-main', 'mcp-server-docker'],
+         command: '/home/guy/mono/mcp/extracted/mcp-server-docker-main/.venv/bin/mcp-server-docker',
+         args: [],
          env: {}
       },
       
@@ -117,68 +91,41 @@ export class RegistryClient implements IRegistryClient {
          env: {}
       },
 
-      // 13. Web Search (Tavily)
-      'tavily': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-server-tavily-main && uv run tavily-search'],
-         env: {}
-      },
-
-      // 14. Coding Agent (Serena)
-      'serena': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/serena-main && uv run serena-mcp-server'],
-         env: {}
-      },
-
-      // 15. SDLC (OpenSpec)
-      'openspec': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/openspec-main && node dist/cli/index.js'],
-         env: {}
-      },
-
-      // 16. Temporal Graph (Graphiti)
-      'graphiti': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/graphiti-main && uv run -m mcp_server'],
-         env: {}
-      },
-
-      // 17. Monitoring (Sentry)
-      'sentry': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/sentry-mcp-main && node packages/mcp-server/dist/index.js'],
-         env: {}
-      },
-
       // 18. Project Management (Linear)
       'linear': {
          command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-linear-main && node dist/index.js'],
+         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-linear-main && node --experimental-json-modules dist/index.js'],
          env: {}
       },
 
-      // 19. Project Management (Jira)
-      'jira': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/mcp-atlassian-main && uv run mcp-atlassian'],
+
+
+
+
+
+
+      // 20. Planning (Software Planning Tool)
+      'planning': {
+         command: 'node',
+         args: ['/home/guy/mono/mcp/extracted/Software-planning-mcp-main/build/index.js'],
          env: {}
       },
 
-      // 20. AI Database (MindsDB)
-      'mindsdb': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/minds-mcp-main && uv run server.py'],
+      // 21. Research (Deep Research)
+      'deep-research': {
+         command: '/home/guy/mono/mcp/extracted/Claude-Deep-Research-main/.venv/bin/python',
+         args: ['/home/guy/mono/mcp/extracted/Claude-Deep-Research-main/deep_research.py'],
          env: {}
       },
+      
+      // 22. Commander (Desktop Commander)
+      'commander': {
+          command: 'node',
+          args: ['/home/guy/mono/mcp/extracted/DesktopCommanderMCP-main/dist/index.js'],
+          env: {}
+      },
 
-      // 21. Workflow Agents (LangGraph)
-      'langgraph': {
-         command: 'sh',
-         args: ['-c', 'cd /home/guy/mono/mcp/extracted/langgraph-mcp-main && uv run -m langgraph_mcp'],
-         env: {}
-      }
+
     };
 
     const config = configs[serverName];
