@@ -73,5 +73,20 @@ export const designTokens = {
       offsetBottom: '2rem',
       offsetLeft: '2rem',
     }
+  },
+  
+  // --- AI INTENT SYSTEM ---
+  ai: {
+    intent: {
+      code: 'var(--color-blue-500)',      // Logic / Structure
+      terminal: 'var(--color-purple-500)', // System / Internal
+      browser: 'var(--color-orange-500)',  // External / World
+      docs: 'var(--color-emerald-500)',    // Knowledge / Facts
+      chat: 'var(--color-pink-500)',       // Personality / Vibe
+    },
+    ui: {
+      toolbarBg: 'var(--bg-secondary)',    // Context Bar Background
+      toolbarBorder: 'var(--border-color)' // Context Bar Separator
+    }
   }
 };

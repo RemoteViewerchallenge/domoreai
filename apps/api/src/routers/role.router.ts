@@ -608,4 +608,63 @@ Return ONLY the system prompt, no additional commentary.`;
         return factory.createRoleVariant(targetRoleId, input.intent);
     }),
 
+  /**
+   * DNA MANAGEMENT: Update the specific configuration of an active variant
+   */
+  updateVariantConfig: publicProcedure
+    .input(z.object({
+      roleId: z.string(),
+      variantId: z.string().optional(), // If not provided, updates the active one
+      configType: z.enum(['identity', 'cortex', 'governance', 'context', 'tuning']), // 'tuning' maps to legacy for now or a new blob
+      data: z.record(z.unknown())
+    }))
+    .mutation(async ({ input }) => {
+      // 1. Find the active variant if no ID provided
+      let variantId = input.variantId;
+      if (!variantId) {
+        const role = await prisma.role.findUnique({
+          where: { id: input.roleId },
+          include: { variants: { where: { isActive: true }, take: 1 } }
+        });
+        variantId = role?.variants[0]?.id;
+      }
+
+      if (!variantId) {
+        throw new Error("No active DNA variant found for this role. Create one first.");
+      }
+
+      // 2. Update the specific JSON blob
+      // We assume the input.data matches the schema for that config
+      const updateData: Prisma.RoleVariantUpdateInput = {};
+      if (input.configType === 'identity') updateData.identityConfig = input.data as Prisma.InputJsonValue;
+      if (input.configType === 'cortex') updateData.cortexConfig = input.data as Prisma.InputJsonValue;
+      if (input.configType === 'governance') updateData.governanceConfig = input.data as Prisma.InputJsonValue;
+      if (input.configType === 'context') updateData.contextConfig = input.data as Prisma.InputJsonValue;
+      
+      // Special handling for 'tuning' if you want to store it in cortex or separate
+      // For now, let's mix it into cortex or handle legacy
+      if (input.configType === 'tuning') {
+          // Fetch existing role metadata
+          const role = await prisma.role.findUnique({
+              where: { id: input.roleId },
+              select: { metadata: true }
+          });
+          const currentMeta = (role?.metadata as Record<string, unknown>) || {};
+          
+          await prisma.role.update({
+              where: { id: input.roleId },
+              data: {
+                  metadata: {
+                      ...currentMeta,
+                      ...((input.data || {}) as Record<string, unknown>)
+                  } as Prisma.InputJsonValue
+              }
+          });
+      }
+
+      return prisma.roleVariant.update({
+        where: { id: variantId },
+        data: updateData
+      });
+    }),
 });

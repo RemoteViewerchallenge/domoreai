@@ -8,10 +8,9 @@ import SuperNode from '../features/creator-studio/nodes/SuperNode.js';
 import { trpc } from '../utils/trpc.js';
 import { VisualInspectorPanel } from '../features/creator-studio/InspectorPanel.js';
 import { Layers, Server, Layout, Database, Filter, Settings, Network, Users } from 'lucide-react';
-import { NewUIThemeProvider, useNewUITheme } from '../components/appearance/NewUIThemeProvider.js';
 
 // Imported Components
-import RoleCreatorPanel from '../components/RoleCreatorPanel.js';
+import { AgentDNAlab } from '../components/nebula/AgentDNAlab.js';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 
 const nodeTypes = {
@@ -32,7 +31,7 @@ const OrganizationalStructureContent = () => {
   const [showSidebar, setShowSidebar] = useState(false);
 
   // Theme State
-  useNewUITheme();
+  // useThemeContext() if needed
 
   // Fetch Graph (Only when in graph mode)
   const { data, isLoading } = trpc.codeGraph.getGraph.useQuery({
@@ -132,7 +131,7 @@ const OrganizationalStructureContent = () => {
         {/* ROLES VIEW (Primary) */}
         {viewMode === 'roles' && (
             <div className="flex-1 overflow-hidden relative">
-                <RoleCreatorPanel className="h-full w-full" />
+                <AgentDNAlab />
             </div>
         )}
 
@@ -198,10 +197,8 @@ const OrganizationalStructureContent = () => {
 
 export default function OrganizationalStructure() {
   return (
-     <NewUIThemeProvider>
        <ReactFlowProvider>
          <OrganizationalStructureContent />
        </ReactFlowProvider>
-     </NewUIThemeProvider>
   );
 }

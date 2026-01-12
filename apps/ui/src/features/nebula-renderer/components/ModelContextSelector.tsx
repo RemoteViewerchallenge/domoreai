@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { trpc } from '../../../utils/trpc.js';
-import DualRangeSlider from '../../../components/DualRangeSlider.js';
+import DualRangeSlider from '../../../components/ui/DualRangeSlider.js';
 import { Brain, CheckCircle, XCircle } from 'lucide-react';
 
 interface SelectorValue {

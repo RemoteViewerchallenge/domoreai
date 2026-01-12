@@ -13,7 +13,16 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Migration: Deeply merge stored theme with defaultTheme to ensure new keys (like .ai) exist
+        return {
+          ...defaultTheme,
+          ...parsed,
+          ai: {
+            ...defaultTheme.ai,
+            ...(parsed.ai || {})
+          }
+        };
       } catch {
         return defaultTheme;
       }
@@ -61,6 +70,17 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         document.head.appendChild(link);
       }
     });
+
+    // 6. Inject AI Intent Colors
+    if (theme.ai && theme.ai.intents) {
+      Object.entries(theme.ai.intents).forEach(([key, color]) => {
+        root.style.setProperty(`--ai-intent-${key}`, color);
+      });
+    }
+
+    // 7. Context UI tokens
+    root.style.setProperty('--ai-ui-toolbarBg', 'var(--bg-secondary)');
+    root.style.setProperty('--ai-ui-toolbarBorder', 'var(--border-color)');
     
     // Save current active theme to localStorage
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
@@ -74,6 +94,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (partial.gradients) next.gradients = { ...prev.gradients, ...partial.gradients };
       if (partial.visual) next.visual = { ...prev.visual, ...partial.visual };
       if (partial.assets) next.assets = { ...prev.assets, ...partial.assets };
+      if (partial.ai) next.ai = { ...prev.ai, ...partial.ai };
       return next;
     });
   }, []);

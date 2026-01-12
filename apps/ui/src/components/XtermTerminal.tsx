@@ -13,9 +13,11 @@ interface XtermTerminalProps {
   workingDirectory?: string;
   onInput: (input: string) => void;
   headerEnd?: React.ReactNode;
+  onMount?: (term: Terminal) => void;
+  hideWrapper?: boolean;
 }
 
-export default function XtermTerminal({ logs, workingDirectory, onInput, headerEnd }: XtermTerminalProps) {
+export default function XtermTerminal({ logs, workingDirectory, onInput, headerEnd, onMount, hideWrapper }: XtermTerminalProps) {
   const { theme } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -103,6 +105,19 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
 
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
+
+        // @ts-expect-error adding custom helper
+        term.getBufferLog = () => {
+            const buffer = term.buffer.active;
+            let lines = '';
+            for (let i = 0; i < buffer.length; i++) {
+                const line = buffer.getLine(i);
+                if (line) lines += line.translateToString() + '\n';
+            }
+            return lines;
+        };
+
+        if (onMount) onMount(term);
 
         // Write initial prompt with working directory
         term.write(formatPrompt(workingDirectory));
@@ -264,6 +279,17 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
     </div>
   );
 
+  const content = (
+      <div 
+        className="h-full w-full overflow-hidden bg-zinc-950/90 text-left" 
+        ref={terminalRef} 
+        // Force background to be partially transparent to show "Bleed through"
+        style={{ backgroundImage: 'radial-gradient(circle at center, rgba(30,30,40,0.5) 0%, rgba(10,10,15,0.95) 100%)' }}
+      />
+  );
+
+  if (hideWrapper) return content;
+
   return (
     <UniversalCardWrapper
       title="Terminal (Local)"
@@ -273,12 +299,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
       headerEnd={headerEnd}
       hideAiButton={true}
     >
-      <div 
-        className="h-full w-full overflow-hidden bg-zinc-950/90 text-left" 
-        ref={terminalRef} 
-        // Force background to be partially transparent to show "Bleed through"
-        style={{ backgroundImage: 'radial-gradient(circle at center, rgba(30,30,40,0.5) 0%, rgba(10,10,15,0.95) 100%)' }}
-      />
+      {content}
     </UniversalCardWrapper>
   );
 }
