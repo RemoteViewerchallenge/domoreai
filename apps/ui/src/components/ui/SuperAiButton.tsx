@@ -13,7 +13,10 @@ type ButtonState = 'idle' | 'active' | 'menu' | 'role_select' | 'config';
 
 type SuperAiButtonProps = {
   contextId?: string | Record<string, unknown>; // The local context ID (e.g. "users-table", "terminal-1")
+  contextGetter?: () => string | Record<string, unknown>; // A dynamic context getter
+  onSuccess?: (response: any) => void;
   className?: string;
+  style?: React.CSSProperties;
   expandUp?: boolean;
   side?: 'left' | 'right'; // Expansion direction
   onGenerate?: (prompt: string) => void;
@@ -21,9 +24,13 @@ type SuperAiButtonProps = {
   defaultRoleId?: string;
 };
 
+
 export const SuperAiButton: React.FC<SuperAiButtonProps> = ({ 
   contextId, 
+  contextGetter,
+  onSuccess,
   className, 
+  style,
   expandUp = false,
   side = 'right', // CHANGE DEFAULT TO RIGHT (expands into the screen)
   onGenerate,
@@ -32,7 +39,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(defaultRoleId);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || null);
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -55,6 +62,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
     onSuccess: (data) => {
       console.log('✅ Command dispatched:', data);
+      if (onSuccess) onSuccess(data);
       // setPrompt(''); // Keep prompt for reuse per user request
       setState('idle');
     },
@@ -74,11 +82,12 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     if (!prompt.trim()) return;
     
     // Construct the full payload
+    const effectiveContext = contextGetter ? contextGetter() : contextId;
     const payload = {
         prompt,
         // Prefer local context (stringified if object), fallback to global
-        contextId: typeof contextId === 'object' ? JSON.stringify(contextId) : (contextId || aiContext.scope), 
-        roleId: selectedRoleId,
+        contextId: typeof effectiveContext === 'object' ? JSON.stringify(effectiveContext) : (effectiveContext || aiContext.scope), 
+        roleId: selectedRoleId || undefined,
         // Include flags if needed by the backend
         flags: {
             limitContext: aiContext.isLimiting,
@@ -142,6 +151,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                 ? "bg-zinc-700 text-zinc-300 border-zinc-600"
                 : "bg-gradient-to-br from-[var(--color-primary)] to-purple-600 text-white border-transparent"
         )}
+        style={style}
         title={`AI Context: ${contextLabel} (Right-click for menu)`}
       >
         <AnimatePresence mode="wait">

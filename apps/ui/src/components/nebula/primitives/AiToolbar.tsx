@@ -42,7 +42,7 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
         {/* ✅ Pass the variable down so the button glows the right color */}
         <SuperAiButton 
           contextGetter={aiContextGetter}
-          onSuccess={(res) => onAiAction('APPLY_RESPONSE', res)}
+          onSuccess={(res: any) => onAiAction('APPLY_RESPONSE', res)}
           style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '24px' } as any} 
         />
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80">
