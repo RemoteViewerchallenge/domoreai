@@ -52,9 +52,21 @@ class IngestionService {
   }
 
   private async readGitIgnore(): Promise<string> {
-    const rootPath = process.cwd();
-    const gitignorePath = path.join(rootPath, '.gitignore');
-    return await fs.readFile(gitignorePath, 'utf-8');
+    const localGitignorePath = path.join(this.repoRoot, '.gitignore');
+    try {
+      return await fs.readFile(localGitignorePath, 'utf-8');
+    } catch (error) {
+      if ((error as { code?: string }).code === 'ENOENT') {
+        // Fallback to monorepo root .gitignore
+        const rootGitignorePath = path.resolve(this.repoRoot, '../../.gitignore');
+        try {
+          return await fs.readFile(rootGitignorePath, 'utf-8');
+        } catch {
+          throw error; // Throw original error if both fail
+        }
+      }
+      throw error;
+    }
   }
 
   private subscribeToVfsEvents() {
