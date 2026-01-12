@@ -1,12 +1,12 @@
 
-
 import { useState, useEffect } from 'react';
+import type { NebulaTree } from '@repo/nebula';
 
 // Mock data definition
 export interface ProjectData {
   id: string;
   name: string;
-  tree: Record<string, unknown>; 
+  tree: NebulaTree; 
 }
 
 const MOCK_PROJECTS: Record<string, ProjectData> = {
@@ -14,39 +14,50 @@ const MOCK_PROJECTS: Record<string, ProjectData> = {
     id: 'crm',
     name: 'CRM System',
     tree: {
-      root: {
-        id: 'root',
-        type: 'div',
-        props: { className: 'p-4' },
-        children: ['header', 'content']
+      rootId: 'root',
+      nodes: {
+        root: {
+          id: 'root',
+          type: 'Box',
+          props: { className: 'p-4' },
+          children: ['welcome']
+        },
+        welcome: {
+          id: 'welcome',
+          type: 'Component',
+          componentName: 'Card',
+          props: { title: 'CRM Dashboard', description: 'Manage your customers from this central interface.' },
+          children: []
+        }
       },
-      header: {
-        id: 'header',
-        type: 'h1',
-        props: { children: 'CRM Dashboard' }
-      },
-      content: {
-        id: 'content',
-        type: 'div',
-        props: { children: 'Content goes here' }
-      }
+      imports: [],
+      exports: [],
+      version: 1
     }
   },
   'new-app': {
     id: 'new-app',
     name: 'New Application',
     tree: {
-      root: {
-        id: 'root',
-        type: 'div',
-        props: { className: 'h-full flex items-center justify-center' },
-        children: ['welcome']
-      },
-      welcome: {
-        id: 'welcome',
-        type: 'h2',
-        props: { children: 'Welcome to your new app!' }
-      }
+        rootId: 'root',
+        nodes: {
+          root: {
+            id: 'root',
+            type: 'Box',
+            props: { className: 'h-full flex items-center justify-center p-12' },
+            children: ['welcome']
+          },
+          welcome: {
+            id: 'welcome',
+            type: 'Component',
+            componentName: 'Button',
+            props: { label: 'Click to start building', variant: 'primary' },
+            children: []
+          }
+        },
+        imports: [],
+        exports: [],
+        version: 1
     }
   }
 };
@@ -54,7 +65,6 @@ const MOCK_PROJECTS: Record<string, ProjectData> = {
 export const useProjectData = (projectId?: string) => {
   const [data, setData] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [_error, _setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -70,14 +80,22 @@ export const useProjectData = (projectId?: string) => {
          setData({
             id: projectId,
             name: `Project ${projectId}`,
-            tree: {}
+            tree: {
+                rootId: 'root',
+                nodes: {
+                    'root': { id: 'root', type: 'Box', props: {}, children: [] }
+                },
+                imports: [],
+                exports: [],
+                version: 1
+            }
          });
       }
       setLoading(false);
     }, 500);
   }, [projectId]);
 
-  const save = async (newTree: Record<string, unknown>) => {
+  const save = async (newTree: NebulaTree) => {
     console.log(`Saving project ${projectId} with tree:`, newTree);
     if (data) {
         setData({ ...data, tree: newTree });
@@ -86,5 +104,5 @@ export const useProjectData = (projectId?: string) => {
     await Promise.resolve();
   };
 
-  return { data, loading, error: _error, save };
+  return { data, loading, save };
 };

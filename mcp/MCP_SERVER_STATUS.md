@@ -21,7 +21,7 @@ Generated: 2026-01-12
 | **deep-research** | Deep Web & Academic Search | `Claude-Deep-Research-main/deep_research.py` | 1 (deep_research) |
 | **commander** | Process & Fuzzy Search | `DesktopCommanderMCP-main/dist/index.js` | 17 (list_processes, kill_process, start_search) |
 
-**Total Working Tools**: 125 (Verified via Startup Sync)
+**Total Working Tools**: ~122 (Verified via Startup Sync. Postgres timeout increased to 30s for stability.)
 
 ---
 

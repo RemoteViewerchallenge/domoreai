@@ -1,6 +1,5 @@
-import React from 'react';
 import { 
-  Save, Undo, Redo, Monitor, Tablet, Smartphone, Eye 
+  Save, Undo, Redo, Monitor, Tablet, Smartphone, Eye, Hand, MousePointer2 
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useBuilderStore } from '../../../../stores/builder.store.js';
@@ -8,25 +7,40 @@ import { cn } from '../../../../lib/utils.js';
 
 export const BuilderToolbar = () => {
   const { projectId } = useParams();
-  const { triggerSave, isDirty, viewport, setViewport } = useBuilderStore();
+  const { triggerSave, isDirty, viewport, setViewport, interactionMode, setInteractionMode } = useBuilderStore();
 
   return (
     <div className="flex items-center justify-between w-full animate-in fade-in duration-300">
       
       {/* GROUP 1: Context (What am I editing?) */}
       <div className="flex items-center gap-3 pl-2">
-        <span className="text-neutral-500 text-[10px] font-mono uppercase tracking-wider">
-          Builder Mode
+        <span className="text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
+          Construction
         </span>
-        <div className="h-4 w-px bg-neutral-800" />
-        <span className="text-white text-sm font-bold truncate max-w-[150px]">
+        <div className="h-4 w-px bg-zinc-800" />
+        <span className="text-zinc-100 text-sm font-bold truncate max-w-[150px]">
           {projectId || 'Untitled Project'}
         </span>
         {isDirty && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" title="Unsaved Changes" />}
       </div>
 
       {/* GROUP 2: The Tools (Center) */}
-      <div className="flex items-center gap-1 bg-neutral-900 rounded-lg p-1 border border-neutral-800 shadow-inner">
+      <div className="flex items-center gap-1 bg-zinc-950 rounded-lg p-1 border border-zinc-800 shadow-inner">
+        <IconButton 
+          icon={<MousePointer2 size={14} />} 
+          tooltip="Select Mode (V)" 
+          active={interactionMode === 'select'} 
+          onClick={() => setInteractionMode('select')}
+        />
+        <IconButton 
+          icon={<Hand size={14} />} 
+          tooltip="Pan Mode (Space)" 
+          active={interactionMode === 'pan'} 
+          onClick={() => setInteractionMode('pan')}
+        />
+        
+        <div className="w-px h-4 bg-zinc-800 mx-1" />
+
         <IconButton 
           icon={<Monitor size={14} />} 
           tooltip="Desktop View" 
@@ -45,7 +59,7 @@ export const BuilderToolbar = () => {
           active={viewport === 'mobile'} 
           onClick={() => setViewport('mobile')}
         />
-        <div className="w-px h-4 bg-neutral-800 mx-1" />
+        <div className="w-px h-4 bg-zinc-800 mx-1" />
         <IconButton icon={<Undo size={14} />} tooltip="Undo" />
         <IconButton icon={<Redo size={14} />} tooltip="Redo" />
       </div>
