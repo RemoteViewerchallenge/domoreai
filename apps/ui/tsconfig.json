@@ -5,6 +5,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    "outDir": "dist",
     "composite": true
   },
   "files": [],

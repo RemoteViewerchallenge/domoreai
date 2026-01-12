@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { ModelSelector } from "./ModelSelector.js";
+import { ModelSelector } from "../orchestrator/ModelSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";

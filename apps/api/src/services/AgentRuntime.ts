@@ -1,7 +1,7 @@
 import { CodeModeUtcpClient } from "@utcp/code-mode";
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
-import { mcpOrchestrator } from "./McpOrchestrator.js";
+import { mcpOrchestrator } from "../orchestrator/McpOrchestrator.js";
 import { metaTools } from "../tools/meta.js";
 import { tokenService } from "./TokenService.js";
 import {
