@@ -1,5 +1,9 @@
 import { prisma } from '../db.js';
-import { decrypt } from '../utils/encryption.js';
+
+interface RawModelResponse {
+  models?: unknown[];
+  nextPageToken?: string;
+}
 
 export class RawModelService {
   
@@ -47,10 +51,10 @@ export class RawModelService {
     console.log(`[RawModelService] Attempting to fetch models from provider endpoint: ${fetchUrl}`);
 
     // 3. Fetch (Raw)
-    const allModels: any[] = [];
+    const allModels: unknown[] = [];
     let nextUrl: string | undefined = fetchUrl;
     // apiKey missing from config, using env vars handled by provider instantiation
-    const apiKey = ''; // decrypt(config.apiKey);
+    const apiKey = ''; 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
@@ -61,14 +65,14 @@ export class RawModelService {
           if (config.type === 'google') {
               headers['x-goog-api-key'] = apiKey;
           } else if (!looksLikeOllama) {
-              headers.Authorization = `Bearer ${apiKey}`;
+              headers.Authorization = `Bearer ${String(apiKey)}`;
           }
       }
 
       // --- PAGINATION LOOP ---
       while (nextUrl) {
         console.log(`[RawModelService] Fetching page: ${nextUrl}`);
-        const response: any = await fetch(nextUrl, {
+        const response = await fetch(nextUrl, {
           headers,
           signal: controller.signal
         });
@@ -78,7 +82,7 @@ export class RawModelService {
             throw new Error(`Provider API Error: ${response.status} ${txt}`);
         }
         
-        const pageJson: any = await response.json();
+        const pageJson = await response.json() as RawModelResponse;
         
         // Extract models from the current page
         const pageModels = pageJson.models || [];
@@ -108,10 +112,12 @@ export class RawModelService {
         ingestedAt: new Date()
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
       console.error(`[RawModelService] Fetch failed for ${fetchUrl}:`, error);
-      throw new Error(`Failed to fetch models: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to fetch models: ${message}`);
     }
   }
 }
+

@@ -57,12 +57,19 @@ for TARGET in "${BRANCHES[@]}"; do
   # Stage the .gitignore
   git add .gitignore
 
-  # Check if there are changes to commit
-  if git diff --cached --quiet; then
-    echo "No substantive changes to sync for $TARGET (ignoring .gitignore differences)."
+  # Check if the target branch is behind the source branch
+  BEHIND=false
+  if ! git merge-base --is-ancestor "$CURRENT_BRANCH" HEAD; then
+    BEHIND=true
+  fi
+
+  # Check if there are changes to commit (file changes OR history divergence)
+  if git diff --cached --quiet && [ "$BEHIND" = false ]; then
+    echo "No substantive changes and history is already up to date for $TARGET."
   else
-    echo "Committing synced changes to $TARGET..."
-    git commit -m "Sync: [Agent Update] from $CURRENT_BRANCH (preserving .gitignore)"
+    echo "Committing synced changes to $TARGET (incorporating history)..."
+    # We use --allow-empty in case file content is identical but we want to mark the merge
+    git commit --allow-empty -m "Sync: [Agent Update] from $CURRENT_BRANCH (preserving .gitignore)"
     
     echo "Pushing $TARGET to $REMOTE..."
     if ! git push "$REMOTE" "$TARGET"; then
