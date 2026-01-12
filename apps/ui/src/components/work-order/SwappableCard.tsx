@@ -1,15 +1,13 @@
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { 
-  Code, Globe, Terminal, Play, Settings, Folder
+  Code, Globe, Terminal, Settings, Folder
 } from 'lucide-react';
 import { toast } from 'sonner';
-import SmartEditor from '../SmartEditor.js'; 
-import MonacoEditor from '../MonacoEditor.js';
+import { SmartMonacoEditor } from '../SmartMonacoEditor.js';
+import { SmartTerminal } from '../SmartTerminal.js';
+import { SmartBrowser } from '../SmartBrowser.js';
 import { useCardVFS } from '../../hooks/useCardVFS.js';
-import XtermTerminal from '../XtermTerminal.js';
-import { BrowserCard } from '../BrowserCard.js';
-import { SuperAiButton } from '../ui/SuperAiButton.js';
 import { FileExplorer } from '../FileExplorer.js';
 import { type CardAgentState } from '../settings/AgentSettings.js'; 
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
@@ -56,19 +54,9 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   const [activeFile, setActiveFile] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files' | 'config'>('editor');
-  const [editorType, setEditorType] = useState<'smart' | 'monaco'>('smart');
   const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
   // Persistent Session ID
   const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
-
-  // Auto-detect code files
-  useEffect(() => {
-    if (activeFile.match(/\.(tsx?|jsx?|json|py|css|html)$/)) {
-        setEditorType('monaco');
-    } else {
-        setEditorType('smart');
-    }
-  }, [activeFile]);
 
   // Load Content
   useEffect(() => {
@@ -141,10 +129,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       }
   }, [id, agentConfig, startSessionMutation, currentPath, sessionId]);
 
-  const handleRunClick = useCallback(() => {
-      void runAgent(content || "Process the current file");
-  }, [runAgent, content]);
-
   const handleTerminalInput = useCallback((input: string) => {
       // Echo user command to log
       setTerminalLogs(prev => [...prev, {
@@ -180,31 +164,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              {/* Right: Actions & Tools */}
              <div className="flex items-center gap-2">
                 
-                {/* THE SUPER AI BUTTON (Unified) */}
-                <SuperAiButton 
-                    contextId={`card_${id}`} 
-                    side="left"
-                    expandUp={false} // Expands down since it's in header
-                />
-
-                {/* Run Agent Button */}
-                <button 
-                    onClick={handleRunClick}
-                    className="p-1.5 rounded hover:bg-green-900/30 text-green-500 transition-colors"
-                    title="Run Agent"
-                >
-                    <Play size={14} fill="currentColor" />
-                </button>
-
-                <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
-
-                {/* View Switcher */}
-                <div className="flex bg-black/40 rounded p-0.5">
-                    <button onClick={() => setViewMode('files')} className={`p-1.5 rounded ${viewMode === 'files' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Files"><Folder size={14}/></button>
-                    <button onClick={() => setViewMode('editor')} className={`p-1.5 rounded ${viewMode === 'editor' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Code"><Code size={14}/></button>
-                    <button onClick={() => setViewMode('terminal')} className={`p-1.5 rounded ${viewMode === 'terminal' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Terminal"><Terminal size={14}/></button>
-                    <button onClick={() => setViewMode('browser')} className={`p-1.5 rounded ${viewMode === 'browser' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Browser"><Globe size={14}/></button>
-                    <button onClick={() => setViewMode('config')} className={`p-1.5 rounded ${viewMode === 'config' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Role Settings"><Settings size={14}/></button>
+                {/* Global View Switcher */}
+                <div className="flex bg-black/40 rounded p-0.5 border border-zinc-800">
+                    <button type="button" onClick={() => setViewMode('files')} className={`p-1.5 rounded ${viewMode === 'files' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Files"><Folder size={14}/></button>
+                    <button type="button" onClick={() => setViewMode('editor')} className={`p-1.5 rounded ${viewMode === 'editor' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Code"><Code size={14}/></button>
+                    <button type="button" onClick={() => setViewMode('terminal')} className={`p-1.5 rounded ${viewMode === 'terminal' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Terminal"><Terminal size={14}/></button>
+                    <button type="button" onClick={() => setViewMode('browser')} className={`p-1.5 rounded ${viewMode === 'browser' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Browser"><Globe size={14}/></button>
+                    <button type="button" onClick={() => setViewMode('config')} className={`p-1.5 rounded ${viewMode === 'config' ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`} title="Role Settings"><Settings size={14}/></button>
                 </div>
              </div>
           </div>
@@ -214,19 +180,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
              
              {/* CONFIG (Role Editor) */}
              {viewMode === 'config' && (
-                 <RoleEditorCard 
-                    id={id} 
-                    initialRoleId={agentConfig.roleId}
-                    onUpdateConfig={handleUpdateConfig}
-                    onClose={() => setViewMode('editor')}
-                 />
+                  <RoleEditorCard 
+                     id={id} 
+                     initialRoleId={agentConfig.roleId}
+                     onUpdateConfig={handleUpdateConfig}
+                     onClose={() => setViewMode('editor')}
+                  />
              )}
 
              {/* Editor Layer */}
              {viewMode === 'editor' && (
-                 editorType === 'monaco' 
-                 ? <MonacoEditor path={activeFile} value={content} onChange={handleSave} />
-                 : <SmartEditor fileName={activeFile} content={content} onChange={(val) => handleSave(val)} onRun={handleRunClick} />
+                  <SmartMonacoEditor 
+                    path={activeFile} 
+                    value={content} 
+                    onChange={handleSave} 
+                  />
              )}
              
              {/* Tools */}
@@ -252,13 +220,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 </div>
               )}
              {viewMode === 'terminal' && (
-                <XtermTerminal 
+                <SmartTerminal 
                     workingDirectory={currentPath} 
                     logs={terminalLogs}
                     onInput={handleTerminalInput}
                 />
              )}
-             {viewMode === 'browser' && <BrowserCard />}
+             {viewMode === 'browser' && <SmartBrowser url={(card?.metadata as any)?.url || 'https://www.google.com'} />}
 
           </div>
       </div>
