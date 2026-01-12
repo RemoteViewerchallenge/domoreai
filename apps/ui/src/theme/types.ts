@@ -74,6 +74,15 @@ export interface Theme {
   visual: VisualSettings;
   assets: ThemeAssets;
   components: ThemeComponents;
+  ai: {
+    intents: {
+      code: string;
+      terminal: string;
+      browser: string;
+      docs: string;
+      chat: string;
+    };
+  };
   timestamp: number; // For versioning
 }
 
