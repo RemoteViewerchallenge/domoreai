@@ -65,6 +65,15 @@ export const darkTheme: Theme = {
       offsetLeft: '2rem',
     }
   },
+  ai: {
+    intents: {
+      code: '#3b82f6',      // blue-500
+      terminal: '#a855f7',  // purple-500
+      browser: '#f97316',   // orange-500
+      docs: '#10b981',      // emerald-500
+      chat: '#ec4899',      // pink-500
+    }
+  },
   timestamp: Date.now(),
 };
 
@@ -131,6 +140,15 @@ export const lightTheme: Theme = {
       background: 'rgba(255, 255, 255, 0.9)',
       offsetBottom: '2rem',
       offsetLeft: '2rem',
+    }
+  },
+  ai: {
+    intents: {
+      code: '#2563eb',      // blue-600
+      terminal: '#9333ea',  // purple-600
+      browser: '#ea580c',   // orange-600
+      docs: '#16a34a',      // emerald-600
+      chat: '#db2777',      // pink-600
     }
   },
   timestamp: Date.now(),

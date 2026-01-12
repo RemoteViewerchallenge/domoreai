@@ -3,7 +3,7 @@ import type { FC } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { Cpu, Save, X, Filter } from 'lucide-react';
 import type { Role } from '@prisma/client';
-import DualRangeSlider from './DualRangeSlider.js';
+import DualRangeSlider from './ui/DualRangeSlider.js';
 
 interface RoleModelOverrideProps {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
