@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RoleFormState } from '../../types/role.js';
-import DualRangeSlider from '../DualRangeSlider.js';
+import DualRangeSlider from '../ui/DualRangeSlider.js';
 import { Sparkles } from 'lucide-react';
 
 interface RoleParamsFormProps {
