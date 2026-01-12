@@ -40,7 +40,7 @@ export class McpToolSyncService {
 
         // Set a timeout for connection to avoid hanging the boot process
         const connectPromise = client.connect(transport);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000));
         
         await Promise.race([connectPromise, timeoutPromise]);
 
