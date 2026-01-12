@@ -1,7 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaClient, Prisma } from '@prisma/client';
-import { prisma } from '../db.js';
 
 interface AgentData {
   name: string;
