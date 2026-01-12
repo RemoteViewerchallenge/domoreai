@@ -24,7 +24,13 @@ const updateToolSchema = z.object({
   implementation: z.string().optional(),
 });
 
+import { McpToolSyncService } from "../services/McpToolSyncService.js";
+
 export const toolRouter = createTRPCRouter({
+  syncRegistry: publicProcedure.mutation(async () => {
+    return await McpToolSyncService.syncAllTools();
+  }),
+
   list: publicProcedure.query(async () => {
     return prisma.tool.findMany({
       orderBy: { name: "asc" },
@@ -46,7 +52,7 @@ export const toolRouter = createTRPCRouter({
         // Validate Schema JSON
         try {
             JSON.parse(input.schema);
-        } catch (e) {
+        } catch {
             throw new Error("Invalid JSON Schema.");
         }
 
@@ -71,7 +77,7 @@ export const toolRouter = createTRPCRouter({
         if (data.schema) {
              try {
                 JSON.parse(data.schema);
-            } catch (e) {
+            } catch {
                 throw new Error("Invalid JSON Schema.");
             }
         }
