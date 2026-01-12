@@ -165,7 +165,20 @@ export class AgentService {
           }
       }
 
-      const tools = rawRole?.tools.map(rt => rt.tool.name) || [];
+      let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
+
+      // [FIX] Merge tools from the Active Variant (DNA)
+      if (rawRole && rawRole.variants && rawRole.variants.length > 0) {
+          const v = rawRole.variants[0];
+          const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
+          
+          if (Array.isArray(cortex.tools)) {
+              const variantTools = cortex.tools as string[];
+              console.log(`[AgentService] 🧬 Injecting ${variantTools.length} tools from DNA Variant:`, variantTools);
+              // Use Set to avoid duplicates
+              tools = Array.from(new Set([...tools, ...variantTools]));
+          }
+      }
 
       // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);
