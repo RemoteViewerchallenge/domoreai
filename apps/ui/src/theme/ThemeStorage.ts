@@ -1,4 +1,4 @@
-import { Theme } from './types.js';
+import type { Theme } from './types.js';
 import { presets } from './presets.js';
 
 const STORAGE_KEY = 'nebula_themes_v1';

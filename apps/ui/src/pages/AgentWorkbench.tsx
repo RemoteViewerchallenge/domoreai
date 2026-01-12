@@ -1,33 +1,32 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { useTheme } from '../hooks/useTheme.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { Button } from '../components/ui/button.js';
 import { Plus } from 'lucide-react';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
-import { ThemeEditorSidebar } from '../components/appearance/ThemeEditorSidebar.js';
-import { useTheme } from '../hooks/useTheme.js';
-import { useWorkspaceStore } from '../stores/workspace.store.js';
-import { trpc } from '../utils/trpc.js'; // Import trpc
+import { trpc } from '../utils/trpc.js';
+import { useState, useRef, useMemo, useEffect } from 'react';
+
+// Keep your feature imports, but REMOVE legacy layout imports
 
 export default function AgentWorkbench() {
   const { theme, setTheme } = useTheme();
-  const { columns, showSidebar, setSidebarOpen, cards, setCards, addCard } = useWorkspaceStore();
+  // Removed showSidebar, setSidebarOpen from store destructuring as it might not exist or isn't used
+  const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
   const availableRoles = roles || [];
-  
-  // No local cards state anymore!
-  // const [cards, setCards] = useState(...) -> Removed
+
+  useEffect(() => {
+    // Ensure we have a workspace loaded
+    if (!activeWorkspace) loadWorkspace('default');
+  }, []);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
-
   const { setColumnFocus } = useColumnFocus(columns);
-
   const prevColumnsRef = useRef(columns);
   
-  // Redistribute cards when columns change - Done in store or effect?
-  // Let's keep this effect but update store
   useEffect(() => {
-    // Only redistribute if columns actually changed
     if (prevColumnsRef.current !== columns) {
       const newCards = cards.map((card, index) => ({
           ...card,
@@ -37,9 +36,8 @@ export default function AgentWorkbench() {
       prevColumnsRef.current = columns;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]); // Only run when columns changes, not when cards changes
+  }, [columns]);
 
-  // Group cards by column
   const cardsByColumn = useMemo(() => {
     const buckets: { [key: number]: typeof cards } = {};
     for (let i = 0; i < columns; i++) {
@@ -59,7 +57,7 @@ export default function AgentWorkbench() {
       return;
     }
     const newId = String(Date.now());
-    const newRoleId = availableRoles[0].id; // Assign the ID of the first available role
+    const newRoleId = availableRoles[0].id;
     addCard({ id: newId, roleId: newRoleId, column: columnIndex });
   };
 
@@ -72,7 +70,6 @@ export default function AgentWorkbench() {
     }
   };
 
-  // Hotkeys for card selection (1-9)
   useHotkeys(
     Array.from({ length: 9 }).map((_, i) => ({
       id: `select-card-${i + 1}`,
@@ -81,13 +78,10 @@ export default function AgentWorkbench() {
     })),
     Array.from({ length: 9 }).reduce<Record<string, () => void>>((acc, _, i) => {
       acc[`Select Card ${i + 1}`] = () => {
-        // Find the card with this "visual index" (1-based flat index)
-        // We iterate columns and cards to find the Nth card
         let count = 0;
         for (let col = 0; col < columns; col++) {
           const colCards = cardsByColumn[col] || [];
           if (count + colCards.length > i) {
-            // Found the column
             const cardIdx = i - count;
             scrollToCardIndex(col, cardIdx);
             return;
@@ -99,9 +93,15 @@ export default function AgentWorkbench() {
     }, {})
   );
 
+  /**
+   * MIGRATION NOTE:
+   * This component is now hosted inside 'NebulaShell'.
+   * 1. It takes up 100% height/width of its parent.
+   * 2. It does NOT render the Header or Sidebar (Shell handles that).
+   */
   return (
-    <div className="flex flex-col flex-1 h-full w-full bg-[var(--color-background)] text-[var(--color-text)] overflow-hidden font-mono">
-      {/* Main Content Area */}
+    <div className="h-full w-full flex flex-col bg-zinc-950 overflow-hidden relative">
+      
       <div className="flex-1 flex overflow-hidden">
         {/* Main Grid - Columns */}
         <div className="flex-1 flex gap-0 overflow-hidden">
@@ -115,7 +115,6 @@ export default function AgentWorkbench() {
               key={columnIndex}
               className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] last:border-r-0"
             >
-              {/* Single Header Bar - Only if there are cards above current */}
               {currentFocusIndex > 0 && (
                 <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
                   <div className="flex items-center gap-0.5 flex-wrap justify-center">
@@ -135,7 +134,6 @@ export default function AgentWorkbench() {
                 </div>
               )}
 
-              {/* Current Focused Card */}
               <div className="flex-1 min-h-0 overflow-hidden">
                 {currentCard ? (
                   <div
@@ -155,7 +153,6 @@ export default function AgentWorkbench() {
                 )}
               </div>
 
-              {/* Single Footer Bar */}
               <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
                 {columnCards.length > 0 ? (
                   <div className="h-full flex items-center justify-between px-3">
@@ -200,15 +197,7 @@ export default function AgentWorkbench() {
             </div>
           );
         })}
-      </div>
-
-      {showSidebar && (
-        <ThemeEditorSidebar
-          theme={theme}
-          onUpdateTheme={setTheme}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
+        </div>
       </div>
     </div>
   );
