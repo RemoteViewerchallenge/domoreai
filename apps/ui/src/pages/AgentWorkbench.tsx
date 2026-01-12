@@ -1,5 +1,4 @@
 import { useWorkspaceStore } from '../stores/workspace.store.js';
-import { useTheme } from '../hooks/useTheme.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { Button } from '../components/ui/button.js';
 import { Plus } from 'lucide-react';
@@ -11,11 +10,11 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 // Keep your feature imports, but REMOVE legacy layout imports
 
 export default function AgentWorkbench() {
-  const { theme, setTheme } = useTheme();
+  // const { theme, setTheme } = useTheme(); // Not currently used here
   // Removed showSidebar, setSidebarOpen from store destructuring as it might not exist or isn't used
   const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
-  const availableRoles = roles || [];
+  const availableRoles = Array.isArray(roles) ? roles : [];
 
   useEffect(() => {
     // Ensure we have a workspace loaded
@@ -27,7 +26,7 @@ export default function AgentWorkbench() {
   const prevColumnsRef = useRef(columns);
   
   useEffect(() => {
-    if (prevColumnsRef.current !== columns) {
+    if (prevColumnsRef.current !== columns && Array.isArray(cards)) {
       const newCards = cards.map((card, index) => ({
           ...card,
           column: index % columns
@@ -36,7 +35,7 @@ export default function AgentWorkbench() {
       prevColumnsRef.current = columns;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]);
+  }, [columns, cards]);
 
   const cardsByColumn = useMemo(() => {
     const buckets: { [key: number]: typeof cards } = {};
