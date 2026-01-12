@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
 import { UnifiedNebulaBar } from '../../../nebula/features/navigation/UnifiedNebulaBar.js';
-import { NebulaSidebar } from '../NebulaSidebar.js';
 import { ThemeSidebar } from '../ThemeSidebar.js';
 import { cn } from '../../../lib/utils.js';
 
-// 1. Define the Global Command Map
 const KEY_MAP = {
     TOGGLE_THEME: ['ctrl+e', 'command+e'],
     TOGGLE_AI: ['ctrl+k', 'command+k'],
@@ -14,71 +12,51 @@ const KEY_MAP = {
 };
 
 export const NebulaLayout = ({ children }: { children: React.ReactNode }) => {
-    // State for the "Floating" Panels
     const [showTheme, setShowTheme] = useState(false);
     const [showAi, setShowAi] = useState(false);
 
-    // 2. Define Handlers
+    // Close theme on Escape
     const handlers = {
-        TOGGLE_THEME: (e?: KeyboardEvent) => {
-            e?.preventDefault();
-            setShowTheme(prev => !prev);
-        },
-        TOGGLE_AI: (e?: KeyboardEvent) => {
-            e?.preventDefault();
+        TOGGLE_THEME: (e?: KeyboardEvent) => { e?.preventDefault(); setShowTheme(p => !p); },
+        TOGGLE_AI: (e?: KeyboardEvent) => { 
+            e?.preventDefault(); 
             setShowAi(true);
-            // We use setTimeout to wait for the input to mount before focusing
-            setTimeout(() => {
-                const input = document.getElementById('nebula-ai-input');
-                if (input) input.focus();
-            }, 50);
+            setTimeout(() => document.getElementById('nebula-ai-input')?.focus(), 50);
         },
         SAVE: (e?: KeyboardEvent) => {
              e?.preventDefault();
-             // Dispatch a custom event that specific pages (Builder) can listen to
              window.dispatchEvent(new CustomEvent('nebula:save'));
         },
-        ESCAPE: () => {
-            setShowTheme(false);
-            setShowAi(false);
-            // Defocus active elements if needed
-            if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-            }
-        }
+        ESCAPE: () => { setShowTheme(false); setShowAi(false); }
     };
 
     return (
         <GlobalHotKeys keyMap={KEY_MAP} handlers={handlers} allowChanges>
-            <div className="flex flex-col h-screen w-screen bg-[var(--bg-background)] overflow-hidden text-[var(--text-primary)] font-sans">
+            <div className="flex flex-col h-screen w-screen bg-[var(--bg-background)] overflow-hidden text-[var(--text-primary)] font-sans selection:bg-[var(--color-primary)] selection:text-black">
                 
-                {/* A. Top Command Bar (High Priority) */}
-                <div className="flex-none z-50">
-                    <UnifiedNebulaBar aiOpen={showAi} setAiOpen={setShowAi} />
+                {/* 1. TOP COMMAND STRIP (High Density) */}
+                <div className="flex-none z-50 shadow-md">
+                    <UnifiedNebulaBar 
+                        aiOpen={showAi} 
+                        setAiOpen={setShowAi} 
+                        onToggleTheme={() => setShowTheme(p => !p)}
+                        themeOpen={showTheme}
+                    />
                 </div>
 
                 <div className="flex-1 flex overflow-hidden relative">
-                    
-                    {/* B. Activity Bar (Left) */}
-                    <div className="flex-none z-40">
-                        <NebulaSidebar />
-                    </div>
-
-                    {/* C. The Stage (Where the App/Builder lives) */}
+                    {/* 2. THE STAGE (Full Width) */}
                     <main className="flex-1 relative z-0 overflow-hidden bg-[var(--bg-background)]">
                         {children}
                     </main>
 
-                    {/* D. Floating Theme Engine (Right) */}
+                    {/* 3. THEME ENGINE (Overlay) */}
                     <div className={cn(
-                        "absolute top-0 right-0 bottom-0 z-[100] transition-transform duration-200 ease-out pointer-events-none flex",
+                        "absolute top-0 right-0 bottom-0 z-[100] w-80 shadow-2xl transition-transform duration-200 ease-out border-l border-[var(--border-color)] bg-[var(--bg-secondary)]/95 backdrop-blur-xl",
                         showTheme ? "translate-x-0" : "translate-x-full"
                     )}>
-                        <div className="pointer-events-auto shadow-2xl h-full">
-                            <ThemeSidebar onClose={() => setShowTheme(false)} />
-                        </div>
+                        <ThemeSidebar onClose={() => setShowTheme(false)} />
                     </div>
-
                 </div>
             </div>
         </GlobalHotKeys>
