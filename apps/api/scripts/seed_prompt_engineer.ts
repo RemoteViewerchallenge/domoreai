@@ -1,103 +1,71 @@
 import { PrismaClient } from '@prisma/client';
+import * as dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// ../../.. -> src/scripts -> src -> api -> apps -> root
+const envPath = path.resolve(__dirname, '../../../../.env.local');
+console.log(`Loading env from: ${envPath}`);
+dotenv.config({ path: envPath });
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🎨 Creating Prompt Engineer role...');
+  const toolsNeeded = ['research_browser', 'search_codebase'];
+  
+  // 1. Ensure Tools Exist
+  for (const toolName of toolsNeeded) {
+    await prisma.tool.upsert({
+      where: { name: toolName },
+      update: {},
+      create: {
+        name: toolName,
+        description: "System Tool",
+        instruction: "Standard system tool.",
+        schema: "{}",
+        isEnabled: true
+      }
+    });
+  }
 
-  const role = await prisma.role.upsert({
-    where: { name: 'Prompt Engineer' },
-    create: {
-      name: 'Prompt Engineer',
-      category: 'AI Development',
-      basePrompt: `## ROLE: Expert Prompt Engineer
+  // 2. Prepare Connection Object
+  const toolConnections = toolsNeeded.map(t => ({
+      tool: { connect: { name: t } }
+  }));
 
-**MISSION:**
-You are a world-class prompt engineer specializing in crafting high-quality, effective system prompts for AI assistants. Your prompts are clear, structured, and designed to maximize AI performance.
-
-**CORE EXPERTISE:**
-- Understanding of AI capabilities and limitations
-- Structured prompt design (roles, goals, instructions, constraints)
-- Context optimization for different use cases
-- Best practices in AI instruction clarity
-
-**APPROACH:**
-1. **Analyze Requirements**: Understand the role's purpose, category, and required capabilities
-2. **Structure Clearly**: Use markdown formatting with clear sections (ROLE, GOAL, INSTRUCTIONS)
-3. **Be Specific**: Provide concrete, actionable instructions
-4. **Optimize Context**: Include only relevant information, avoid fluff
-5. **Professional Tone**: Maintain clarity and professionalism
-
-**OUTPUT FORMAT:**
-Always structure prompts with:
-- Clear role definition
-- Specific goal statement
-- Actionable core instructions
-- Any relevant constraints or guidelines
-
-**CONSTRAINTS:**
-- Keep prompts concise but comprehensive (aim for 150-400 words)
-- Use markdown formatting for readability
-- Focus on what the AI SHOULD do, not what it shouldn't
-- Ensure instructions are testable and measurable where possible`,
-      
-      needsVision: false,
-      needsReasoning: true,
-      needsCoding: false,
-      needsTools: false,
-      needsJson: false,
-      needsUncensored: false,
-      tools: [],
-      defaultTemperature: 0.7,
-      defaultMaxTokens: 1500,
-      defaultTopP: 0.95,
-      defaultFrequencyPenalty: 0.3,
-      defaultPresencePenalty: 0.1,
-    },
+  // 3. Upsert Role
+  await prisma.role.upsert({
+    where: { name: 'Prompt Improver' },
     update: {
-      basePrompt: `## ROLE: Expert Prompt Engineer
-
-**MISSION:**
-You are a world-class prompt engineer specializing in crafting high-quality, effective system prompts for AI assistants. Your prompts are clear, structured, and designed to maximize AI performance.
-
-**CORE EXPERTISE:**
-- Understanding of AI capabilities and limitations
-- Structured prompt design (roles, goals, instructions, constraints)
-- Context optimization for different use cases
-- Best practices in AI instruction clarity
-
-**APPROACH:**
-1. **Analyze Requirements**: Understand the role's purpose, category, and required capabilities
-2. **Structure Clearly**: Use markdown formatting with clear sections (ROLE, GOAL, INSTRUCTIONS)
-3. **Be Specific**: Provide concrete, actionable instructions
-4. **Optimize Context**: Include only relevant information, avoid fluff
-5. **Professional Tone**: Maintain clarity and professionalism
-
-**OUTPUT FORMAT:**
-Always structure prompts with:
-- Clear role definition
-- Specific goal statement
-- Actionable core instructions
-- Any relevant constraints or guidelines
-
-**CONSTRAINTS:**
-- Keep prompts concise but comprehensive (aim for 150-400 words)
-- Use markdown formatting for readability
-- Focus on what the AI SHOULD do, not what it shouldn't
-- Ensure instructions are testable and measurable where possible`,
+      basePrompt: `You are a Prompt Improver. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
+      category: {
+        connectOrCreate: {
+            where: { name: 'Specialized Workers' },
+            create: { name: 'Specialized Workers', order: 2 }
+         }
+      },
+      tools: {
+        deleteMany: {}, // Clean slate
+        create: toolConnections
+      }
     },
+    create: {
+      name: 'Prompt Improver',
+      basePrompt: `You are a Prompt Improver. You specialize in crafting, refining, and optimizing prompts for AI models. You understand model capabilities, limitations, and how to elicit the best responses. Your goal is to generate clear, effective, and safe prompts for any use case.`,
+      category: {
+        connectOrCreate: {
+            where: { name: 'Specialized Workers' },
+            create: { name: 'Specialized Workers', order: 2 }
+        }
+      },
+      tools: {
+        create: toolConnections
+      }
+    }
   });
-
-  console.log(`✅ Prompt Engineer role created/updated: ${role.id}`);
-  console.log(`   Name: ${role.name}`);
-  console.log(`   Category: ${role.category}`);
+  console.log('✅ Prompt Improver role created or updated.');
 }
 
-main()
-  .catch((error) => {
-    console.error('❌ Error creating Prompt Engineer role:', error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().finally(() => prisma.$disconnect());
