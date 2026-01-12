@@ -23,6 +23,10 @@ export interface WorkspaceState {
   addCard: (card: CardData) => void;
   removeCard: (id: string) => void;
   updateCard: (id: string, updates: Partial<CardData>) => void;
+  
+  // Workspace Loading
+  activeWorkspace: string | null;
+  loadWorkspace: (id: string) => void;
 
   // AI Context (Application Wide)
   aiContext: {
@@ -56,6 +60,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       updateCard: (id, updates) => set((state) => ({
         cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
       })),
+
+      activeWorkspace: null,
+      loadWorkspace: (id: string) => set({ activeWorkspace: id }),
 
       aiContext: {
         scope: 'Global',

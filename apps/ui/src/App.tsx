@@ -1,36 +1,25 @@
+import React from 'react';
 import './App.css';
 import { NebulaShell } from './nebula/NebulaShell.js';
-import { NebulaRenderer } from './features/nebula-renderer/NebulaRenderer.js';
+import { Toaster } from './components/ui/toaster.tsx';
+import { ThemeProvider } from './theme/ThemeProvider.js';
 import { FileSystemProvider } from './stores/FileSystemStore.js';
-import { NewUIRoot } from './components/appearance/NewUIRoot.js';
-import { ErrorBoundary } from './components/ErrorBoundary.js';
-import crmProject from './data/projects/crm.json';
+// BrowserRouter removed as main.tsx provides HashRouter
 
-export default function App() {
-  // 1. Check URL for "?mode=standalone"
-  const params = new URLSearchParams(window.location.search);
-  const isStandalone = params.get('mode') === 'standalone';
-
-  // 2. If Standalone, just render the App (e.g. for deployment)
-  if (isStandalone) {
-     // For now, load crm.json as default in standalone
-     return (
-       <NewUIRoot>
-         <div className="h-screen w-screen overflow-auto">
-            <NebulaRenderer node={crmProject.layout as any} />
-         </div>
-       </NewUIRoot>
-     ); 
-  }
-
-  // 3. Otherwise, render the OS (The Shell)
+function App() {
   return (
-    <NewUIRoot>
+    <ThemeProvider>
+      {/* Make FileSystem/Workspace data available to ALL Nebula views */}
       <FileSystemProvider>
-        <ErrorBoundary>
+          
+          {/* The Single Source of Truth */}
           <NebulaShell />
-        </ErrorBoundary>
+          
+          <Toaster />
+          
       </FileSystemProvider>
-    </NewUIRoot>
+    </ThemeProvider>
   );
 }
+
+export default App;

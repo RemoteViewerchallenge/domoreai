@@ -8,12 +8,12 @@ import SuperJSON from 'superjson';
 
 import App from './App.js';
 import { trpc } from './utils/trpc.js';
-import { injectThemeScopes } from './theme/design-tokens.js';
+import { injectCssVariables } from './design-system/cssVariables.js';
 
 // Initialize Theme Scopes
 console.log('[main.tsx] Injecting theme scopes...');
 try {
-  injectThemeScopes();
+  injectCssVariables();
   console.log('[main.tsx] Theme scopes injected.');
 } catch (e) {
   console.error('[main.tsx] Failed to inject theme scopes:', e);

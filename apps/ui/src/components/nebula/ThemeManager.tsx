@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Palette, Type, Save, Trash2, Image as ImageIcon 
+  Palette, Type, Save, Trash2, Image as ImageIcon, LayoutTemplate 
 } from 'lucide-react';
 import { useThemeContext } from '../../theme/ThemeProvider.js';
 import { ThemeStorage } from '../../theme/ThemeStorage.js';
@@ -27,7 +27,7 @@ const InputGroup = ({ label, children }: { label: string, children: React.ReactN
 export const ThemeManager = () => {
   const { theme, setTheme } = useThemeContext();
   const [savedThemes, setSavedThemes] = useState<Theme[]>([]);
-  const [activeTab, setActiveTab] = useState<'visual' | 'fonts' | 'icons' | 'library'>('visual');
+  const [activeTab, setActiveTab] = useState<'visual' | 'fonts' | 'icons' | 'library' | 'components'>('visual');
 
   // Load themes on mount
   useEffect(() => {
@@ -71,6 +71,7 @@ export const ThemeManager = () => {
       <div className="w-16 flex flex-col items-center py-4 gap-4 border-r border-zinc-800 bg-zinc-900/50">
         {[
           { id: 'visual' as const, icon: Palette, label: 'Visual' },
+          { id: 'components' as const, icon: LayoutTemplate, label: 'Components' },
           { id: 'fonts' as const, icon: Type, label: 'Fonts' },
           { id: 'icons' as const, icon: ImageIcon, label: 'Icons' },
           { id: 'library' as const, icon: Save, label: 'Library' },
@@ -143,6 +144,56 @@ export const ThemeManager = () => {
                    />
                    <div className="mt-2 h-8 w-full rounded" style={{ background: theme.gradients.primary }}></div>
                 </InputGroup>
+              </div>
+            </div>
+          )}
+
+          {/* === TAB: COMPONENTS (Physics & Layout) === */}
+          {activeTab === 'components' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <SectionHeader icon={LayoutTemplate} title="Component Physics" />
+              
+              <h3 className="text-xs font-bold text-zinc-400 mt-4">Menu Bar</h3>
+              <div className="grid grid-cols-2 gap-4">
+                 <InputGroup label="Height">
+                    <input type="text" 
+                       value={theme.components.menuBar.height}
+                       onChange={e => setTheme({ ...theme, components: { ...theme.components, menuBar: { ...theme.components.menuBar, height: e.target.value } } })}
+                       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+                    />
+                 </InputGroup>
+                 <InputGroup label="Background (RGBA)">
+                    <input type="text" 
+                       value={theme.components.menuBar.background}
+                       onChange={e => setTheme({ ...theme, components: { ...theme.components, menuBar: { ...theme.components.menuBar, background: e.target.value } } })}
+                       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+                    />
+                 </InputGroup>
+              </div>
+
+              <h3 className="text-xs font-bold text-zinc-400 mt-4">Floating Navigation</h3>
+              <div className="grid grid-cols-2 gap-4">
+                 <InputGroup label="Button Size">
+                    <input type="text" 
+                       value={theme.components.floatingNav.buttonSize}
+                       onChange={e => setTheme({ ...theme, components: { ...theme.components, floatingNav: { ...theme.components.floatingNav, buttonSize: e.target.value } } })}
+                       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+                    />
+                 </InputGroup>
+                 <InputGroup label="Border Radius">
+                    <input type="text" 
+                       value={theme.components.floatingNav.radius}
+                       onChange={e => setTheme({ ...theme, components: { ...theme.components, floatingNav: { ...theme.components.floatingNav, radius: e.target.value } } })}
+                       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+                    />
+                 </InputGroup>
+                  <InputGroup label="Bottom Offset">
+                    <input type="text" 
+                       value={theme.components.floatingNav.offsetBottom}
+                       onChange={e => setTheme({ ...theme, components: { ...theme.components, floatingNav: { ...theme.components.floatingNav, offsetBottom: e.target.value } } })}
+                       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+                    />
+                 </InputGroup>
               </div>
             </div>
           )}

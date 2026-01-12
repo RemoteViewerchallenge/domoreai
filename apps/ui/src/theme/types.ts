@@ -47,6 +47,24 @@ export interface VisualSettings {
   blur: number; // Backdrop blur px
 }
 
+export interface ThemeComponents {
+  menuBar: {
+    height: string;
+    background: string;
+    backdropBlur: string;
+    itemGap: string;
+    fontSize: string;
+  };
+  floatingNav: {
+    buttonSize: string;
+    iconSize: string;
+    radius: string;
+    background: string;
+    offsetBottom: string;
+    offsetLeft: string;
+  };
+}
+
 export interface Theme {
   id: string;
   name: string;
@@ -55,6 +73,7 @@ export interface Theme {
   gradients: ThemeGradients;
   visual: VisualSettings;
   assets: ThemeAssets;
+  components: ThemeComponents;
   timestamp: number; // For versioning
 }
 
