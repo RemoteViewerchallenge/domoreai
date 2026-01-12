@@ -2,7 +2,7 @@ import * as chokidar from 'chokidar';
 import * as path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { prisma } from '../db.js';
+import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import { vectorStore, chunkText, createEmbedding } from './vector.service.js';
 import { getWebSocketService } from './websocket.singleton.js';
 
@@ -48,13 +48,13 @@ class FileWatcherService {
     });
 
     // File added or changed
-    this.watcher.on('add', (filePath: string) => this.handleFileChange(filePath, 'added'));
-    this.watcher.on('change', (filePath: string) => this.handleFileChange(filePath, 'changed'));
+    this.watcher.on('add', (filePath: string) => { void this.handleFileChange(filePath, 'added'); });
+    this.watcher.on('change', (filePath: string) => { void this.handleFileChange(filePath, 'changed'); });
     
     // File deleted
-    this.watcher.on('unlink', (filePath: string) => this.handleFileDelete(filePath));
+    this.watcher.on('unlink', (filePath: string) => { void this.handleFileDelete(filePath); });
 
-    this.watcher.on('error', (error: any) => {
+    this.watcher.on('error', (error: unknown) => {
       console.error('[FileWatcher] ❌ Error:', error);
     });
 
@@ -65,7 +65,7 @@ class FileWatcherService {
           type: 'filewatcher.ready', 
           path: rootPath 
         });
-      } catch (e) {
+      } catch {
         // Ignore WS errors
       }
     });
@@ -102,7 +102,7 @@ class FileWatcherService {
         filePath,
         changeType 
       });
-    } catch (e) {
+    } catch {
       // Ignore WS errors
     }
 
@@ -118,17 +118,8 @@ class FileWatcherService {
     console.log(`[FileWatcher] 🗑️  File deleted: ${path.basename(filePath)}`);
     
     try {
-      // Remove from FileIndex
-      await prisma.$executeRawUnsafe(
-        `DELETE FROM "FileIndex" WHERE "filePath" = $1`,
-        filePath
-      );
-
-      // Remove from VectorEmbedding
-      await prisma.$executeRawUnsafe(
-        `DELETE FROM "VectorEmbedding" WHERE "filePath" = $1`,
-        filePath
-      );
+      // Remove from FileIndex and VectorEmbedding
+      await fileIndexRepository.delete(filePath);
 
       console.log(`[FileWatcher] ✅ Removed ${filePath} from index`);
       
@@ -138,7 +129,7 @@ class FileWatcherService {
           file: path.basename(filePath),
           filePath 
         });
-      } catch (e) {
+      } catch {
         // Ignore WS errors
       }
     } catch (error) {
@@ -186,12 +177,9 @@ class FileWatcherService {
     const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
 
     try {
-      const existing: any = await prisma.$queryRawUnsafe(
-        `SELECT "contentHash" FROM "FileIndex" WHERE "filePath" = $1 LIMIT 1`,
-        filePath
-      );
+      const existing = await fileIndexRepository.getByFilePath(filePath);
 
-      if (existing && existing.length > 0 && existing[0].contentHash === hash) {
+      if (existing && existing.contentHash === hash) {
         console.log(`[FileWatcher] ⏭️  Skipping ${path.basename(filePath)} — content unchanged`);
         return;
       }
@@ -220,10 +208,7 @@ class FileWatcherService {
 
     // Delete old vectors for this file
     try {
-      await prisma.$executeRawUnsafe(
-        `DELETE FROM "VectorEmbedding" WHERE "filePath" = $1`,
-        filePath
-      );
+      await fileIndexRepository.deleteVectorsByFilePath(filePath);
     } catch (err) {
       console.warn(`[FileWatcher] Could not delete old vectors for ${filePath}:`, err);
     }
@@ -234,12 +219,7 @@ class FileWatcherService {
 
     // Update FileIndex
     try {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "FileIndex" ("filePath", "contentHash", "updatedAt") VALUES ($1, $2, CURRENT_TIMESTAMP)
-         ON CONFLICT ("filePath") DO UPDATE SET "contentHash" = EXCLUDED."contentHash", "updatedAt" = CURRENT_TIMESTAMP`,
-        filePath,
-        hash
-      );
+      await fileIndexRepository.upsert(filePath, hash);
       console.log(`[FileWatcher] 🔖 Updated FileIndex for ${path.basename(filePath)}`);
       
       try {
@@ -250,7 +230,7 @@ class FileWatcherService {
           chunks: vectors.length,
           hash 
         });
-      } catch (e) {
+      } catch {
         // Ignore WS errors
       }
     } catch (err) {
