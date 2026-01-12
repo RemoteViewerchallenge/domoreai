@@ -7,6 +7,8 @@ import SmartEditor from '../components/SmartEditor.js';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 import { ModelContextSelector } from '../features/nebula-renderer/components/ModelContextSelector.js';
 import { RoleModelOverride } from '../components/RoleModelOverride.js';
+import { TokenIcon } from '@/components/nebula/TokenIcon.js';
+import { ThemeManager } from '@/components/nebula/ThemeManager.js';
 
 import { Input } from '../components/ui/input.js';
 import { Button } from '../components/ui/button.js';
@@ -48,7 +50,9 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   'SmartEditor': SmartEditor,
   'SuperAiButton': SuperAiButton,
   'ModelContextSelector': ModelContextSelector,
-  'RoleModelOverride': RoleModelOverride
+  'RoleModelOverride': RoleModelOverride,
+  'TokenIcon': TokenIcon,
+  'ThemeManager': ThemeManager
 };
 
 export const resolveComponent = (name: string) => {
