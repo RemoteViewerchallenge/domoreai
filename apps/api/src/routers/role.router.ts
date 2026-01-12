@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Role } from "@prisma/client";
+import type { Role, Prisma } from "@prisma/client";
 
 interface RouterExtendedRole extends Role {
     needsVision?: boolean;
@@ -15,7 +15,7 @@ import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
-import { ModelSelector } from "../services/ModelSelector.js";
+import { ModelSelector } from "../orchestrator/ModelSelector.js";
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
 
 
@@ -87,7 +87,7 @@ const createRoleSchema = z.object({
     commands: z.array(z.string())
   }).optional(),
   
-  criteria: z.record(z.any()).optional(),
+  criteria: z.record(z.unknown()).optional(),
   orchestrationConfig: z.object({
     requiresCheck: z.boolean(),
     judgeRoleId: z.string().optional(),
@@ -134,7 +134,7 @@ const updateRoleSchema = z.object({
     commands: z.array(z.string())
   }).optional(),
   
-  criteria: z.record(z.any()).optional(),
+  criteria: z.record(z.unknown()).optional(),
   orchestrationConfig: z.object({
     requiresCheck: z.boolean(),
     judgeRoleId: z.string().optional(),
@@ -178,7 +178,7 @@ export const roleRouter = createTRPCRouter({
        let currentModelName = 'Auto-Detect';
        try {
            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const modelId = await modelSelector.resolveModelForRole(role as any);
+           const modelId = await modelSelector.resolveModelForRole(role as Role & { metadata: any });
            // Fetch the friendly name for this model ID
            const model = await prisma.model.findUnique({
                where: { id: modelId },
@@ -284,12 +284,10 @@ export const roleRouter = createTRPCRouter({
     }),
 
   updateCategory: publicProcedure
-    .input(z.object({ id: z.string(), name: z.string().min(1).optional(), parentId: z.string().nullable().optional() }))
+    .input(z.object({ id: z.string(), name: z.string().min(1).optional() }))
     .mutation(async ({ input }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = {};
+      const data: Prisma.RoleCategoryUpdateInput = {};
       if (input.name) data.name = input.name;
-      if (input.parentId !== undefined) data.parentId = input.parentId || null;
 
       return prisma.roleCategory.update({
         where: { id: input.id },
@@ -370,8 +368,7 @@ export const roleRouter = createTRPCRouter({
           basePrompt,
           // categoryString: categoryName,
           categoryId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-          metadata: metadata as any,
+          metadata: metadata as Prisma.InputJsonValue,
           tools: {
             create: tools.map(toolName => ({
               tool: { connect: { name: toolName } }
@@ -392,20 +389,18 @@ export const roleRouter = createTRPCRouter({
         where: { id }, 
         select: { id: true, name: true, description: true, metadata: true } 
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      const currentMeta = (existing?.metadata as any) || {};
+      const currentMeta = existing?.metadata || {};
 
       const newMetadata = {
-        ...currentMeta,
+        ...(currentMeta as Record<string, unknown>),
         ...metadataUpdate
       };
 
       // Filter out undefined values from data object
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = {
+      const data: Prisma.RoleUpdateInput = {
         ...(name !== undefined && { name }),
         ...(basePrompt !== undefined && { basePrompt }),
-        metadata: newMetadata,
+        metadata: newMetadata as Prisma.InputJsonValue,
       };
 
       // Resolve category if provided
@@ -416,7 +411,7 @@ export const roleRouter = createTRPCRouter({
           update: {},
           create: { name: resolvedCategoryName }
         });
-        data.categoryId = cat.id;
+        data.category = { connect: { id: cat.id } };
       }
 
       // Handle tools update if provided

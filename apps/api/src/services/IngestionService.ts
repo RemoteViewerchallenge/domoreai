@@ -3,14 +3,20 @@ import * as path from 'path';
 import fs from 'fs/promises';
 import { IVfsProvider } from './vfs/IVfsProvider.js';
 import { vectorStore, chunkText, createEmbedding } from './vector.service.js';
-import { prisma } from '../db.js';
+import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import crypto from 'crypto';
 import ignore from 'ignore';
 import { getWebSocketService } from './websocket.singleton.js';
 
+interface IgnoreFilter {
+  ignores(path: string): boolean;
+}
+
+type PdfParser = (content: Buffer) => Promise<{ text: string }>;
+
 class IngestionService {
-  private pdfParse: any;
-  private ignoreFilter: any;
+  private pdfParse: PdfParser | null = null;
+  private ignoreFilter: IgnoreFilter | null = null;
   private readonly repoRoot = process.cwd();
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
   private readonly binaryExtensions = ['.pdf', '.docx', '.png'];
@@ -19,8 +25,8 @@ class IngestionService {
     this.subscribeToVfsEvents();
     // Initialize ignoreFilter synchronously with a placeholder
     // Will be properly initialized when needed
-    this.ignoreFilter = ignore();
-    this.initializeIgnoreFilter()
+    this.ignoreFilter = ignore() as unknown as IgnoreFilter;
+    void this.initializeIgnoreFilter()
       .then(() => {
         // Start a full repository ingest on initialization so the project root stays indexed across restarts
         // this.ingestRepository(this.repoRoot).catch(err => {
@@ -29,19 +35,19 @@ class IngestionService {
       })
       .catch(err => {
         console.warn('Failed to initialize ignore filter:', err);
-        this.ignoreFilter = ignore(); // fallback to empty ignore
+        this.ignoreFilter = ignore() as unknown as IgnoreFilter; // fallback to empty ignore
         // Still attempt to ingest even if ignore couldn't be read
-        // this.ingestRepository(this.repoRoot).catch(e => console.error('[IngestionService] Failed to ingest repository on startup (fallback):', e));
+        // this.ingestRepository(this.repoRoot).catch(_e => console.error('[IngestionService] Failed to ingest repository on startup (fallback):', _e));
       });
   }
 
   private async initializeIgnoreFilter(): Promise<void> {
     try {
       const gitignoreContent = await this.readGitIgnore();
-      this.ignoreFilter = ignore().add(gitignoreContent);
+      this.ignoreFilter = ignore().add(gitignoreContent) as unknown as IgnoreFilter;
     } catch (error) {
       console.warn('Failed to read .gitignore. Indexing all files.', error);
-      this.ignoreFilter = ignore(); // Allow all files if .gitignore can't be read
+      this.ignoreFilter = ignore() as unknown as IgnoreFilter; // Allow all files if .gitignore can't be read
     }
   }
 
@@ -53,34 +59,34 @@ class IngestionService {
 
   private subscribeToVfsEvents() {
     onFileWrite((data) => {
-      this.handleFileWrite(data.provider, data.filePath, data.content);
+      void this.handleFileWrite(data.provider, data.filePath, data.content);
     });
   }
 
   private async handleFileWrite(provider: IVfsProvider, filePath: string, content: Buffer) {
     const fileExtension = path.extname(filePath).toLowerCase();
 
-    if (this.textExtensions.includes(fileExtension)) {
-       // Check if the file should be ignored
-       const relPath = path.relative(this.repoRoot, filePath);
-       if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && !this.ignoreFilter.ignores(relPath)) {
-          const text = content.toString('utf-8');
-          await this.indexFile(filePath, text);
-       } else if (!this.ignoreFilter || typeof this.ignoreFilter.ignores !== 'function') {
-          // If ignoreFilter not ready, index anyway
-          const text = content.toString('utf-8');
-          await this.indexFile(filePath, text);
-       }
-    } else if (this.binaryExtensions.includes(fileExtension)) {
+     if (this.textExtensions.includes(fileExtension)) {
+        // Check if the file should be ignored
+        const relPath = path.relative(this.repoRoot, filePath);
+        if (this.ignoreFilter && !this.ignoreFilter.ignores(relPath)) {
+           const text = content.toString('utf-8');
+           await this.indexFile(filePath, text);
+        } else if (!this.ignoreFilter) {
+           // If ignoreFilter not ready, index anyway
+           const text = content.toString('utf-8');
+           await this.indexFile(filePath, text);
+        }
+     } else if (this.binaryExtensions.includes(fileExtension)) {
       try {
         const markdownContent = await this.parseFile(fileExtension, content);
         const shadowFilePath = await this.generateShadowFile(provider, filePath, markdownContent);
 
         // Check if the file should be ignored
           const relShadowPath = path.relative(this.repoRoot, shadowFilePath);
-          if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && !this.ignoreFilter.ignores(relShadowPath)) {
+          if (this.ignoreFilter && !this.ignoreFilter.ignores(relShadowPath)) {
           await this.indexFile(shadowFilePath, markdownContent);
-        } else if (!this.ignoreFilter || typeof this.ignoreFilter.ignores !== 'function') {
+        } else if (!this.ignoreFilter) {
           // If ignoreFilter not ready, index anyway
           await this.indexFile(shadowFilePath, markdownContent);
         }
@@ -93,7 +99,7 @@ class IngestionService {
 
   public async ingestRepository(dir: string) {
       console.log(`[IngestionService] 🚀 Scanning directory: ${dir}`);
-      try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch (e) {}
+      try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch { /* Ignore */ }
       let totalFiles = 0;
       let processedFiles = 0;
       try {
@@ -109,7 +115,7 @@ class IngestionService {
             } else {
                 // Check ignore with proper type check
                 const rel = path.relative(this.repoRoot, fullPath);
-                if (this.ignoreFilter && typeof this.ignoreFilter.ignores === 'function' && this.ignoreFilter.ignores(rel)) {
+                if (this.ignoreFilter && this.ignoreFilter.ignores(rel)) {
               const displayName = path.basename(fullPath);
               console.log(`[IngestionService] 🚫 Ignored: ${displayName}`);
                   continue;
@@ -120,18 +126,18 @@ class IngestionService {
                      totalFiles++;
               const displayName = path.basename(fullPath);
               console.log(`[IngestionService] 📄 Processing file ${totalFiles}: ${displayName}`);
-              try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch (e) {}
+              try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch { /* Ignore */ }
                      const content = await fs.readFile(fullPath);
                      const text = content.toString('utf-8');
                      await this.indexFile(fullPath, text);
                      processedFiles++;
               console.log(`[IngestionService] ✅ Indexed file ${processedFiles}/${totalFiles}: ${displayName}`);
-              try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch (e) {}
+              try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch { /* Ignore */ }
                 }
             }
         }
         console.log(`[IngestionService] 🏁 Completed: ${processedFiles}/${totalFiles} files indexed from ${dir}`);
-        try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.complete', path: dir, processedFiles, totalFiles }); } catch (e) {}
+        try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.complete', path: dir, processedFiles, totalFiles }); } catch { /* Ignore */ }
       } catch (err) {
           console.error(`[IngestionService] ❌ Error scanning directory ${dir}:`, err);
       }
@@ -142,14 +148,11 @@ class IngestionService {
     const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
 
     try {
-      const existing: any = await prisma.$queryRawUnsafe(
-        `SELECT "contentHash" FROM "FileIndex" WHERE "filePath" = $1 LIMIT 1`,
-        filePath
-      );
+      const existing = await fileIndexRepository.getByFilePath(filePath);
 
-      if (existing && existing.length > 0 && existing[0].contentHash === hash) {
+      if (existing && existing.contentHash === hash) {
         console.log(`[IngestionService] ⚠️ Skipping ${filePath} — content unchanged (hash ${hash})`);
-        try { getWebSocketService()?.broadcast({ type: 'ingest.file.skipped', file: path.basename(filePath), filePath, hash }); } catch (e) {}
+        try { getWebSocketService()?.broadcast({ type: 'ingest.file.skipped', file: path.basename(filePath), filePath, hash }); } catch { /* Ignore */ }
         return;
       }
     } catch (err) {
@@ -174,17 +177,12 @@ class IngestionService {
 
     await vectorStore.add(vectors);
     console.log(`[IngestionService] 💾 Stored ${vectors.length} vectors for ${filePath}`);
-    try { getWebSocketService()?.broadcast({ type: 'ingest.file.stored', file: path.basename(filePath), filePath, chunks: vectors.length }); } catch (e) {}
+    try { getWebSocketService()?.broadcast({ type: 'ingest.file.stored', file: path.basename(filePath), filePath, chunks: vectors.length }); } catch { /* Ignore */ }
     // Upsert file hash into FileIndex so future ingests can skip unchanged files
     try {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "FileIndex" ("filePath", "contentHash", "updatedAt") VALUES ($1, $2, CURRENT_TIMESTAMP)
-         ON CONFLICT ("filePath") DO UPDATE SET "contentHash" = EXCLUDED."contentHash", "updatedAt" = CURRENT_TIMESTAMP`,
-        filePath,
-        hash
-      );
+      await fileIndexRepository.upsert(filePath, hash);
       console.log(`[IngestionService] 🔖 Updated FileIndex for ${filePath} (hash ${hash})`);
-      try { getWebSocketService()?.broadcast({ type: 'ingest.file.indexed', file: path.basename(filePath), filePath, hash }); } catch (e) {}
+      try { getWebSocketService()?.broadcast({ type: 'ingest.file.indexed', file: path.basename(filePath), filePath, hash }); } catch { /* Ignore */ }
     } catch (err) {
       console.warn(`[IngestionService] Failed to update FileIndex for ${filePath}:`, err);
     }
@@ -208,11 +206,14 @@ class IngestionService {
     switch (fileExtension) {
       case '.pdf':
         if (!this.pdfParse) {
-          const mod = await import('pdf-parse') as any;
-          this.pdfParse = mod.default || mod;
+          const mod = await import('pdf-parse') as { default?: PdfParser } | PdfParser;
+          this.pdfParse = (mod as { default?: PdfParser }).default || (mod as PdfParser);
         }
-        const data = await this.pdfParse(content);
-        return data.text;
+        if (this.pdfParse) {
+          const data = await this.pdfParse(content);
+          return data.text;
+        }
+        return '';
       case '.docx':
         // TODO: Implement DOCX parsing, potentially using a library like 'mammoth'
         console.log('DOCX parsing not yet implemented.');

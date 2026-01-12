@@ -116,8 +116,8 @@ export class ParallelTaskRunner {
             // Extract branch name from path?
             // This is tricky without storing state.
             // We'll leave branch cleanup for a cron or 'prune' job for now to avoid errors.
-        } catch (e) {
-            console.warn(`[ParallelRunner] Cleanup warning: ${e}`);
+        } catch (e: unknown) {
+            console.warn(`[ParallelRunner] Cleanup warning: ${String(e)}`);
         }
     }
 }

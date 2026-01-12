@@ -12,7 +12,8 @@
     "sourceMap": true,
     "baseUrl": ".",
     "jsx": "react-jsx",
-    "composite": true
+    "composite": true,
+    "outDir": "dist"
   },
   "files": [],
   "references": [
