@@ -1,7 +1,7 @@
 import React, { useState, useContext, createContext } from "react";
 import type { NebulaTree, NebulaNode } from "@repo/nebula";
 import { cn } from "../../lib/utils.js";
-import { resolveComponent } from "../../nebula/component-map.js";
+import { resolveComponent } from "../../nebula/registry.js";
 import { SuperAiButton } from "../../components/ui/SuperAiButton.js";
 import { Eye, EyeOff } from "lucide-react";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
