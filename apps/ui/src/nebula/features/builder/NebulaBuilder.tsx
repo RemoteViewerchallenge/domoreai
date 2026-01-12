@@ -42,6 +42,17 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
     }
   }, [saveTriggered, handleSave]);
 
+  // Global Hotkey Save Listener
+  useEffect(() => {
+    const handleGlobalSave = () => {
+        console.log("Global Save Triggered via Layout");
+        handleSave();
+    };
+
+    window.addEventListener('nebula:save', handleGlobalSave);
+    return () => window.removeEventListener('nebula:save', handleGlobalSave);
+  }, [handleSave]);
+
   // Handle Drag Start (Palette -> Canvas)
   const handleDragStart = (e: React.DragEvent, componentType: string) => {
     e.dataTransfer.setData('nebula/type', componentType);

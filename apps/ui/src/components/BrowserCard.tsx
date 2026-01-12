@@ -37,12 +37,20 @@ const isElectron = () => {
 
 interface BrowserCardProps {
   headerEnd?: React.ReactNode;
+  initialUrl?: string;
+  onLoad?: (content: string) => void;
+  hideWrapper?: boolean;
 }
 
-export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
-  const [url, setUrl] = useState('https://www.google.com');
+export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper }) => {
+  const [url, setUrl] = useState(initialUrl);
   const [input, setInput] = useState(url);
   const webviewRef = useRef<HTMLWebViewElement>(null);
+  
+  // Sync URL to context
+  React.useEffect(() => {
+    if (onLoad) onLoad(url);
+  }, [url, onLoad]);
   
   // Settings State
   const [showDebugView, setShowDebugView] = useState(false);
@@ -133,6 +141,80 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
     </div>
   );
 
+  const content = (
+    <div className="flex flex-col w-full h-full bg-background">
+         {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
+         {!showDebugView && (
+            <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border shrink-0">
+                <button type="button" onClick={handleBack} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                    <ArrowLeft size={16} />
+                </button>
+                <button type="button" onClick={handleForward} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                    <ArrowRight size={16} />
+                </button>
+                <button type="button" onClick={handleReload} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                    <RotateCw size={16} />
+                </button>
+                
+                {/* Address Input */}
+                <div className="flex-1 relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                        <Lock size={12} />
+                    </div>
+                    <input 
+                        className="w-full bg-card text-foreground text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
+                        onFocus={e => e.target.select()}
+                        placeholder="Enter URL or search..."
+                    />
+                </div>
+            </div>
+         )}
+
+        {/* BROWSER CONTENT */}
+        <div className="flex-1 relative bg-white overflow-hidden">
+            {!isElectron() && !showDebugView && (
+                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm p-8">
+                    <div className="bg-warning/20 border border-warning/50 p-6 rounded-lg max-w-md text-center">
+                        <h3 className="text-warning font-bold mb-2">Electron Required</h3>
+                        <p className="text-warning/60 text-sm mb-4">
+                            The native browser view requires the Electron app. 
+                            Enable &quot;Show Agent&apos;s Research Browser&quot; in settings to use the remote browser instead.
+                        </p>
+                        <button 
+                            type="button"
+                            onClick={() => setShowDebugView(true)}
+                            className="px-4 py-2 bg-warning hover:bg-warning/80 text-black font-bold rounded transition-colors"
+                        >
+                            Switch to Remote Browser
+                        </button>
+                    </div>
+                 </div>
+            )}
+            {showDebugView ? (
+                <div className="w-full h-full bg-card">
+                    <ResearchBrowser initialUrl={url} />
+                </div>
+            ) : (
+                isElectron() ? (
+                    <WebView
+                        ref={webviewRef}
+                        src={url}
+                        style={{ width: '100%', height: '100%' }}
+                        allowpopups={true}
+                        webpreferences="nativeWindowOpen=yes"
+                        useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
+                    />
+                ) : null
+            )}
+        </div>
+    </div>
+  );
+
+  if (hideWrapper) return content;
+
   return (
     <UniversalCardWrapper
       title="Browser (Electron)"
@@ -141,76 +223,8 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd }) => {
       settings={settingsContent}
       headerEnd={headerEnd}
     >
-        {/* Helper for non-Electron envs */}
-        {!isElectron() && !showDebugView && (
-             <div className="absolute inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm p-8">
-                <div className="bg-warning/20 border border-warning/50 p-6 rounded-lg max-w-md text-center">
-                    <h3 className="text-warning font-bold mb-2">Electron Required</h3>
-                    <p className="text-warning/60 text-sm mb-4">
-                        The native browser view requires the Electron app. 
-                        Enable &quot;Show Agent&apos;s Research Browser&quot; in settings to use the remote browser instead.
-                    </p>
-                    <button 
-                        onClick={() => setShowDebugView(true)}
-                        className="px-4 py-2 bg-warning hover:bg-warning/80 text-black font-bold rounded transition-colors"
-                    >
-                        Switch to Remote Browser
-                    </button>
-                </div>
-             </div>
-        )}
-
-        <div className="flex flex-col w-full h-full bg-background">
-             {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
-             {!showDebugView && (
-                <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border">
-                    <button onClick={handleBack} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
-                        <ArrowLeft size={16} />
-                    </button>
-                    <button onClick={handleForward} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
-                        <ArrowRight size={16} />
-                    </button>
-                    <button onClick={handleReload} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
-                        <RotateCw size={16} />
-                    </button>
-                    
-                    {/* Address Input */}
-                    <div className="flex-1 relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-                            <Lock size={12} />
-                        </div>
-                        <input 
-                            className="w-full bg-card text-foreground text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
-                            onFocus={e => e.target.select()}
-                            placeholder="Enter URL or search..."
-                        />
-                    </div>
-                </div>
-             )}
-
-            {/* BROWSER CONTENT */}
-            <div className="flex-1 relative bg-white overflow-hidden">
-                {showDebugView ? (
-                    <div className="w-full h-full bg-card">
-                        <ResearchBrowser initialUrl={url} />
-                    </div>
-                ) : (
-                    isElectron() ? (
-                        <WebView
-                            ref={webviewRef}
-                            src={url}
-                            style={{ width: '100%', height: '100%' }}
-                            allowpopups={true}
-                            webpreferences="nativeWindowOpen=yes"
-                            useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
-                        />
-                    ) : null
-                )}
-            </div>
-        </div>
+        {content}
     </UniversalCardWrapper>
   );
-};
+}
+;
