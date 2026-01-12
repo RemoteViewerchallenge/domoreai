@@ -1,20 +1,47 @@
-import React, { useState, useContext, createContext, useEffect } from "react";
-import type { NebulaTree } from "@repo/nebula"; // Ensure @repo/nebula types are available
+import React, { useState, useContext, createContext } from "react";
+import type { NebulaTree, NebulaNode } from "@repo/nebula";
 import { cn } from "../../lib/utils.js";
 import { resolveComponent } from "../../nebula/component-map.js";
 import { SuperAiButton } from "../../components/ui/SuperAiButton.js";
 import { Eye, EyeOff } from "lucide-react";
+import { useMediaQuery } from "../../hooks/useMediaQuery.js";
 
-// --- CONTEXT FOR AI OVERLAY & FORM BINDINGS ---
+// --- NEW RECURSIVE RENDERER FOR PROJECTS ---
+export const NebulaRenderer = ({ node }: { node: NebulaNode }) => {
+  // node is cast to any or NebulaNode if types are ready
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // 1. Check Responsive Visibility
+  if (node.responsive?.visibility) {
+    const visibility = isMobile ? node.responsive.visibility.mobile : node.responsive.visibility.desktop;
+    if (visibility === 'hidden') return null;
+  }
+
+  // 2. Resolve Component
+  const Component = resolveComponent(node.type === "Component" ? node.componentName || 'Box' : node.type);
+
+  // 3. Inject Responsive Props
+  const responsiveProps = node.responsive?.mode ? {
+    layoutMode: isMobile ? node.responsive.mode.mobile : node.responsive.mode.desktop
+  } : {};
+
+  // 4. Handle Nested Children
+  const childrenToRender = Array.isArray(node.children) && node.children.length > 0 && typeof node.children[0] === 'object'
+    ? (node.children as NebulaNode[]).map((child) => <NebulaRenderer key={child.id} node={child} />)
+    : null;
+
+  return (
+    <Component {...node.props} {...responsiveProps}>
+      {childrenToRender}
+    </Component>
+  );
+};
 interface NebulaContextType {
   showAiOverlay: boolean;
   toggleAiOverlay: () => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bindings: Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setBinding: (key: string, value: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleAction: (action: string, payload?: any) => void;
+  bindings: Record<string, unknown>;
+  setBinding: (key: string, value: unknown) => void;
+  handleAction: (action: string, payload?: unknown) => void;
 }
 
 export const NebulaContext = createContext<NebulaContextType>({
@@ -28,21 +55,19 @@ export const NebulaContext = createContext<NebulaContextType>({
 // --- THE ROOT CONTAINER ---
 interface NebulaRootProps {
   tree: NebulaTree;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  initialBindings?: Record<string, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onAction?: (action: string, payload?: any, bindings?: Record<string, any>) => void;
+  initialBindings?: Record<string, unknown>;
+  onAction?: (action: string, payload?: unknown, bindings?: Record<string, unknown>) => void;
 }
 
 export const NebulaRendererRoot: React.FC<NebulaRootProps> = ({ tree, initialBindings = {}, onAction }) => {
   const [showAiOverlay, setShowAiOverlay] = useState(true);
   const [bindings, setBindings] = useState(initialBindings);
 
-  const setBinding = (key: string, value: any) => {
+  const setBinding = (key: string, value: unknown) => {
     setBindings(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleAction = (action: string, payload?: any) => {
+  const handleAction = (action: string, payload?: unknown) => {
       onAction?.(action, payload, bindings);
   };
 
@@ -132,33 +157,34 @@ const NebulaNodeRenderer = ({ tree, nodeId }: { tree: NebulaTree, nodeId: string
     childrenToRender = null; // Text component handles content via props
   }
 
-  // --- AUTOMAGIC DATA BINDING ---
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const finalProps: any = { ...node.props, id: node.id };
+  // --- AUTOMATIC DATA BINDING ---
+  const finalProps: Record<string, unknown> = { ...node.props, id: node.id };
   
   // 1. Value Binding
-  if (finalProps['data-binding']) {
+  if (typeof finalProps['data-binding'] === 'string') {
       const key = finalProps['data-binding'];
-      finalProps.value = bindings[key] || '';
+      finalProps.value = (bindings as Record<string, any>)[key] || '';
       
       // Handle standard inputs
       finalProps.onChange = (e: any) => {
-          const val = e.target ? e.target.value : e; // Support generic 'onChange' components too
+          const val = (e && typeof e === 'object' && 'target' in e) 
+            ? (e.target as HTMLInputElement | HTMLTextAreaElement).value 
+            : e; 
           setBinding(key, val);
       };
       // Handle badge/button selection logic if needed (simple toggle or set)
       if (node.componentName === 'Badge') {
            finalProps.onClick = () => setBinding(key, finalProps['data-value']);
            // Highlight if selected
-           if (bindings[key] === finalProps['data-value']) {
-               finalProps.className = cn(finalProps.className, "bg-purple-600 text-white border-purple-400");
+           if ((bindings as Record<string, any>)[key] === finalProps['data-value']) {
+               finalProps.className = cn(finalProps.className as string, "bg-purple-600 text-white border-purple-400");
            }
       }
   }
 
   // 2. Action Binding
-  if (finalProps['data-action']) {
-      finalProps.onClick = () => handleAction(finalProps['data-action']);
+  if (typeof finalProps['data-action'] === 'string') {
+      finalProps.onClick = () => handleAction(finalProps['data-action'] as string);
   }
 
   return (

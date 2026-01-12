@@ -6,6 +6,8 @@ export type NebulaId = string;
 // Node Types: Primitives, Logic, and Black-Box Components
 export type NodeType =
   | "Box"
+  | "Flex"
+  | "Grid"
   | "Text"
   | "Button"
   | "Input"
@@ -76,7 +78,7 @@ export interface NebulaNode {
   componentName?: string; // e.g., "UserCard", "HeroSection"
 
   // Visuals (Token-based)
-  style: StyleTokens;
+  style?: StyleTokens;
 
   // Layout Engine
   layout?: {
@@ -89,9 +91,23 @@ export interface NebulaNode {
     gap?: string; // Token
   };
 
+  // NEW: Add this specific block for the Shell
+  responsive?: {
+    // Controls visibility per device
+    visibility?: {
+      mobile: 'hidden' | 'visible';
+      desktop: 'hidden' | 'visible';
+    };
+    // Controls layout mode per device (e.g. sidebar becomes bottom-bar)
+    mode?: {
+      mobile?: 'stack' | 'bottom-bar' | 'drawer';
+      desktop?: 'sidebar' | 'grid' | 'default';
+    };
+  };
+
   // Hierarchy
   parentId?: NebulaId;
-  children: NebulaId[]; // Ordered list of child IDs
+  children: NebulaNode[] | NebulaId[]; // Support both nested for Projects and flat for Editor
 
   // Meta for AI & Editor
   meta?: {
@@ -100,6 +116,18 @@ export interface NebulaNode {
     hidden?: boolean;
     source?: "ai-gen" | "ai-gen-batch" | "human" | "imported";
     aiDescription?: string; // "A blue card for user profile"
+    aiConfig?: { defaultRole?: string };
+  };
+}
+
+// Update ProjectManifest to use this Node
+export interface ProjectManifest {
+  id: string;
+  name: string;
+  version: string;
+  themeId: string;
+  routes: {
+    [routePath: string]: NebulaNode;
   };
 }
 
