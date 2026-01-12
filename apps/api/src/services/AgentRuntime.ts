@@ -76,7 +76,18 @@ export class AgentRuntime {
         "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
         "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula"
       ];
-      const serverNames = requestedTools.filter(t => !nativeToolNames.includes(t) && t !== "meta");
+      
+      const { prisma } = await import("../db.js");
+      const dbTools = await prisma.tool.findMany({
+        where: { name: { in: requestedTools } },
+        select: { name: true, serverId: true }
+      });
+
+      const serverNames = Array.from(new Set(
+        dbTools
+          .filter(t => t.serverId && !nativeToolNames.includes(t.name))
+          .map(t => t.serverId!)
+      ));
       
       let mcpTools: ToolDefinition[] = [];
       if (serverNames.length > 0) {
