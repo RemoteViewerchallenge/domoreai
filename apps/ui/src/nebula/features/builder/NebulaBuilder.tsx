@@ -1,178 +1,379 @@
-
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useBuilderStore } from '../../../stores/builder.store.js';
 import { ComponentManifest, type ComponentCategory } from '../../registry.js';
 import { Canvas as BuilderCanvas } from '../../../components/nebula/system/Canvas.js';
 import { PropertyPanel } from '../../../components/nebula/system/PropertyPanel.js';
 import { BuilderToolbar } from '../../features/navigation/toolbars/BuilderToolbar.js';
 import { AstTransformer, CodeGenerator, type NebulaTree } from '@repo/nebula'; 
-import { Layers, Plus, Code, Search, X } from 'lucide-react';
+import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
+import { useVFS } from '../../../hooks/useVFS.js';
+import { SuperAiButton } from '../../../components/ui/SuperAiButton.js';
+import { toast } from 'sonner';
+import { FileExplorer } from '../../../components/FileExplorer.js';
 
+// --- TYPES ---
 interface NebulaBuilderProps {
   initialTree: NebulaTree; 
   onSave: (newTree: NebulaTree) => void;
 }
 
+interface FileSelectorModalProps {
+    onSelect: (content: string, path: string) => void;
+    onClose: () => void;
+}
+
+// --- SUB-COMPONENT: FILE SELECTOR MODAL ---
+const FileSelectorModal = ({ 
+    onSelect, 
+    onClose 
+}: FileSelectorModalProps) => {
+    // Navigate VFS from root
+    const { files, navigateTo, currentPath, readFile, isLoading, refresh, listDir, error } = useVFS('', '/');
+
+    const handleFileSelect = async (path: string) => {
+        const fileName = path.split('/').pop() || '';
+        if (!fileName.endsWith('.tsx') && !fileName.endsWith('.jsx')) {
+            toast.error("Invalid File Type", { description: "Please select a React file (.tsx / .jsx)" });
+            return;
+        }
+
+        try {
+            const content = await readFile(path);
+            onSelect(content, path);
+        } catch (err) {
+            console.error(err);
+            toast.error("Read Error", { description: "Failed to read the selected file." });
+        }
+    };
+
+    return (
+        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-150">
+            <div className="w-[600px] h-[500px] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+                <div className="h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <FolderOpen size={12} className="text-indigo-500"/> 
+                        Import Component
+                    </span>
+                    <button onClick={onClose}><X size={14} className="text-zinc-500 hover:text-zinc-200" /></button>
+                </div>
+                
+                <div className="flex-1 overflow-hidden relative">
+                    {error && (
+                        <div className="absolute inset-0 z-10 bg-red-950/20 backdrop-blur-[2px] flex items-center justify-center p-8">
+                            <div className="bg-zinc-900 border border-red-500/50 p-4 rounded-lg shadow-xl max-w-sm text-center">
+                                <span className="text-red-400 text-xs font-bold uppercase mb-2 block">VFS Error</span>
+                                <p className="text-[10px] text-zinc-400 mb-4">{error}</p>
+                                <button onClick={() => { void refresh(); }} className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-[10px] rounded uppercase font-bold transition-all">Retry</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-full text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                             <RefreshCw size={14} className="animate-spin mr-2" />
+                             Loading VFS...
+                        </div>
+                    ) : (
+                        <FileExplorer 
+                            files={files}
+                            onSelect={(path) => { void handleFileSelect(path); }}
+                            onNavigate={(path) => navigateTo(path)}
+                            currentPath={currentPath}
+                            onRefresh={() => { void refresh(); }}
+                            onLoadChildren={listDir}
+                            className="border-0"
+                        />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN COMPONENT ---
 export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   const [tree, setTree] = useState<NebulaTree>(initialTree);
+  const [sidebarTab, setSidebarTab] = useState<'library' | 'assistant'>('library');
   const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCodeModal, setShowCodeModal] = useState<'import' | 'export' | null>(null);
   const [codeBuffer, setCodeBuffer] = useState('');
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  
+  // AI State
+  const [aiPrompt, setAiPrompt] = useState('');
 
-  // Store Sync
-  const { 
-    setIsDirty, 
-    saveTriggered, 
-    viewport 
-  } = useBuilderStore();
+  const { setIsDirty, saveTriggered, viewport } = useBuilderStore();
+  const { writeFile } = useVFS('', '/');
 
   // --- ACTIONS ---
 
   const handleSave = useCallback(() => {
     onSave(tree);
     setIsDirty(false);
+    toast("Layout Saved", { description: "Nebula tree persisted to disk." });
   }, [tree, onSave, setIsDirty]);
 
   // Sync save button from toolbar
   useEffect(() => {
-    if (saveTriggered > 0) {
-      handleSave();
-    }
+    if (saveTriggered > 0) handleSave();
   }, [saveTriggered, handleSave]);
 
-  // Global Hotkey Save Listener
-  useEffect(() => {
-    const handleGlobalSave = () => {
-        console.log("Global Save Triggered via Layout");
-        handleSave();
-    };
-
-    window.addEventListener('nebula:save', handleGlobalSave);
-    return () => window.removeEventListener('nebula:save', handleGlobalSave);
-  }, [handleSave]);
-
-  // Handle Drag Start (Palette -> Canvas)
+  // Drag Start
   const handleDragStart = (e: React.DragEvent, componentType: string) => {
     e.dataTransfer.setData('nebula/type', componentType);
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  // Import TSX Logic
-  const handleImport = () => {
+  // VFS Import
+  const handleVfsSelect = (content: string, path: string) => {
     try {
-      const transformer = new AstTransformer();
-      const newTree = transformer.parse(codeBuffer);
-      setTree(newTree);
-      setShowCodeModal(null);
-      setIsDirty(true);
+        const transformer = new AstTransformer();
+        const newTree = transformer.parse(content);
+        setTree(newTree);
+        setCurrentFile(path.split('/').pop() || path);
+        setShowCodeModal(null);
+        setIsDirty(true);
+        toast("Component Imported", { description: `Successfully parsed ${path} into Nebula Tree.` });
     } catch (err) {
-      alert("Failed to parse TSX: " + (err as Error).message);
+        alert("Parse Error: " + (err as Error).message);
     }
   };
 
-  // Export Code Logic
-  const getExportedCode = () => {
+  // Export
+  const getExportedCode = useCallback(() => {
     const generator = new CodeGenerator();
     return generator.generate(tree);
+  }, [tree]);
+
+  const handleSaveJson = async () => {
+    try {
+      const json = JSON.stringify(tree, null, 2);
+      await writeFile('nebula-project.json', json);
+      toast.success("JSON Exported", { description: "Saved as nebula-project.json to VFS Root." });
+    } catch (err) {
+      toast.error("Export Failed", { description: (err as Error).message });
+    }
+  };
+
+  // AI Context Getter
+  const getAiContext = useCallback(() => {
+     // Return both the raw JSON tree and the compiled code representation
+     // This gives the Agent maximum context to understand structure AND logic.
+     return {
+         tree: tree,
+         codePreview: getExportedCode(),
+         activeViewport: viewport
+     };
+  }, [tree, getExportedCode, viewport]);
+
+  const handleAiSuccess = (response: { tree?: NebulaTree }) => {
+      // Future: If the AI returns a JSON patch, apply it here.
+      // For now, we assume the AI performs a backend action or returns a suggestion.
+      console.log("AI Response:", response);
+      if (response?.tree) {
+          setTree(response.tree);
+          toast("AI Generation Complete", { description: "Applied layout changes from Agent." });
+      }
   };
 
   // Filter Components
-  const componentList = Object.entries(ComponentManifest)
+  const componentList = useMemo(() => Object.entries(ComponentManifest)
     .filter(([_key, def]) => {
       if (def.meta.hidden) return false;
       const matchesSearch = _key.toLowerCase().includes(searchQuery.toLowerCase()) || def.meta.label.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
       if (activeCategory === 'all') return def.meta.category !== 'system';
       return def.meta.category === activeCategory;
-    });
+    }), [activeCategory, searchQuery]);
 
   return (
     <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 select-none overflow-hidden font-sans">
       
-      {/* 1. TOP BAR (Toolbar + Actions) */}
-      <div className="h-10 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/50 backdrop-blur shrink-0">
-        <BuilderToolbar />
-        <div className="ml-auto flex items-center gap-2 border-l border-zinc-800 pl-4 h-full">
-           <button 
-             onClick={() => { setCodeBuffer(''); setShowCodeModal('import'); }}
-             className="flex items-center gap-1.5 px-2 py-1 hover:bg-zinc-800 rounded text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-100 transition-colors"
-           >
-              <Plus size={12} /> Import TSX
-           </button>
-           <button 
-             onClick={() => { setCodeBuffer(getExportedCode()); setShowCodeModal('export'); }}
-             className="flex items-center gap-1.5 px-2 py-1 hover:bg-zinc-800 rounded text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-100 transition-colors"
-           >
-              <Code size={12} /> View Code
-           </button>
+      {/* 1. TOP BAR */}
+      <div className="h-10 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/50 backdrop-blur shrink-0 justify-between">
+        <div className="flex items-center gap-4">
+            <BuilderToolbar />
+            {currentFile && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-zinc-900 border border-zinc-800 rounded text-[10px] font-mono text-zinc-400">
+                    <FileCode size={12} className="text-indigo-400" />
+                    {currentFile}
+                </div>
+            )}
         </div>
+         <div className="flex items-center gap-2 h-full">
+            <button 
+              onClick={handleSaveJson}
+              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-amber-400 transition-colors border border-transparent hover:border-zinc-700"
+            >
+               <Layers size={12} /> Save JSON
+            </button>
+            <button 
+              onClick={() => setShowCodeModal('import')}
+              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-emerald-400 transition-colors border border-transparent hover:border-zinc-700"
+            >
+               <FolderOpen size={12} /> Import TSX
+            </button>
+            <button 
+              onClick={() => { setCodeBuffer(getExportedCode()); setShowCodeModal('export'); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-indigo-400 transition-colors border border-transparent hover:border-zinc-700"
+            >
+               <Code size={12} /> View Code
+            </button>
+         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         
-        {/* 2. LEFT SIDEBAR (Palette) */}
-        <div className="w-64 border-r border-zinc-800 flex flex-col bg-zinc-900 shrink-0">
-           {/* Search */}
-           <div className="p-2 border-b border-zinc-800">
-             <div className="relative">
-                <Search size={12} className="absolute left-2 top-2 text-zinc-600" />
-                <input 
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 pl-7 py-1 text-xs focus:border-indigo-500 focus:outline-none placeholder:text-zinc-700 text-zinc-300" 
-                  placeholder="Find component..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                />
-             </div>
-           </div>
+        {/* 2. LEFT SIDEBAR (The Cockpit) */}
+        <div className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-900 shrink-0">
            
-           {/* Categories */}
-           <div className="flex gap-1 p-2 border-b border-zinc-800 overflow-x-auto no-scrollbar shrink-0 bg-zinc-950/20">
-              {(['all', 'layout', 'atom', 'molecule', 'data'] as const).map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat as unknown as ComponentCategory | 'all')}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] uppercase font-bold whitespace-nowrap border transition-all",
-                    activeCategory === cat 
-                      ? "bg-zinc-800 text-zinc-100 border-zinc-700" 
-                      : "border-transparent text-zinc-600 hover:text-zinc-400"
-                  )}
-                >
-                  {cat}
-                </button>
-              ))}
+           {/* Sidebar Tabs */}
+           <div className="flex border-b border-zinc-800">
+              <button 
+                onClick={() => setSidebarTab('library')}
+                className={cn(
+                    "flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border-b-2",
+                    sidebarTab === 'library' 
+                        ? "text-zinc-100 border-indigo-500 bg-zinc-800/50" 
+                        : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/30"
+                )}
+              >
+                  <Box size={14} /> Library
+              </button>
+              <button 
+                onClick={() => setSidebarTab('assistant')}
+                className={cn(
+                    "flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border-b-2",
+                    sidebarTab === 'assistant' 
+                        ? "text-zinc-100 border-purple-500 bg-zinc-800/50" 
+                        : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/30"
+                )}
+              >
+                  <Bot size={14} /> AI Architect
+              </button>
            </div>
 
-           {/* Draggable List */}
-           <div className="flex-1 overflow-y-auto p-2 space-y-1 thin-scrollbar">
-              {componentList.map(([type, def]) => (
-                <div 
-                  key={type}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, type)}
-                  className="group flex items-center justify-between p-2 rounded hover:bg-zinc-800 border border-transparent hover:border-zinc-700 cursor-grab active:cursor-grabbing transition-all"
-                >
-                   <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-600 group-hover:text-indigo-400 transition-colors">
-                        <Layers size={12} />
-                      </div>
-                      <span className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-200">{def.meta.label}</span>
-                   </div>
-                   <Plus size={10} className="text-zinc-700 opacity-0 group-hover:opacity-100" />
+           {/* A. LIBRARY TAB */}
+           {sidebarTab === 'library' && (
+               <>
+                <div className="p-3 border-b border-zinc-800">
+                    <div className="relative">
+                        <Search size={12} className="absolute left-2.5 top-2.5 text-zinc-600" />
+                        <input 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-sm px-2 pl-8 py-2 text-xs focus:border-indigo-500 focus:outline-none placeholder:text-zinc-700 text-zinc-300 transition-colors" 
+                        placeholder="Search components..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
-              ))}
-              {componentList.length === 0 && (
-                  <div className="text-center py-12 text-[10px] text-zinc-600 uppercase tracking-widest">No Results</div>
-              )}
-           </div>
+                
+                <div className="flex gap-1 p-2 border-b border-zinc-800 overflow-x-auto no-scrollbar shrink-0 bg-zinc-950/30">
+                    {(['all', 'layout', 'atom', 'molecule', 'data'] as const).map(cat => (
+                        <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat as unknown as ComponentCategory | 'all')}
+                        className={cn(
+                            "px-3 py-1 rounded-sm text-[10px] uppercase font-bold whitespace-nowrap border transition-all",
+                            activeCategory === cat 
+                            ? "bg-zinc-800 text-zinc-100 border-zinc-600" 
+                            : "border-transparent text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/30"
+                        )}
+                        >
+                        {cat}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    {componentList.map(([type, def]) => (
+                        <div 
+                        key={type}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, type)}
+                        className="group flex items-center justify-between p-2 rounded-sm hover:bg-zinc-800 border border-transparent hover:border-zinc-700 cursor-grab active:cursor-grabbing transition-all select-none"
+                        >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-sm bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-600 group-hover:text-indigo-400 transition-colors shadow-sm">
+                                <Layers size={14} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium text-zinc-300 group-hover:text-zinc-100">{def.meta.label}</span>
+                                <span className="text-[9px] text-zinc-600 uppercase">{def.meta.category}</span>
+                            </div>
+                        </div>
+                        <Plus size={12} className="text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                    ))}
+                    {componentList.length === 0 && (
+                        <div className="text-center py-12 text-[10px] text-zinc-600 uppercase tracking-widest">No Components Found</div>
+                    )}
+                </div>
+               </>
+           )}
+
+           {/* B. AI ASSISTANT TAB */}
+           {sidebarTab === 'assistant' && (
+               <div className="flex flex-col h-full bg-zinc-900/50">
+                   <div className="flex-1 p-4 overflow-y-auto">
+                       <div className="p-4 rounded border border-purple-500/20 bg-purple-500/5 mb-4">
+                           <h4 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                               <Bot size={14}/> Active Context
+                           </h4>
+                           <div className="text-[10px] text-zinc-400 space-y-1 font-mono">
+                               <div className="flex justify-between">
+                                   <span>Tree Nodes:</span>
+                                   <span className="text-zinc-200">{(JSON.stringify(tree).length / 1024).toFixed(1)} KB</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span>Viewport:</span>
+                                   <span className="text-zinc-200 uppercase">{viewport}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span>Mode:</span>
+                                   <span className="text-zinc-200">Builder</span>
+                               </div>
+                           </div>
+                       </div>
+                       
+                       <div className="text-xs text-zinc-500 leading-relaxed text-center mt-8">
+                           "I can generate layouts, refactor components, or analyze your current tree. Select a specialized Role below."
+                       </div>
+                   </div>
+
+                   {/* Prompt Area */}
+                   <div className="p-4 border-t border-zinc-800 bg-zinc-950">
+                       <div className="relative">
+                           <textarea
+                               className="w-full h-32 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 focus:border-purple-500 focus:outline-none resize-none custom-scrollbar mb-2"
+                               placeholder="Describe your UI needs (e.g., 'Add a 3-column grid with cards')..."
+                               value={aiPrompt}
+                               onChange={e => setAiPrompt(e.target.value)}
+                           />
+                           
+                           <div className="flex justify-between items-center">
+                               <span className="text-[10px] text-zinc-600 uppercase font-bold">Model: Nebula-70B</span>
+                               <SuperAiButton 
+                                    contextGetter={getAiContext}
+                                    onSuccess={handleAiSuccess}
+                                    defaultPrompt={aiPrompt}
+                                    // Use 'Config' style button but act as submit
+                                    className="z-50"
+                                    defaultRoleId="nebula-architect"
+                               />
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           )}
         </div>
 
         {/* 3. CENTER (Canvas) */}
         <div className="flex-1 bg-zinc-950 flex flex-col relative overflow-hidden">
-           {/* Canvas Wrapper for centering/scaling based on viewport */}
-           <div className="flex-1 overflow-auto p-12 flex justify-center bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:24px_24px] thin-scrollbar">
+           {/* Canvas Wrapper */}
+           <div className="flex-1 overflow-auto p-12 flex justify-center bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:24px_24px] custom-scrollbar">
               <div 
                 className={cn(
                   "transition-all duration-500 shadow-2xl bg-zinc-900 border border-zinc-800 ring-4 ring-zinc-950 rounded-sm origin-top",
@@ -189,7 +390,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
         </div>
 
         {/* 4. RIGHT SIDEBAR (Properties) */}
-        <div className="w-72 border-l border-zinc-800 bg-zinc-900 flex flex-col shrink-0">
+        <div className="w-72 border-l border-zinc-800 bg-zinc-900 flex flex-col shrink-0 z-10">
            <PropertyPanel 
              tree={tree}
              setTree={(t: NebulaTree) => { setTree(t); setIsDirty(true); }}
@@ -198,44 +399,32 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
 
       </div>
 
-      {/* CODE MODAL */}
-      {showCodeModal && (
-        <div className="absolute inset-0 z-[9999] bg-black/80 flex items-center justify-center p-12 backdrop-blur-sm animate-in fade-in duration-200">
+      {/* MODALS */}
+      {showCodeModal === 'import' && (
+          <FileSelectorModal 
+            onSelect={handleVfsSelect} 
+            onClose={() => setShowCodeModal(null)} 
+          />
+      )}
+
+      {showCodeModal === 'export' && (
+        <div className="absolute inset-0 z-[100] bg-black/80 flex items-center justify-center p-12 backdrop-blur-sm animate-in fade-in duration-200">
            <div className="bg-zinc-900 border border-zinc-700 w-full max-w-5xl h-[85vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
                  <h3 className="text-xs font-bold text-zinc-100 flex items-center gap-2 tracking-widest uppercase">
-                    {showCodeModal === 'import' ? <Plus size={14} className="text-emerald-500"/> : <Code size={14} className="text-indigo-500" />}
-                    {showCodeModal === 'import' ? 'Import System TSX' : 'Nebula Engine: Generated Code'}
+                    <Code size={14} className="text-indigo-500" />
+                    Nebula Engine: Generated Code
                  </h3>
                  <button onClick={() => setShowCodeModal(null)} className="text-zinc-500 hover:text-white p-2 transition-colors"><X size={18}/></button>
               </div>
               <div className="flex-1 relative bg-zinc-950">
                  <textarea 
-                   className="w-full h-full bg-transparent p-6 font-mono text-xs text-zinc-400 focus:text-zinc-200 focus:outline-none resize-none leading-relaxed overflow-auto thin-scrollbar"
+                   className="w-full h-full bg-transparent p-6 font-mono text-xs text-zinc-400 focus:text-zinc-200 focus:outline-none resize-none leading-relaxed overflow-auto custom-scrollbar"
                    value={codeBuffer}
-                   onChange={e => setCodeBuffer(e.target.value)}
-                   readOnly={showCodeModal === 'export'}
+                   readOnly
                    spellCheck={false}
-                   placeholder="// Paste your React component code here...
-// Nebula will attempt to transpile it into a visual tree."
                  />
               </div>
-              {showCodeModal === 'import' && (
-                 <div className="p-4 border-t border-zinc-800 bg-zinc-950 flex justify-end gap-3">
-                    <button 
-                       onClick={() => setShowCodeModal(null)}
-                       className="px-4 py-2 text-zinc-500 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                      onClick={handleImport}
-                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-md shadow-lg shadow-indigo-500/20 active:scale-95 transition-all uppercase tracking-widest"
-                    >
-                      Transpile & Sync
-                    </button>
-                 </div>
-              )}
            </div>
         </div>
       )}
