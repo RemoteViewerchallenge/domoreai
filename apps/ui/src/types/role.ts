@@ -24,6 +24,32 @@ export interface Model {
   };
 }
 
+export interface RoleDNA {
+  identity: {
+    personaName: string;
+    style: 'PROFESSIONAL_CONCISE' | 'SOCRATIC' | 'AGGRESSIVE_AUDITOR' | 'CREATIVE_EXPLORER';
+    systemPromptDraft: string;
+  };
+  cortex: {
+    orchestration: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
+    reflectionEnabled: boolean;
+    capabilities: string[];
+    contextRange: { min: number; max: number };
+  };
+  governance: {
+    rules: string[];
+    assessmentStrategy: 'LINT_ONLY' | 'VISUAL_CHECK' | 'STRICT_TEST_PASS';
+    enforcementLevel: 'BLOCK_ON_FAIL' | 'WARN_ONLY';
+  };
+  context: {
+    strategy: 'STANDARD' | 'VECTOR_SEARCH' | 'LOCUS_FOCUS';
+    permissions: string[];
+  };
+  tools: {
+    customTools: string[];
+  };
+}
+
 export interface Role {
   id: string;
   name: string;
@@ -73,6 +99,9 @@ export interface Role {
       readOnly: boolean;
   };
 
+  // DNA Concept
+  dna?: RoleDNA;
+
   currentModel?: string; // Resolved model name
   scope?: string;
 }
@@ -111,4 +140,7 @@ export interface RoleFormState {
   criteria: Record<string, unknown>;
   orchestrationConfig: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number };
   memoryConfig: { useProjectMemory: boolean; readOnly: boolean };
+  
+  // DNA Overlay
+  dna: RoleDNA;
 }

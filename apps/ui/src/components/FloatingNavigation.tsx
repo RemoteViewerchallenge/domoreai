@@ -3,7 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils.js';
 import { useNavigate } from 'react-router-dom';
-import type { NavItemDef } from './UnifiedMenuBar.js';
+import type { LucideIcon } from 'lucide-react';
+
+interface NavItemDef {
+  label: string;
+  path?: string;
+  icon?: LucideIcon;
+  action?: () => void;
+}
 
 export const FloatingNavigation = ({ items = [] }: { items: NavItemDef[] }) => {
   const [isOpen, setIsOpen] = useState(false);
