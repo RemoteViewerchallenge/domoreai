@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Code, Globe, Terminal, Settings, Folder, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { SmartMonacoEditor } from '../SmartMonacoEditor.js';
+import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
 import { SmartBrowser } from '../SmartBrowser.js';
 import { useCardVFS } from '../../hooks/useCardVFS.js';
@@ -149,7 +149,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       {/* 2. Content */}
       <div className="flex-1 relative overflow-hidden bg-[var(--bg-background)]">
          {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => {}} onClose={() => setViewMode('editor')} />}
-         {viewMode === 'editor' && <SmartMonacoEditor path={activeFile} value={content} onChange={handleSave} />}
+         {viewMode === 'editor' && <SmartEditor fileName={activeFile} content={content} onChange={handleSave} onRun={() => runAgent(quickPrompt)} />}
          {viewMode === 'files' && <FileExplorer files={files} currentPath={currentPath} onNavigate={navigateTo} onSelect={(p) => { setActiveFile(p); if(!p.endsWith('/')) setViewMode('editor'); }} onCreateNode={createNode} onRefresh={refresh} onEmbedDir={ingestDirectory} onLoadChildren={loadChildren} className="p-2"/>}
          {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => runAgent(msg)} />}
          {viewMode === 'browser' && <SmartBrowser url={(card?.metadata as any)?.url || 'https://google.com'} />}

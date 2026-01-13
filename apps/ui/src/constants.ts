@@ -32,4 +32,29 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
   criteria: {},
   orchestrationConfig: { requiresCheck: false, judgeRoleId: undefined, minPassScore: 80 },
   memoryConfig: { useProjectMemory: false, readOnly: false },
+  dna: {
+    identity: {
+        personaName: '',
+        style: 'PROFESSIONAL_CONCISE',
+        systemPromptDraft: ''
+    },
+    cortex: {
+        orchestration: 'SOLO',
+        reflectionEnabled: false,
+        capabilities: [],
+        contextRange: { min: 4096, max: 8192 }
+    },
+    governance: {
+        rules: [],
+        assessmentStrategy: 'LINT_ONLY',
+        enforcementLevel: 'WARN_ONLY'
+    },
+    context: {
+        strategy: 'STANDARD',
+        permissions: ['ALL']
+    },
+    tools: {
+        customTools: []
+    }
+  }
 };
