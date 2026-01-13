@@ -41,16 +41,16 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
     cortex: {
         orchestration: 'SOLO',
         reflectionEnabled: false,
-        capabilities: [],
+        capabilities: [], // Non-exclusive checkboxes
         contextRange: { min: 4096, max: 8192 }
     },
     governance: {
         rules: [],
-        assessmentStrategy: 'LINT_ONLY',
+        assessmentStrategy: ['LINT_ONLY'], // Non-exclusive checkboxes - default to LINT_ONLY
         enforcementLevel: 'WARN_ONLY'
     },
     context: {
-        strategy: 'STANDARD',
+        strategy: ['EXPLORATORY'], // Non-exclusive checkboxes - default to EXPLORATORY
         permissions: ['ALL']
     },
     tools: {
