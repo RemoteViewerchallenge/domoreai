@@ -27,6 +27,8 @@ export class AstTransformer {
     "DataGrid",
     "DatePicker",
     "Calendar",
+    "Sidebar",
+    "Navbar"
   ]);
 
   /**
@@ -61,7 +63,6 @@ export class AstTransformer {
       if (TS.isImportDeclaration(statement)) {
         imports.push(statement.getText());
       }
-      // Capture "export { Foo } from 'bar'" or "export { Foo }"
       if (TS.isExportDeclaration(statement)) {
         exports.push(statement.getText());
       }
@@ -99,7 +100,6 @@ export class AstTransformer {
         )
           return n;
 
-        // Recursively look inside function/class bodies
         if (
           TS.isFunctionDeclaration(n) ||
           TS.isClassDeclaration(n) ||
@@ -107,7 +107,6 @@ export class AstTransformer {
           TS.isFunctionExpression(n) ||
           TS.isMethodDeclaration(n)
         ) {
-          // Check for a return statement or expression body
           return this.findRootJsx(n);
         }
 
@@ -116,7 +115,7 @@ export class AstTransformer {
       targetJsx = findInnerJsx(defaultExport);
     }
 
-    // 3. Fallback: Take the first JSX root found anywhere in the file
+    // 3. Fallback: Take the best JSX root found anywhere
     if (!targetJsx) {
       const findFirstJsx = (n: ts.Node): ts.Node | null => {
         if (
@@ -126,7 +125,6 @@ export class AstTransformer {
         )
           return n;
 
-        // If it's a component declaration, look inside its return
         if (
           TS.isFunctionDeclaration(n) ||
           TS.isClassDeclaration(n) ||
@@ -168,17 +166,15 @@ export class AstTransformer {
   }
 
   private visit(node: ts.Node): NebulaNode | null {
-    // Resolve the "inner" logic of an expression: { ... } -> ...
     let inner = TS.isJsxExpression(node) ? node.expression : node;
 
-    // Peel parentheses: {(isOpen && ...)} -> isOpen && ...
     while (inner && TS.isParenthesizedExpression(inner)) {
       inner = inner.expression;
     }
 
     if (!inner) return null;
 
-    // 1. Handle Conditional Logic: {condition && <Child />}
+    // 1. Handle Conditional Logic
     if (
       TS.isBinaryExpression(inner) &&
       inner.operatorToken.kind === TS.SyntaxKind.AmpersandAmpersandToken
@@ -199,7 +195,6 @@ export class AstTransformer {
       return conditionNode;
     }
 
-    // 1.5 Handle Ternary Logic: {condition ? <A /> : <B />}
     if (TS.isConditionalExpression(inner)) {
       const trueChild = this.visit(inner.whenTrue);
       const falseChild = this.visit(inner.whenFalse);
@@ -240,7 +235,7 @@ export class AstTransformer {
       return container;
     }
 
-    // 2. Handle Loops: {items.map(item => <Child />) or {Array.from(...).map(...)}}
+    // 2. Handle Loops
     if (
       TS.isCallExpression(inner) &&
       TS.isPropertyAccessExpression(inner.expression) &&
@@ -282,7 +277,7 @@ export class AstTransformer {
       return this.mapJsxElement(node as any);
     }
 
-    // 4. HANDLE BINDINGS: {user.name} or {props.data}
+    // 4. Handle Bindings
     if (TS.isIdentifier(inner) || TS.isPropertyAccessExpression(inner)) {
       const bindingPath = this.extractBindingPath(inner);
       if (bindingPath) {
@@ -300,7 +295,7 @@ export class AstTransformer {
       }
     }
 
-    // 4.5 Handle Literals (Strings/Numbers/Templates/Booleans)
+    // 5. Handle Literals
     if (
       TS.isStringLiteral(inner) ||
       TS.isNumericLiteral(inner) ||
@@ -321,7 +316,7 @@ export class AstTransformer {
       return textNode;
     }
 
-    // 5. Handle Static Text
+    // 6. Handle Static Text
     if (TS.isJsxText(node)) {
       const text = node.getText().trim();
       if (!text) return null;
@@ -338,17 +333,14 @@ export class AstTransformer {
       return textNode;
     }
 
-    // 6. Handle All Other Expressions: { ... }
+    // 7. Handle Expressions
     if (TS.isJsxExpression(node)) {
       const expressionText = node.expression?.getText() || "...";
-      
       const id = nanoid();
       const exprNode: NebulaNode = {
         id,
         type: "Text",
-        props: {
-          content: `{${expressionText}}`,
-        },
+        props: { content: `{${expressionText}}` },
         style: {},
         children: [],
         meta: { label: "Expression", source: "imported" }
@@ -357,22 +349,20 @@ export class AstTransformer {
       return exprNode;
     }
 
-    // 7. Traverse children if it's a Fragment or other wrapper
+    // 8. Children / Fragments
     const childrenNodes: NebulaNode[] = [];
     node.forEachChild((child) => {
       const result = this.visit(child);
       if (result) childrenNodes.push(result);
     });
 
-    // If we parsed multiple nodes at root (or in a fragment/list), return a Container or the single child
     if (childrenNodes.length === 1) return childrenNodes[0];
 
     if (childrenNodes.length > 0) {
-      // SourceFile/Fragment with multiple children -> Wrap in Box
       const id = nanoid();
       const containerNode: NebulaNode = {
         id,
-        type: "Box", // Default container
+        type: "Box",
         style: {},
         layout: { mode: "flex", direction: "column" },
         children: childrenNodes.map((c) => c.id),
@@ -392,7 +382,6 @@ export class AstTransformer {
       ? node.tagName.getText()
       : node.openingElement.tagName.getText();
 
-    // CHECK: Is this a Black Box component?
     if (this.preservedComponents.has(tagName)) {
       const id = nanoid();
       const componentNode: NebulaNode = {
@@ -408,13 +397,11 @@ export class AstTransformer {
       return componentNode;
     }
 
-    // Standard Processing (Explosion)
     const props: Record<string, any> = {};
     const style: StyleTokens = {};
     const layout: any = {};
-    const bindings: DataBinding[] = []; // Store discovered bindings here
+    const bindings: DataBinding[] = [];
 
-    // Extract Attributes
     const attributes = TS.isJsxSelfClosingElement(node)
       ? node.attributes
       : node.openingElement.attributes;
@@ -424,18 +411,15 @@ export class AstTransformer {
         const name = attr.name.getText();
         let value: any = true;
 
-        // HANDLE ATTRIBUTE EXPRESSIONS: <img src={product.image} />
         if (
           attr.initializer &&
           TS.isJsxExpression(attr.initializer) &&
           attr.initializer.expression
         ) {
-          const bindingPath = this.extractBindingPath(
-            attr.initializer.expression
-          );
+          const bindingPath = this.extractBindingPath(attr.initializer.expression);
           if (bindingPath) {
             bindings.push({ propName: name, sourcePath: bindingPath });
-            return; // Skip adding to static props
+            return;
           }
         }
 
@@ -446,16 +430,22 @@ export class AstTransformer {
             TS.isJsxExpression(attr.initializer) &&
             attr.initializer.expression
           ) {
-            // Fallback for non-binding expressions
             value = attr.initializer.expression.getText();
           }
         }
-        // Parsing Tailwind Classes into StyleTokens and Layout
+
+        // --- FIXED LOGIC START ---
         if (name === "className" && typeof value === "string") {
-          this.parseTailwindToTokens(value, style, layout);
+          // Extract known tokens AND capture the residue
+          const residue = this.parseTailwindToTokens(value, style, layout);
+          if (residue) {
+             // Store unrecognized classes in props so the renderer still applies them
+             props['className'] = residue; 
+          }
         } else {
           props[name] = value;
         }
+        // --- FIXED LOGIC END ---
       }
     });
 
@@ -468,8 +458,6 @@ export class AstTransformer {
     }
 
     const id = nanoid();
-
-    // Normalize tag name to NodeType
     let nodeType: NodeType = this.normalizeTagName(tagName);
 
     const nebulaNode: NebulaNode = {
@@ -477,7 +465,7 @@ export class AstTransformer {
       type: nodeType,
       componentName: nodeType === "Component" ? tagName : undefined,
       props,
-      bindings, // <--- Attach harvested bindings
+      bindings,
       style,
       layout,
       children: childrenNodes.map((c) => c.id),
@@ -488,46 +476,17 @@ export class AstTransformer {
     return nebulaNode;
   }
 
-  /**
-   * Normalize HTML tag names to Nebula NodeTypes
-   */
   private normalizeTagName(tagName: string): NodeType {
     const lowerTag = tagName.toLowerCase();
-
-    // Map common HTML tags to Nebula primitives
-    if (
-      lowerTag === "div" ||
-      lowerTag === "section" ||
-      lowerTag === "article" ||
-      lowerTag === "main"
-    ) {
-      return "Box";
-    }
-    if (
-      lowerTag === "span" ||
-      lowerTag === "p" ||
-      lowerTag === "h1" ||
-      lowerTag === "h2" ||
-      lowerTag === "h3"
-    ) {
-      return "Text";
-    }
+    if (["div", "section", "article", "main", "header", "footer", "nav", "aside"].includes(lowerTag)) return "Box";
+    if (["span", "p", "h1", "h2", "h3", "h4", "label"].includes(lowerTag)) return "Text";
     if (lowerTag === "button") return "Button";
     if (lowerTag === "input" || lowerTag === "textarea") return "Input";
     if (lowerTag === "img") return "Image";
-
-    // If it's capitalized, treat as a custom component
-    if (tagName[0] === tagName[0].toUpperCase()) {
-      return "Component";
-    }
-
-    // Default to Box for unknown tags
+    if (tagName[0] === tagName[0].toUpperCase()) return "Component";
     return "Box";
   }
 
-  /**
-   * Extract props from JSX element for black-box components
-   */
   private extractProps(
     node: ts.JsxElement | ts.JsxSelfClosingElement
   ): Record<string, any> {
@@ -540,7 +499,6 @@ export class AstTransformer {
       if (TS.isJsxAttribute(attr)) {
         const name = attr.name.getText();
         let value: any = true;
-
         if (attr.initializer) {
           if (TS.isStringLiteral(attr.initializer)) {
             value = attr.initializer.text;
@@ -554,99 +512,98 @@ export class AstTransformer {
         props[name] = value;
       }
     });
-
     return props;
   }
 
-  /**
-   * Helper to locate the "best" JSX root in a file/block.
-   * Instead of taking the first one found, we score them by complexity.
-   */
   private findRootJsx(node: ts.Node): ts.Node | null {
     const candidates: { node: ts.Node; score: number }[] = [];
-
     const scout = (n: ts.Node) => {
       if (TS.isJsxElement(n) || TS.isJsxSelfClosingElement(n) || TS.isJsxFragment(n)) {
-        // Simple score based on child count and text length
         const score = n.getText().length + (TS.isJsxElement(n) || TS.isJsxFragment(n) ? n.children.length * 50 : 0);
         candidates.push({ node: n, score });
-        return; // Don't look inside ourselves for other roots (we want the outermost one)
+        return; 
       }
-
       if (TS.isReturnStatement(n) && n.expression) {
         scout(n.expression);
         return;
       }
-
       TS.forEachChild(n, scout);
     };
-
     scout(node);
-
     if (candidates.length === 0) return null;
-
-    // Pick the one with the highest score
     candidates.sort((a, b) => b.score - a.score);
     return candidates[0].node;
   }
 
+  /**
+   * Parses valid token classes into the Schema.
+   * Returns a string containing all UNMAPPED classes (residue).
+   */
   private parseTailwindToTokens(
     className: string,
     style: StyleTokens,
     layout: any
-  ) {
-    // Unconstrained mapping - allow any class
+  ): string {
     const classes = className.split(/\s+/);
+    const residue: string[] = [];
+
     classes.forEach((c) => {
-      // Allow any style class without constraints
+      let mapped = false;
+
+      // Style Tokens
       if (c.startsWith("p-") || c.startsWith("px-") || c.startsWith("py-")) {
-        style.padding = (style.padding || "") + " " + c;
+        style.padding = (style.padding || "") + " " + c; mapped = true;
+      } else if (c.startsWith("bg-")) {
+        style.background = c; mapped = true;
+      } else if (c.startsWith("text-") && !c.startsWith("text-center") && !c.startsWith("text-left") && !c.startsWith("text-right")) {
+        // Distinguish color vs align if needed, but 'text-red-500' fits here
+        style.color = c; mapped = true;
+      } else if (c.startsWith("rounded-")) {
+        style.radius = c; mapped = true;
+      } else if (c.startsWith("shadow-")) {
+        style.shadow = c; mapped = true;
+      } else if (c.startsWith("w-")) {
+        style.width = c; mapped = true;
+      } else if (c.startsWith("h-")) {
+        style.height = c; mapped = true;
+      } else if (c.startsWith("border")) {
+        style.border = c; mapped = true;
+      } else if (c.startsWith("text-center") || c.startsWith("text-left") || c.startsWith("text-right")) {
+        style.textAlign = c; mapped = true;
+      } else if (c.startsWith("font-")) {
+         style.fontWeight = c; mapped = true;
       }
-      if (c.startsWith("bg-")) style.background = c;
-      if (c.startsWith("text-")) style.color = c;
-      if (c.startsWith("rounded-")) style.radius = c;
-      if (c.startsWith("shadow-")) style.shadow = c;
-      if (c.startsWith("w-")) style.width = c;
-      if (c.startsWith("h-")) style.height = c;
-      if (c.startsWith("border")) style.border = c;
 
-      // Allow any layout mode
+      // Layout Tokens
       if (c === "flex" || c === "grid" || c === "absolute" || c === "flow") {
-        layout.mode = c;
-      }
-      if (c.startsWith("flex-") || c === "flex-col" || c === "flex-row") {
-        layout.direction = c.replace("flex-", "");
+        layout.mode = c; mapped = true;
+      } else if (c.startsWith("flex-") || c === "flex-col" || c === "flex-row") {
+        layout.direction = c.replace("flex-", ""); mapped = true;
+      } else if (c.startsWith("items-")) {
+        layout.align = c.replace("items-", ""); mapped = true;
+      } else if (c.startsWith("justify-")) {
+        layout.justify = c.replace("justify-", ""); mapped = true;
+      } else if (c.startsWith("gap-")) {
+        layout.gap = c; mapped = true;
+      } else if (c.startsWith("grid-cols-")) {
+        layout.columns = parseInt(c.replace("grid-cols-", "")); mapped = true;
       }
 
-      // Allow any alignment
-      if (c.startsWith("items-")) {
-        layout.align = c.replace("items-", "");
-      }
-      if (c.startsWith("justify-")) {
-        layout.justify = c.replace("justify-", "");
-      }
-
-      if (c.startsWith("gap-")) layout.gap = c;
-      if (c.startsWith("grid-cols-")) {
-        layout.columns = parseInt(c.replace("grid-cols-", ""));
+      if (!mapped && c.trim() !== '') {
+        residue.push(c);
       }
     });
+
+    return residue.join(" ");
   }
 
-  /**
-   * Recursive helper to turn AST "user.profile.name" into string "user.profile.name"
-   */
   private extractBindingPath(node: ts.Expression): string | null {
-    // Handle simple identifier: "{name}"
-    if (TS.isIdentifier(node)) {
-      return node.text;
-    }
-    // Handle property access: "{user.name}" or "{props.data.title}"
+    if (TS.isIdentifier(node)) return node.text;
     if (TS.isPropertyAccessExpression(node)) {
       const left = this.extractBindingPath(node.expression);
       const right = node.name.text;
       return left ? `${left}.${right}` : right;
     }
-    return null; // Too complex (function calls, math, etc.)
+    return null;
   }
 }

@@ -33,6 +33,10 @@ export class McpToolSyncService {
           env: { ...process.env, ...(config.env || {}) } as Record<string, string>,
         });
 
+        transport.onerror = (err) => {
+          console.warn(`[McpSync] Transport error for ${serverName}:`, err.message);
+        };
+
         client = new Client(
           { name: "domoreai-sync", version: "1.0.0" },
           { capabilities: {} }
@@ -78,7 +82,11 @@ export class McpToolSyncService {
         stats.errors++;
       } finally {
         if (client) {
-            try { await client.close(); } catch {}
+            try { 
+              // Give it a tiny moment for any trailing data to flush before killing the process
+              await new Promise(resolve => setTimeout(resolve, 100));
+              await client.close(); 
+            } catch {}
         }
       }
     }

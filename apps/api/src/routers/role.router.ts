@@ -615,7 +615,7 @@ Return ONLY the system prompt, no additional commentary.`;
     .input(z.object({
       roleId: z.string(),
       variantId: z.string().optional(), // If not provided, updates the active one
-      configType: z.enum(['identity', 'cortex', 'governance', 'context', 'tuning']), // 'tuning' maps to legacy for now or a new blob
+      configType: z.enum(['identity', 'cortex', 'governance', 'context', 'tuning', 'tools']), // 'tuning' maps to legacy for now or a new blob
       data: z.record(z.unknown())
     }))
     .mutation(async ({ input }) => {
@@ -640,6 +640,32 @@ Return ONLY the system prompt, no additional commentary.`;
       if (input.configType === 'cortex') updateData.cortexConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'governance') updateData.governanceConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'context') updateData.contextConfig = input.data as Prisma.InputJsonValue;
+      
+      // SPECIAL HANDLE: Tools DNA Module
+      if (input.configType === 'tools') {
+          const tools = (input.data.customTools as string[]) || [];
+          
+          // A. Update the Json config in the variant (cortexConfig usually holds tools)
+          const variant = await prisma.roleVariant.findUnique({ where: { id: variantId } });
+          const currentCortex = (variant?.cortexConfig as Record<string, unknown>) || {};
+          updateData.cortexConfig = { ...currentCortex, tools } as Prisma.InputJsonValue;
+
+          // B. Sync the relational table (RoleTool) for system-wide compatibility
+          await prisma.roleTool.deleteMany({ where: { roleId: input.roleId } });
+          await prisma.roleTool.createMany({
+              data: tools.map(toolName => ({
+                  roleId: input.roleId,
+                  toolId: toolName // This assumes toolName is actually the Tool.name or ID.
+                                   // In our system, tools are often connected by name.
+              }))
+          }).catch(async () => {
+              // If ID matching fails, try by name
+              for (const name of tools) {
+                  const t = await prisma.tool.findUnique({ where: { name } });
+                  if (t) await prisma.roleTool.create({ data: { roleId: input.roleId, toolId: t.id } });
+              }
+          });
+      }
       
       // Special handling for 'tuning' if you want to store it in cortex or separate
       // For now, let's mix it into cortex or handle legacy
