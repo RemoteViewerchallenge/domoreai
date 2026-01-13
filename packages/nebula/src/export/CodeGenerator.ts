@@ -61,7 +61,7 @@ export default function GeneratedPage() {
     }
 
     // Standard node rendering
-    const ComponentName = this.mapNodeTypeToTag(node.type);
+    const ComponentName = this.mapNodeTypeToTag(node.type, node);
 
     // Resolve props and styles
     const className = this.resolveClassNames(node.style);
@@ -72,8 +72,9 @@ export default function GeneratedPage() {
 
     // Handle standard props
     Object.entries(node.props).forEach(([key, value]) => {
-        if (key === 'children') return; // Handled separately
-        if (typeof value === 'string') {
+      if (key === "children") return; // Handled separately
+      if (key === "content" && node.type === "Text") return; // Rendered as inner content
+      if (typeof value === "string") {
             propStrings.push(`${key}="${value}"`);
         } else if (typeof value === 'number' || typeof value === 'boolean') {
              propStrings.push(`${key}={${value}}`);
@@ -93,16 +94,22 @@ export default function GeneratedPage() {
         return `<${ComponentName}${propsStr} />`;
     }
 
-    let childrenJSX = '';
+    let childrenJSX = "";
     if (hasRecursiveChildren) {
-        childrenJSX = node.children
-        .map(childOrId => {
-            const cid = typeof childOrId === 'string' ? childOrId : (childOrId as any).id;
-            return this.renderNode(tree.nodes[cid], tree);
+      childrenJSX = node.children
+        .map((childOrId) => {
+          const cid =
+            typeof childOrId === "string" ? childOrId : (childOrId as any).id;
+          return this.renderNode(tree.nodes[cid], tree);
         })
-        .join('\n');
+        .join("\n");
+    } else if (node.props.content) {
+      childrenJSX = node.props.content;
     } else if (node.props.children) {
-        childrenJSX = typeof node.props.children === 'string' ? node.props.children : '{...}';
+      childrenJSX =
+        typeof node.props.children === "string"
+          ? node.props.children
+          : "{...}";
     }
 
     return `
@@ -111,16 +118,17 @@ export default function GeneratedPage() {
     </${ComponentName}>`;
   }
 
-  private mapNodeTypeToTag(type: NodeType): string {
-    // Map Nebula NodeTypes to HTML/JSX tags
+  private mapNodeTypeToTag(type: NodeType, node?: NebulaNode): string {
+    if (type === 'Component' && node?.componentName) return node.componentName;
+    if (type === 'Icon') return 'Icon';
+
     switch (type) {
       case 'Box': return 'div';
       case 'Text': return 'span';
       case 'Button': return 'button';
       case 'Input': return 'input';
       case 'Image': return 'img';
-      case 'Icon': return 'div'; // Placeholder for icons
-      default: return type; // Pass through for custom types
+      default: return type;
     }
   }
 

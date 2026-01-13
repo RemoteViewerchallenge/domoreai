@@ -4,8 +4,8 @@ import { SshProvider } from './vfs/SshProvider.js';
 import Client from 'ssh2-sftp-client';
 import { prisma } from '../db.js';
 import crypto from 'crypto';
-import path from 'path';
 import os from 'os';
+import { existsSync } from 'fs';
 
 export class VfsManager {
   private sshConnections: Map<string, Client> = new Map();
@@ -21,7 +21,8 @@ export class VfsManager {
   }): Promise<IVfsProvider> {
     
     if (options.provider === 'local') {
-      let fsRoot = options.rootPath || os.homedir();
+      const projectHome = '/home/guy/mono';
+      let fsRoot = options.rootPath || (existsSync(projectHome) ? projectHome : os.homedir());
 
       if (options.cardId) {
         const card = await prisma.workOrderCard.findUnique({
