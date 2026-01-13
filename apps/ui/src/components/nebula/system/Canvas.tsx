@@ -116,7 +116,7 @@ const RecursiveRenderer = ({ nodeId, tree, onDrop }: { nodeId: string, tree: Neb
   const node = tree.nodes[nodeId];
   if (!node) return null;
   
-  const Component = node.componentName ? ComponentMap[node.componentName] : ComponentMap['Box'];
+  const Component = (node.componentName && ComponentMap[node.componentName]) || ComponentMap[node.type] || ComponentMap['Box'];
   
   if (!Component) {
       console.warn(`[RecursiveRenderer] Component not found for: ${node.componentName || node.type}`);
@@ -138,6 +138,15 @@ const RecursiveRenderer = ({ nodeId, tree, onDrop }: { nodeId: string, tree: Neb
 
   const ActualComponent = Component || (({ children }: { children: React.ReactNode }) => <div>{children}</div>);
 
+  const sanitizedProps = Object.entries(node.props || {}).reduce((acc: any, [key, value]) => {
+    if (key.startsWith('on') && typeof value === 'string') {
+      acc[key] = () => console.log(`[Nebula] Action Triggered (${key}): ${value}`);
+    } else {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
   return (
     <div
       onClick={handleNodeClick}
@@ -158,7 +167,7 @@ const RecursiveRenderer = ({ nodeId, tree, onDrop }: { nodeId: string, tree: Neb
            </div>
         )}
 
-        <ActualComponent {...node.props} style={node.style}>
+        <ActualComponent {...sanitizedProps} style={node.style}>
            {Array.isArray(node.children) && (node.children as (string | NebulaNode)[]).map((childOrId) => {
                const childId = typeof childOrId === 'string' ? childOrId : childOrId.id;
                return (

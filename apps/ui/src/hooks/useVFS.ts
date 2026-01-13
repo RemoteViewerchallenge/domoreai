@@ -9,6 +9,7 @@ export const useVFS = (_token: string, initialPath: string = '/') => {
   const [error, setError] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
+  const writeMutation = trpc.vfs.write.useMutation();
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -43,6 +44,22 @@ export const useVFS = (_token: string, initialPath: string = '/') => {
     }
   };
 
+  const writeFile = async (path: string, content: string): Promise<boolean> => {
+    try {
+      await writeMutation.mutateAsync({ path, content, provider: 'local' });
+      return true;
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to write file');
+      throw err;
+    }
+  };
+
+  const listDir = useCallback(async (path: string): Promise<VFile[]> => {
+    const result = await utils.vfs.list.fetch({ path, provider: 'local' });
+    return result as unknown as VFile[];
+  }, [utils]);
+
   return {
     files,
     currentPath,
@@ -50,6 +67,8 @@ export const useVFS = (_token: string, initialPath: string = '/') => {
     error,
     navigateTo,
     refresh,
-    readFile
+    readFile,
+    writeFile,
+    listDir
   };
 };
