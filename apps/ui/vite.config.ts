@@ -41,7 +41,7 @@ export default defineConfig({
   optimizeDeps: {
     // You can likely remove 'typescript' from here now, but keeping it excluded 
     // is safer if you want to avoid pre-bundling the entire compiler.
-    exclude: ['typescript'], 
+    // exclude: ['typescript'], 
     esbuildOptions: {
         loader: {
             '.ts': 'ts'
