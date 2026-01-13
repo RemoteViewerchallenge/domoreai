@@ -3,6 +3,7 @@ import * as path from 'path';
 import { PrismaClient, Prisma } from '@prisma/client';
 
 interface AgentData {
+  id?: string;
   name: string;
   description: string;
   tools: string[];
@@ -38,6 +39,7 @@ function parseMarkdownAgent(content: string): AgentData {
   };
 
   return {
+    id: parseFrontmatterField('id') as string,
     name: parseFrontmatterField('name') as string,
     description: parseFrontmatterField('description') as string,
     tools: parseFrontmatterField('tools') as string[],
@@ -132,14 +134,15 @@ export async function ingestAgentLibrary(
             create: { name: categoryName }
         });
 
-        const existing = await prismaClient.role.findUnique({
-          where: { name: agentData.name },
+        const existing = await prismaClient.role.findFirst({
+          where: { OR: [{ name: agentData.name }, { id: agentData.id as string }] },
         });
 
         if (existing) {
           await prismaClient.role.update({
-            where: { name: agentData.name },
+            where: { id: existing.id },
             data: {
+              name: agentData.name,
               basePrompt: agentData.systemPrompt,
               tools: {
                 deleteMany: {},
@@ -155,6 +158,7 @@ export async function ingestAgentLibrary(
         } else {
            await prismaClient.role.create({
              data: {
+                id: agentData.id as string || undefined,
                 name: agentData.name,
                 basePrompt: agentData.systemPrompt,
                 categoryId: category.id,
