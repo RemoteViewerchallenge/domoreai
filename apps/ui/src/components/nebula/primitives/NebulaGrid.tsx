@@ -9,7 +9,7 @@ interface NebulaGridProps {
   style?: React.CSSProperties; // For Theme Engine overrides
 }
 
-export const NebulaGrid = ({ title, columns, data = [], style, onRowClick }: NebulaGridProps) => {
+export const NebulaGrid = ({ title, columns = [], data = [], style, onRowClick }: NebulaGridProps) => {
   return (
     <div className="flex flex-col h-full border border-[var(--color-border)] bg-[var(--color-background)] rounded-md overflow-hidden" style={style}>
       {title && (

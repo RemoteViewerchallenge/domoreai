@@ -21,7 +21,7 @@ export const PropertyPanel = ({ tree, setTree }: PropertyPanelProps) => {
     );
   }
 
-  const def = ComponentManifest[node.componentName || 'Box'];
+  const def = (node.componentName && ComponentManifest[node.componentName]) || ComponentManifest[node.type] || ComponentManifest['Box'];
 
   const handleChange = (key: string, value: unknown) => {
      const newTree = { ...tree, nodes: { ...tree.nodes } };
