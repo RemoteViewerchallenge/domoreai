@@ -26,13 +26,13 @@ interface CortexConfig {
 }
 
 interface ContextConfig {
-    strategy: string;
+    strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
     permissions: string[];
 }
 
 interface GovernanceConfig {
     rules: string[];
-    assessmentStrategy: string;
+    assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
     enforcementLevel: string;
 }
 
@@ -185,8 +185,10 @@ export class RoleFactoryService {
         Intent: ${intent.domain}
 
         Output JSON with keys:
-        - strategy: "STANDARD" (File Read) or "VECTOR_SEARCH" (RAG) or "LOCUS_FOCUS" (Active File Only)
-        - permissions: string[] (List of allowed paths or "ALL")
+        - strategy: string[] (Non-exclusive! Can select multiple: "EXPLORATORY" (Find relevant files), "VECTOR_SEARCH" (RAG semantic search), "LOCUS_FOCUS" (Active file only))
+        - permissions: string[] (List of allowed paths like ["/src", "/docs"] or ["ALL"])
+        
+        IMPORTANT: strategy is an ARRAY. Most roles should include "EXPLORATORY" as the base strategy.
         `;
 
         try {
@@ -198,7 +200,7 @@ export class RoleFactoryService {
             return JSON.parse(raw) as ContextConfig;
         } catch (e: unknown) {
             console.warn("Context Architect failed, falling back to gene pool.", e);
-            return { strategy: 'STANDARD', permissions: ['/src'] };
+            return { strategy: ['EXPLORATORY'], permissions: ['ALL'] }; // Default to EXPLORATORY
         }
     }
 
@@ -214,9 +216,11 @@ export class RoleFactoryService {
         Intent Domain: ${intent.domain}
 
         Output JSON with keys:
-        - rules: string[] (e.g., "No destructive migrations", "Use arrow functions")
-        - assessmentStrategy: "STRICT_TEST_PASS" or "LINT_ONLY" or "VISUAL_CHECK"
+        - rules: string[] (e.g., "No destructive migrations", "Use arrow functions", "Always type function parameters")
+        - assessmentStrategy: string[] (Non-exclusive! Can select multiple: "LINT_ONLY" (fast syntax check), "VISUAL_CHECK" (user confirmation), "STRICT_TEST_PASS" (must pass tests), "JUDGE" (use judge role), "LIBRARIAN" (code quality analysis))
         - enforcementLevel: "BLOCK_ON_FAIL" or "WARN_ONLY"
+        
+        IMPORTANT: assessmentStrategy is an ARRAY. Most coding roles should include at least ["LINT_ONLY"].
         `;
 
         try {
@@ -230,7 +234,7 @@ export class RoleFactoryService {
              console.warn("Governance Architect failed, falling back to gene pool.", e);
              return {
                 rules: [],
-                assessmentStrategy: 'LINT_ONLY',
+                assessmentStrategy: ['LINT_ONLY'], // Array as default
                 enforcementLevel: 'WARN_ONLY'
             };
         }
