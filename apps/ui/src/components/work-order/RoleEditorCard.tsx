@@ -163,120 +163,120 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
     return (
         <div className="flex flex-col h-full w-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-sans relative overflow-hidden">
             
-            {/* Role Picker Overlay */}
-            {showRolePicker && (
-                <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-10 px-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl w-full max-w-sm flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-950/50">
-                            <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-zinc-200">
-                                <Briefcase size={14} className="text-zinc-400"/> Select Role Template
-                            </span>
-                            <button onClick={() => setShowRolePicker(false)} className="text-zinc-500 hover:text-white">
-                                <X size={14} />
+            {/* Mode Swap: Role Picker OR Editor */}
+            {showRolePicker ? (
+                <div className="h-full flex flex-col bg-zinc-900 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-950">
+                        <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-zinc-200">
+                            <Briefcase size={14} className="text-zinc-400"/> Select Role Template
+                        </span>
+                        <button onClick={() => setShowRolePicker(false)} className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors">
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <CompactRoleSelector 
+                            onSelect={(id) => { setRoleId(id); setShowRolePicker(false); }} 
+                            selectedRoleId={roleId}
+                            className="h-full"
+                        />
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Header: Identity & Tabs */}
+                    <div className="flex-none border-b border-zinc-800 bg-zinc-950/50 flex flex-col">
+                        <div className="h-12 flex items-center justify-between px-4">
+                            <div className="flex items-center gap-3">
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowRolePicker(true)}
+                                    className="group flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 hover:text-white transition-colors px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 shadow-inner"
+                                >
+                                    <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                    <span className="truncate max-w-[100px]">{currentRole?.name || 'GENERIC_ENTITY'}</span>
+                                    <ChevronDown size={10} className="text-zinc-600"/>
+                                </button>
+
+                                <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+                                <nav className="flex bg-zinc-900 rounded-md p-0.5 border border-zinc-800 shadow-inner">
+                                    <DNATab active={activeTab === 'identity'} onClick={() => setActiveTab('identity')} icon={Fingerprint} color="blue" />
+                                    <DNATab active={activeTab === 'cortex'} onClick={() => setActiveTab('cortex')} icon={Cpu} color="purple" />
+                                    <DNATab active={activeTab === 'tools'} onClick={() => setActiveTab('tools')} icon={Wrench} color="orange" />
+                                    <DNATab active={activeTab === 'tuning'} onClick={() => setActiveTab('tuning')} icon={Sparkles} color="cyan" />
+                                    <DNATab active={activeTab === 'governance'} onClick={() => setActiveTab('governance')} icon={Shield} color="red" />
+                                    <DNATab active={activeTab === 'context'} onClick={() => setActiveTab('context')} icon={Globe} color="emerald" />
+                                </nav>
+                            </div>
+
+                            <button 
+                                type="button"
+                            onClick={() => void handleApplyChanges()}
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-blue-900/20 transition-all text-[10px] font-bold uppercase tracking-wider group active:scale-95"
+                            >
+                                <Zap size={12} className="group-hover:animate-pulse" /> 
+                                Sequence DNA
                             </button>
                         </div>
-                        <div className="max-h-80 overflow-y-auto bg-zinc-900">
-                            <CompactRoleSelector 
-                                onSelect={(id) => { setRoleId(id); setShowRolePicker(false); }} 
-                                selectedRoleId={roleId}
+                    </div>
+
+                    {/* AI Architect Bar */}
+                    <div className="flex-none border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+                        <div className="relative flex items-center">
+                            <Wand2 size={12} className="absolute left-3 text-purple-400 pointer-events-none" />
+                            <input 
+                                value={aiPrompt}
+                                onChange={e => setAiPrompt(e.target.value)}
+                                onKeyDown={e => { if(e.key === 'Enter') void handleAIGenerate() }}
+                                placeholder="Prompter: 'Redefine this role as a cynical Senior Rust Architect...'"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-full py-1.5 pl-8 pr-24 text-[10px] text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-purple-600/50 transition-all"
                             />
+                            <button 
+                                type="button"
+                                onClick={() => void handleAIGenerate()}
+                                disabled={isGenerating || !aiPrompt.trim()}
+                                className="absolute right-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-full text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5"
+                            >
+                                {isGenerating ? <Loader2 size={10} className="animate-spin" /> : <Bot size={10} />}
+                                {isGenerating ? 'Evolving...' : 'Architect'}
+                            </button>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* Header: Identity & Tabs */}
-            <div className="flex-none border-b border-zinc-800 bg-zinc-950/50 flex flex-col">
-                <div className="h-12 flex items-center justify-between px-4">
-                    <div className="flex items-center gap-3">
-                        <button 
-                            type="button"
-                            onClick={() => setShowRolePicker(true)}
-                            className="group flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 hover:text-white transition-colors px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 shadow-inner"
-                        >
-                            <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                            <span className="truncate max-w-[100px]">{currentRole?.name || 'GENERIC_ENTITY'}</span>
-                            <ChevronDown size={10} className="text-zinc-600"/>
-                        </button>
-
-                        <div className="h-4 w-px bg-zinc-800 mx-1" />
-
-                        <nav className="flex bg-zinc-900 rounded-md p-0.5 border border-zinc-800 shadow-inner">
-                            <DNATab active={activeTab === 'identity'} onClick={() => setActiveTab('identity')} icon={Fingerprint} color="blue" />
-                            <DNATab active={activeTab === 'cortex'} onClick={() => setActiveTab('cortex')} icon={Cpu} color="purple" />
-                            <DNATab active={activeTab === 'tools'} onClick={() => setActiveTab('tools')} icon={Wrench} color="orange" />
-                            <DNATab active={activeTab === 'tuning'} onClick={() => setActiveTab('tuning')} icon={Sparkles} color="cyan" />
-                            <DNATab active={activeTab === 'governance'} onClick={() => setActiveTab('governance')} icon={Shield} color="red" />
-                            <DNATab active={activeTab === 'context'} onClick={() => setActiveTab('context')} icon={Globe} color="emerald" />
-                        </nav>
-                    </div>
-
-                    <button 
-                        type="button"
-                    onClick={() => void handleApplyChanges()}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-blue-900/20 transition-all text-[10px] font-bold uppercase tracking-wider group active:scale-95"
-                    >
-                        <Zap size={12} className="group-hover:animate-pulse" /> 
-                        Sequence DNA
-                    </button>
-                </div>
-            </div>
-
-            {/* AI Architect Bar */}
-            <div className="flex-none border-b border-zinc-800 bg-zinc-900 px-4 py-2">
-                <div className="relative flex items-center">
-                    <Wand2 size={12} className="absolute left-3 text-purple-400 pointer-events-none" />
-                    <input 
-                        value={aiPrompt}
-                        onChange={e => setAiPrompt(e.target.value)}
-                        onKeyDown={e => { if(e.key === 'Enter') void handleAIGenerate() }}
-                        placeholder="Prompter: 'Redefine this role as a cynical Senior Rust Architect...'"
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-full py-1.5 pl-8 pr-24 text-[10px] text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-purple-600/50 transition-all"
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => void handleAIGenerate()}
-                        disabled={isGenerating || !aiPrompt.trim()}
-                        className="absolute right-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-full text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5"
-                    >
-                        {isGenerating ? <Loader2 size={10} className="animate-spin" /> : <Bot size={10} />}
-                        {isGenerating ? 'Evolving...' : 'Architect'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gradient-to-b from-zinc-950 to-zinc-900">
-                
-                {activeTab === 'tuning' && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <section className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg space-y-4">
-                            <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Sparkles size={12} /> Neural Tuning
-                            </h3>
-                            <NaturalParameterTuner 
-                                config={{
-                                    temperature: legacyParams.temperature,
-                                    topP: 1.0,
-                                    frequencyPenalty: 0.0,
-                                    presencePenalty: 0.0
-                                }}
-                                onChange={(cfg) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
-                            />
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Output Entropy (Max Tokens)</label>
-                                <input 
-                                    type="range" 
-                                    min="256" max="32000" step="256"
-                                    value={legacyParams.maxTokens}
-                                    onChange={e => setLegacyParams(p => ({ ...p, maxTokens: parseInt(e.target.value) }))}
-                                    className="w-full accent-cyan-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="text-[10px] font-mono text-right text-cyan-400">{legacyParams.maxTokens} tokens</div>
+                    {/* Content Area */}
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gradient-to-b from-zinc-950 to-zinc-900">
+                        
+                        {activeTab === 'tuning' && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <section className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg space-y-4">
+                                    <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Sparkles size={12} /> Neural Tuning
+                                    </h3>
+                                    <NaturalParameterTuner 
+                                        config={{
+                                            temperature: legacyParams.temperature,
+                                            topP: 1.0,
+                                            frequencyPenalty: 0.0,
+                                            presencePenalty: 0.0
+                                        }}
+                                        onChange={(cfg) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
+                                    />
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Output Entropy (Max Tokens)</label>
+                                        <input 
+                                            type="range" 
+                                            min="256" max="32000" step="256"
+                                            value={legacyParams.maxTokens}
+                                            onChange={e => setLegacyParams(p => ({ ...p, maxTokens: parseInt(e.target.value) }))}
+                                            className="w-full accent-cyan-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <div className="text-[10px] font-mono text-right text-cyan-400">{legacyParams.maxTokens} tokens</div>
+                                    </div>
+                                </section>
                             </div>
-                        </section>
-                    </div>
-                )}
+                        )}
+
 
                 {activeTab === 'identity' && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -286,12 +286,24 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                             </h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase text-zinc-500">Codename</label>
-                                    <input 
+                                    <label className="text-[9px] font-bold uppercase text-zinc-500">Codename (Persona)</label>
+                                    <select 
                                         value={dna.identity.personaName}
                                         onChange={e => setDna(prev => ({ ...prev, identity: { ...prev.identity, personaName: e.target.value } }))}
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600"
-                                    />
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
+                                    >
+                                        <option value="">-- Select Persona --</option>
+                                        <option value="Architect Prime">Architect Prime</option>
+                                        <option value="Code Ninja">Code Ninja</option>
+                                        <option value="The Analyst">The Analyst</option>
+                                        <option value="Debug Detective">Debug Detective</option>
+                                        <option value="UX Visionary">UX Visionary</option>
+                                        <option value="Data Synthesizer">Data Synthesizer</option>
+                                        <option value="Security Sentinel">Security Sentinel</option>
+                                        <option value="API Orchestrator">API Orchestrator</option>
+                                        <option value="Test Guardian">Test Guardian</option>
+                                        <option value="Performance Optimizer">Performance Optimizer</option>
+                                    </select>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold uppercase text-zinc-500">Communication Style</label>
@@ -308,11 +320,15 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] font-bold uppercase text-zinc-500">System DNA String (Prompt)</label>
+                                <label className="text-[9px] font-bold uppercase text-zinc-500 flex items-center justify-between">
+                                    <span>System DNA String (Generated by AI)</span>
+                                    <span className="text-[8px] text-purple-400 normal-case">Use AI Architect above to generate</span>
+                                </label>
                                 <textarea 
                                     value={dna.identity.systemPromptDraft}
-                                    onChange={e => setDna(prev => ({ ...prev, identity: { ...prev.identity, systemPromptDraft: e.target.value } }))}
-                                    className="w-full h-48 bg-zinc-950 border border-zinc-800 rounded p-3 text-xs font-mono leading-relaxed outline-none focus:border-blue-600 custom-scrollbar"
+                                    readOnly
+                                    placeholder="Use the AI Architect prompt bar above to generate this..."
+                                    className="w-full h-48 bg-zinc-950 border border-zinc-800 rounded p-3 text-xs font-mono leading-relaxed outline-none focus:border-blue-600 custom-scrollbar text-zinc-400"
                                 />
                             </div>
                         </section>
@@ -348,6 +364,34 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                         />
                                         <span className="text-[10px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Self-Reflection</span>
                                     </label>
+                                </div>
+                            </div>
+                            
+                            {/* Capabilities - Non-Exclusive Checkboxes */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-bold uppercase text-zinc-500">Capabilities (Multi-Select)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {['vision', 'reasoning', 'tts', 'embedding', 'coding'].map(cap => (
+                                        <label key={cap} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
+                                            <input 
+                                                type="checkbox"
+                                                checked={dna.cortex.capabilities.includes(cap)}
+                                                onChange={e => {
+                                                    setDna(prev => ({
+                                                        ...prev,
+                                                        cortex: {
+                                                            ...prev.cortex,
+                                                            capabilities: e.target.checked 
+                                                                ? [...prev.cortex.capabilities, cap]
+                                                                : prev.cortex.capabilities.filter(c => c !== cap)
+                                                        }
+                                                    }));
+                                                }}
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-1 focus:ring-purple-600 focus:ring-offset-0"
+                                            />
+                                            <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors capitalize">{cap}</span>
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
                          </section>
@@ -394,30 +438,51 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                             <h3 className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Shield size={12} /> Governance Module
                             </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase text-zinc-500">Assessment Strategy</label>
-                                    <select 
-                                         value={dna.governance.assessmentStrategy}
-                                         onChange={e => setDna(prev => ({ ...prev, governance: { ...prev.governance, assessmentStrategy: e.target.value as typeof dna.governance.assessmentStrategy } }))}
-                                         className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-red-600 text-zinc-300"
-                                    >
-                                        <option value="LINT_ONLY">Fast (Lint Only)</option>
-                                        <option value="VISUAL_CHECK">Manual (Visual Check)</option>
-                                        <option value="STRICT_TEST_PASS">Strict (npm test)</option>
-                                    </select>
+                            
+                            {/* Assessment Strategy - Non-Exclusive Checkboxes */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-bold uppercase text-zinc-500">Assessment Strategy (Multi-Select)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { value: 'LINT_ONLY', label: 'Lint Only' },
+                                        { value: 'VISUAL_CHECK', label: 'Visual Check' },
+                                        { value: 'STRICT_TEST_PASS', label: 'Test Pass' },
+                                        { value: 'JUDGE', label: 'Judge Role' },
+                                        { value: 'LIBRARIAN', label: 'Librarian' }
+                                    ].map(strategy => (
+                                        <label key={strategy.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
+                                            <input 
+                                                type="checkbox"
+                                                checked={dna.governance.assessmentStrategy.includes(strategy.value)}
+                                                onChange={e => {
+                                                    setDna(prev => ({
+                                                        ...prev,
+                                                        governance: {
+                                                            ...prev.governance,
+                                                            assessmentStrategy: e.target.checked 
+                                                                ? [...prev.governance.assessmentStrategy, strategy.value]
+                                                                : prev.governance.assessmentStrategy.filter(s => s !== strategy.value)
+                                                        }
+                                                    }));
+                                                }}
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-1 focus:ring-red-600 focus:ring-offset-0"
+                                            />
+                                            <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors">{strategy.label}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase text-zinc-500">Enforcement</label>
-                                    <select 
-                                         value={dna.governance.enforcementLevel}
-                                         onChange={e => setDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as typeof dna.governance.enforcementLevel } }))}
-                                         className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-red-600 text-zinc-300"
-                                    >
-                                        <option value="BLOCK_ON_FAIL">Block on Fail</option>
-                                        <option value="WARN_ONLY">Warn Only</option>
-                                    </select>
-                                </div>
+                            </div>
+                            
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-zinc-500">Enforcement Level</label>
+                                <select 
+                                     value={dna.governance.enforcementLevel}
+                                     onChange={e => setDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as typeof dna.governance.enforcementLevel } }))}
+                                     className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-red-600 text-zinc-300"
+                                >
+                                    <option value="BLOCK_ON_FAIL">Block on Fail</option>
+                                    <option value="WARN_ONLY">Warn Only</option>
+                                </select>
                             </div>
                          </section>
                     </div>
@@ -429,17 +494,37 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                             <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Globe size={12} /> Context Module
                             </h3>
-                            <div className="space-y-1">
-                                <label className="text-[9px] font-bold uppercase text-zinc-500">Memory Strategy</label>
-                                <select 
-                                        value={dna.context.strategy}
-                                        onChange={e => setDna(prev => ({ ...prev, context: { ...prev.context, strategy: e.target.value as typeof dna.context.strategy } }))}
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-emerald-600 text-zinc-300"
-                                >
-                                    <option value="STANDARD">Standard (File Read)</option>
-                                    <option value="VECTOR_SEARCH">Vector Search (RAG)</option>
-                                    <option value="LOCUS_FOCUS">Locus (Active File Only)</option>
-                                </select>
+                            
+                            {/* Memory Strategy - Non-Exclusive Checkboxes */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-bold uppercase text-zinc-500">Memory Strategy (Multi-Select)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { value: 'EXPLORATORY', label: 'Exploratory (Find Files)' },
+                                        { value: 'VECTOR_SEARCH', label: 'Vector Search (RAG)' },
+                                        { value: 'LOCUS_FOCUS', label: 'Locus (Active File)' }
+                                    ].map(strat => (
+                                        <label key={strat.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
+                                            <input 
+                                                type="checkbox"
+                                                checked={dna.context.strategy.includes(strat.value)}
+                                                onChange={e => {
+                                                    setDna(prev => ({
+                                                        ...prev,
+                                                        context: {
+                                                            ...prev.context,
+                                                            strategy: e.target.checked 
+                                                                ? [...prev.context.strategy, strat.value]
+                                                                : prev.context.strategy.filter(s => s !== strat.value)
+                                                        }
+                                                    }));
+                                                }}
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-emerald-600 focus:ring-1 focus:ring-emerald-600 focus:ring-offset-0"
+                                            />
+                                            <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors">{strat.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                          </section>
                     </div>
@@ -454,6 +539,8 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                     </div>
                 )}
             </div>
+                </>
+            )}
         </div>
     );
 };
