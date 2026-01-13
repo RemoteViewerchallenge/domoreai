@@ -38,8 +38,8 @@ export class RegistryClient implements IRegistryClient {
       
       // 3. Database Layer (Postgres)
       'postgres': {
-        command: 'npx',
-        args: ['-y', '@henkey/postgres-mcp-server'],
+        command: 'node',
+        args: ['/home/guy/mono/apps/api/node_modules/@henkey/postgres-mcp-server/build/index.js'],
         env: { 
           "POSTGRES_CONNECTION_STRING": dbUrl 
         }
@@ -47,8 +47,8 @@ export class RegistryClient implements IRegistryClient {
 
       // 4. UI Verification (Playwright)
       'playwright': {
-        command: 'npx',
-        args: ['-y', '@automatalabs/mcp-server-playwright'],
+        command: 'node',
+        args: ['/home/guy/mono/apps/api/node_modules/@automatalabs/mcp-server-playwright/dist/index.js'],
         env: {}
       },
 

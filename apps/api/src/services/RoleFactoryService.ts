@@ -287,11 +287,11 @@ export class RoleFactoryService {
      * This allows the user to chat with the factory.
      */
     async ensureArchitectRole() {
-        const name = "Role Architect";
+        const name = "Nebula Architect";
         const existing = await prisma.role.findUnique({ where: { name } });
         if (existing) return existing;
 
-        console.log(`[RoleFactory] 🏗️ Seeding "Role Architect"...`);
+        console.log(`[RoleFactory] 🏗️ Seeding "Nebula Architect"...`);
         
         // Create the Category if needed
         let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
@@ -302,7 +302,7 @@ export class RoleFactoryService {
                 name,
                 description: "The Master Builder. Designs and evolves other agents.",
                 categoryId: cat.id,
-                basePrompt: `You are the Role Architect.
+                basePrompt: `You are the Nebula Architect.
 Your mission is to design specialized AI agents (Roles) for the user's workspace.
 You have access to the 'create_role_variant' tool (conceptually) to spawn new life.
 
