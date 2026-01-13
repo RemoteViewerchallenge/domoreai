@@ -4,13 +4,14 @@ import { ComponentManifest, type ComponentCategory } from '../../registry.js';
 import { Canvas as BuilderCanvas } from '../../../components/nebula/system/Canvas.js';
 import { PropertyPanel } from '../../../components/nebula/system/PropertyPanel.js';
 import { BuilderToolbar } from '../../features/navigation/toolbars/BuilderToolbar.js';
-import { AstTransformer, CodeGenerator, type NebulaTree } from '@repo/nebula'; 
+import type { NebulaTree } from '@repo/nebula'; 
 import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { useVFS } from '../../../hooks/useVFS.js';
 import { SuperAiButton } from '../../../components/ui/SuperAiButton.js';
 import { toast } from 'sonner';
 import { FileExplorer } from '../../../components/FileExplorer.js';
+import { trpc } from '../../../utils/trpc.js';
 
 // --- TYPES ---
 interface NebulaBuilderProps {
@@ -127,24 +128,23 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   };
 
   // VFS Import
-  const handleVfsSelect = (content: string, path: string) => {
+  const handleVfsSelect = async (content: string, path: string) => {
     try {
-        const transformer = new AstTransformer();
-        const newTree = transformer.parse(content);
+        const newTree = await trpc.nebula.parseJsx.mutate({ code: content });
         setTree(newTree);
         setCurrentFile(path.split('/').pop() || path);
         setShowCodeModal(null);
         setIsDirty(true);
         toast("Component Imported", { description: `Successfully parsed ${path} into Nebula Tree.` });
     } catch (err) {
-        alert("Parse Error: " + (err as Error).message);
+        toast.error("Parse Error", { description: (err as Error).message });
     }
   };
 
   // Export
-  const getExportedCode = useCallback(() => {
-    const generator = new CodeGenerator();
-    return generator.generate(tree);
+  const getExportedCode = useCallback(async () => {
+    const result = await trpc.nebula.generateCode.mutate({ tree });
+    return result.code;
   }, [tree]);
 
   const handleSaveJson = async () => {
@@ -159,14 +159,13 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
 
   // AI Context Getter
   const getAiContext = useCallback(() => {
-     // Return both the raw JSON tree and the compiled code representation
-     // This gives the Agent maximum context to understand structure AND logic.
+     // Return the raw JSON tree representation
+     // The AI understands structure from the tree itself
      return {
          tree: tree,
-         codePreview: getExportedCode(),
          activeViewport: viewport
      };
-  }, [tree, getExportedCode, viewport]);
+  }, [tree, viewport]);
 
   const handleAiSuccess = (response: { tree?: NebulaTree }) => {
       // Future: If the AI returns a JSON patch, apply it here.
@@ -216,7 +215,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
                <FolderOpen size={12} /> Import TSX
             </button>
             <button 
-              onClick={() => { setCodeBuffer(getExportedCode()); setShowCodeModal('export'); }}
+              onClick={async () => { const code = await getExportedCode(); setCodeBuffer(code); setShowCodeModal('export'); }}
               className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-indigo-400 transition-colors border border-transparent hover:border-zinc-700"
             >
                <Code size={12} /> View Code

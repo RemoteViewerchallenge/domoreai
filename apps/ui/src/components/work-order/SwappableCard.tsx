@@ -11,6 +11,8 @@ import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
 import { RoleEditorCard } from './RoleEditorCard.js';
+import { CardTaskApproval } from './CardTaskApproval.js';
+import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 
 export const SwappableCard = memo(({ id }: { id: string }) => {
@@ -21,7 +23,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
   } = useCardVFS(id);
   
   const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
-  const updateCard = useWorkspaceStore(s => s.updateCard);
+  // Removed unused updateCard variable
   const startSessionMutation = trpc.agent.startSession.useMutation();
 
   const agentConfig = useMemo(() => {
@@ -37,10 +39,14 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
   const [activeFile, setActiveFile] = useState<string>('');
   const [content, setContent] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'editor' | 'terminal' | 'browser' | 'files' | 'config'>('editor');
+  const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config'>('editor');
   const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
   const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
   const [quickPrompt, setQuickPrompt] = useState('');
+  
+  // Visual Check State
+  const [isWaitingApproval, setIsWaitingApproval] = useState(false);
+  const [pendingGoal, setPendingGoal] = useState('');
 
   useEffect(() => {
     if (activeFile && viewMode === 'editor') {
@@ -89,9 +95,19 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       if (e.key === 'Enter' && e.shiftKey) {
           e.preventDefault();
           if (quickPrompt.trim()) {
-              runAgent(quickPrompt);
+           if (quickPrompt.trim()) {
+              void runAgent(quickPrompt);
               setQuickPrompt('');
           }
+          }
+      }
+      // Demo: Trigger Visual Check with Cmd/Win + Enter
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (quickPrompt.trim()) {
+            setPendingGoal(quickPrompt);
+            setIsWaitingApproval(true);
+        }
       }
   };
 
@@ -134,7 +150,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             ].map(t => (
                 <button 
                     key={t.id}
-                    onClick={() => setViewMode(t.id as any)} 
+                    onClick={() => setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config')} 
                     className={cn(
                         "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
                         viewMode === t.id && "text-[var(--color-primary)] bg-[var(--bg-primary)]"
@@ -149,11 +165,49 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
       {/* 2. Content */}
       <div className="flex-1 relative overflow-hidden bg-[var(--bg-background)]">
          {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => {}} onClose={() => setViewMode('editor')} />}
-         {viewMode === 'editor' && <SmartEditor fileName={activeFile} content={content} onChange={handleSave} onRun={() => runAgent(quickPrompt)} />}
-         {viewMode === 'files' && <FileExplorer files={files} currentPath={currentPath} onNavigate={navigateTo} onSelect={(p) => { setActiveFile(p); if(!p.endsWith('/')) setViewMode('editor'); }} onCreateNode={createNode} onRefresh={refresh} onEmbedDir={ingestDirectory} onLoadChildren={loadChildren} className="p-2"/>}
-         {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => runAgent(msg)} />}
-         {viewMode === 'browser' && <SmartBrowser url={(card?.metadata as any)?.url || 'https://google.com'} />}
-      </div>
+         {viewMode === 'editor' && <SmartEditor fileName={activeFile} content={content} onChange={handleSave} onRun={() => void runAgent(quickPrompt)} />}
+         {viewMode === 'diff' && (
+            <div className="h-full w-full flex flex-col">
+                <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
+                    <span className="text-xs font-bold text-zinc-400">Diff View: {activeFile}</span>
+                    <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
+                </div>
+                <div className="flex-1 min-h-0">
+                    <MonacoDiffEditor 
+                        original={`// Previous version of ${activeFile}\n\n${content}`} 
+                        modified={content + '\n// New changes applied by agent'} 
+                        language="typescript" 
+                    />
+                </div>
+            </div>
+         )}
+         {viewMode === 'files' && <FileExplorer files={files} currentPath={currentPath} onNavigate={(p) => void navigateTo(p)} onSelect={(p) => { setActiveFile(p); if(!p.endsWith('/')) setViewMode('editor'); }} onCreateNode={(t, n) => void createNode(t, n)} onRefresh={() => void refresh()} onEmbedDir={(p) => void ingestDirectory(p)} onLoadChildren={loadChildren} className="p-2"/>}
+         {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
+          {viewMode === 'browser' && <SmartBrowser url={(card?.metadata as { url?: string })?.url || 'https://google.com'} />}
+          
+          {/* Approval Overlay */}
+          {isWaitingApproval && (
+            <CardTaskApproval 
+                taskId={`task-${Date.now()}`}
+                roleName={agentConfig.roleId || 'Agent'}
+                intent={pendingGoal}
+                onApprove={() => {
+                    setIsWaitingApproval(false);
+                    void runAgent(pendingGoal);
+                    setQuickPrompt('');
+                    toast.success("Change Approved", { description: "Agent proceeding with execution." });
+                }}
+                onReject={(reason) => {
+                    setIsWaitingApproval(false);
+                    toast.error("Change Rejected", { description: reason });
+                }}
+                onInspect={() => {
+                    setViewMode('diff');
+                    setIsWaitingApproval(false); // Hide the card so we can see the diff
+                }}
+            />
+          )}
+       </div>
     </div>
   );
 });
