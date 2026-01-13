@@ -33,16 +33,16 @@ export interface RoleDNA {
   cortex: {
     orchestration: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
     reflectionEnabled: boolean;
-    capabilities: string[];
+    capabilities: string[]; // Non-exclusive: vision, reasoning, tts, embedding, coding
     contextRange: { min: number; max: number };
   };
   governance: {
     rules: string[];
-    assessmentStrategy: 'LINT_ONLY' | 'VISUAL_CHECK' | 'STRICT_TEST_PASS';
+    assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
     enforcementLevel: 'BLOCK_ON_FAIL' | 'WARN_ONLY';
   };
   context: {
-    strategy: 'STANDARD' | 'VECTOR_SEARCH' | 'LOCUS_FOCUS';
+    strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
     permissions: string[];
   };
   tools: {

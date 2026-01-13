@@ -682,7 +682,7 @@ Return ONLY the system prompt, no additional commentary.`;
               data: {
                   metadata: {
                       ...currentMeta,
-                      ...((input.data || {}) as Record<string, unknown>)
+                      ...((input.data || {}))
                   } as Prisma.InputJsonValue
               }
           });

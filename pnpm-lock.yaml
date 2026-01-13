@@ -108,6 +108,9 @@ importers:
       '@repo/mcp-server-vfs':
         specifier: workspace:*
         version: link:../../packages/mcp-server-vfs
+      '@repo/nebula':
+        specifier: workspace:*
+        version: link:../../packages/nebula
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.2
@@ -9968,6 +9971,14 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 1.2.0
 
+  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@20.19.25))':
+    dependencies:
+      '@vitest/spy': 2.1.9
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 5.4.21(@types/node@20.19.25)
+
   '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.19.3))':
     dependencies:
       '@vitest/spy': 2.1.9
@@ -15068,7 +15079,7 @@ snapshots:
   vitest@2.1.9(@types/node@20.19.25)(jsdom@27.2.0):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.19.3))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@20.19.25))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9

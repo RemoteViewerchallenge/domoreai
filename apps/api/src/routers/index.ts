@@ -21,6 +21,7 @@ import { agentRouter } from './agent.router.js';
 import { systemHealthRouter } from './systemHealth.router.js';
 import { toolRouter } from './tool.router.js';
 import { schemaRouter } from './schema.router.js';
+import { nebulaRouter } from './nebula.router.js';
 
 export const appRouter = createTRPCRouter({
   agent: agentRouter,
@@ -45,6 +46,7 @@ export const appRouter = createTRPCRouter({
   systemHealth: systemHealthRouter,
   tool: toolRouter,
   schema: schemaRouter,
+  nebula: nebulaRouter,
 });
 
 export type AppRouter = typeof appRouter;
