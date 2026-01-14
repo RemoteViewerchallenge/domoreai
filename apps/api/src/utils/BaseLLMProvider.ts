@@ -15,6 +15,17 @@ export interface LLMModel {
     hasVision?: boolean;
     hasReasoning?: boolean;
     hasCoding?: boolean;
+    hasAudioInput?: boolean;
+    hasAudioOutput?: boolean;
+    isMultimodal?: boolean;
+    supportsFunctionCalling?: boolean;
+    supportsJsonMode?: boolean;
+    hasImageGen?: boolean;
+    hasTTS?: boolean;
+    hasEmbedding?: boolean;
+    hasOCR?: boolean;
+    hasReward?: boolean;
+    hasModeration?: boolean;
   };
   [key: string]: unknown;
 }

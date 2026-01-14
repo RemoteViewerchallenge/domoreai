@@ -16,10 +16,13 @@ async function updateRoleDNA() {
     await prisma.roleVariant.update({
       where: { id: nebulaRole.variants[0].id },
       data: {
+        identityConfig: {
+          ...(nebulaRole.variants[0].identityConfig as Record<string, unknown>),
+          thinkingProcess: 'CHAIN_OF_THOUGHT',
+          reflectionEnabled: true
+        },
         cortexConfig: {
-          orchestration: 'CHAIN_OF_THOUGHT',
           contextRange: { min: 8192, max: 128000 },
-          reflectionEnabled: true,
           capabilities: ['reasoning', 'coding']
         },
         governanceConfig: {
@@ -50,10 +53,13 @@ async function updateRoleDNA() {
     await prisma.roleVariant.update({
       where: { id: roleArchitect.variants[0].id },
       data: {
+        identityConfig: {
+          ...(roleArchitect.variants[0].identityConfig as Record<string, unknown>),
+          thinkingProcess: 'MULTI_STEP_PLANNING',
+          reflectionEnabled: true
+        },
         cortexConfig: {
-          orchestration: 'MULTI_STEP_PLANNING',
           contextRange: { min: 8192, max: 32000 },
-          reflectionEnabled: true,
           capabilities: ['reasoning']
         },
         governanceConfig: {
@@ -72,6 +78,30 @@ async function updateRoleDNA() {
       }
     });
     console.log('✅ Updated Role Architect DNA');
+  }
+
+  // 3. Update Librarian variant
+  const librarianRole = await prisma.role.findUnique({
+    where: { name: 'Librarian' },
+    include: { variants: { where: { isActive: true }, take: 1 } }
+  });
+
+  if (librarianRole && librarianRole.variants[0]) {
+    await prisma.roleVariant.update({
+      where: { id: librarianRole.variants[0].id },
+      data: {
+        identityConfig: {
+          ...(librarianRole.variants[0].identityConfig as Record<string, unknown>),
+          thinkingProcess: 'SOLO',
+          reflectionEnabled: false
+        },
+        cortexConfig: {
+          contextRange: { min: 16000, max: 128000 },
+          capabilities: [] // Remove 'embedding' manually
+        }
+      }
+    });
+    console.log('✅ Updated Librarian DNA');
   }
 
   console.log('\n🎉 DNA updates complete!');
