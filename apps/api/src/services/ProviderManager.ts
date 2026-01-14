@@ -63,6 +63,7 @@ export class ProviderManager implements IProviderManager {
         'openrouter': 'OPENROUTER_API_KEY',
         'groq': 'GROQ_API_KEY',
         'nvidia': 'NVIDIA_API_KEY',
+        'cerebras': 'CEREBRAS_API_KEY', // [FIX] Added missing mapping
         'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
       };
 
@@ -75,9 +76,9 @@ export class ProviderManager implements IProviderManager {
           if (config.type === 'ollama') {
             // Ollama is local and doesn't need an API key
             apiKey = process.env.OLLAMA_API_KEY || '';
-          } else if (envVar && process.env[envVar]) {
+          } else if (envVar && process.env[envVar]?.trim()) {
             // Use environment variable directly
-            apiKey = process.env[envVar] || '';
+            apiKey = process.env[envVar]?.trim() || '';
             console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
           } else {
             // NEW: Fallback via convention for any other provider ID

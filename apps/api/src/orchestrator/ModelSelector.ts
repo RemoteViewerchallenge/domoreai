@@ -1,5 +1,6 @@
 import { prisma } from '../db.js';
 import { Prisma } from '@prisma/client';
+import { ProviderManager } from '../services/ProviderManager.js';
 
 export interface ModelRequirements {
   minContext?: number;
@@ -21,23 +22,105 @@ export class ModelSelector {
 
   async resolveModelForRole(role: Role, estimatedInputTokens?: number, excludedModelIds: string[] = []): Promise<string> {
     const metadata = (role.metadata || {}) as RoleMetadata;
+    const requirements = metadata.requirements || {};
+    const minContext = requirements.minContext || 0;
+    const requiredCaps = requirements.capabilities || [];
 
     // 1. Basic Filters
     const where: Prisma.ModelWhereInput = {
       isActive: true,
       provider: {
-        isEnabled: true // [FIX] Never select from disabled providers
+        isEnabled: true // [DB Check] Only enabled providers
       },
       id: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
       name: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
     };
 
-    // 2. Try to find models
+    // 2. Try to find models with capabilities (SOFT FILTER)
+    // We filter in-memory since capability logic involves multiple tables
     let candidates = await prisma.model.findMany({
       where,
-      orderBy: { capabilities: { contextWindow: 'desc' } }, // Prefer larger context
-      take: 20
+      include: { capabilities: true },
+      // [FIX] Favor efficiency: Cheapest first, then Smallest sufficient context.
+      // This avoids picking overkill models like "Pro/Ultra" or huge context models unnecessary for small tasks.
+      orderBy: [
+        { costPer1k: 'asc' },
+        { capabilities: { contextWindow: 'asc' } }
+      ],
+      take: 100 // Grab more candidates since we might filter many out
     });
+
+    // [RUNTIME CHECK] Filter out offline providers AND Deprioritize Google if requested
+    const validCandidates: typeof candidates = [];
+    const googleCandidates: typeof candidates = [];
+
+    for (const m of candidates) {
+      if (!ProviderManager.getProvider(m.providerId)) continue;
+
+      // [USER PREF] "Continuous use of google... where is it getting api key"
+      // User clearly wants to avoid Google if possible (likely due to rate limits/reliability).
+      // We separate them to use only as a fallback.
+      if (m.providerId.includes('google')) {
+        googleCandidates.push(m);
+      } else {
+        validCandidates.push(m);
+      }
+    }
+
+    // Prefer non-google models first
+    if (validCandidates.length > 0) {
+      candidates = validCandidates;
+    } else if (googleCandidates.length > 0) {
+      // Fallback to Google if nothing else exists
+      console.warn("[ModelSelector] ⚠️ Only Google models available. Using Google despite preference.");
+      candidates = googleCandidates;
+    } else {
+      candidates = [];
+    }
+
+    // In-Memory Capability Filter
+    if (requiredCaps.length > 0) {
+      const capableCandidates = candidates.filter(m => {
+        // Check the Relation first, fall back to JSON specs if relation is missing (legacy)
+        const caps = m.capabilities || {};
+        // Legacy access removed to fix Typescript errors
+
+        if (requiredCaps.includes('vision')) {
+          if ((caps as any).hasVision === true) return true;
+          return false;
+        }
+
+        if (requiredCaps.includes('reasoning')) {
+          if ((caps as any).hasReasoning === true) return true;
+          return false;
+        }
+
+        return true;
+      });
+
+      if (capableCandidates.length > 0) {
+        candidates = capableCandidates;
+      } else {
+        // SOFT FALLBACK:
+        console.warn(`[ModelSelector] ⚠️ Could not find model with capabilities [${requiredCaps.join(',')}]. Falling back to any available model.`);
+      }
+    }
+
+    // Context Window Filter
+    if (minContext > 0) {
+      const largeEnough = candidates.filter(m => {
+        // Check Capability Table first (Source of Truth)
+        const capContext = (m.capabilities as any)?.contextWindow || 0;
+        return capContext >= minContext;
+      });
+      if (largeEnough.length > 0) {
+        candidates = largeEnough;
+      } else {
+        console.warn(`[ModelSelector] ⚠️ Could not find model with context >= ${minContext}. Using largest available.`);
+      }
+    }
+
+    candidates = candidates.slice(0, 20); // Top 20 after filtering
 
     // [RESILIENCE] If strict filtering found nothing (e.g. all excluded), loosen restrictions
     if (candidates.length === 0) {
@@ -48,20 +131,23 @@ export class ModelSelector {
           isActive: true,
           provider: { isEnabled: true }
         },
+        include: { capabilities: true },
         take: 5
       });
     }
 
     if (candidates.length === 0) {
       // [RESILIENCE] Last resort: Is there ANY model in the DB?
-      const anyModel = await prisma.model.findFirst({ where: { isActive: true } });
+      const anyModel = await prisma.model.findFirst({
+        where: { isActive: true },
+        include: { capabilities: true }
+      });
       if (anyModel) return anyModel.id;
 
       throw new Error("No active models found in database.");
     }
 
     // 3. Simple Random selection from top candidates (Bandit logic can go here)
-    // We purposefully avoid complex scoring if we are in a fallback scenario
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
     return selected.id;
   }
