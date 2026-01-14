@@ -78,25 +78,37 @@ class IngestionService {
   private async handleFileWrite(provider: IVfsProvider, filePath: string, content: Buffer) {
     const fileExtension = path.extname(filePath).toLowerCase();
 
-     if (this.textExtensions.includes(fileExtension)) {
-        // Check if the file should be ignored
-        const relPath = path.relative(this.repoRoot, filePath);
-        if (this.ignoreFilter && !this.ignoreFilter.ignores(relPath)) {
-           const text = content.toString('utf-8');
-           await this.indexFile(filePath, text);
-        } else if (!this.ignoreFilter) {
-           // If ignoreFilter not ready, index anyway
-           const text = content.toString('utf-8');
-           await this.indexFile(filePath, text);
-        }
-     } else if (this.binaryExtensions.includes(fileExtension)) {
+    if (this.textExtensions.includes(fileExtension)) {
+      // Check if the file should be ignored
+      const relPath = path.relative(this.repoRoot, filePath);
+
+      // Guard against files outside the repo root to prevent ignore() from crashing
+      if (relPath.startsWith('..') || path.isAbsolute(relPath)) {
+        return;
+      }
+
+      if (this.ignoreFilter && !this.ignoreFilter.ignores(relPath)) {
+        const text = content.toString('utf-8');
+        await this.indexFile(filePath, text);
+      } else if (!this.ignoreFilter) {
+        // If ignoreFilter not ready, index anyway
+        const text = content.toString('utf-8');
+        await this.indexFile(filePath, text);
+      }
+    } else if (this.binaryExtensions.includes(fileExtension)) {
       try {
         const markdownContent = await this.parseFile(fileExtension, content);
         const shadowFilePath = await this.generateShadowFile(provider, filePath, markdownContent);
 
         // Check if the file should be ignored
-          const relShadowPath = path.relative(this.repoRoot, shadowFilePath);
-          if (this.ignoreFilter && !this.ignoreFilter.ignores(relShadowPath)) {
+        const relShadowPath = path.relative(this.repoRoot, shadowFilePath);
+
+        // Guard against files outside the repo root
+        if (relShadowPath.startsWith('..') || path.isAbsolute(relShadowPath)) {
+          return;
+        }
+
+        if (this.ignoreFilter && !this.ignoreFilter.ignores(relShadowPath)) {
           await this.indexFile(shadowFilePath, markdownContent);
         } else if (!this.ignoreFilter) {
           // If ignoreFilter not ready, index anyway
@@ -110,49 +122,55 @@ class IngestionService {
   }
 
   public async ingestRepository(dir: string) {
-      console.log(`[IngestionService] 🚀 Scanning directory: ${dir}`);
-      try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch { /* Ignore */ }
-      let totalFiles = 0;
-      let processedFiles = 0;
-      try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-                if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.domoreai' || entry.name === 'dist' || entry.name === '.turbo') {
-                  console.log(`[IngestionService] ⏭️  Skipping: ${fullPath}`);
-                  continue;
-                }
-                await this.ingestRepository(fullPath);
-            } else {
-                // Check ignore with proper type check
-                const rel = path.relative(this.repoRoot, fullPath);
-                if (this.ignoreFilter && this.ignoreFilter.ignores(rel)) {
-              const displayName = path.basename(fullPath);
-              console.log(`[IngestionService] 🚫 Ignored: ${displayName}`);
-                  continue;
-                }
-                
-                const ext = path.extname(fullPath).toLowerCase();
-                if (this.textExtensions.includes(ext)) {
-                     totalFiles++;
-              const displayName = path.basename(fullPath);
-              console.log(`[IngestionService] 📄 Processing file ${totalFiles}: ${displayName}`);
-              try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch { /* Ignore */ }
-                     const content = await fs.readFile(fullPath);
-                     const text = content.toString('utf-8');
-                     await this.indexFile(fullPath, text);
-                     processedFiles++;
-              console.log(`[IngestionService] ✅ Indexed file ${processedFiles}/${totalFiles}: ${displayName}`);
-              try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch { /* Ignore */ }
-                }
-            }
+    console.log(`[IngestionService] 🚀 Scanning directory: ${dir}`);
+    try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch { /* Ignore */ }
+    let totalFiles = 0;
+    let processedFiles = 0;
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.domoreai' || entry.name === 'dist' || entry.name === '.turbo') {
+            console.log(`[IngestionService] ⏭️  Skipping: ${fullPath}`);
+            continue;
+          }
+          await this.ingestRepository(fullPath);
+        } else {
+          // Check ignore with proper type check
+          const rel = path.relative(this.repoRoot, fullPath);
+
+          // Guard against files outside root (shouldn't happen during directory scan but safe to add)
+          if (rel.startsWith('..') || path.isAbsolute(rel)) {
+            continue;
+          }
+
+          if (this.ignoreFilter && this.ignoreFilter.ignores(rel)) {
+            const displayName = path.basename(fullPath);
+            console.log(`[IngestionService] 🚫 Ignored: ${displayName}`);
+            continue;
+          }
+
+          const ext = path.extname(fullPath).toLowerCase();
+          if (this.textExtensions.includes(ext)) {
+            totalFiles++;
+            const displayName = path.basename(fullPath);
+            console.log(`[IngestionService] 📄 Processing file ${totalFiles}: ${displayName}`);
+            try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch { /* Ignore */ }
+            const content = await fs.readFile(fullPath);
+            const text = content.toString('utf-8');
+            await this.indexFile(fullPath, text);
+            processedFiles++;
+            console.log(`[IngestionService] ✅ Indexed file ${processedFiles}/${totalFiles}: ${displayName}`);
+            try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch { /* Ignore */ }
+          }
         }
-        console.log(`[IngestionService] 🏁 Completed: ${processedFiles}/${totalFiles} files indexed from ${dir}`);
-        try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.complete', path: dir, processedFiles, totalFiles }); } catch { /* Ignore */ }
-      } catch (err) {
-          console.error(`[IngestionService] ❌ Error scanning directory ${dir}:`, err);
       }
+      console.log(`[IngestionService] 🏁 Completed: ${processedFiles}/${totalFiles} files indexed from ${dir}`);
+      try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.complete', path: dir, processedFiles, totalFiles }); } catch { /* Ignore */ }
+    } catch (err) {
+      console.error(`[IngestionService] ❌ Error scanning directory ${dir}:`, err);
+    }
   }
 
   private async indexFile(filePath: string, content: string) {
