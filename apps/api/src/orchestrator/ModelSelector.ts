@@ -64,6 +64,8 @@ export class ModelSelector {
       isActive: true,
       id: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
       name: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
+      // Blacklist Google via strict ID check (insensitive to be safe)
+      providerId: { notIn: ['google', 'Google', 'google-vertex', 'vertex'] }, 
       capabilities: {
         contextWindow: { gte: minContext }
       }
@@ -120,7 +122,8 @@ export class ModelSelector {
     const validCandidates: typeof candidates = [];
     
     // Simplified Probation: Only check usage counts for now
-    const usageCounts = await prisma.modelUsage.groupBy({
+    // (unused var removed)
+    await prisma.modelUsage.groupBy({
         by: ['modelId'],
         where: {
             roleId: role.id,
@@ -141,12 +144,26 @@ export class ModelSelector {
        return candidates[0].id; // Should not happen given loop above
     }
 
+    // [BANDIT LOGIC] "Win-Stay, Lose-Shift" with Epsilon-Greedy Exploration
+    // We favor stability (Win-Stay). "It stays until it hits rate limit".
+    // We use a small Epsilon to occasionally validate other models.
+    const EPSILON = 0.05; // 5% Exploration, 95% Exploitation (High Stickiness)
+    const shouldExplore = Math.random() < EPSILON && validCandidates.length > 1;
+
+    if (shouldExplore) {
+        // EXPLORE: Pick random eligible logic
+        // This covers the "50% change" desire during exploration phases
+        const randomIndex = Math.floor(Math.random() * validCandidates.length);
+        const selected = validCandidates[randomIndex];
+        console.log(`[ModelSelector] 🎲 Bandit Exploration: Exploring model ${selected.id} (${selected.providerId})`);
+        return selected.id;
+    }
+
+    // EXPLOIT: Pick the "Best"
+    
     // 3. Pick the Best
     // [CROSS-PROVIDER FAILOVER LOGIC]
     // If we have excluded models, we should try to avoid their providers too if possible.
-    // This prevents "Google -> Google -> Google" loops when the entire provider is rate limited.
-
-    // 3a. Identify Failing Providers from excluded list
     const failingProviders = new Set<string>();
     if (excludedModelIds.length > 0) {
         // We need to look up the providerIds for these excluded models
@@ -160,14 +177,11 @@ export class ModelSelector {
             select: { providerId: true }
         });
         failingModels.forEach(m => failingProviders.add(m.providerId));
-        if (failingProviders.size > 0) {
-            console.log(`[ModelSelector] Cross-Provider Failover Active. Deprioritizing providers: ${Array.from(failingProviders).join(', ')}`);
-        }
     }
 
     // 3b. Sort Candidates
     // Priority 1: NOT from a failing provider
-    // Priority 2: Stickiness (Last Success)
+    // Priority 2: Stickiness (Last Success) - Crucial for "It stays until rate limit"
     // Priority 3: Context Window (Original Order)
     validCandidates.sort((a, b) => {
         const aIsFailingProvider = failingProviders.has(a.providerId);
@@ -177,13 +191,43 @@ export class ModelSelector {
         if (aIsFailingProvider && !bIsFailingProvider) return 1; // a is worse
         if (!aIsFailingProvider && bIsFailingProvider) return -1; // a is better
 
-        // If both are same status, check stickiness
-        if (lastSuccess && a.id === lastSuccess.modelId) return -1;
-        if (lastSuccess && b.id === lastSuccess.modelId) return 1;
+        // Stickiness: If we have a 'lastSuccess' and it's not failing, PREFER IT.
+        // This implements "Once set, it stays".
+        if (lastSuccess) {
+            if (a.id === lastSuccess.modelId) return -1;
+            if (b.id === lastSuccess.modelId) return 1;
+        }
 
         // Otherwise keep original sort (context window desc)
         return 0;
     });
+
+    // COLD START TRICK: "50% stay 50% change provider" interpretation
+    // If we have NO history (lastSuccess matches nothing in valid set) and multiple valid candidates,
+    // we randomly pick one of the top 3 instead of always #1 to distribute load.
+    const topCandidate = validCandidates[0];
+    const isStickyMatch = lastSuccess && topCandidate.id === lastSuccess.modelId;
+
+    if (!isStickyMatch && validCandidates.length > 1 && !shouldExplore) {
+         // We are in a "Cold Start" or "Forced Switch" scenario.
+         // HEURISTIC: Try to offer diversity. 
+         // Find the best alternative that represents a DIFFERENT provider if possible.
+         const topProviderId = topCandidate.providerId;
+         const alternativeCandidate = validCandidates.find(c => c.providerId !== topProviderId);
+
+         if (alternativeCandidate) {
+             // 50/50 Chance between the Best (e.g. Google) and the Best Alternative (e.g. Anthropic)
+             // This fulfills the "50% change provider" request naturally.
+             const useAlternative = Math.random() < 0.5;
+             console.log(`[ModelSelector] ❄️ Cold Start Diversity: Picking between ${topCandidate.providerId} and ${alternativeCandidate.providerId}. Winner: ${useAlternative ? alternativeCandidate.providerId : topCandidate.providerId}`);
+             return useAlternative ? alternativeCandidate.id : topCandidate.id;
+         }
+
+         // Fallback: No diverse provider found, just random top 2
+         const spread = Math.min(validCandidates.length, 2); 
+         const idx = Math.floor(Math.random() * spread);
+         return validCandidates[idx].id;
+    }
 
     return validCandidates[0].id;
   }

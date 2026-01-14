@@ -11,7 +11,9 @@ const MAPPINGS: Record<string, { contextPath: string; namePath: string; idPath: 
   openrouter: { contextPath: 'context_length', namePath: 'name', idPath: 'id', pricingPath: 'pricing' },
   groq: { contextPath: 'context_window', namePath: 'id', idPath: 'id' },
   ollama: { contextPath: 'details.context_length', namePath: 'name', idPath: 'name' },
-  mistral: { contextPath: 'max_context_length', namePath: 'name', idPath: 'id' }
+  mistral: { contextPath: 'max_context_length', namePath: 'name', idPath: 'id' },
+  nvidia: { contextPath: 'context_window', namePath: 'id', idPath: 'id' },
+  cerebras: { contextPath: 'context_window', namePath: 'id', idPath: 'id' }
 };
 
 export class UnifiedIngestionService {
@@ -42,7 +44,7 @@ export class UnifiedIngestionService {
     await vectorStore.add(vectors);
   }
   
-  static async ingestAllModels(modelsDir?: string, force: boolean = false): Promise<void> {
+  static async ingestAllModels(modelsDir?: string, _force: boolean = false): Promise<void> {
     const targetDir = modelsDir || path.join(process.cwd(), 'latest_models');
     let files: string[] = [];
     try { files = await fs.readdir(targetDir); } catch { return; }
@@ -57,8 +59,9 @@ export class UnifiedIngestionService {
         console.error('Phase 1 (Raw Data Lake) failed:', err);
     }
     
-    // Check if we need to ingest (36h Cooldown)
-    // NOTE: We only skip if we have models. If DB is empty, we must run.
+    // Check if we need to ingest (36h Cooldown) -> REMOVED per user request
+    // The system is now optimized to run in background and handle updates intelligently.
+    /* 
     const lastUpdate = await prisma.model.findFirst({
         select: { updatedAt: true },
         orderBy: { updatedAt: 'desc' }
@@ -70,6 +73,7 @@ export class UnifiedIngestionService {
         console.log(`[UnifiedIngestionService] Skipping ingestion. Last update was ${lastUpdate.updatedAt.toISOString()} (within 36h).`);
         return;
     }
+    */
 
     console.log('[UnifiedIngestionService] Starting Smart Sync Ingestion...');
     
@@ -80,7 +84,7 @@ export class UnifiedIngestionService {
     // 1. Collect Valid Models from Raw Sources
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
-      const providerMatch = file.match(/^(google|openrouter|groq|ollama|mistral)/);
+      const providerMatch = file.match(/^(google|openrouter|groq|ollama|mistral|nvidia|cerebras)/);
       if (!providerMatch) continue;
       
       const provider = providerMatch[1];

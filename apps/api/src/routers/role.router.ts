@@ -440,6 +440,18 @@ export const roleRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
+      // Fetch role to check if it's protected
+      const role = await prisma.role.findUnique({
+          where: { id: input.id }
+      });
+      
+      if (role) {
+          const protectedNames = ['Role Architect', 'Nebula Architect', 'System Architect'];
+          if (protectedNames.includes(role.name)) {
+              throw new Error(`Cannot delete protected role: ${role.name}`);
+          }
+      }
+
       // Delete the role from the database
       await prisma.role.delete({
         where: { id: input.id },

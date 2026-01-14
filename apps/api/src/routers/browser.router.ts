@@ -40,13 +40,14 @@ export const browserRouter = createTRPCRouter({
       return await browserService.type(input.sessionId, input.text);
     }),
 
-  pressKey: publicProcedure
+   pressKey: publicProcedure
     .input(z.object({ 
       sessionId: z.string(),
       key: z.string()
     }))
     .mutation(async ({ input }) => {
-      return await browserService.pressKey(input.sessionId, input.key as any);
+      // Cast to specific key type if we knew it, or just keep string if service accepts it
+      return await browserService.pressKey(input.sessionId, input.key);
     }),
 
   goBack: publicProcedure
@@ -66,5 +67,38 @@ export const browserRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await browserService.closeSession(input.sessionId);
       return { success: true };
+    }),
+
+  scrape: publicProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ input }) => {
+       // 1. Fetch
+       const response = await fetch(input.url, {
+           headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+       });
+       const html = await response.text();
+
+       // 2. Parse (Lazy load to avoid heavy startup)
+       const { JSDOM } = await import('jsdom');
+       const { Readability } = await import('@mozilla/readability');
+       const TurndownService = (await import('turndown')).default;
+
+       const doc = new JSDOM(html, { url: input.url });
+       const reader = new Readability(doc.window.document);
+       const article = reader.parse();
+
+       if (!article || !article.content) {
+           throw new Error("Could not identify main content.");
+       }
+
+       // 3. Convert to Markdown for clean text with structure
+       const turndown = new TurndownService();
+       const markdown = turndown.turndown(article.content);
+
+       return {
+           title: article.title,
+           content: markdown,
+           excerpt: article.excerpt
+       };
     }),
 });

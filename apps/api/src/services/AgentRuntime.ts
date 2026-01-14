@@ -200,7 +200,7 @@ export class AgentRuntime {
       // 🛑 STOP CONDITION: If no code to execute, assume we are done
       if (!codeToExecute || codeToExecute.trim().length === 0) {
         console.log(
-          "[AgentRuntime] ✅ No actionable code found. Assuming final answer."
+          "[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown."
         );
         return { result: responseStr, logs: allLogs };
       }

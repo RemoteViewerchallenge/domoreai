@@ -32,6 +32,8 @@ export class ProviderFactory {
       case 'mistral':
       case 'groq':
       case 'deepseek':
+      case 'cerebras':
+      case 'nvidia':
       case 'generic-openai': // For custom endpoints
         return new OpenAIProvider({
           ...config,
@@ -55,6 +57,8 @@ export class ProviderFactory {
       case 'openrouter': return 'https://openrouter.ai/api/v1';
       case 'mistral':    return 'https://api.mistral.ai/v1';
       case 'groq':       return 'https://api.groq.com/openai/v1';
+      case 'cerebras':   return 'https://api.cerebras.ai/v1';
+      case 'nvidia':     return 'https://integrate.api.nvidia.com/v1';
       default:           return undefined; // Let SDK default to api.openai.com
     }
   }

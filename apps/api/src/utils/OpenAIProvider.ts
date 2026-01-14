@@ -16,7 +16,7 @@ export class OpenAIProvider implements BaseLLMProvider {
     this.client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL,
-      timeout: 60000, // 60 seconds
+      timeout: 15000, // 15 seconds (Aggressive failover)
       httpAgent: agent,
     } as any);
   }

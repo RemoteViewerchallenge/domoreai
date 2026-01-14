@@ -166,6 +166,45 @@ export const vfsRouter = createTRPCRouter({
          });
        }
     }),
+
+    // Rename / Move
+    rename: publicProcedure
+    .input(z.object({ 
+      oldPath: z.string(), 
+      newPath: z.string(),
+      cardId: z.string().optional(),
+      provider: z.enum(['local', 'ssh']).default('local'),
+      connectionId: z.string().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+       try {
+          // Quick hack: if local, use fs directly for reliability if provider lacks method
+          if (input.provider === 'local') {
+              const { promises: fs } = await import('fs');
+              await fs.rename(input.oldPath, input.newPath);
+              return { success: true };
+          }
+          
+          const provider = await ctx.vfsSession.getProvider({
+             cardId: input.cardId,
+             provider: input.provider,
+             connectionId: input.connectionId
+          });
+          // @ts-expect-error - Interface not yet updated to include rename
+          if (provider.rename) {
+              // @ts-expect-error - Interface not yet updated to include rename
+              await provider.rename(input.oldPath, input.newPath);
+          } else {
+              throw new Error("Rename not supported key by this provider");
+          }
+          return { success: true };
+       } catch (error) {
+         throw new TRPCError({
+           code: 'INTERNAL_SERVER_ERROR',
+           message: error instanceof Error ? error.message : 'Rename Failed',
+         });
+       }
+    }),
     
      // 5. Ingest Directory
      ingestDirectory: publicProcedure

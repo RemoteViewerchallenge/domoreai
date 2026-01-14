@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Model } from '../../../types/role.js';
 import DualRangeSlider from '../../ui/DualRangeSlider.js';
-import { Check, Cpu, Eye, Image, Mic, Terminal, Zap } from 'lucide-react';
+import { Check, Cpu, Eye, Image, Mic, Zap } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
 export interface FilterCriteria {
@@ -13,7 +13,6 @@ export interface FilterCriteria {
         imageGen: boolean;
         tts: boolean;
         uncensored: boolean; // Custom tag usually
-        coding: boolean;     // Usually implies high reasoning + large context
     };
     hardCodedModelId?: string | null;
 }
@@ -45,8 +44,10 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
             const caps = m.specs || {};
             let matches = true;
 
-            // Context Check (Basic)
-            if ((caps.contextWindow || 0) < criteria.minContext) matches = false;
+            // Context Check (Basic) - Filter models OUTSIDE the range
+            const context = caps.contextWindow || 0;
+            if (context < criteria.minContext) matches = false;
+            if (context > criteria.maxContext) matches = false;
             
             // Capability Checks
             if (criteria.capabilities.vision && !caps.hasVision) matches = false;
@@ -98,7 +99,6 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                 <CapToggle label="Thinking" icon={Cpu} active={criteria.capabilities.reasoning} onClick={() => toggleCap('reasoning')} />
                 <CapToggle label="Image Gen" icon={Image} active={criteria.capabilities.imageGen} onClick={() => toggleCap('imageGen')} />
                 <CapToggle label="Audio/TTS" icon={Mic} active={criteria.capabilities.tts} onClick={() => toggleCap('tts')} />
-                <CapToggle label="Coding" icon={Terminal} active={criteria.capabilities.coding} onClick={() => toggleCap('coding')} />
                 <CapToggle label="Uncensored" icon={Zap} active={criteria.capabilities.uncensored} onClick={() => toggleCap('uncensored')} />
             </div>
 
@@ -131,6 +131,15 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                                                 disabled={data.matching.length === 0}
                                             >
                                                 <option value="">Auto-Detect</option>
+                                                <option value="openai">OpenAI</option>
+                                                <option value="anthropic">Anthropic</option>
+                                                <option value="google">Google</option>
+                                                <option value="mistral">Mistral</option>
+                                                <option value="groq">Groq</option>
+                                                <option value="nvidia">NVIDIA</option>
+                                                <option value="cerebras">Cerebras</option>
+                                                <option value="openrouter">OpenRouter</option>
+                                                <option value="ollama">Ollama (Local)</option>
                                                 {data.matching.map(m => (
                                                     <option key={m.id} value={m.id}>{m.name}</option>
                                                 ))}

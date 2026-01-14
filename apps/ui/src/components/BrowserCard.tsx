@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
 import ResearchBrowser from './ResearchBrowser.js';
-import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock } from 'lucide-react';
+import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock, BookOpen, FileText } from 'lucide-react';
+import { trpc } from '../utils/trpc.js';
+import { toast } from 'sonner';
 
 /**
  * BrowserCard: An Electron-only browser card using the <webview> tag.
@@ -11,7 +13,7 @@ import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock } from 'lucide-react';
 // Define WebView props for type safety
 interface WebViewProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> {
     src?: string;
-    allowpopups?: boolean;
+    allowpopups?: boolean | string;
     webpreferences?: string;
     useragent?: string;
     partition?: string;
@@ -23,8 +25,6 @@ interface WebViewProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTML
     allowfullscreen?: boolean;
     autosize?: string;
     popups?: boolean;
-    // Electron specific props usually lowercased when used as attributes in JSX,
-    // but React expects camelCase for some standard ones. webview uses custom attributes.
 }
 
 const WebView = 'webview' as unknown as React.FC<WebViewProps>;
@@ -47,18 +47,32 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
   const [input, setInput] = useState(url);
   const webviewRef = useRef<HTMLWebViewElement>(null);
   
-  // Sync URL to context
+  // Reader Mode State
+  const [isReaderMode, setIsReaderMode] = useState(false);
+  const [readerContent, setReaderContent] = useState<string>('');
+  const scrapeMutation = trpc.browser.scrape.useMutation();
+
+  // Sync URL/Content to context
   React.useEffect(() => {
-    if (onLoad) onLoad(url);
-  }, [url, onLoad]);
+    if (onLoad) {
+        // If in reader mode, pass the text content so it can be saved!
+        if (isReaderMode) onLoad(readerContent);
+        else onLoad(url);
+    }
+  }, [url, onLoad, isReaderMode, readerContent]);
+
+  // Sync internal state with external prop updates (for navigation via links)
+  React.useEffect(() => {
+    if (initialUrl && initialUrl !== url) {
+        setUrl(initialUrl);
+        setInput(initialUrl);
+    }
+  }, [initialUrl]); 
   
   // Settings State
   const [showDebugView, setShowDebugView] = useState(false);
   const [blockAds, setBlockAds] = useState(true);
   const [mobileUA, setMobileUA] = useState(false);
-
-  // Sync input with valid URL changes (optional, usually annoying if typing)
-  // We'll just update input on navigation events if we could listen to them.
 
   const handleGo = () => {
     let target = input;
@@ -66,9 +80,11 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
       target = `https://${target}`;
     }
     setUrl(target);
+    setIsReaderMode(false); // Reset reader on nav
   };
 
   const handleBack = () => {
+    if (isReaderMode) { setIsReaderMode(false); return; }
     // @ts-expect-error Electron webview method
     if (webviewRef.current) webviewRef.current.goBack();
   };
@@ -77,8 +93,22 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
     if (webviewRef.current) webviewRef.current.goForward();
   };
   const handleReload = () => {
+     if (isReaderMode) { void handleScrape(); return; }
     // @ts-expect-error Electron webview method
     if (webviewRef.current) webviewRef.current.reload();
+  };
+
+  const handleScrape = async () => {
+      try {
+          const toastId = toast.loading("Extracting content...");
+          const result = await scrapeMutation.mutateAsync({ url });
+          setReaderContent(`# ${result.title}\n\n${result.content}`);
+          setIsReaderMode(true);
+          toast.dismiss(toastId);
+          toast.success("Content extracted!");
+      } catch (err) {
+          toast.error("Scrape Failed", { description: (err as Error).message });
+      }
   };
 
   // Settings Panel Content
@@ -170,11 +200,31 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
                         placeholder="Enter URL or search..."
                     />
                 </div>
+
+                {/* Reader Toggle */}
+                <button 
+                    type="button" 
+                    onClick={() => { if(isReaderMode) { setIsReaderMode(false); } else { void handleScrape(); } }} 
+                    className={`p-1.5 rounded-md transition-colors ${isReaderMode ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+                    title={isReaderMode ? "Exit Reader" : "Reader Mode (Scrape)"}
+                >
+                    {isReaderMode ? <FileText size={16} /> : <BookOpen size={16} />}
+                </button>
             </div>
          )}
 
         {/* BROWSER CONTENT */}
         <div className="flex-1 relative bg-white overflow-hidden">
+            {isReaderMode ? (
+                <div className="absolute inset-0 z-40 bg-[var(--bg-background)] overflow-y-auto p-8 custom-scrollbar">
+                    <div className="max-w-2xl mx-auto prose prose-invert prose-sm">
+                        <pre className="whitespace-pre-wrap font-mono text-xs text-zinc-300 bg-zinc-900/50 p-4 rounded border border-zinc-800">
+                            {readerContent}
+                        </pre>
+                    </div>
+                </div>
+            ) : null}
+            
             {!isElectron() && !showDebugView && (
                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm p-8">
                     <div className="bg-warning/20 border border-warning/50 p-6 rounded-lg max-w-md text-center">
@@ -202,8 +252,8 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
                     <WebView
                         ref={webviewRef}
                         src={url}
-                        style={{ width: '100%', height: '100%' }}
-                        allowpopups={true}
+                        style={{ width: '100%', height: '100%', visibility: isReaderMode ? 'hidden' : 'visible' }}
+                        allowpopups="true"
                         webpreferences="nativeWindowOpen=yes"
                         useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
                     />
@@ -227,4 +277,3 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
     </UniversalCardWrapper>
   );
 }
-;

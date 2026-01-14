@@ -2,7 +2,7 @@ import { useState, useEffect, type FC } from 'react';
 import { 
   Folder, FileText, ChevronRight, ChevronDown, ArrowUp, 
   RefreshCw, Eye, EyeOff, Brain, 
-  Server, FilePlus, FolderPlus 
+  Server, FilePlus, FolderPlus, Save
 } from 'lucide-react';
 import type { VFile } from '../stores/FileSystemTypes.js';
 import { cn } from '@/lib/utils.js';
@@ -18,6 +18,10 @@ interface FileExplorerProps {
   onEmbedDir?: (path: string) => void;
   onLoadChildren?: (path: string) => Promise<VFile[]>;
   onDropItem?: (sourcePath: string, targetPath: string) => void;
+  
+  // New props for saving content from other views
+  activeContent?: string;
+  onSaveContent?: (path: string, content: string) => void;
 }
 
 // Helper: Estimate Tokens (Roughly 4 chars per token)
@@ -173,11 +177,13 @@ export const FileExplorer: FC<FileExplorerProps> = ({
   onCreateNode,
   onRefresh,
   onEmbedDir,
-  onLoadChildren
+  onLoadChildren,
+  activeContent,
+  onSaveContent
 }) => {
   const [pathInput, setPathInput] = useState(currentPath || '');
   const [showHidden, setShowHidden] = useState(false);
-  const [isCreating, setIsCreating] = useState<'file' | 'folder' | null>(null);
+  const [isCreating, setIsCreating] = useState<'file' | 'folder' | 'save' | null>(null);
   const [newNodeName, setNewNodeName] = useState('');
 
   // Sync prop path to state
@@ -186,8 +192,13 @@ export const FileExplorer: FC<FileExplorerProps> = ({
   const handleNavigate = () => onNavigate?.(pathInput);
   
   const handleCreateSubmit = () => {
-      if (onCreateNode && newNodeName.trim()) {
-          onCreateNode(isCreating === 'file' ? 'file' : 'directory', newNodeName);
+      if (newNodeName.trim()) {
+          if (isCreating === 'save' && onSaveContent && activeContent !== undefined) {
+              const fullPath = (currentPath ? currentPath.replace(/\/$/, '') + '/' : '') + newNodeName;
+              onSaveContent(fullPath, activeContent);
+          } else if (onCreateNode && (isCreating === 'file' || isCreating === 'folder')) {
+              onCreateNode(isCreating === 'file' ? 'file' : 'directory', newNodeName);
+          }
           setIsCreating(null);
           setNewNodeName('');
       }
@@ -253,16 +264,32 @@ export const FileExplorer: FC<FileExplorerProps> = ({
              >
                 <Brain size={10} /> Ingest
              </button>
+
+             {/* Save Stashed Content */}
+             {activeContent !== undefined && onSaveContent && (
+                <button 
+                    onClick={() => {
+                        setIsCreating('save');
+                        setNewNodeName(`saved-buffer-${Date.now()}.md`); // Default suggestion
+                    }} 
+                    className="flex items-center gap-1 px-2 py-0.5 bg-amber-900/20 hover:bg-amber-900/40 border border-amber-900/50 rounded text-[10px] text-amber-400 ml-1"
+                    title="Save active editor content to a new file"
+                >
+                    <Save size={10} /> Save Buffer
+                </button>
+             )}
           </div>
           
           {/* Inline Creator Input */}
           {isCreating && (
             <div className="flex items-center gap-2 px-1 py-1 animate-in fade-in slide-in-from-top-1">
-               {isCreating === 'folder' ? <Folder size={14} className="text-purple-400"/> : <FileText size={14} className="text-blue-400"/>}
+               {isCreating === 'folder' ? <Folder size={14} className="text-purple-400"/> : 
+                isCreating === 'save' ? <Save size={14} className="text-amber-400"/> :
+                <FileText size={14} className="text-blue-400"/>}
                <input 
                   autoFocus
                   className="flex-1 bg-black border border-blue-500 rounded px-1 text-xs text-white outline-none"
-                  placeholder={`New ${isCreating} name...`}
+                  placeholder={isCreating === 'save' ? "Save as filename..." : `New ${isCreating} name...`}
                   value={newNodeName}
                   onChange={(e) => setNewNodeName(e.target.value)}
                   onKeyDown={(e) => {
