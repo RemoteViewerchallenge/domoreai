@@ -1,4 +1,5 @@
 import { prisma } from '../db.js';
+import { RoleFactoryService } from '../services/RoleFactoryService.js';
 // import { OrchestrationService } from '../services/orchestration.service.js';
 import type { SandboxTool } from '../types.js';
 
@@ -29,7 +30,7 @@ interface CreateOrchestrationArgs {
   name: string;
   description?: string;
   tags?: string[];
-  steps: any[];
+  steps: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface ListOrchestrationsArgs {
@@ -50,7 +51,71 @@ interface GetExecutionStatusArgs {
   executionId: string;
 }
 
+interface CreateRoleVariantArgs {
+    roleId?: string; // Optional: Update existing role
+    intent: {
+        name: string;
+        description: string;
+        domain: string; // e.g., "Frontend", "Backend"
+        complexity: 'LOW' | 'MEDIUM' | 'HIGH';
+        capabilities?: string[];
+    }
+}
+
 export const metaTools: SandboxTool[] = [
+  {
+    name: 'create_role_variant',
+    description: 'Use the Role Factory to biologically evolve a new Role Variant (DNA). PREFERRED method for creating high-quality agents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        roleId: { type: 'string', description: 'Optional ID of existing role to evolve. If omitted, a new Base Role is created.' },
+        intent: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                description: { type: 'string' },
+                domain: { type: 'string', description: 'e.g. "Frontend", "Backend", "Creative"' },
+                complexity: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+                capabilities: { type: 'array', items: { type: 'string' } }
+            },
+            required: ['name', 'description', 'domain', 'complexity']
+        }
+      },
+      required: ['intent']
+    },
+    handler: async (args: unknown) => {
+        const typedArgs = args as CreateRoleVariantArgs;
+        
+        // 1. If no roleId, we need to ensure a base role exists
+        let roleId = typedArgs.roleId;
+        if (!roleId) {
+             // Create a shell role
+            const role = await prisma.role.create({
+                data: {
+                    name: typedArgs.intent.name,
+                    description: typedArgs.intent.description,
+                    basePrompt: "You are a specialized agent." // Placeholder, will be overridden by Variant
+                }
+            });
+            roleId = role.id;
+        }
+
+        const factory = new RoleFactoryService();
+        const variant = await factory.createRoleVariant(roleId, typedArgs.intent);
+
+        return [{
+            type: 'text',
+            text: `✅ Role Variant Created Successfully!
+ID: ${variant.id}
+Role ID: ${roleId}
+Core Personality: ${JSON.stringify((variant.identityConfig as unknown as { personaName: string })?.personaName)}
+Capabilities: ${JSON.stringify((variant.cortexConfig as unknown as { capabilities: string[] })?.capabilities)}
+
+The user can now select this role from the roster.`
+        }];
+    }
+  },
   {
     name: 'create_role',
     description: 'Create a new AI role with specific capabilities and constraints. Use this to define new agent personas.',

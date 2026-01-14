@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Plus, Search, Folder, CheckSquare, Square } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Search, Folder, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
 export interface CategorizerItem {
@@ -21,6 +20,7 @@ interface CategorizerProps {
   onCategorySelect?: (category: string, allItemIds: string[]) => void; // New: Select all in category
   onAddCategory?: (name: string) => void;
   onAddItem?: (categoryId?: string) => void;
+  onDelete?: (id: string) => void; // New: Delete action
   className?: string;
   accordion?: boolean; // New: Enforce single expansion
   defaultExpanded?: boolean;
@@ -35,6 +35,7 @@ export const CompactCategorizer: React.FC<CategorizerProps> = ({
   onSelect,
   onCategorySelect,
   onAddItem,
+  onDelete,
   className,
   accordion = false,
   defaultExpanded = true
@@ -139,6 +140,7 @@ export const CompactCategorizer: React.FC<CategorizerProps> = ({
                             item={item} 
                             selected={selectedIds ? selectedIds.includes(item.id) : selectedId === item.id} 
                             onClick={() => onSelect(item.id)} 
+                            onDelete={onDelete ? () => onDelete(item.id) : undefined}
                         />
                     ))}
                     {grouped[cat].length === 0 && <div className="px-6 py-1 text-[9px] text-[var(--text-muted)] italic">No items</div>}
@@ -159,6 +161,7 @@ export const CompactCategorizer: React.FC<CategorizerProps> = ({
                         item={item} 
                         selected={selectedIds ? selectedIds.includes(item.id) : selectedId === item.id} 
                         onClick={() => onSelect(item.id)} 
+                        onDelete={onDelete ? () => onDelete(item.id) : undefined}
                     />
                  ))}
             </div>
@@ -168,11 +171,11 @@ export const CompactCategorizer: React.FC<CategorizerProps> = ({
   );
 };
 
-const ListItem = ({ item, selected, onClick }: { item: CategorizerItem, selected: boolean, onClick: () => void }) => (
+const ListItem = ({ item, selected, onClick, onDelete }: { item: CategorizerItem, selected: boolean, onClick: () => void, onDelete?: () => void }) => (
     <div 
         onClick={onClick}
         className={cn(
-            "flex items-center gap-2 px-6 py-1.5 cursor-pointer border-l-2 transition-all select-none",
+            "flex items-center gap-2 px-6 py-1.5 cursor-pointer border-l-2 transition-all select-none group",
             selected 
                 ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]" 
                 : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)]"
@@ -181,5 +184,17 @@ const ListItem = ({ item, selected, onClick }: { item: CategorizerItem, selected
         {item.icon}
         <span className="text-[11px] truncate">{item.label}</span>
         {selected && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] shadow-[0_0_5px_var(--color-primary)]" />}
+        {onDelete && (
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if(confirm(`Delete role "${item.label}"?`)) onDelete();
+                }}
+                className="ml-auto opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 text-zinc-500 transition-all"
+                title="Delete Role"
+            >
+                <Trash2 size={10} />
+            </button>
+        )}
     </div>
 );

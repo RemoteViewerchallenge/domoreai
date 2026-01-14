@@ -14,7 +14,7 @@ export async function autoLoadRawJsonFiles() {
 
     const files = await readdir(latestModelsDir);
     const jsonFiles = files.filter(f =>
-      f.match(/^(google|mistral|openrouter|groq|ollama)_models_.*\.json$/)
+      f.match(/^(google|mistral|openrouter|groq|ollama|nvidia|cerebras)_models_.*\.json$/)
     );
 
     if (jsonFiles.length === 0) {

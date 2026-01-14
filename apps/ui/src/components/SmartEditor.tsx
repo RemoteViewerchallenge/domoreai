@@ -2,25 +2,29 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import MonacoEditor from './MonacoEditor.js'; 
-import { Bot, Loader2 } from 'lucide-react';
+import { Bot, Loader2, Play, Copy, Save } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
+import { toast } from 'sonner';
+
+type AiResponse = string | { content?: string; text?: string; code?: string };
 
 interface SmartEditorProps {
   fileName: string;
   content: string;
   onChange: (val: string) => void;
   isAiTyping?: boolean; // New prop to show AI activity
-  onRun?: () => void;   // Callback for running the agent (Cmd+Enter)
+  onRun?: (goal?: string, roleIdOverride?: string) => void;   // Callback for running the agent (Cmd+Enter)
+  onNavigate?: (url: string) => void; // New: Handle link clicks
 }
 
-const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: () => void }) => {
+const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void }) => {
   const [isInitializing, setIsInitializing] = React.useState(true);
   
   const editor = useEditor({
     extensions: [
       StarterKit,
     ],
-    content: content,
+    content: content, // ... (unchanged)
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
@@ -51,29 +55,55 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: strin
     if (!editor || editor.isDestroyed || !onRun) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && event.shiftKey) {
+      // Support Shift+Enter, Ctrl+Enter, Alt+Enter to run
+      if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey || event.altKey)) {
         event.preventDefault();
-        onRun();
+        onRun(); // Default run (uses context)
       }
+    };
+
+    // Intercept Link Clicks
+    const handleClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest('a');
+        if (link && link.href && onNavigate) {
+            event.preventDefault();
+            // Clean up standard link behavior if needed
+            // Only internal or valid links
+            onNavigate(link.href);
+        }
     };
 
     try {
       if (!editor.isDestroyed && editor.view?.dom) {
         const dom = editor.view.dom;
         dom.addEventListener('keydown', handleKeyDown);
-        return () => dom.removeEventListener('keydown', handleKeyDown);
+        dom.addEventListener('click', handleClick);
+        return () => {
+            dom.removeEventListener('keydown', handleKeyDown);
+            dom.removeEventListener('click', handleClick);
+        };
       }
     } catch (e) {
-      console.warn("SmartEditor: Error attaching keydown listener", e);
+      console.warn("SmartEditor: Error attaching listeners", e);
     }
-  }, [editor, onRun]);
+  }, [editor, onRun, onNavigate]);
 
   return (
     <SmartContainer 
       type="DOCS" 
       title="Document Editor"
+      contextId={fileName}
+      extraActions={
+          <div className="flex items-center gap-1">
+             <button type="button" onClick={() => { if(editor) { const text = editor.getHTML(); void navigator.clipboard.writeText(text).then(() => toast.success('Copied')); } }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+             <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
+          </div>
+      }
+      onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
       onAiResponse={(res) => {
-        const text = typeof res === 'string' ? res : res.content || res.text;
+        const payload = res as AiResponse;
+        const text = typeof payload === 'string' ? payload : payload.content || payload.text;
         if(editor && text) {
           editor.commands.setContent(text);
           onChange(text);
@@ -81,6 +111,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: strin
       }}
     >
       {(registerContext) => {
+        // ... (rest of render) ...
         // Register context for AI
         if (editor && !editor.isDestroyed) {
           registerContext(() => editor.getText());
@@ -119,7 +150,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun }: { content: strin
   );
 };
 
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun }) => {
+const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate }) => {
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
 
   if (isCode) {
@@ -128,13 +159,25 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
       <SmartContainer 
         type="MONACO" 
         title={`Code: ${fileName}`}
+        contextId={fileName}
+        extraActions={
+            <div className="flex items-center gap-1">
+                {/* Save Button */}
+                 <button type="button" onClick={() => { onChange(content); toast.success("Saved"); }} title="Save File (Cmd+S)" className="hover:text-[var(--text-primary)] transition-colors"><Save size={10}/></button>
+                 <button type="button" onClick={() => { void navigator.clipboard.writeText(content).then(() => toast.success('Copied')); }} title="Copy Code" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+                 <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
+            </div>
+        }
+        onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
         onAiResponse={(res) => {
-          const code = typeof res === 'string' ? res : res.content || res.code;
+          const payload = res as AiResponse;
+          const code = typeof payload === 'string' ? payload : payload.content || payload.code;
           if(code) onChange(code);
         }}
       >
         {(registerContext) => (
           <div className="h-full w-full relative flex flex-col">
+          {/* ... */}
             {isAiTyping && (
               <div className="absolute top-2 right-4 z-50 flex items-center gap-2 bg-emerald-900/80 text-emerald-400 px-2 py-1 rounded text-xs border border-emerald-700 backdrop-blur-sm animate-pulse shadow-lg">
                 <Bot size={12} />
@@ -163,7 +206,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     );
   }
 
-  return <TiptapEditor key={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} />;
+  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} />;
 };
 
 export default SmartEditor;
