@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useLayoutEffect } from 'react';
 import { useTheme } from '../hooks/useTheme.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
@@ -24,6 +24,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
   const fitAddonRef = useRef<FitAddon | null>(null);
   const lastProcessedIndexRef = useRef<number>(-1);
   const logsRef = useRef(logs);
+  const isMounted = useRef(true);
 
   // AI Command Generator State
   const [aiRequest, setAiRequest] = useState('');
@@ -34,6 +35,14 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
   useEffect(() => {
     logsRef.current = logs;
   }, [logs]);
+
+  // Handle Mount/Unmount lifecycle state
+  useEffect(() => {
+      isMounted.current = true;
+      return () => {
+          isMounted.current = false;
+      };
+  }, []);
 
   // Helper to format prompt with working directory
   const formatPrompt = useCallback((dir?: string) => {
@@ -50,18 +59,35 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
       // Only process new logs based on index
       for (let i = lastProcessedIndexRef.current + 1; i < currentLogs.length; i++) {
           const log = currentLogs[i];
-          const formattedMessage = log.message.replace(/\n/g, '\r\n');
-          xtermRef.current.write(formattedMessage);
+          let message = '';
+          if (typeof log.message === 'string') {
+              message = log.message;
+          } else if (typeof log.message === 'object') {
+              try {
+                  message = JSON.stringify(log.message, null, 2);
+              } catch {
+                  message = String(log.message);
+              }
+          } else {
+              message = String(log.message || '');
+          }
+          const formattedMessage = message.replace(/\n/g, '\r\n');
+          // Check if mounted before writing to avoid potential (though rare) race conditions
+          if (isMounted.current && xtermRef.current) {
+             xtermRef.current.write(formattedMessage);
+          }
       }
       
       lastProcessedIndexRef.current = currentLogs.length - 1;
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!terminalRef.current || xtermRef.current) return;
 
     // Wait for dimensions before initializing
     const resizeObserver = new ResizeObserver(() => {
+        // Guard against layout thrashing/unmount
+        if (!isMounted.current) return;
         if (!terminalRef.current || terminalRef.current.clientWidth === 0 || terminalRef.current.clientHeight === 0) {
             return;
         }
@@ -69,12 +95,15 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
         // If already initialized, just fit
         if (xtermRef.current && fitAddonRef.current) {
             try {
-                fitAddonRef.current.fit();
+                if(isMounted.current) fitAddonRef.current.fit();
             } catch (e) {
                 console.warn('Xterm fit failed:', e);
             }
             return;
         }
+
+        // Check again if mounted before heavy init
+        if (!isMounted.current) return;
 
         // Initialize Xterm once we have dimensions
         const term = new Terminal({
@@ -84,7 +113,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
           theme: {
             background: 'transparent', // Transparent to let app theme bleed through
             foreground: theme.colors.text || '#e4e4e7',
-            cursor: theme.colors.primary?.value || '#22d3ee',
+            cursor: theme.colors.primary || '#22d3ee',
             selectionBackground: 'rgba(255, 255, 255, 0.3)',
           },
           allowProposedApi: true,
@@ -96,12 +125,21 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
         // Add WebLinks Addon
         term.loadAddon(new WebLinksAddon());
 
+        if (!terminalRef.current) return;
         term.open(terminalRef.current);
-        try {
-            fitAddon.fit();
-        } catch (e) {
-            console.warn('Initial Xterm fit failed:', e);
-        }
+        
+        // Use requestAnimationFrame to let the DOM settle before fitting
+        requestAnimationFrame(() => {
+            // CRITICAL: Check if we are still mounted and the terminal instance is valid
+            // If the component unmounted during this frame delay, calling fit() causes the 'dimensions' crash
+            if (!isMounted.current || !xtermRef.current) return;
+
+            try {
+                fitAddon.fit();
+            } catch {
+                // Ignore initial fit errors usually due to race conditions in layout
+            }
+        });
 
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
@@ -117,7 +155,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
             return lines;
         };
 
-        if (onMount) onMount(term);
+        if (onMount && isMounted.current) onMount(term);
 
         // Write initial prompt with working directory
         term.write(formatPrompt(workingDirectory));
@@ -127,6 +165,8 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
 
         // Handle user input with local echo and buffering
         term.onData((data) => {
+            if (!isMounted.current) return;
+            
             const code = data.charCodeAt(0);
 
             // Enter key (13 for \r)
@@ -164,13 +204,17 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
     return () => {
       resizeObserver.disconnect();
       if (xtermRef.current) {
-          xtermRef.current.dispose();
+          try {
+              xtermRef.current.dispose();
+          } catch (e) {
+              console.warn("Error disposing terminal:", e);
+          }
           xtermRef.current = null;
           // Reset processed index so if we remount, we re-print logs
           lastProcessedIndexRef.current = -1;
       }
     };
-  }, [onInput, processLogs, formatPrompt, workingDirectory, theme]);
+  }, [onInput, processLogs, formatPrompt, workingDirectory, theme, onMount]);
 
   // Update prompt when working directory changes
   useEffect(() => {

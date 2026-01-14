@@ -2,7 +2,7 @@ import React from 'react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { BrowserCard } from './BrowserCard.js';
 
-export const SmartBrowser = ({ url }: { url: string }) => {
+export const SmartBrowser = ({ url, onUrlChange }: { url: string; onUrlChange?: (url: string) => void }) => {
   return (
     <SmartContainer type="BROWSER" title="Live Preview">
       {(registerContext) => (
@@ -12,6 +12,7 @@ export const SmartBrowser = ({ url }: { url: string }) => {
            onLoad={(frameContent: string) => {
                // Security warning: Cross-origin frames might block this
                registerContext(() => frameContent);
+               onUrlChange?.(frameContent);
            }}
         />
       )}

@@ -33,9 +33,10 @@ const FileSelectorModal = ({
     const { files, navigateTo, currentPath, readFile, isLoading, refresh, listDir, error } = useVFS('', '/');
 
     const handleFileSelect = async (path: string) => {
+        console.log('[NebulaBuilder] Selected file:', path);
         const fileName = path.split('/').pop() || '';
-        if (!fileName.endsWith('.tsx') && !fileName.endsWith('.jsx')) {
-            toast.error("Invalid File Type", { description: "Please select a React file (.tsx / .jsx)" });
+        if (!/\.(tsx|jsx|ts|js)$/.test(fileName)) {
+            toast.error("Invalid File Type", { description: "Please select a React/TS files." });
             return;
         }
 

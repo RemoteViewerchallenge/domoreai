@@ -90,6 +90,10 @@ export class ProviderService {
                   maxOutput: model.capabilities?.maxOutput || 0,
                   hasVision: !!model.capabilities?.hasVision,
                   hasReasoning: !!model.capabilities?.hasReasoning,
+                  // @ts-ignore - Dynamic specs
+                  uncensored: !!model.capabilities?.specs?.uncensored,
+                  // @ts-ignore - Dynamic specs
+                  coding: !!model.capabilities?.specs?.coding
               },
               capabilities
         };

@@ -14,12 +14,12 @@ type ButtonState = 'idle' | 'active' | 'menu' | 'role_select' | 'config';
 type SuperAiButtonProps = {
   contextId?: string | Record<string, unknown>; // The local context ID (e.g. "users-table", "terminal-1")
   contextGetter?: () => string | Record<string, unknown>; // A dynamic context getter
-  onSuccess?: (response: any) => void;
+  onSuccess?: (response: unknown) => void;
   className?: string;
   style?: React.CSSProperties;
   expandUp?: boolean;
   side?: 'left' | 'right'; // Expansion direction
-  onGenerate?: (prompt: string) => void;
+  onGenerate?: (prompt: string, options?: { roleId?: string }) => void;
   defaultPrompt?: string;
   defaultRoleId?: string;
 };
@@ -78,8 +78,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     }
   }, [state]);
 
+  // GENERATE HANDLER
   const handleGenerate = () => {
-    if (!prompt.trim()) return;
+    // Relaxed Check: If onGenerate is active (parent handles logic), we allow empty prompt
+    if (!prompt.trim() && !onGenerate) return;
     
     // Construct the full payload
     const effectiveContext = contextGetter ? contextGetter() : contextId;
@@ -96,7 +98,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     };
 
     if (onGenerate) {
-      onGenerate(prompt);
+      onGenerate(prompt, { roleId: selectedRoleId || undefined });
     } else {
       dispatchMutation.mutate(payload);
     }
@@ -111,14 +113,50 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     }
   };
 
-  const handleRightClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setState(state === 'menu' ? 'idle' : 'menu');
-  };
+  // Persistent Role Selection
+  useEffect(() => {
+    if (typeof contextId === 'string' && !defaultRoleId) {
+        const saved = localStorage.getItem(`super-ai-role-${contextId}`);
+        if (saved) setSelectedRoleId(saved);
+    }
+  }, [contextId, defaultRoleId]);
 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRoleId(roleId);
-    setState('menu');
+    if (typeof contextId === 'string') {
+        localStorage.setItem(`super-ai-role-${contextId}`, roleId);
+    }
+    setState('active'); // Return to prompt view after selection
+  };
+  
+  // Left Click = Magic Run (User Request)
+  const handleLeftClick = () => {
+    if (dispatchMutation.isLoading) return;
+    
+    // If we have a prompt or onGenerate, try to run.
+    // IMPT: If no prompt is typed, normally we'd do nothing or open input.
+    // User wants "Left click runs immediately". 
+    // If prompt is empty AND we don't have a custom handler (onGenerate), we MUST open the input.
+    // If onGenerate IS present, we assume the parent can handle an empty prompt (by using context/content).
+    if (!prompt.trim() && !defaultPrompt && !onGenerate) {
+         setState(prev => prev === 'active' ? 'idle' : 'active');
+         return;
+    }
+    
+    // If we have a prompt (or defaultPrompt) OR onGenerate, run it.
+    handleGenerate();
+    
+    // Visual feedback
+    if (buttonRef.current) {
+        buttonRef.current.classList.add('animate-ping');
+        setTimeout(() => buttonRef.current?.classList.remove('animate-ping'), 500);
+    }
+  };
+
+  // Right Click = Open Menu / Settings / Role Selector
+  const handleRightClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setState(state === 'menu' ? 'idle' : 'menu');
   };
 
   // Determine button aesthetic based on context
@@ -140,7 +178,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
           buttonRef.current = node;
           refs.setReference(node);
         }}
-        onClick={() => setState(state === 'idle' ? 'active' : 'idle')}
+        onClick={handleLeftClick}
         onContextMenu={handleRightClick}
         className={cn(
           "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Square & Smaller (h-7 w-7 matches SwappableCard)
@@ -154,46 +192,11 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         style={style}
         title={`AI Context: ${contextLabel} (Right-click for menu)`}
       >
-        <AnimatePresence mode="wait">
-          {state === 'menu' || state === 'role_select' || state === 'config' ? (
-            <motion.div
-              key="close"
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <X size={14} />
-            </motion.div>
+        {state === 'menu' || state === 'role_select' || state === 'config' ? (
+             <X size={14} />
           ) : (
-            <motion.div
-              key="sparkles"
-              initial={{ rotate: 90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: -90, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="relative"
-            >
-              <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
-              {state === 'idle' && !isContextLimited && (
-                <motion.div
-                  className="absolute inset-0"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 0, 0.5],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                >
-                  <Sparkles size={14} />
-                </motion.div>
-              )}
-            </motion.div>
+             <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
           )}
-        </AnimatePresence>
       </button>
 
       {/* Active Input Mode - Expands OUTWARDS */}
@@ -267,7 +270,12 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                    side === 'left' ? "right-0" : "left-0" // Align to the edge of the button
                 )}
             >
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-2 gap-1 p-1">
+                <MenuButton 
+                    icon={<Zap size={14} />} 
+                    label="Prompt" 
+                    onClick={() => setState('active')} 
+                />
                 <MenuButton 
                     icon={<User size={14} />} 
                     label="Roles" 
@@ -279,9 +287,9 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
                     onClick={() => setState('config')} 
                 />
                 <MenuButton 
-                    icon={<Zap size={14} />} 
-                    label="Events" 
-                    onClick={() => console.log('Events clicked')} 
+                    icon={<Database size={14} />} 
+                    label="Data" 
+                    onClick={() => console.log('Data clicked')} 
                 />
                 </div>
             </motion.div>
