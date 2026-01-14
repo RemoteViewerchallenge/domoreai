@@ -15,12 +15,12 @@ interface IdentityConfig {
     personaName: string;
     systemPromptDraft: string;
     style: string;
+    thinkingProcess: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
+    reflectionEnabled: boolean;
 }
 
 interface CortexConfig {
-    orchestration: string;
     contextRange: { min: number; max: number };
-    reflectionEnabled: boolean;
     capabilities: string[];
     tools: string[]; // List of tool names
 }
@@ -43,7 +43,7 @@ interface GovernanceConfig {
  * Now powered by the "Role Architect" Meta-Agent via ProviderManager.
  */
 export class RoleFactoryService {
-    
+
     /**
      * The Master Method: Assembles a new RoleVariant from intent
      */
@@ -87,7 +87,7 @@ export class RoleFactoryService {
                 isActive: true
             }
         });
-        
+
         console.log(`[RoleFactory] ✅ Born: Variant ${variant.id}`);
         return variant;
     }
@@ -110,6 +110,8 @@ export class RoleFactoryService {
         - personaName: A creative codename
         - systemPromptDraft: A detailed, strict, and highly specialized system prompt (at least 5 sentences).
         - style: Communication style (e.g., "PROFESSIONAL_CONCISE", "SOCRATIC", "AGGRESSIVE_AUDITOR").
+        - thinkingProcess: "SOLO" (Single-shot), "CHAIN_OF_THOUGHT" (Hidden reasoning steps), or "MULTI_STEP_PLANNING" (Iterative tool use and self-correction).
+        - reflectionEnabled: boolean (Should the agent habitually verify its own work before responding?)
         `;
 
         try {
@@ -124,7 +126,9 @@ export class RoleFactoryService {
             return {
                 personaName: intent.name,
                 systemPromptDraft: `You are ${intent.name}. ${intent.description}.`,
-                style: 'PROFESSIONAL_CONCISE'
+                style: 'PROFESSIONAL_CONCISE',
+                thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
+                reflectionEnabled: intent.complexity === 'HIGH'
             };
         }
     }
@@ -141,14 +145,13 @@ export class RoleFactoryService {
         Intent:
         - Complexity: ${intent.complexity}
         - Domain: ${intent.domain}
+        - Thinking Process & Reflection: (Already defined in Identity)
 
         Output JSON with keys:
-        - orchestration: "SOLO" or "CHAIN_OF_THOUGHT" or "MULTI_STEP_PLANNING"
         - contextRange: { min: number, max: number } (Token limits)
-        - reflectionEnabled: boolean (Should it verify its own steps?)
-        - capabilities: string[] (Required hardware/software features: "vision", "reasoning", "tts", "embedding", "coding")
+        - capabilities: string[] (Required hardware/software features: "vision", "tts", "embedding")
         `;
-        
+
         try {
             const raw = await provider.generateCompletion({
                 modelId: 'gpt-4o',
@@ -157,16 +160,14 @@ export class RoleFactoryService {
             });
             return JSON.parse(raw) as CortexConfig;
         } catch (e: unknown) {
-             console.warn("Cortex Architect failed, falling back to gene pool.", e);
+            console.warn("Cortex Architect failed, falling back to gene pool.", e);
             // Fallback heuristic
             const caps: string[] = [];
             if (intent.capabilities?.includes('vision')) caps.push('vision');
             if (intent.capabilities?.includes('reasoning')) caps.push('reasoning');
 
             return {
-                orchestration: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
                 contextRange: { min: 4096, max: 8192 },
-                reflectionEnabled: false,
                 capabilities: caps,
                 tools: []
             };
@@ -209,7 +210,7 @@ export class RoleFactoryService {
      * "How am I judged?"
      */
     private async governanceArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<GovernanceConfig> {
-         const prompt = `
+        const prompt = `
         You are the Governance Architect.
         Set the rules and assessment criteria.
 
@@ -231,8 +232,8 @@ export class RoleFactoryService {
             });
             return JSON.parse(raw) as GovernanceConfig;
         } catch (e: unknown) {
-             console.warn("Governance Architect failed, falling back to gene pool.", e);
-             return {
+            console.warn("Governance Architect failed, falling back to gene pool.", e);
+            return {
                 rules: [],
                 assessmentStrategy: ['LINT_ONLY'], // Array as default
                 enforcementLevel: 'WARN_ONLY'
@@ -296,7 +297,7 @@ export class RoleFactoryService {
         if (existing) return existing;
 
         console.log(`[RoleFactory] 🏗️ Seeding "Nebula Architect"...`);
-        
+
         // Create the Category if needed
         let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
         if (!cat) cat = await prisma.roleCategory.create({ data: { name: 'System', order: 0 } });
@@ -313,7 +314,7 @@ You have access to the 'create_role_variant' tool to biologically spawn new agen
 When the user asks for a new agent:
 1. Clarify the Domain (Frontend, Backend, Research).
 2. Clarify the Complexity (Low/High).
-3. Ask about Special Capabilities (Vision, TTS, Embeddings) if relevant to the domain.
+3. Ask about Special Capabilities (Vision, Reasoning, TTS, Embeddings) if relevant to the domain.
 4. Use 'create_role_variant' to generate the role when you have enough intent.
 `
             }

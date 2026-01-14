@@ -9,7 +9,7 @@ export const DEFAULT_MODEL_CONFIG = {
 export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
   name: '',
   basePrompt: '',
-  category: '', 
+  category: '',
   minContext: 0,
   maxContext: DEFAULT_MODEL_CONFIG.maxContext,
   needsVision: false,
@@ -34,27 +34,34 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
   memoryConfig: { useProjectMemory: false, readOnly: false },
   dna: {
     identity: {
-        personaName: '',
-        style: 'PROFESSIONAL_CONCISE',
-        systemPromptDraft: ''
+      personaName: '',
+      style: 'PROFESSIONAL_CONCISE',
+      systemPromptDraft: ''
     },
     cortex: {
-        orchestration: 'SOLO',
-        reflectionEnabled: false,
-        capabilities: [], // Non-exclusive checkboxes
-        contextRange: { min: 4096, max: 8192 }
+      orchestration: 'SOLO',
+      reflectionEnabled: false,
+      capabilities: [], // Non-exclusive checkboxes
+      preferences: {
+        reasoning: false,
+        tts: false,
+        multimodal: false,
+        uncensored: false,
+        imageGen: false,
+      },
+      contextRange: { min: 4096, max: 8192 }
     },
     governance: {
-        rules: [],
-        assessmentStrategy: ['LINT_ONLY'], // Non-exclusive checkboxes - default to LINT_ONLY
-        enforcementLevel: 'WARN_ONLY'
+      rules: [],
+      assessmentStrategy: ['LINT_ONLY'], // Non-exclusive checkboxes - default to LINT_ONLY
+      enforcementLevel: 'WARN_ONLY'
     },
     context: {
-        strategy: ['EXPLORATORY'], // Non-exclusive checkboxes - default to EXPLORATORY
-        permissions: ['ALL']
+      strategy: ['EXPLORATORY'], // Non-exclusive checkboxes - default to EXPLORATORY
+      permissions: ['ALL']
     },
     tools: {
-        customTools: []
+      customTools: []
     }
   }
 };

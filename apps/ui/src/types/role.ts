@@ -17,10 +17,26 @@ export interface Model {
   contextWindow?: number;
   specs?: {
     contextWindow?: number;
+    maxOutput?: number;
     hasVision?: boolean;
     hasReasoning?: boolean;
     hasImageGen?: boolean;
-    maxOutput?: number;
+    hasEmbedding?: boolean;
+    hasOCR?: boolean;
+    hasTTS?: boolean;
+    hasReward?: boolean;
+    hasModeration?: boolean;
+    hasCoding?: boolean;
+    isLibrarian?: boolean;
+    isMedical?: boolean;
+    isWeather?: boolean;
+    isScience?: boolean;
+    isMultimodal?: boolean;
+    uncensored?: boolean;
+    supportsFunctionCalling?: boolean;
+    supportsJsonMode?: boolean;
+    hasAudioInput?: boolean;
+    hasAudioOutput?: boolean;
   };
 }
 
@@ -29,11 +45,18 @@ export interface RoleDNA {
     personaName: string;
     style: 'PROFESSIONAL_CONCISE' | 'SOCRATIC' | 'AGGRESSIVE_AUDITOR' | 'CREATIVE_EXPLORER';
     systemPromptDraft: string;
+    thinkingProcess: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
+    reflectionEnabled: boolean;
   };
   cortex: {
-    orchestration: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
-    reflectionEnabled: boolean;
     capabilities: string[]; // Non-exclusive: vision, reasoning, tts, embedding, coding
+    preferences?: {
+      reasoning?: boolean;
+      tts?: boolean;
+      multimodal?: boolean;
+      uncensored?: boolean;
+      imageGen?: boolean;
+    };
     contextRange: { min: number; max: number };
   };
   governance: {
@@ -59,10 +82,10 @@ export interface Role {
   categoryString?: string;
   // Category object is purely optional for display
   category?: { id: string; name: string };
-  
+
   // Flattened tools for UI (references by name or ID)
-  tools?: string[]; 
-  
+  tools?: string[];
+
   // Metadata Configuration
   minContext?: number;
   maxContext?: number;
@@ -73,7 +96,7 @@ export interface Role {
   needsJson?: boolean;
   needsUncensored?: boolean;
   needsImageGeneration?: boolean;
-  
+
   defaultTemperature?: number;
   defaultMaxTokens?: number;
   defaultTopP?: number;
@@ -82,21 +105,21 @@ export interface Role {
   defaultStop?: string[];
   defaultSeed?: number;
   defaultResponseFormat?: 'text' | 'json_object';
-  
+
   terminalRestrictions?: {
-      mode: 'whitelist' | 'blacklist' | 'unrestricted';
-      commands: string[];
+    mode: 'whitelist' | 'blacklist' | 'unrestricted';
+    commands: string[];
   };
-  
+
   criteria?: Record<string, unknown>;
   orchestrationConfig?: {
-      requiresCheck: boolean;
-      judgeRoleId?: string;
-      minPassScore: number;
+    requiresCheck: boolean;
+    judgeRoleId?: string;
+    minPassScore: number;
   };
   memoryConfig?: {
-      useProjectMemory: boolean;
-      readOnly: boolean;
+    useProjectMemory: boolean;
+    readOnly: boolean;
   };
 
   // DNA Concept
@@ -140,7 +163,7 @@ export interface RoleFormState {
   criteria: Record<string, unknown>;
   orchestrationConfig: { requiresCheck: boolean; judgeRoleId?: string; minPassScore: number };
   memoryConfig: { useProjectMemory: boolean; readOnly: boolean };
-  
+
   // DNA Overlay
   dna: RoleDNA;
 }
