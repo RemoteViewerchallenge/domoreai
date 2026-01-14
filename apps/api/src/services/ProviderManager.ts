@@ -11,7 +11,7 @@ const MS_PER_SECOND = 1000;
 
 
 interface RawSnapshotData extends LLMModel {
-    [key: string]: unknown;
+  [key: string]: unknown;
 }
 
 export class ProviderManager implements IProviderManager {
@@ -23,7 +23,7 @@ export class ProviderManager implements IProviderManager {
   private repository: IProviderRepository;
 
   constructor(repository?: IProviderRepository) {
-      this.repository = repository || new ProviderRepository();
+    this.repository = repository || new ProviderRepository();
   }
 
   public markUnhealthy(providerId: string, cooldownSeconds: number) {
@@ -32,16 +32,16 @@ export class ProviderManager implements IProviderManager {
   }
 
   public isHealthy(providerId: string): boolean {
-      const cooldownEndTime = this.unhealthyProviders.get(providerId);
-      if (!cooldownEndTime) {
-          return true;
-      }
-      if (Date.now() > cooldownEndTime) {
-          this.unhealthyProviders.delete(providerId);
-          console.log(`[ProviderManager] ${providerId} is healthy again.`);
-          return true;
-      }
-      return false;
+    const cooldownEndTime = this.unhealthyProviders.get(providerId);
+    if (!cooldownEndTime) {
+      return true;
+    }
+    if (Date.now() > cooldownEndTime) {
+      this.unhealthyProviders.delete(providerId);
+      console.log(`[ProviderManager] ${providerId} is healthy again.`);
+      return true;
+    }
+    return false;
   }
 
   async initialize() {
@@ -52,7 +52,7 @@ export class ProviderManager implements IProviderManager {
     // 2. Load from DB
     try {
       const configs = await this.repository.getEnabledProviderConfigs();
-      
+
       this.providers.clear();
       this.providerMetadata.clear(); // Clear metadata
 
@@ -66,12 +66,12 @@ export class ProviderManager implements IProviderManager {
         'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
       };
 
-    for (const config of configs) {
+      for (const config of configs) {
         try {
           // Try to use environment variable first (avoids decryption issues)
           let apiKey = '';
           const envVar = envMappings[config.type];
-          
+
           if (config.type === 'ollama') {
             // Ollama is local and doesn't need an API key
             apiKey = process.env.OLLAMA_API_KEY || '';
@@ -83,19 +83,23 @@ export class ProviderManager implements IProviderManager {
             // NEW: Fallback via convention for any other provider ID
             const conventionKey = `${config.id.toUpperCase()}_API_KEY`;
             if (process.env[conventionKey]) {
-                apiKey = process.env[conventionKey] || '';
-                console.log(`[ProviderManager] Using ${conventionKey} from environment for ${config.label}`);
+              apiKey = process.env[conventionKey] || '';
+              console.log(`[ProviderManager] Using ${conventionKey} from environment for ${config.label}`);
             } else {
-                console.warn(`[ProviderManager] ⚠️ No API Key found for ${config.label}. Please set ${conventionKey} in .env`);
+              console.warn(`[ProviderManager] ⚠️ No API Key found for ${config.label}. Please set ${conventionKey} in .env`);
             }
           }
-          
 
           // Fix for Ollama: If baseURL is missing in DB, default to local.
           // This prevents "Ollama requires a baseURL" initialization errors.
           let baseURL = config.baseURL || undefined;
           if (config.type === 'ollama' && !baseURL) {
-             baseURL = process.env.OLLAMA_HOST || OLLAMA_DEFAULT_HOST;
+            baseURL = process.env.OLLAMA_HOST || OLLAMA_DEFAULT_HOST;
+          }
+
+          if (config.type !== 'ollama' && !apiKey) {
+            console.warn(`[ProviderManager] ⚠️ Skipping ${config.label} - No API Key found. Please set ${envMappings[config.type] || (config.type.toUpperCase() + '_API_KEY')} in .env`);
+            continue;
           }
 
           const provider = ProviderFactory.createProvider(config.type, {
@@ -104,16 +108,16 @@ export class ProviderManager implements IProviderManager {
             baseURL,
           });
           this.providers.set(config.id, provider);
-          
+
           // STORE METADATA HERE
           this.providerMetadata.set(config.id, { label: config.label, type: config.type });
-          
+
           console.log(`[ProviderManager] ✅ Online: ${config.label} (${config.type})`);
         } catch (error) {
           console.error(`[ProviderManager] ❌ Failed to init ${config.label}:`, error);
         }
       }
-      
+
       // 3. Auto-detect Ollama (Local)
       await this.detectLocalOllama();
 
@@ -139,22 +143,22 @@ export class ProviderManager implements IProviderManager {
         const existing = await this.repository.findProviderConfigByLabel(map.label);
 
         if (!existing) {
-           console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
-           // Create a stable, human-readable ID instead of a random UUID.
-           // e.g., "OpenRouter (Env)" -> "openrouter-env"
-           const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
+          // Create a stable, human-readable ID instead of a random UUID.
+          // e.g., "OpenRouter (Env)" -> "openrouter-env"
+          const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-             const now = new Date();
-             await this.repository.createProviderConfig({
-               id: stableId,
-               label: map.label,
-               type: map.type,
-               // apiKey: encrypt(key), // REMOVED: Keys are now in env only
-               baseURL: map.url || '',
-               isEnabled: true,
-               createdAt: now,
-               updatedAt: now
-             });
+          const now = new Date();
+          await this.repository.createProviderConfig({
+            id: stableId,
+            label: map.label,
+            type: map.type,
+            // apiKey: encrypt(key), // REMOVED: Keys are now in env only
+            baseURL: map.url || '',
+            isEnabled: true,
+            createdAt: now,
+            updatedAt: now
+          });
         }
       }
     }
@@ -163,16 +167,16 @@ export class ProviderManager implements IProviderManager {
   getProvider(id: string): BaseLLMProvider | undefined {
     // Allow lookup by "type" as well if ID fails (e.g. "google")
     if (this.providers.has(id)) return this.providers.get(id);
-    
+
     // Fallback: Find first provider of this type
     for (const [_, p] of this.providers) {
-        if (p.id === id || p.id.includes(id)) return p;
+      if (p.id === id || p.id.includes(id)) return p;
     }
     return undefined;
   }
-  
+
   hasProvider(partialId: string): boolean {
-      return Array.from(this.providers.keys()).some(k => k.includes(partialId));
+    return Array.from(this.providers.keys()).some(k => k.includes(partialId));
   }
 
   async getAllModels(): Promise<LLMModel[]> {
@@ -212,7 +216,7 @@ export class ProviderManager implements IProviderManager {
         console.log(`[ProviderManager] Fetching models for ${providerLabel} via RawModelService...`);
         const { RawModelService } = await import('./RawModelService.js');
         const snapshot = await RawModelService.fetchAndSnapshot(providerId);
-        
+
         if (!snapshot || !Array.isArray(snapshot.rawData)) {
           console.error(`[ProviderManager] Failed to get a valid snapshot for ${providerLabel}.`);
           continue;
@@ -227,14 +231,14 @@ export class ProviderManager implements IProviderManager {
 
         // Filter OpenRouter for free models
         if (providerType === 'openrouter') {
-             modelsToSync = models.filter(m => {
-                 const p = (m as any).pricing;
-                 // Some providers might return strings "0" or numbers 0
-                 const isFreePrompt = p?.prompt === '0' || p?.prompt === 0;
-                 const isFreeComp = p?.completion === '0' || p?.completion === 0;
-                 return isFreePrompt && isFreeComp;
-             });
-             console.log(`[ProviderManager] Filtered OpenRouter models: ${models.length} -> ${modelsToSync.length} (Free Only)`);
+          modelsToSync = models.filter(m => {
+            const p = (m as any).pricing;
+            // Some providers might return strings "0" or numbers 0
+            const isFreePrompt = p?.prompt === '0' || p?.prompt === 0;
+            const isFreeComp = p?.completion === '0' || p?.completion === 0;
+            return isFreePrompt && isFreeComp;
+          });
+          console.log(`[ProviderManager] Filtered OpenRouter models: ${models.length} -> ${modelsToSync.length} (Free Only)`);
         }
 
         if (modelsToSync.length === 0) {
@@ -246,13 +250,13 @@ export class ProviderManager implements IProviderManager {
         // if multiple raw records map to the same name.
         const uniqueModels = new Map<string, RawSnapshotData>();
         modelsToSync.forEach(m => {
-            const mId = (m.id || m.model || m.name) as string;
-            if (mId) {
-                uniqueModels.set(mId, m as RawSnapshotData);
-                activeModelNamesByProvider.get(providerId)?.add(mId);
-            }
+          const mId = (m.id || m.model || m.name) as string;
+          if (mId) {
+            uniqueModels.set(mId, m as RawSnapshotData);
+            activeModelNamesByProvider.get(providerId)?.add(mId);
+          }
         });
-        
+
         // ... (rest of upsert loop)
 
         console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
@@ -266,102 +270,93 @@ export class ProviderManager implements IProviderManager {
           }
 
           const cost = m.costPer1k;
-          const isFree = m.isFree === true || (typeof cost === 'number' && cost === 0);
 
-          const specs = {
-            contextWindow: m.contextWindow,
-            hasVision: m.hasVision,
-            hasReasoning: m.hasReasoning || false,
-            hasCoding: m.hasCoding || false
-          };
-
-          await this.repository.upsertModel({
-            where: {
-              providerId_name: {
+          try {
+            await this.repository.upsertModel({
+              where: {
+                providerId_name: {
+                  providerId: providerId,
+                  name: modelId // Use STABLE id for search
+                }
+              },
+              create: {
                 providerId: providerId,
-                name: modelId
+                name: modelId, // Use SAME stable id for creation
+                costPer1k: cost || 0,
+                providerData: m,
+                aiData: {}
+              },
+              update: {
+                isActive: true,
+                costPer1k: cost || 0,
+                providerData: m,
+                lastSeenAt: new Date()
               }
-            },
-            create: {
-              providerId: providerId,
-              name: (m.name as string) || modelId,
-              costPer1k: cost || 0,
-              providerData: m, // Store full raw model object
-              aiData: {}
-            },
-            update: {
-              // NAME is not updated to prevent overwriting custom renaming logic if we add it later
-              // But for now we stick to provider-truth for naming structure consistency
-              isActive: true, // Re-activate if it disappeared
-              costPer1k: cost || 0,
-              providerData: m, 
-              lastSeenAt: new Date()
-              // CRITICAL: Do NOT update 'specs' here. 
-              // If an agent/surveyor fixed the context window, we don't want the raw API data (which is often wrong/null) to overwrite it.
-            }
-          });
+            });
+          } catch (upsertError) {
+            console.error(`[Registry Sync] Individual Upsert Failed for ${providerLabel} - ${modelId}:`, upsertError);
+            // We don't throw here to allow other models in the same provider to sync
+          }
         }
 
       } catch (error) {
         const meta = this.providerMetadata.get(providerId);
         const providerLabel = meta?.label || providerId;
-        const err = error as Error & { cause?: { code: string } };
-        // ... Log error
-        console.error(`[Registry Sync] Failed for provider ${providerLabel}:`, error);
+        console.error(`[Registry Sync] Batch Sync Failed for provider ${providerLabel}:`, error);
       }
     }
 
     // --- CLEANUP (Delete Ghost Records) ---
     console.log('[ProviderManager] Starting Cleanup of Ghost Records...');
-    
+
     // 1. Delete models from providers that we didn't sync at all (e.g. removed integration)
     // BUT be careful about "disabled" providers. Only delete if we specifically tried to sync active ones?
     // User wants "Reported Reality". 
     // The safest is: Delete models where providerId IS NOT in syncedProviders.
     // However, if we only synced ENABLED providers, disabling a provider should hide its models?
     // Or delete them? User wants cleanup. Let's delete them.
-    
+
     const activeProviderIds = Array.from(syncedProviders);
     if (activeProviderIds.length > 0) {
-        const deletedProviders = await prisma.model.deleteMany({
-            where: {
-                providerId: { notIn: activeProviderIds }
-            }
-        });
-        if (deletedProviders.count > 0) {
-            console.log(`[ProviderManager] 🧹 Deleted ${deletedProviders.count} models from inactive/removed providers.`);
+      const deletedProviders = await prisma.model.deleteMany({
+        where: {
+          providerId: { notIn: activeProviderIds }
         }
+      });
+      if (deletedProviders.count > 0) {
+        console.log(`[ProviderManager] 🧹 Deleted ${deletedProviders.count} models from inactive/removed providers.`);
+      }
     }
 
     // 2. Delete models that ARE in active providers but were NOT in the api response
     for (const [providerId, seenNames] of activeModelNamesByProvider.entries()) {
-        const seenList = Array.from(seenNames);
-        // If we saw 0 models, we might have skipped earlier (continue). 
-        // But if we skipped, seenNames is empty.
-        // If correct fetch returned 0, we WANT to delete all.
-        // If fetch FAILED, we caught error and didn't verify names.
-        // Wait! If fetch failed, we shouldn't delete models!
-        // How do we know if fetch failed?
-        // The `try/catch` block inside the loop catches fetch errors.
-        // If it failed, `seenNames` might be empty, but we shouldn't delete.
-        // I need a way to track "Success".
-        // Let's assume if seenNames is empty, we skipped or failed, so SAFETY FIRST: Don't delete if 0 seen?
-        // User reports Groq returned 0. If it truly is 0, we should delete.
-        // But if fetch failed, we shouldn't.
-        // The previous `continue` on `models.length === 0` handles the 0 case (by skipping invalid/empty snapshots).
-        // But if snapshot was valid and empty, we continued.
-        
-        if (seenList.length > 0) {
-             const deletedOrphans = await prisma.model.deleteMany({
-                where: {
-                    providerId: providerId,
-                    name: { notIn: seenList }
-                }
-             });
-             if (deletedOrphans.count > 0) {
-                 console.log(`[ProviderManager] 🧹 Deleted ${deletedOrphans.count} orphaned models for ${providerId}.`);
-             }
+      const seenList = Array.from(seenNames);
+      // If we saw 0 models, we might have skipped earlier (continue). 
+      // But if we skipped, seenNames is empty.
+      // If correct fetch returned 0, we WANT to delete all.
+      // If fetch FAILED, we caught error and didn't verify names.
+      // Wait! If fetch failed, we shouldn't delete models!
+      // How do we know if fetch failed?
+      // The `try/catch` block inside the loop catches fetch errors.
+      // If it failed, `seenNames` might be empty, but we shouldn't delete.
+      // I need a way to track "Success".
+      // Let's assume if seenNames is empty, we skipped or failed, so SAFETY FIRST: Don't delete if 0 seen?
+      // User reports Groq returned 0. If it truly is 0, we should delete.
+      // But if fetch failed, we shouldn't.
+      // The previous `continue` on `models.length === 0` handles the 0 case (by skipping invalid/empty snapshots).
+      // But if snapshot was valid and empty, we continued.
+
+      if (seenList.length > 0) {
+        const deletedOrphans = await prisma.model.deleteMany({
+          where: {
+            providerId: providerId,
+            name: { notIn: seenList }
+          }
+        });
+        if (deletedOrphans.count > 0) {
+          console.log(`[ProviderManager] 🧹 Deleted ${deletedOrphans.count} orphaned models for ${providerId}.`);
         }
+      }
     }
 
     console.log('[ProviderManager] Registry Sync Completed.');
@@ -376,15 +371,15 @@ export class ProviderManager implements IProviderManager {
     // Table name convention: "{providerType}_models" (e.g. google_models)
     try {
       const tableName = `${providerType}_models`;
-      
+
       const { flattenRawData } = await import('./dataRefinement.service.js');
-      
+
       console.log(`[ProviderManager] 🔨 Flattening data into table: ${tableName}...`);
       // Pass both snapshotId and the in-memory rawData.
       // flattenRawData is smart enough to use the rawData if the snapshotId lookup fails for any reason.
       const result = await flattenRawData({ snapshotId, tableName, rawData: models });
       console.log(`[ProviderManager] ✅ Created dynamic table ${result.tableName} with ${result.rowCount} rows.`);
-      
+
     } catch (error) {
       console.error(`[ProviderManager] ❌ Failed to snapshot/flatten data for ${providerType}:`, error);
     }
@@ -404,39 +399,39 @@ export class ProviderManager implements IProviderManager {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);
     try {
-        // A simple fetch to the root endpoint is enough to see if Ollama is running.
-        const response = await fetch(ollamaHost, { signal: controller.signal });
-        const text = await response.text();
+      // A simple fetch to the root endpoint is enough to see if Ollama is running.
+      const response = await fetch(ollamaHost, { signal: controller.signal });
+      const text = await response.text();
 
-        if (response.ok && text.includes('Ollama is running')) {
-            console.log(`[ProviderManager] ✅ Auto-detected local Ollama at ${ollamaHost}.`);
+      if (response.ok && text.includes('Ollama is running')) {
+        console.log(`[ProviderManager] ✅ Auto-detected local Ollama at ${ollamaHost}.`);
 
-            // Ensure the provider config exists in the database.
-            const existing = await this.repository.findProviderConfigById(providerId);
-            if (!existing) {
-              const now = new Date();
-                await this.repository.createProviderConfig({
-                 id: providerId,
-                 label: 'Ollama (Local)',
-                 type: 'ollama',
-                 // apiKey: encrypt(''), // REMOVED
-                 baseURL: ollamaHost,
-                 isEnabled: true,
-                 createdAt: now,
-                 updatedAt: now
-               });
-              console.log('[ProviderManager] Registered local Ollama provider in DB.');
-            }
-
-            // Add the provider to the active list. The main sync loop will handle fetching its models.
-            const provider = ProviderFactory.createProvider('ollama', { id: providerId, baseURL: ollamaHost });
-            this.providers.set(providerId, provider);
+        // Ensure the provider config exists in the database.
+        const existing = await this.repository.findProviderConfigById(providerId);
+        if (!existing) {
+          const now = new Date();
+          await this.repository.createProviderConfig({
+            id: providerId,
+            label: 'Ollama (Local)',
+            type: 'ollama',
+            // apiKey: encrypt(''), // REMOVED
+            baseURL: ollamaHost,
+            isEnabled: true,
+            createdAt: now,
+            updatedAt: now
+          });
+          console.log('[ProviderManager] Registered local Ollama provider in DB.');
         }
+
+        // Add the provider to the active list. The main sync loop will handle fetching its models.
+        const provider = ProviderFactory.createProvider('ollama', { id: providerId, baseURL: ollamaHost });
+        this.providers.set(providerId, provider);
+      }
     } catch (e) {
-        // Silent failure - Ollama just isn't running
-        // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
+      // Silent failure - Ollama just isn't running
+      // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
     } finally {
-        clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
     }
   }
 
@@ -445,34 +440,34 @@ export class ProviderManager implements IProviderManager {
   private static instance = new ProviderManager();
 
   public static getInstance() {
-      return this.instance;
+    return this.instance;
   }
 
   public static markUnhealthy(providerId: string, cooldownSeconds: number) {
-      this.instance.markUnhealthy(providerId, cooldownSeconds);
+    this.instance.markUnhealthy(providerId, cooldownSeconds);
   }
 
   public static isHealthy(providerId: string): boolean {
-      return this.instance.isHealthy(providerId);
+    return this.instance.isHealthy(providerId);
   }
 
   static async initialize() {
-      await this.instance.initialize();
+    await this.instance.initialize();
   }
 
   static getProvider(id: string) {
-      return this.instance.getProvider(id);
+    return this.instance.getProvider(id);
   }
 
   static hasProvider(partialId: string) {
-      return this.instance.hasProvider(partialId);
+    return this.instance.hasProvider(partialId);
   }
 
   static async getAllModels(): Promise<LLMModel[]> {
-      return this.instance.getAllModels();
+    return this.instance.getAllModels();
   }
 
   static async syncModelsToRegistry() {
-      await this.instance.syncModelsToRegistry();
+    await this.instance.syncModelsToRegistry();
   }
 }

@@ -34,24 +34,32 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       // REMOVED: Direct alias to nebula/src causes TypeScript to be bundled
       // Let pnpm/node resolve @repo/nebula to the built dist folder instead
-      
+
       // 4. REMOVE ALL THESE MANUAL SHIMS
       // The plugin handles "node:fs", "os", "process" etc. automatically.
     },
   },
   optimizeDeps: {
     // Exclude TypeScript and nebula internals from being bundled in browser
-    exclude: ['typescript'], 
+    exclude: ['typescript'],
     esbuildOptions: {
-        loader: {
-            '.ts': 'ts'
-        }
+      loader: {
+        '.ts': 'ts'
+      }
     }
   },
   build: {
     commonjsOptions: {
       extensions: ['.js', '.cjs', '.mjs', '.ts', '.tsx'],
       transformMixedEsModules: true,
+    },
+  },
+  server: {
+    proxy: {
+      '/trpc': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
     },
   },
 })
