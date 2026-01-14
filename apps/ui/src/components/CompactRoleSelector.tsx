@@ -15,6 +15,23 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
     const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery();
     const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery();
 
+    const utils = trpc.useContext();
+    const deleteMutation = trpc.role.delete.useMutation({
+        onSuccess: () => {
+            utils.role.list.invalidate();
+        },
+        onError: (err) => {
+            alert(`Failed to delete role: ${err.message}`);
+        }
+    });
+
+    const handleDelete = (id: string) => {
+         deleteMutation.mutate({ id });
+         if (selectedRoleId === id) {
+             onSelect(''); // Clear selection if deleted
+         }
+    };
+
     if (rolesLoading || catsLoading) {
         return <div className="p-4 text-[10px] text-zinc-500 flex items-center gap-2"><div className="animate-spin w-3 h-3 border-2 border-zinc-600 border-t-zinc-400 rounded-full"/> Loading Roles...</div>;
     }
@@ -40,6 +57,7 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
             categories={categoryNames}
             selectedId={selectedRoleId}
             onSelect={onSelect}
+            onDelete={handleDelete}
             className={className}
         />
     );

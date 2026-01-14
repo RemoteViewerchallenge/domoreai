@@ -113,10 +113,10 @@ export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/mono
     ingestDirectory,
     transferFile,
     createNode,
-    readFile: async (path: string) => (await utils.vfs.read.fetch({ path, provider, connectionId, cardId })).content,
-    writeFile: async (path: string, content: string) => {
+    readFile: useCallback(async (path: string) => (await utils.vfs.read.fetch({ path, provider, connectionId, cardId })).content, [utils, provider, connectionId, cardId]),
+    writeFile: useCallback(async (path: string, content: string) => {
         await utils.client.vfs.write.mutate({ path, content, provider, connectionId, cardId });
-        void refresh();
-    }
+        await refresh();
+    }, [utils, provider, connectionId, cardId, refresh])
   };
 };

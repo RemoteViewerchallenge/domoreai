@@ -8,9 +8,11 @@ interface SmartContainerProps {
   type: SmartContainerType;
   title: string;
   children: (registerContext: (getter: () => string) => void) => React.ReactNode;
-  onAiResponse?: (response: any) => void;
+  onAiResponse?: (response: unknown) => void;
   className?: string;
   extraActions?: React.ReactNode;
+  onGenerate?: (prompt: string, options?: { roleId?: string }) => void; // New prop
+  contextId?: string; // For persistent settings
 }
 
 // ✅ CORRECT: Mapping Types to SEMANTIC Variables, not colors.
@@ -27,7 +29,9 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
   children,
   onAiResponse,
   className,
-  extraActions
+  extraActions,
+  onGenerate,
+  contextId
 }) => {
   const config = CONFIG_MAP[type];
   const contextRef = useRef<(() => string)>(() => "No context available");
@@ -46,7 +50,9 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
           title={title}
           colorVar={config.varName} // Passing the Variable Reference
           aiContextGetter={() => contextRef.current()}
-          onAiAction={(action, payload) => onAiResponse && onAiResponse(payload)}
+          onAiAction={(_action, payload) => onAiResponse && onAiResponse(payload)}
+          onGenerate={onGenerate}
+          contextId={contextId}
           actions={extraActions}
         />
       )}
@@ -63,7 +69,9 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
           title={title}
           colorVar={config.varName} // Passing the Variable Reference
           aiContextGetter={() => contextRef.current()}
-          onAiAction={(action, payload) => onAiResponse && onAiResponse(payload)}
+          onAiAction={(_action, payload) => onAiResponse && onAiResponse(payload)}
+          onGenerate={onGenerate}
+          contextId={contextId}
           actions={extraActions}
         />
       )}

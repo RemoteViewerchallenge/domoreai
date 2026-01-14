@@ -371,7 +371,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                             <div className="space-y-2">
                                 <label className="text-[9px] font-bold uppercase text-zinc-500">Capabilities (Multi-Select)</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {['vision', 'reasoning', 'tts', 'embedding', 'coding'].map(cap => (
+                                    {['vision', 'reasoning', 'tts', 'embedding'].map(cap => (
                                         <label key={cap} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
                                             <input 
                                                 type="checkbox"
@@ -407,8 +407,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                     reasoning: dna.cortex.capabilities.includes('reasoning'),
                                     imageGen: false,
                                     tts: false,
-                                    uncensored: false,
-                                    coding: dna.cortex.capabilities.includes('coding')
+                                    uncensored: false
                                 },
                                 hardCodedModelId: legacyParams.modelId
                             }}
@@ -416,7 +415,6 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                 const newCaps: string[] = [];
                                 if (crit.capabilities.vision) newCaps.push('vision');
                                 if (crit.capabilities.reasoning) newCaps.push('reasoning');
-                                if (crit.capabilities.coding) newCaps.push('coding');
 
                                 setDna(prev => ({
                                     ...prev,

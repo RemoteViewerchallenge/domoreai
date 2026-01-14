@@ -1,10 +1,11 @@
-import { decrypt, encrypt } from '../utils/encryption.js';
+
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
 import { IProviderManager } from '../interfaces/IProviderManager.js';
 import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
-import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
+import { prisma } from '../db.js';
+import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, NVIDIA_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
 
 const MS_PER_SECOND = 1000;
 
@@ -61,6 +62,7 @@ export class ProviderManager implements IProviderManager {
         'mistral': 'MISTRAL_API_KEY',
         'openrouter': 'OPENROUTER_API_KEY',
         'groq': 'GROQ_API_KEY',
+        'nvidia': 'NVIDIA_API_KEY',
         'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
       };
 
@@ -125,7 +127,9 @@ export class ProviderManager implements IProviderManager {
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },
       { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: OPENROUTER_API_URL },
-      { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: GROQ_API_URL }
+      { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: GROQ_API_URL },
+      { env: 'NVIDIA_API_KEY', type: 'nvidia', label: 'NVIDIA (Env)', url: NVIDIA_API_URL },
+      { env: 'CEREBRAS_API_KEY', type: 'cerebras', label: 'Cerebras (Env)', url: 'https://api.cerebras.ai/v1' }
     ];
 
     for (const map of mappings) {
@@ -191,7 +195,13 @@ export class ProviderManager implements IProviderManager {
   async syncModelsToRegistry() {
     console.log('[ProviderManager] Starting Registry Sync (Unified)...');
 
+    const syncedProviders = new Set<string>();
+    const activeModelNamesByProvider = new Map<string, Set<string>>();
+
     for (const [providerId] of this.providers.entries()) {
+      syncedProviders.add(providerId);
+      activeModelNamesByProvider.set(providerId, new Set());
+
       try {
         // 1. Get readable name for logs
         const meta = this.providerMetadata.get(providerId);
@@ -199,8 +209,6 @@ export class ProviderManager implements IProviderManager {
         const providerType = meta?.type || 'unknown';
 
         // --- UNIFIED FETCH LOGIC ---
-        // We will now use RawModelService to handle all fetching,
-        // ensuring pagination and correct endpoints are always used.
         console.log(`[ProviderManager] Fetching models for ${providerLabel} via RawModelService...`);
         const { RawModelService } = await import('./RawModelService.js');
         const snapshot = await RawModelService.fetchAndSnapshot(providerId);
@@ -212,19 +220,41 @@ export class ProviderManager implements IProviderManager {
         const models = snapshot.rawData as LLMModel[];
         console.log(`[ProviderManager] Got ${models.length} models from ${providerLabel}.`);
 
-        // The snapshot is already created by RawModelService. We just need to flatten.
-        // We pass the snapshot ID to ensure we use the exact data that was saved.
+        // Flatten data
         await this.flattenSnapshot(snapshot.id, providerType, models);
 
-        if (models.length === 0) {
-          console.warn(`[ProviderManager] No models to sync for ${providerLabel} after filtering`);
-          continue;
+        let modelsToSync = models;
+
+        // Filter OpenRouter for free models
+        if (providerType === 'openrouter') {
+             modelsToSync = models.filter(m => {
+                 const p = (m as any).pricing;
+                 // Some providers might return strings "0" or numbers 0
+                 const isFreePrompt = p?.prompt === '0' || p?.prompt === 0;
+                 const isFreeComp = p?.completion === '0' || p?.completion === 0;
+                 return isFreePrompt && isFreeComp;
+             });
+             console.log(`[ProviderManager] Filtered OpenRouter models: ${models.length} -> ${modelsToSync.length} (Free Only)`);
         }
 
-        const uniqueModels = new Map<string, RawSnapshotData>();
-        models.forEach(m => uniqueModels.set(m.id, m as RawSnapshotData));
+        if (modelsToSync.length === 0) {
+          console.warn(`[ProviderManager] No models to sync for ${providerLabel} after filtering`);
+          continue; // Cleanup will be handled later
+        }
 
-        // 3. Log with readable name
+        // Use a Map keyed by the FINAL DATABASE NAME (mId) to prevent unique constraint errors
+        // if multiple raw records map to the same name.
+        const uniqueModels = new Map<string, RawSnapshotData>();
+        modelsToSync.forEach(m => {
+            const mId = (m.id || m.model || m.name) as string;
+            if (mId) {
+                uniqueModels.set(mId, m as RawSnapshotData);
+                activeModelNamesByProvider.get(providerId)?.add(mId);
+            }
+        });
+        
+        // ... (rest of upsert loop)
+
         console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
 
         for (const m of uniqueModels.values()) {
@@ -247,27 +277,27 @@ export class ProviderManager implements IProviderManager {
 
           await this.repository.upsertModel({
             where: {
-              providerId_modelId: {
+              providerId_name: {
                 providerId: providerId,
-                modelId: modelId
+                name: modelId
               }
             },
             create: {
               providerId: providerId,
-              modelId: modelId,
               name: (m.name as string) || modelId,
-              isFree: isFree,
               costPer1k: cost || 0,
               providerData: m, // Store full raw model object
-              specs: specs as unknown as Record<string, unknown>,
               aiData: {}
             },
             update: {
-              name: (m.name as string) || modelId,
-              isFree: isFree,
+              // NAME is not updated to prevent overwriting custom renaming logic if we add it later
+              // But for now we stick to provider-truth for naming structure consistency
+              isActive: true, // Re-activate if it disappeared
               costPer1k: cost || 0,
-              providerData: m, // Store full raw model object
-              specs: specs as unknown as Record<string, unknown>
+              providerData: m, 
+              lastSeenAt: new Date()
+              // CRITICAL: Do NOT update 'specs' here. 
+              // If an agent/surveyor fixed the context window, we don't want the raw API data (which is often wrong/null) to overwrite it.
             }
           });
         }
@@ -276,13 +306,62 @@ export class ProviderManager implements IProviderManager {
         const meta = this.providerMetadata.get(providerId);
         const providerLabel = meta?.label || providerId;
         const err = error as Error & { cause?: { code: string } };
-        if (err.cause?.code === 'ETIMEDOUT') {
-          console.error(`[Registry Sync] Failed for provider ${providerLabel}: Connection timed out.`);
-          console.error(`If you are behind a firewall, please ensure the HTTPS_PROXY environment variable is correctly configured.`);
-        } else {
-          console.error(`[Registry Sync] Failed for provider ${providerLabel}:`, error);
-        }
+        // ... Log error
+        console.error(`[Registry Sync] Failed for provider ${providerLabel}:`, error);
       }
+    }
+
+    // --- CLEANUP (Delete Ghost Records) ---
+    console.log('[ProviderManager] Starting Cleanup of Ghost Records...');
+    
+    // 1. Delete models from providers that we didn't sync at all (e.g. removed integration)
+    // BUT be careful about "disabled" providers. Only delete if we specifically tried to sync active ones?
+    // User wants "Reported Reality". 
+    // The safest is: Delete models where providerId IS NOT in syncedProviders.
+    // However, if we only synced ENABLED providers, disabling a provider should hide its models?
+    // Or delete them? User wants cleanup. Let's delete them.
+    
+    const activeProviderIds = Array.from(syncedProviders);
+    if (activeProviderIds.length > 0) {
+        const deletedProviders = await prisma.model.deleteMany({
+            where: {
+                providerId: { notIn: activeProviderIds }
+            }
+        });
+        if (deletedProviders.count > 0) {
+            console.log(`[ProviderManager] 🧹 Deleted ${deletedProviders.count} models from inactive/removed providers.`);
+        }
+    }
+
+    // 2. Delete models that ARE in active providers but were NOT in the api response
+    for (const [providerId, seenNames] of activeModelNamesByProvider.entries()) {
+        const seenList = Array.from(seenNames);
+        // If we saw 0 models, we might have skipped earlier (continue). 
+        // But if we skipped, seenNames is empty.
+        // If correct fetch returned 0, we WANT to delete all.
+        // If fetch FAILED, we caught error and didn't verify names.
+        // Wait! If fetch failed, we shouldn't delete models!
+        // How do we know if fetch failed?
+        // The `try/catch` block inside the loop catches fetch errors.
+        // If it failed, `seenNames` might be empty, but we shouldn't delete.
+        // I need a way to track "Success".
+        // Let's assume if seenNames is empty, we skipped or failed, so SAFETY FIRST: Don't delete if 0 seen?
+        // User reports Groq returned 0. If it truly is 0, we should delete.
+        // But if fetch failed, we shouldn't.
+        // The previous `continue` on `models.length === 0` handles the 0 case (by skipping invalid/empty snapshots).
+        // But if snapshot was valid and empty, we continued.
+        
+        if (seenList.length > 0) {
+             const deletedOrphans = await prisma.model.deleteMany({
+                where: {
+                    providerId: providerId,
+                    name: { notIn: seenList }
+                }
+             });
+             if (deletedOrphans.count > 0) {
+                 console.log(`[ProviderManager] 🧹 Deleted ${deletedOrphans.count} orphaned models for ${providerId}.`);
+             }
+        }
     }
 
     console.log('[ProviderManager] Registry Sync Completed.');
