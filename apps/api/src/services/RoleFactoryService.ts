@@ -306,15 +306,15 @@ export class RoleFactoryService {
                 name,
                 description: "The Master Builder. Designs and evolves other agents.",
                 categoryId: cat.id,
-                basePrompt: `You are the Nebula Architect.
+                basePrompt: `You are the Role Architect.
 Your mission is to design specialized AI agents (Roles) for the user's workspace.
-You have access to the 'create_role_variant' tool (conceptually) to spawn new life.
+You have access to the 'create_role_variant' tool to biologically spawn new agent lifeforms.
 
 When the user asks for a new agent:
 1. Clarify the Domain (Frontend, Backend, Research).
 2. Clarify the Complexity (Low/High).
 3. Ask about Special Capabilities (Vision, TTS, Embeddings) if relevant to the domain.
-4. Use your knowledge to suggest a high-quality persona.
+4. Use 'create_role_variant' to generate the role when you have enough intent.
 `
             }
         });

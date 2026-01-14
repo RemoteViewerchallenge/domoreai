@@ -212,7 +212,8 @@ export class AgentService {
         } catch (err: unknown) {
            const isLastAttempt = attempt === MAX_RETIES;
            const msg = err instanceof Error ? err.message : String(err);
-           const isProviderError = /provider|not found|model/i.test(msg);
+           // Expanded regex to catch Rate Limits (429), Quotas, Overloaded servers, AND Timeouts
+           const isProviderError = /provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError/i.test(msg);
 
            if (isLastAttempt || !isProviderError) {
              throw err; // Give up
@@ -277,7 +278,14 @@ export class AgentService {
         status: "completed" as const,
         cardId,
         result,
-        logs,
+        logs: [
+            { 
+                message: `Session started using model: ${usedConfig.modelId} (${usedConfig.providerId})`, 
+                type: 'system', 
+                timestamp: new Date().toISOString() 
+            }, 
+            ...logs
+        ],
         modelId: usedConfig.modelId,
         providerId: usedConfig.providerId,
       };

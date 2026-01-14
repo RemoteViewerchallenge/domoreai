@@ -13,6 +13,9 @@ async function debugRoles() {
       variants: {
         where: { isActive: true },
         take: 1
+      },
+      tools: {
+        include: { tool: true }
       }
     },
     orderBy: {
