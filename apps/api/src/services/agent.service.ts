@@ -50,7 +50,7 @@ export interface ExtendedRole extends Role {
   needsCoding?: boolean;
   needsReasoning?: boolean;
   needsTools?: boolean;
-  variants?: unknown[]; 
+  variants?: unknown[];
 }
 
 export class AgentService {
@@ -77,42 +77,42 @@ export class AgentService {
 
       // If we have a modelId but no provider, try to find it in the DB
       if (resolvedModelId && !resolvedProviderId) {
-          // Use findFirst because 'name' might not be globally unique or indexed as a single unique field
-          const modelRecord = await prisma.model.findFirst({
-              where: { name: resolvedModelId }, 
-              select: { providerId: true }
-          });
-          if (modelRecord) {
-              resolvedProviderId = modelRecord.providerId;
-              console.log(`[AgentService] Auto-resolved provider '${resolvedProviderId}' for model '${resolvedModelId}'`);
-          } else if (resolvedModelId.includes('/')) {
-              // Try split strategy "provider/model"
-              const [p] = resolvedModelId.split('/');
-              if (ProviderManager.hasProvider(p)) {
-                  resolvedProviderId = p;
-                  // We keep the full slug as modelId usually, unless provider expects distinct
-                  console.log(`[AgentService] inferred provider '${p}' from slug '${resolvedModelId}'`);
-              }
+        // Use findFirst because 'name' might not be globally unique or indexed as a single unique field
+        const modelRecord = await prisma.model.findFirst({
+          where: { name: resolvedModelId },
+          select: { providerId: true }
+        });
+        if (modelRecord) {
+          resolvedProviderId = modelRecord.providerId;
+          console.log(`[AgentService] Auto-resolved provider '${resolvedProviderId}' for model '${resolvedModelId}'`);
+        } else if (resolvedModelId.includes('/')) {
+          // Try split strategy "provider/model"
+          const [p] = resolvedModelId.split('/');
+          if (ProviderManager.hasProvider(p)) {
+            resolvedProviderId = p;
+            // We keep the full slug as modelId usually, unless provider expects distinct
+            console.log(`[AgentService] inferred provider '${p}' from slug '${resolvedModelId}'`);
           }
+        }
       }
 
       // If NO model is specified, use ModelSelector immediately to pick the best one
       if (!resolvedModelId) {
         try {
-           console.log('[AgentService] No model specified. Using ModelSelector to pick best available...');
-           const selector = new ModelSelector();
-           const safeRole = (await prisma.role.findUnique({ where: { id: roleId } })) || ({ id: 'default', metadata: {} } as unknown as Role);
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
-           
-           const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, select: { name: true, providerId: true } });
-           if (bestModel) {
-               resolvedModelId = bestModel.name;
-               resolvedProviderId = bestModel.providerId;
-               console.log(`[AgentService] Selected Best Model: ${resolvedModelId} (${resolvedProviderId})`);
-           }
+          console.log('[AgentService] No model specified. Using ModelSelector to pick best available...');
+          const selector = new ModelSelector();
+          const safeRole = (await prisma.role.findUnique({ where: { id: roleId } })) || ({ id: 'default', metadata: {} } as unknown as Role);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+          const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
+
+          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, select: { name: true, providerId: true } });
+          if (bestModel) {
+            resolvedModelId = bestModel.name;
+            resolvedProviderId = bestModel.providerId;
+            console.log(`[AgentService] Selected Best Model: ${resolvedModelId} (${resolvedProviderId})`);
+          }
         } catch (e) {
-           console.warn('[AgentService] Failed to auto-select model:', e);
+          console.warn('[AgentService] Failed to auto-select model:', e);
         }
       }
 
@@ -133,51 +133,51 @@ export class AgentService {
       // 2.5 Fetch Role to get Tools and other defaults
       const rawRole = await prisma.role.findUnique({
         where: { id: roleId },
-        include: { 
-            tools: { include: { tool: true } },
-            variants: { where: { isActive: true }, take: 1 } // Fetch DNA
+        include: {
+          tools: { include: { tool: true } },
+          variants: { where: { isActive: true }, take: 1 } // Fetch DNA
         }
       });
-      
-      
+
+
       // Flatten DNA (Shared Logic with Router)
       let role: ExtendedRole | null = null;
-      
+
       if (rawRole) {
-          role = { ...rawRole } as ExtendedRole;
-          
-          if (rawRole.variants && rawRole.variants.length > 0) {
-              const v = rawRole.variants[0];
-              // Safely cast JSON config
-              const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
-              const identity = (v.identityConfig && typeof v.identityConfig === 'object') ? v.identityConfig as Record<string, unknown> : {};
-              
-              const caps: string[] = Array.isArray(cortex.capabilities) ? cortex.capabilities as string[] : [];
-   
-              role.needsVision = caps.includes('vision');
-              role.needsCoding = caps.includes('coding');
-              role.needsReasoning = caps.includes('reasoning');
-              role.needsTools = caps.includes('tools');
-              
-              if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
-                  role.basePrompt = identity.systemPromptDraft;
-              }
+        role = { ...rawRole } as ExtendedRole;
+
+        if (rawRole.variants && rawRole.variants.length > 0) {
+          const v = rawRole.variants[0];
+          // Safely cast JSON config
+          const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
+          const identity = (v.identityConfig && typeof v.identityConfig === 'object') ? v.identityConfig as Record<string, unknown> : {};
+
+          const caps: string[] = Array.isArray(cortex.capabilities) ? cortex.capabilities as string[] : [];
+
+          role.needsVision = caps.includes('vision');
+          role.needsCoding = caps.includes('coding');
+          role.needsReasoning = caps.includes('reasoning');
+          role.needsTools = caps.includes('tools');
+
+          if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
+            role.basePrompt = identity.systemPromptDraft;
           }
+        }
       }
 
       let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
 
       // [FIX] Merge tools from the Active Variant (DNA)
       if (rawRole && rawRole.variants && rawRole.variants.length > 0) {
-          const v = rawRole.variants[0];
-          const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
-          
-          if (Array.isArray(cortex.tools)) {
-              const variantTools = cortex.tools as string[];
-              console.log(`[AgentService] 🧬 Injecting ${variantTools.length} tools from DNA Variant:`, variantTools);
-              // Use Set to avoid duplicates
-              tools = Array.from(new Set([...tools, ...variantTools]));
-          }
+        const v = rawRole.variants[0];
+        const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
+
+        if (Array.isArray(cortex.tools)) {
+          const variantTools = cortex.tools as string[];
+          console.log(`[AgentService] 🧬 Injecting ${variantTools.length} tools from DNA Variant:`, variantTools);
+          // Use Set to avoid duplicates
+          tools = Array.from(new Set([...tools, ...variantTools]));
+        }
       }
 
       // 3. Create the agent runtime with selected tools
@@ -193,7 +193,7 @@ export class AgentService {
           basePrompt,
           prompt,
           roleId,
-          sessionId 
+          sessionId
         ) as Promise<string>;
       };
 
@@ -207,47 +207,47 @@ export class AgentService {
 
       for (let attempt = 0; attempt <= MAX_RETIES; attempt++) {
         try {
-           initialResponse = await llmCallback(userGoal);
-           break; // Success
+          initialResponse = await llmCallback(userGoal);
+          break; // Success
         } catch (err: unknown) {
-           const isLastAttempt = attempt === MAX_RETIES;
-           const msg = err instanceof Error ? err.message : String(err);
-           // Expanded regex to catch Rate Limits (429), Quotas, Overloaded servers, AND Timeouts
-           const isProviderError = /provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError/i.test(msg);
+          const isLastAttempt = attempt === MAX_RETIES;
+          const msg = err instanceof Error ? err.message : String(err);
+          // Expanded regex to catch Rate Limits (429), Quotas, Overloaded servers, AND Timeouts
+          const isProviderError = /provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError/i.test(msg);
 
-           if (isLastAttempt || !isProviderError) {
-             throw err; // Give up
-           }
+          if (isLastAttempt || !isProviderError) {
+            throw err; // Give up
+          }
 
-           // Log and Fallback
-           console.warn(`[AgentService] Initial generation failed: ${msg}. Attempting fallback...`);
-           
-           if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
+          // Log and Fallback
+          console.warn(`[AgentService] Initial generation failed: ${msg}. Attempting fallback...`);
 
-           // Select new model using ModelSelector (Context Aware)
-           console.log('[AgentService] Fallback Strategy: Using ModelSelector for Context-Aware Selection');
-           const selector = new ModelSelector();
-           const safeRole = (role ? role : ({ id: 'default', metadata: {} } as ExtendedRole));
-           
-           // We pass 'failedModels' (which contains Slugs) to exclude them
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
-           const fallback = await prisma.model.findUnique({ 
-               where: { id: fallbackId }, 
-               include: { provider: true } 
-           });
+          if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
 
-           if (!fallback) throw new Error("No fallback models available.");
+          // Select new model using ModelSelector (Context Aware)
+          console.log('[AgentService] Fallback Strategy: Using ModelSelector for Context-Aware Selection');
+          const selector = new ModelSelector();
+          const safeRole = (role ? role : ({ id: 'default', metadata: {} } as ExtendedRole));
 
-           // Update Config
-           agentConfig.modelId = fallback.name; // Use Slug
-           agentConfig.providerId = fallback.providerId;
-           // agentConfig.temperature = check if defined? Default to current
-           
-           console.log(`[AgentService] Switched to fallback model: ${fallback.name} (Context-Safe)`);
+          // We pass 'failedModels' (which contains Slugs) to exclude them
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+          const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
+          const fallback = await prisma.model.findUnique({
+            where: { id: fallbackId },
+            include: { provider: true }
+          });
 
-           // Re-create agent
-           agent = await createVolcanoAgent(agentConfig);
+          if (!fallback) throw new Error("No fallback models available.");
+
+          // Update Config
+          agentConfig.modelId = fallback.name; // Use Slug
+          agentConfig.providerId = fallback.providerId;
+          // agentConfig.temperature = check if defined? Default to current
+
+          console.log(`[AgentService] Switched to fallback model: ${fallback.name} (Context-Safe)`);
+
+          // Re-create agent
+          agent = await createVolcanoAgent(agentConfig);
         }
       }
 
@@ -256,14 +256,50 @@ export class AgentService {
         userGoal,
         initialResponse,
         async (retryPrompt: string) => {
-          // Regenerate with the retry prompt
-          const retryResponse = await runtime.generateWithContext(
-            agent,
-            role?.basePrompt || "",
-            retryPrompt,
-            roleId
-          );
-          return retryResponse as string;
+          // Regenerate with the retry prompt, WITH FAILOVER LOGIC
+          const MAX_LOOP_RETRIES = 3;
+
+          for (let attempt = 0; attempt <= MAX_LOOP_RETRIES; attempt++) {
+            try {
+              const retryResponse = await runtime.generateWithContext(
+                agent,
+                role?.basePrompt || "",
+                retryPrompt,
+                roleId
+              );
+              return retryResponse as string;
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : String(err);
+              const isProviderError = /provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError/i.test(msg);
+
+              if (attempt === MAX_LOOP_RETRIES || !isProviderError) {
+                throw err;
+              }
+
+              console.warn(`[AgentService] Loop generation failed: ${msg}. Attempting failover...`);
+              if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
+
+              // Fallback Strategy
+              const selector = new ModelSelector();
+              const safeRole = (role ? role : ({ id: 'default', metadata: {} } as ExtendedRole));
+              try {
+                const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
+                const fallback = await prisma.model.findUnique({ where: { id: fallbackId } });
+
+                if (fallback) {
+                  agentConfig.modelId = fallback.name;
+                  agentConfig.providerId = fallback.providerId;
+                  console.log(`[AgentService] 🔄 Hot-swapping to fallback model: ${fallback.name}`);
+                  agent = await createVolcanoAgent(agentConfig);
+                  continue; // Retry with new agent
+                }
+              } catch (fallbackErr) {
+                console.warn("[AgentService] Failover selection failed:", fallbackErr);
+              }
+              throw err; // Re-throw if fallback failed
+            }
+          }
+          throw new Error("Agent loop failed after retries");
         }
       );
 
@@ -279,12 +315,12 @@ export class AgentService {
         cardId,
         result,
         logs: [
-            { 
-                message: `Session started using model: ${usedConfig.modelId} (${usedConfig.providerId})`, 
-                type: 'system', 
-                timestamp: new Date().toISOString() 
-            }, 
-            ...logs
+          {
+            message: `Session started using model: ${usedConfig.modelId} (${usedConfig.providerId})`,
+            type: 'system',
+            timestamp: new Date().toISOString()
+          },
+          ...logs
         ],
         modelId: usedConfig.modelId,
         providerId: usedConfig.providerId,
@@ -325,7 +361,7 @@ export class AgentService {
       );
       schemaContext = rows.length
         ? `The primary table is "${targetTable}" with columns: ` +
-          rows.map((r) => `${r.column_name} (${r.data_type})`).join(", ")
+        rows.map((r) => `${r.column_name} (${r.data_type})`).join(", ")
         : "";
     }
 
