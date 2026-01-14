@@ -14,13 +14,21 @@ export class ActionHandler {
     while ((match = fileRegex.exec(text)) !== null) {
       const relativePath = match[1].trim();
       const content = match[2];
-      await this.writeFile(workspaceRoot, relativePath, content);
-      actions.push({ type: 'write', path: relativePath });
+
+      // [SAFE-FAIL] Wrap individual file writes
+      try {
+        await this.writeFile(workspaceRoot, relativePath, content);
+        actions.push({ type: 'write', path: relativePath, status: 'success' });
+      } catch (err: any) {
+        console.error(`[ActionHandler] Failed to write ${relativePath}:`, err.message);
+        actions.push({ type: 'write', path: relativePath, status: 'error', error: err.message });
+      }
     }
 
     const cmdRegex = /```bash:(.*?)[\n\r]+([\s\S]*?)```/g;
     while ((match = cmdRegex.exec(text)) !== null) {
       const command = match[2].trim();
+      // [SAFE-FAIL] runCommand already handles try/catch internally, but we ensure output matches structure
       const output = await this.runCommand(workspaceRoot, command);
       actions.push({ type: 'command', command, output });
     }
@@ -41,7 +49,8 @@ export class ActionHandler {
       const { stdout, stderr } = await execAsync(command, { cwd: root });
       return stdout || stderr;
     } catch (e: any) {
-      return e.message;
+      // Gracefully return error message as output
+      return `Execution Error: ${e.message}`;
     }
   }
 }
