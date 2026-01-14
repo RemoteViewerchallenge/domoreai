@@ -1,4 +1,6 @@
 import { z } from "zod";
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
 import { ModelSelector } from "../orchestrator/ModelSelector.js";
@@ -26,6 +28,7 @@ export const startSessionSchema = z.object({
   context: z
     .object({
       targetDir: z.string().optional(),
+      targetFile: z.string().optional(),
     })
     .optional(),
   sessionId: z.string().optional(),
@@ -46,7 +49,7 @@ Constraints:
 2. Only use SELECT statements. Do not use INSERT, DELETE, DROP, or ALTER.
 `;
 
-export interface ExtendedRole extends Role {
+export interface ExtendedRole extends Omit<Role, 'basePrompt'> {
   needsVision?: boolean;
   needsCoding?: boolean;
   needsReasoning?: boolean;
@@ -245,6 +248,31 @@ export class AgentService {
           throw new Error("Agent loop failed");
         }
       );
+
+      // [USER REQUEST] Save swappable card to file
+      try {
+        let filePath: string;
+
+        if (context?.targetFile) {
+          // User specified a target file — respect it (absolute or relative)
+          filePath = path.isAbsolute(context.targetFile)
+            ? context.targetFile
+            : path.resolve(process.cwd(), context.targetFile);
+        } else {
+          // Default fallback: chats/{cardId}.md
+          const chatsDir = path.join(process.cwd(), 'chats');
+          await fs.mkdir(chatsDir, { recursive: true });
+          filePath = path.join(chatsDir, `${cardId}.md`);
+        }
+
+        // Ensure directory exists for target file
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+        await fs.writeFile(filePath, result, 'utf-8');
+        console.log(`[AgentService] 💾 Saved session result to ${filePath}`);
+      } catch (saveErr) {
+        console.error('[AgentService] Failed to save card file:', saveErr);
+      }
 
       return {
         sessionId,
