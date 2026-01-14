@@ -6,10 +6,10 @@ import { createTRPCRouter, publicProcedure } from '../trpc.js';
  * Card Router - Manages card-specific configuration including custom buttons and role assignments
  */
 export const cardRouter = createTRPCRouter({
-  
+
   // Get card configuration
   getConfig: publicProcedure
-    .input(z.object({ 
+    .input(z.object({
       cardId: z.string()
     }))
     .query(async ({ input, ctx }) => {
@@ -21,7 +21,7 @@ export const cardRouter = createTRPCRouter({
             componentRoles: true
           }
         });
-        
+
         return config || {
           cardId: input.cardId,
           customButtons: [],
@@ -56,7 +56,7 @@ export const cardRouter = createTRPCRouter({
         });
 
         const button = await ctx.prisma.customButton.upsert({
-          where: { 
+          where: {
             id: input.buttonId || `btn-${Date.now()}`
           },
           create: {
@@ -153,6 +153,81 @@ export const cardRouter = createTRPCRouter({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error instanceof Error ? error.message : 'Failed to assign role',
+        });
+      }
+    }),
+
+  // [NEW] Read Card File (Smart Editor Support)
+  readCardFile: publicProcedure
+    .input(z.object({
+      cardId: z.string(),
+      filePath: z.string().optional() // If null, tries default chats/{cardId}.md
+    }))
+    .query(async ({ input }) => {
+      try {
+        const { promises: fs } = await import('fs');
+        const { join, resolve, isAbsolute } = await import('path');
+
+        let targetPath: string;
+
+        if (input.filePath) {
+          targetPath = isAbsolute(input.filePath)
+            ? input.filePath
+            : resolve(process.cwd(), input.filePath);
+        } else {
+          targetPath = join(process.cwd(), 'chats', `${input.cardId}.md`);
+        }
+
+        try {
+          const content = await fs.readFile(targetPath, 'utf-8');
+          return { content, filePath: targetPath };
+        } catch (err) {
+          // If file doesn't exist, return empty content instead of throwing
+          if ((err as { code?: string }).code === 'ENOENT') {
+            return { content: '', filePath: targetPath, isNew: true };
+          }
+          throw err;
+        }
+
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to read card file',
+        });
+      }
+    }),
+
+  // [NEW] Save Card File
+  saveCardFile: publicProcedure
+    .input(z.object({
+      cardId: z.string(),
+      content: z.string(),
+      filePath: z.string().optional()
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const { promises: fs } = await import('fs');
+        const { join, resolve, isAbsolute, dirname } = await import('path');
+
+        let targetPath: string;
+
+        if (input.filePath) {
+          targetPath = isAbsolute(input.filePath)
+            ? input.filePath
+            : resolve(process.cwd(), input.filePath);
+        } else {
+          targetPath = join(process.cwd(), 'chats', `${input.cardId}.md`);
+        }
+
+        await fs.mkdir(dirname(targetPath), { recursive: true });
+        await fs.writeFile(targetPath, input.content, 'utf-8');
+
+        return { success: true, filePath: targetPath };
+
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to save card file',
         });
       }
     }),
