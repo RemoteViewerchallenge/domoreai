@@ -205,7 +205,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             </div>
 
             {/* 2. Content */}
-            <div className="flex-1 relative overflow-hidden bg-[var(--bg-background)]">
+            <div
+                className="flex-1 relative overflow-hidden bg-[var(--bg-background)] select-text"
+                onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
+            >
                 {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => { }} onClose={() => setViewMode('editor')} />}
                 {viewMode === 'editor' && (
                     <SmartEditor
@@ -264,7 +267,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         <div className="flex items-center justify-between p-2.5 border-b border-zinc-800 bg-zinc-900/50 rounded-t-lg">
                             <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 flex items-center gap-1.5 px-0.5">
                                 <Fingerprint size={12} className="text-blue-500" />
-                                Identity Selector
+                                Role Selector
                             </span>
                             <button onClick={() => setShowRolePicker(false)} className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-all">
                                 <X size={12} />
