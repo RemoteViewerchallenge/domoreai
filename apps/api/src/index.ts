@@ -85,12 +85,47 @@ async function startServer() {
   // - Strict filtering: Rejects paid OpenRouter models
   // - Fail-open for Groq, Google, Mistral (assumes free tier)
   // - Preserves all original data in providerData field
+  // ==============================================================================
+  // RUN THE ANTI-CORRUPTION PIPELINE (Non-Blocking Optimized)
+  // ==============================================================================
+  
+  const backgroundSync = async () => {
+     try {
+        console.log('🔄 Running Unified Model Ingestion (Background)...');
+        // 1. PHASE 1: OFFLINE IMPORT
+        const { UnifiedIngestionService } = await import('./services/UnifiedIngestionService.js');
+        await UnifiedIngestionService.ingestAllModels();
+        
+        // 2. PHASE 2: ONLINE SYNC
+        console.log('🌍 Syncing Live Providers (NVIDIA, Cerebras, etc.)...');
+        await ProviderManager.syncModelsToRegistry();
+    
+        // 3. PHASE 3: CAPABILITY SCAN
+        console.log('🕵️ Running Model Surveyor (Targeting Unknowns)...');
+        const { Surveyor } = await import('./services/Surveyor.js');
+        const stats = await Surveyor.surveyAll();
+        if (stats.surveyed > 0) {
+            console.log(`[Surveyor] Scan Complete: ${stats.surveyed} newly identified.`);
+        }
+     } catch (err) {
+        console.error('❌ Background Sync Failed:', err);
+     }
+  };
+
   try {
-    console.log('🔄 Running Unified Model Ingestion (Anti-Corruption Pipeline)...');
-    const { UnifiedIngestionService } = await import('./services/UnifiedIngestionService.js');
-    await UnifiedIngestionService.ingestAllModels();
+     const { prisma } = await import('./db.js');
+     const modelCount = await prisma.model.count();
+     
+     if (modelCount === 0) {
+         console.log('⚠️ Database empty. Waiting for initial sync...');
+         await backgroundSync();
+     } else {
+         console.log(`✅ Database warm (${modelCount} models). Starting server immediately.`);
+         void backgroundSync(); // Fire and forget
+     }
+
   } catch (err) {
-    console.error('❌ Model Ingestion Failed:', err);
+    console.error('❌ Model Ingestion/Sync Failed:', err);
   }
 
   // Mount RESTful API routers

@@ -8,7 +8,9 @@ interface AiToolbarProps {
   title: string;
   colorVar: string; // Expecting 'var(--ai-intent-code)'
   aiContextGetter: () => string;
-  onAiAction: (action: string, payload?: any) => void;
+  onAiAction: (action: string, payload?: unknown) => void;
+  onGenerate?: (prompt: string, options?: { roleId?: string }) => void; // New prop
+  contextId?: string; // For role persistence
   actions?: React.ReactNode;
   className?: string;
 }
@@ -19,6 +21,8 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
   colorVar,
   aiContextGetter,
   onAiAction,
+  onGenerate,
+  contextId,
   actions,
   className
 }) => {
@@ -42,8 +46,10 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
         {/* ✅ Pass the variable down so the button glows the right color */}
         <SuperAiButton 
           contextGetter={aiContextGetter}
-          onSuccess={(res: any) => onAiAction('APPLY_RESPONSE', res)}
-          style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '24px' } as any} 
+          onSuccess={(res: unknown) => onAiAction('APPLY_RESPONSE', res)}
+          onGenerate={onGenerate}
+          contextId={contextId}
+          style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '24px' } as React.CSSProperties} 
         />
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80">
           {title}

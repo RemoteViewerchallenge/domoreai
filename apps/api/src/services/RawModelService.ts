@@ -2,6 +2,7 @@ import { prisma } from '../db.js';
 
 interface RawModelResponse {
   models?: unknown[];
+  data?: unknown[]; // OpenAI-compatible standard
   nextPageToken?: string;
 }
 
@@ -25,6 +26,8 @@ export class RawModelService {
         else if (config.type === 'anthropic') url = 'https://api.anthropic.com/v1';
         else if (config.type === 'ollama') url = 'http://localhost:11434';
         else if (config.type === 'google') url = 'https://generativelanguage.googleapis.com/v1beta';
+        else if (config.type === 'nvidia') url = 'https://integrate.api.nvidia.com/v1';
+        else if (config.type === 'cerebras') url = 'https://api.cerebras.ai/v1';
     }
 
     // Normalize Ollama URL (strip trailing /v1 if present)
@@ -53,8 +56,27 @@ export class RawModelService {
     // 3. Fetch (Raw)
     const allModels: unknown[] = [];
     let nextUrl: string | undefined = fetchUrl;
-    // apiKey missing from config, using env vars handled by provider instantiation
-    const apiKey = ''; 
+    
+    // Resolve API Key
+    let apiKey = '';
+    const envMappings: Record<string, string> = {
+        'google': 'GOOGLE_GENERATIVE_AI_API_KEY',
+        'mistral': 'MISTRAL_API_KEY',
+        'openrouter': 'OPENROUTER_API_KEY',
+        'groq': 'GROQ_API_KEY',
+        'nvidia': 'NVIDIA_API_KEY',
+        'cerebras': 'CEREBRAS_API_KEY',
+        'ollama': 'OLLAMA_API_KEY'
+    };
+    
+    // Try mapping first, then fall back to convention
+    const envVar = envMappings[config.type];
+    if (envVar && process.env[envVar]) {
+        apiKey = process.env[envVar] || '';
+    } else {
+        apiKey = process.env[`${config.type.toUpperCase()}_API_KEY`] || '';
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
@@ -84,8 +106,12 @@ export class RawModelService {
         
         const pageJson = await response.json() as RawModelResponse;
         
-        // Extract models from the current page
-        const pageModels = pageJson.models || [];
+        // Extract models from the current page (OpenAI uses 'data', Google/Ollama uses 'models')
+        const pageModels = (pageJson.data || pageJson.models || []) as unknown[];
+        if (pageModels.length === 0) {
+            console.log('[RawModelService] ⚠️ Found 0 models in page. Response keys:', Object.keys(pageJson));
+            console.log('[RawModelService] Preview:', JSON.stringify(pageJson).slice(0, 100));
+        }
         allModels.push(...pageModels);
 
         // Check for the next page token
