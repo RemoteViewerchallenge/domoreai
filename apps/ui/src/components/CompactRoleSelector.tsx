@@ -7,10 +7,11 @@ import { Bot } from 'lucide-react';
 interface CompactRoleSelectorProps {
     selectedRoleId: string | null;
     onSelect: (roleId: string) => void;
+    onEdit?: () => void;
     className?: string;
 }
 
-export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ selectedRoleId, onSelect, className }) => {
+export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ selectedRoleId, onSelect, onEdit, className }) => {
     // 1. Fetch Data
     const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery();
     const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery();

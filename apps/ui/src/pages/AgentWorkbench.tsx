@@ -7,17 +7,12 @@ import { useHotkeys } from '../hooks/useHotkeys.js';
 import { trpc } from '../utils/trpc.js';
 import { useState, useRef, useMemo, useEffect } from 'react';
 
-// Keep your feature imports, but REMOVE legacy layout imports
-
 export default function AgentWorkbench() {
-  // const { theme, setTheme } = useTheme(); // Not currently used here
-  // Removed showSidebar, setSidebarOpen from store destructuring as it might not exist or isn't used
   const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace } = useWorkspaceStore();
-  const { data: roles } = trpc.role.list.useQuery(); // Fetch roles
+  const { data: roles } = trpc.role.list.useQuery(); 
   const availableRoles = Array.isArray(roles) ? roles : [];
 
   useEffect(() => {
-    // Ensure we have a workspace loaded
     if (!activeWorkspace) loadWorkspace('default');
   }, []);
 
@@ -69,6 +64,7 @@ export default function AgentWorkbench() {
     }
   };
 
+  // 🟢 GOOD: Hotkeys now respect input fields
   useHotkeys(
     Array.from({ length: 9 }).map((_, i) => ({
       id: `select-card-${i + 1}`,
@@ -77,6 +73,12 @@ export default function AgentWorkbench() {
     })),
     Array.from({ length: 9 }).reduce<Record<string, () => void>>((acc, _, i) => {
       acc[`Select Card ${i + 1}`] = () => {
+        // Prevent hotkey if user is typing in an input
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) {
+            return;
+        }
+
         let count = 0;
         for (let col = 0; col < columns; col++) {
           const colCards = cardsByColumn[col] || [];
@@ -92,17 +94,9 @@ export default function AgentWorkbench() {
     }, {})
   );
 
-  /**
-   * MIGRATION NOTE:
-   * This component is now hosted inside 'NebulaShell'.
-   * 1. It takes up 100% height/width of its parent.
-   * 2. It does NOT render the Header or Sidebar (Shell handles that).
-   */
   return (
     <div className="h-full w-full flex flex-col bg-zinc-950 overflow-hidden relative">
-      
       <div className="flex-1 flex overflow-hidden">
-        {/* Main Grid - Columns */}
         <div className="flex-1 flex gap-0 overflow-hidden">
           {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
