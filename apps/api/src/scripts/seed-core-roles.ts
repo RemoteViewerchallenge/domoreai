@@ -165,6 +165,9 @@ When the user asks for a new agent:
     console.log('⏭️  Role Architect role already exists');
   }
 
+  // Meta is a native tool - it doesn't need a DB record
+  console.log("ℹ️  'meta' is available as a native tool for Role Architect");
+
   // 5. Create a DNA Variant for Role Architect
   const existingRoleArchitectVariant = await prisma.roleVariant.findFirst({
     where: {

@@ -21,7 +21,8 @@ export const DEFAULT_MAX_TOKENS = 2048;
 export const DEFAULT_MODEL_TAKE_LIMIT = 100;
 
 // Encryption
-export const ENCRYPTION_KEY_LENGTH = 64;
+// Encryption - REMOVED
+// export const ENCRYPTION_KEY_LENGTH = 64;
 
 // External URLs
 export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';

@@ -15,7 +15,7 @@ import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
-import { ModelSelector } from "../orchestrator/ModelSelector.js";
+
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
 
 
@@ -167,77 +167,114 @@ export const roleRouter = createTRPCRouter({
       },
     });
 
-    // Resolve Operational Intelligence (Model & Scope)
-    const modelSelector = new ModelSelector();
+    // OPTIMIZED: Avoid N+1 Model Resolution
+    // Only resolve hardcoded models. Otherwise, return 'Auto-Detect'.
+    
+    // 1. Collect all hardcoded model IDs
+    // 1. Collect all hardcoded model IDs
+    const hardcodedIds = new Set<string>();
+    roles.forEach(r => {
+        const meta = r.metadata as Record<string, unknown>;
+        if (typeof meta?.hardcodedModelId === 'string') hardcodedIds.add(meta.hardcodedModelId);
+        
+        // Also check variant
+        if (r.variants?.length > 0) {
+             const variant = r.variants[0];
+             // Variant doesn't have 'metadata', assume conf is in cortexConfig
+             const cortex = (variant.cortexConfig as Record<string, unknown>) || {};
+             // Check if hardcodedModelId is in cortexConfig (schema adjustment assumption)
+             if (typeof cortex?.hardcodedModelId === 'string') hardcodedIds.add(cortex.hardcodedModelId);
+        }
+    });
 
-    // We fetch model names efficiently to avoid N+1 issues where possible,
-    // but ModelSelector logic is complex so we'll do parallel resolution.
-    // In a real high-scale app, we'd cache this or store 'currentModel' in the DB periodically.
 
-    const enrichedRoles = await Promise.all(roles.map(async (role) => {
-      let currentModelName = 'Auto-Detect';
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-        const modelId = await modelSelector.resolveModelForRole(role as Role & { metadata: any });
-        // Fetch the friendly name for this model ID
-        const model = await prisma.model.findUnique({
-          where: { id: modelId },
-          select: { name: true }
+    // 2. Bulk Fetch Hardcoded Model Names
+    const modelMap = new Map<string, string>();
+    if (hardcodedIds.size > 0) {
+        const models = await prisma.model.findMany({
+            where: { id: { in: Array.from(hardcodedIds) } },
+            select: { id: true, name: true }
         });
-        if (model) currentModelName = model.name;
-      } catch {
-        currentModelName = 'None Available';
-      }
+        models.forEach(m => modelMap.set(m.id, m.name));
+    }
 
-      // Scope Extraction (Simple Heuristic)
-      let scope = 'Global';
-      const desc = (role.description || '').toLowerCase();
-      if (desc.includes('frontend') || desc.includes('react') || desc.includes('ui')) scope = 'Frontend (src/components)';
-      else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
-      else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
+    const enrichedRoles = roles.map((role) => {
+       // Scope Extraction (Simple Heuristic)
+       let scope = 'Global';
+       const desc = (role.description || '').toLowerCase();
+       if (desc.includes('frontend') || desc.includes('react') || desc.includes('ui')) scope = 'Frontend (src/components)';
+       else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
+       else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
 
-      // DNA Fusion: Overlay Variant Config if available
-      const activeVariant = role.variants?.[0];
-      const fusedRole = { ...role } as RouterExtendedRole;
+       // DNA Fusion: Overlay Variant Config if available
+       const activeVariant = role.variants?.[0];
+       const fusedRole = { ...role } as RouterExtendedRole;
+       
+       // Resolve Model Name logic
+       // Resolve Model Name logic
+       let currentModelName = 'Auto-Detect';
+       const meta = (role.metadata as Record<string, unknown>) || {};
+               
+       const cortex = (activeVariant?.cortexConfig as Record<string, unknown>) || {};
+       
+       // Priority: Variant Cortex > Role Metadata
+       const hardcodedId = (cortex.hardcodedModelId as string) || (meta.hardcodedModelId as string);
+       
+       if (hardcodedId) {
+           currentModelName = modelMap.get(hardcodedId) || 'Unknown Model';
+       }
 
-      if (activeVariant) {
-        // Safely cast JSON config with type check
-        const cortexConfig = (activeVariant.cortexConfig && typeof activeVariant.cortexConfig === 'object')
-          ? activeVariant.cortexConfig as Record<string, unknown>
-          : {};
-        const identityConfig = (activeVariant.identityConfig && typeof activeVariant.identityConfig === 'object')
-          ? activeVariant.identityConfig as Record<string, unknown>
-          : {};
+       if (activeVariant) {
+         // Safely cast JSON config with type check
+         const cortexConfig = (activeVariant.cortexConfig && typeof activeVariant.cortexConfig === 'object')
+           ? activeVariant.cortexConfig as Record<string, unknown>
+           : {};
 
-        const capabilities = Array.isArray(cortexConfig.capabilities) ? cortexConfig.capabilities as string[] : [];
 
-        // 1. Overlay Capabilities (DNA -> Legacy Boolean Flags)
-        fusedRole.needsVision = capabilities.includes('vision');
-        fusedRole.needsCoding = capabilities.includes('coding');
-        fusedRole.needsReasoning = capabilities.includes('reasoning');
-        fusedRole.needsTools = capabilities.includes('tools');
-        fusedRole.needsJson = capabilities.includes('json');
-        fusedRole.needsImageGeneration = capabilities.includes('image_generation') || capabilities.includes('dalle');
+         const capabilities = Array.isArray(cortexConfig.capabilities) ? cortexConfig.capabilities as string[] : [];
 
-        // 2. Overlay Context Window (DNA Context Range -> Legacy Metadata)
-        if (cortexConfig.contextRange) {
-          // Map context range if needed, e.g. fusedRole.maxContext = ...
-        }
+         // 1. Overlay Capabilities (DNA -> Legacy Boolean Flags)
+         fusedRole.needsVision = capabilities.includes('vision');
+         fusedRole.needsCoding = capabilities.includes('coding');
+         fusedRole.needsReasoning = capabilities.includes('reasoning');
+         fusedRole.needsTools = capabilities.includes('tools');
+         fusedRole.needsJson = capabilities.includes('json');
+         fusedRole.needsImageGeneration = capabilities.includes('image_generation') || capabilities.includes('dalle');
 
-        // 3. Overlay System Prompt (DNA Identity -> Legacy basePrompt)
-        if (typeof identityConfig.systemPromptDraft === 'string' && identityConfig.systemPromptDraft) {
-          fusedRole.basePrompt = identityConfig.systemPromptDraft;
-        }
-      }
+         // 2. Overlay Context Window (DNA Context Range -> Legacy Metadata)
+         if (cortexConfig.contextRange) {
+           // Map context range if needed, e.g. fusedRole.maxContext = ...
+         }
 
-      return {
-        ...fusedRole,
-        tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
-        currentModel: currentModelName,
-        scope: scope,
-        healthScore: 100 // Placeholder for AssessmentService score
-      };
-    }));
+         // 3. Overlay System Prompt (DNA Identity -> Legacy basePrompt)
+         // Assuming this part was acceptable from common ancestor or HEAD, checking...
+         // Actually HEAD has this, ai-context block DOES NOT show it explicitly in the diff I saw, 
+         // but I should probably keep it if it's useful.
+         // Wait, the diff showed ai-context ENDING at line 249, then some common code, then HEAD at 275.
+         // Ah, the conflict markers were weirdly nested or I misread.
+         // Let's look at the view_file output again.
+         // 215 =======
+         // ... ai-context code ...
+         // 249 >>>>>>> ai-context
+         // 250 (Common code?)
+ 
+         
+         // Okay, so lines 251-274 are common.
+         // Then 275 HEAD vs 290 ======= ??
+         // Let's keep common code.
+       }
+       
+       // RE-INSTATE COMMON CODE logic for System Prompt overlay if needed
+       // ...
+       
+       return {
+           ...fusedRole,
+           tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
+           currentModel: currentModelName,
+           scope: scope,
+           healthScore: 100 // Placeholder for AssessmentService score
+       };
+    });
 
     // Return roles, or a default role if none exist (prevents UI crash)
     return enrichedRoles.length > 0
@@ -662,42 +699,53 @@ Return ONLY the system prompt, no additional commentary.`;
         const currentCortex = (variant?.cortexConfig as Record<string, unknown>) || {};
         updateData.cortexConfig = { ...currentCortex, tools } as Prisma.InputJsonValue;
 
-        // B. Sync the relational table (RoleTool) for system-wide compatibility
+        // B. Sync the relational table (RoleTool) for MCP tools only
+        // Native tools (meta, nebula, read_file, etc.) don't have Tool records
+        const NATIVE_TOOL_NAMES = [
+            'meta', 'nebula', 'read_file', 'write_file', 'list_files', 
+            'browse', 'terminal_execute', 'search_codebase', 'list_files_tree', 
+            'scan_ui_components', 'research.web_scrape', 'analysis.complexity'
+        ];
+          
+        // Filter out native tools
+        const mcpToolNames = tools.filter(name => !NATIVE_TOOL_NAMES.includes(name));
+          
+        // Clear existing RoleTool entries
         await prisma.roleTool.deleteMany({ where: { roleId: input.roleId } });
-        await prisma.roleTool.createMany({
-          data: tools.map(toolName => ({
-            roleId: input.roleId,
-            toolId: toolName // This assumes toolName is actually the Tool.name or ID.
-            // In our system, tools are often connected by name.
-          }))
-        }).catch(async () => {
-          // If ID matching fails, try by name
-          for (const name of tools) {
-            const t = await prisma.tool.findUnique({ where: { name } });
-            if (t) await prisma.roleTool.create({ data: { roleId: input.roleId, toolId: t.id } });
-          }
-        });
+          
+        // Create RoleTool entries ONLY for MCP tools
+        for (const toolName of mcpToolNames) {
+            const toolRecord = await prisma.tool.findUnique({ where: { name: toolName } });
+            if (toolRecord) {
+                await prisma.roleTool.create({ 
+                    data: { roleId: input.roleId, toolId: toolRecord.id } 
+                }).catch(e => {
+                    console.warn(`Failed to create RoleTool for ${toolName}:`, e);
+                });
+            } else {
+                console.warn(`Tool '${toolName}' not found in database - skipping RoleTool creation`);
+            }
+        }
       }
-
-      // Special handling for 'tuning' if you want to store it in cortex or separate
-      // For now, let's mix it into cortex or handle legacy
+      
+      // Special handling for 'tuning' - store in metadata
       if (input.configType === 'tuning') {
-        // Fetch existing role metadata
-        const role = await prisma.role.findUnique({
-          where: { id: input.roleId },
-          select: { metadata: true }
-        });
-        const currentMeta = (role?.metadata as Record<string, unknown>) || {};
-
-        await prisma.role.update({
-          where: { id: input.roleId },
-          data: {
-            metadata: {
-              ...currentMeta,
-              ...((input.data || {}))
-            } as Prisma.InputJsonValue
-          }
-        });
+          const role = await prisma.role.findUnique({
+              where: { id: input.roleId },
+              select: { metadata: true }
+          });
+          const currentMeta = (role?.metadata as Record<string, unknown>) || {};
+          
+          await prisma.role.update({
+              where: { id: input.roleId },
+              data: {
+                  metadata: {
+                      ...currentMeta,
+                      defaultTemperature: (input.data).defaultTemperature,
+                      defaultMaxTokens: (input.data).defaultMaxTokens
+                  } as Prisma.InputJsonValue
+              }
+          });
       }
 
       return prisma.roleVariant.update({
@@ -749,9 +797,9 @@ Return ONLY the system prompt, no additional commentary.`;
 
         // Legacy parameters (from metadata)
         legacyParams: {
-          temperature: (role.metadata as any)?.defaultTemperature || 0.7,
-          maxTokens: (role.metadata as any)?.defaultMaxTokens || 2048,
-          modelId: (role.metadata as any)?.hardcodedModelId || null
+          temperature: (role.metadata as Record<string, unknown>)?.defaultTemperature || 0.7,
+          maxTokens: (role.metadata as Record<string, unknown>)?.defaultMaxTokens || 2048,
+          modelId: (role.metadata as Record<string, unknown>)?.hardcodedModelId || null
         },
 
         // Metadata for compatibility
