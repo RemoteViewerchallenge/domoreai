@@ -1,7 +1,9 @@
 import { z } from "zod";
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
-import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { ModelSelector } from "../orchestrator/ModelSelector.js";
+import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
+import { ModelSelector, type Role as SelectorRole } from "../orchestrator/ModelSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
@@ -12,6 +14,7 @@ import {
   type ModelSelectionResult
 } from "./modelManager.service.js";
 
+// [RESILIENCE] Standard schema, no changes needed here
 export const startSessionSchema = z.object({
   roleId: z.string(),
   modelConfig: z.object({
@@ -25,6 +28,7 @@ export const startSessionSchema = z.object({
   context: z
     .object({
       targetDir: z.string().optional(),
+      targetFile: z.string().optional(),
     })
     .optional(),
   sessionId: z.string().optional(),
@@ -45,262 +49,268 @@ Constraints:
 2. Only use SELECT statements. Do not use INSERT, DELETE, DROP, or ALTER.
 `;
 
-export interface ExtendedRole extends Role {
+export interface ExtendedRole extends Omit<Role, 'basePrompt'> {
   needsVision?: boolean;
   needsCoding?: boolean;
   needsReasoning?: boolean;
   needsTools?: boolean;
-  variants?: unknown[]; 
+  basePrompt?: string;
+  variants?: unknown[];
 }
 
 export class AgentService {
   async startSession(input: StartSessionInput) {
     const { roleId, modelConfig, userGoal, cardId, context } = input;
+    const sessionId = input.sessionId || `session-${cardId}-${Date.now()}`;
 
     try {
-      // 1.5 Fetch Workspace Prompt
+      // 1. Setup Context (Database fetch - usually safe)
       const card = await prisma.workOrderCard.findUnique({
         where: { id: cardId },
         include: { workspace: true },
       });
       const projectPrompt = card?.workspace.systemPrompt || undefined;
 
-      // Prepend context if available
       let finalUserGoal = userGoal;
       if (context?.targetDir) {
         finalUserGoal = `Context: Target Directory: ${context.targetDir}\n\n${userGoal}`;
       }
 
-      // 1. Resolve Configuration (Auto-Detect Provider)
+      // 3. Prepare Initial Config (with Fail-Safe Resolution)
       let resolvedModelId = modelConfig.modelId || null;
       let resolvedProviderId = modelConfig.providerId || undefined;
 
-      // If we have a modelId but no provider, try to find it in the DB
-      if (resolvedModelId && !resolvedProviderId) {
-          // Use findFirst because 'name' might not be globally unique or indexed as a single unique field
-          const modelRecord = await prisma.model.findFirst({
-              where: { name: resolvedModelId }, 
-              select: { providerId: true }
-          });
-          if (modelRecord) {
-              resolvedProviderId = modelRecord.providerId;
-              console.log(`[AgentService] Auto-resolved provider '${resolvedProviderId}' for model '${resolvedModelId}'`);
-          } else if (resolvedModelId.includes('/')) {
-              // Try split strategy "provider/model"
-              const [p] = resolvedModelId.split('/');
-              if (ProviderManager.hasProvider(p)) {
-                  resolvedProviderId = p;
-                  // We keep the full slug as modelId usually, unless provider expects distinct
-                  console.log(`[AgentService] inferred provider '${p}' from slug '${resolvedModelId}'`);
-              }
-          }
+      // 2. Resolve Role & Tools
+      const rawRole = await prisma.role.findUnique({
+        where: { id: roleId },
+        include: { tools: { include: { tool: true } }, variants: { where: { isActive: true }, take: 1 } }
+      });
+
+      // Flatten DNA (Shared Logic with Router)
+      // Flatten DNA (Shared Logic with Router)
+      const role: ExtendedRole | null = rawRole ? { ...rawRole } as ExtendedRole : null;
+      let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
+      
+      if (role && rawRole?.variants?.length) {
+        const v = rawRole.variants[0];
+        const cortex = (v.cortexConfig as Record<string, unknown>) || {};
+        const identity = (v.identityConfig as Record<string, unknown>) || {};
+        const caps = (Array.isArray(cortex.capabilities) ? cortex.capabilities : []) as string[];
+
+        role.needsVision = caps.includes('vision');
+        role.needsCoding = caps.includes('coding');
+        role.needsReasoning = caps.includes('reasoning');
+        role.needsTools = caps.includes('tools');
+
+        if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
+            role.basePrompt = identity.systemPromptDraft;
+        }
+        
+        if (Array.isArray(cortex.tools)) {
+             const extraTools = cortex.tools as string[];
+             tools = Array.from(new Set([...tools, ...extraTools]));
+        }
+
       }
 
-      // If NO model is specified, use ModelSelector immediately to pick the best one
+
+
+      // If user provided a specific model, verify it exists/provider is active. If not, clear it to force auto-selection.
+      if (resolvedModelId && resolvedProviderId) {
+        if (!ProviderManager.hasProvider(resolvedProviderId)) {
+          console.warn(`[AgentService] ⚠️ Provider '${resolvedProviderId}' not found in memory. Switching to auto-selection.`);
+          resolvedModelId = null;
+          resolvedProviderId = undefined;
+        }
+      }
+
+      // Auto-Select if needed
       if (!resolvedModelId) {
+        const selector = new ModelSelector();
+        const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
         try {
-           console.log('[AgentService] No model specified. Using ModelSelector to pick best available...');
-           const selector = new ModelSelector();
-           const safeRole = (await prisma.role.findUnique({ where: { id: roleId } })) || ({ id: 'default', metadata: {} } as unknown as Role);
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
-           
-           const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, select: { name: true, providerId: true } });
-           if (bestModel) {
-               resolvedModelId = bestModel.name;
-               resolvedProviderId = bestModel.providerId;
-               console.log(`[AgentService] Selected Best Model: ${resolvedModelId} (${resolvedProviderId})`);
-           }
-        } catch (e) {
-           console.warn('[AgentService] Failed to auto-select model:', e);
+          const bestSlug = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, []);
+          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug } });
+          if (bestModel) {
+            resolvedModelId = bestModel.name;
+            resolvedProviderId = bestModel.providerId;
+          }
+        } catch {
+          console.error("[AgentService] Critical: Could not resolve ANY model from DB. Using emergency fallback.");
+          resolvedModelId = "llama3";
+          resolvedProviderId = "ollama";
         }
       }
 
       const agentConfig: AgentConfig = {
         roleId,
-        modelId: resolvedModelId,
+        modelId: resolvedModelId!,
         providerId: resolvedProviderId,
-        isLocked: !!modelConfig.modelId, // Lock if model was explicitly provided in input
+        isLocked: false,
         temperature: modelConfig.temperature,
         maxTokens: modelConfig.maxTokens,
-        userGoal: finalUserGoal, // Pass user goal for memory injection
+        userGoal: finalUserGoal,
         projectPrompt,
       };
 
-      // 2. Create the Volcano agent
-      let agent = await createVolcanoAgent(agentConfig);
 
-      // 2.5 Fetch Role to get Tools and other defaults
-      console.log(`[AgentService] Fetching configuration for roleId: ${roleId}`);
-      const rawRole = await prisma.role.findUnique({
-        where: { id: roleId },
-        include: { 
-            tools: { include: { tool: true } },
-            variants: { where: { isActive: true }, take: 1 } // Fetch DNA
-        }
-      });
-      console.log(`[AgentService] Found Role: ${rawRole?.name} (${rawRole?.id})`);
-      
-      
-      // Flatten DNA (Shared Logic with Router)
-      let role: ExtendedRole | null = null;
-      
-      if (rawRole) {
-          role = { ...rawRole } as ExtendedRole;
-          
-          if (rawRole.variants && rawRole.variants.length > 0) {
-              const v = rawRole.variants[0];
-              // Safely cast JSON config
-              const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
-              const identity = (v.identityConfig && typeof v.identityConfig === 'object') ? v.identityConfig as Record<string, unknown> : {};
-              
-              const caps: string[] = Array.isArray(cortex.capabilities) ? cortex.capabilities as string[] : [];
-   
-              role.needsVision = caps.includes('vision');
-              role.needsCoding = caps.includes('coding');
-              role.needsReasoning = caps.includes('reasoning');
-              role.needsTools = caps.includes('tools');
-              
-              if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
-                  role.basePrompt = identity.systemPromptDraft;
-              }
-          }
-      }
-
-      let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
-      console.log(`[AgentService] Base Tools from DB:`, tools);
-
-      // [FIX] Merge tools from the Active Variant (DNA)
-      if (rawRole && rawRole.variants && rawRole.variants.length > 0) {
-          const v = rawRole.variants[0];
-          const cortex = (v.cortexConfig && typeof v.cortexConfig === 'object') ? v.cortexConfig as Record<string, unknown> : {};
-          
-          if (Array.isArray(cortex.tools)) {
-              const variantTools = cortex.tools as string[];
-              console.log(`[AgentService] 🧬 Injecting ${variantTools.length} tools from DNA Variant:`, variantTools);
-              // Use Set to avoid duplicates
-              tools = Array.from(new Set([...tools, ...variantTools]));
-          }
-      }
-      
-      console.log(`[AgentService] Final Tool List for Runtime:`, tools);
-
-      // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);
 
-      // 4. Define the LLM callback that uses our Volcano agent and enriches
-      //    the system prompt with role context from the runtime's ContextManager.
-      //    Captured 'agent' variable is used, allowing hot-swapping on fallback.
-      const llmCallback = async (prompt: string): Promise<string> => {
-        const basePrompt = role?.basePrompt || "";
-        return runtime.generateWithContext(
-          agent,
-          basePrompt,
-          prompt,
-          roleId,
-          sessionId 
-        ) as Promise<string>;
-      };
-
-      // 5. Start the agent loop (Synchronous for now to ensure UI update)
-      const sessionId = input.sessionId || `session-${cardId}-${Date.now()}`;
-
-      // Get initial response first, with Fallback Logic
+      // --- RESILIENCE LOOP ---
+      let agent: VolcanoAgent | undefined;
       let initialResponse = "";
       const failedModels: string[] = [];
-      const MAX_RETIES = 3;
+      const failedProviders: string[] = [];
+      const MAX_RETRIES = 4; // Generous retries
 
-      for (let attempt = 0; attempt <= MAX_RETIES; attempt++) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-           initialResponse = await llmCallback(userGoal);
-           break; // Success
+          console.log(`[AgentService] 🚀 Start Attempt ${attempt + 1}/${MAX_RETRIES + 1} with ${agentConfig.modelId} (${agentConfig.providerId})`);
+
+          // [STEP A] Create Agent
+          // This creates the provider instance. If API key is missing, this throws.
+          agent = await createVolcanoAgent(agentConfig);
+
+          // [STEP B] Execute
+          // This makes the network call. If network fails, this throws.
+          initialResponse = await runtime.generateWithContext(
+            agent,
+            role?.basePrompt || "",
+            finalUserGoal,
+            roleId,
+            sessionId
+          ) as string;
+
+          // Success!
+          break;
+
         } catch (err: unknown) {
-           const isLastAttempt = attempt === MAX_RETIES;
-           const msg = err instanceof Error ? err.message : String(err);
-           // Expanded regex to catch Rate Limits (429), Quotas, Overloaded servers, AND Timeouts
-           const isProviderError = /provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError/i.test(msg);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[AgentService] ⚠️ Attempt ${attempt + 1} failed: "${msg}"`);
 
-           if (isLastAttempt || !isProviderError) {
-             throw err; // Give up
-           }
+          // [CRITICAL FIX] Catch-all for "fetch", "key", "config", "provider", "found"
+          // Added 'capacity' to catch Mistral/Cerebras capacity errors
+          const isRecoverable = /fetch|network|connect|timeout|refused|key|config|provider|found|credential|rate|limit|quota|capacity|401|403|404|429|500|503/i.test(msg);
 
-           // Log and Fallback
-           console.warn(`[AgentService] Initial generation failed: ${msg}. Attempting fallback...`);
-           
-           if (agentConfig.modelId) failedModels.push(agentConfig.modelId);
+          if (attempt === MAX_RETRIES) {
+            console.error("[AgentService] ❌ Exhausted all retries.");
+            // [FAIL-OPEN] Return a safe error message to the UI conversation instead of throwing 500
+            return {
+              sessionId,
+              status: "completed",
+              cardId,
+              result: `**System Alert**: I encountered a critical connection error after multiple attempts. \n\nDebug Info: \n- Last attempted model: ${agentConfig.modelId}\n- Error: ${msg}\n\nPlease check your provider settings or try a local model (Ollama).`,
+              logs: [],
+              modelId: agentConfig.modelId,
+              providerId: agentConfig.providerId
+            };
+          }
 
-           // Select new model using ModelSelector (Context Aware)
-           console.log('[AgentService] Fallback Strategy: Using ModelSelector for Context-Aware Selection');
-           const selector = new ModelSelector();
-           const safeRole = (role ? role : ({ id: 'default', metadata: {} } as ExtendedRole));
-           
-           // We pass 'failedModels' (which contains Slugs) to exclude them
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
-           const fallback = await prisma.model.findUnique({ 
-               where: { id: fallbackId }, 
-               include: { provider: true } 
-           });
+          if (!isRecoverable) {
+            console.error(`[AgentService] Non-recoverable error: ${msg}`);
+            throw err; // Logic bugs (e.g. "undefined is not a function") should still crash
+          }
 
-           if (!fallback) throw new Error("No fallback models available.");
+          // [STEP C] Failover Logic
+          if (agentConfig.modelId) {
+            failedModels.push(agentConfig.modelId);
+            if (agentConfig.providerId) {
+              // Async record failure so we don't block
+              recordModelFailure(agentConfig.providerId, agentConfig.modelId, roleId).catch(console.error);
+            }
+          }
 
-           // Update Config
-           agentConfig.modelId = fallback.name; // Use Slug
-           agentConfig.providerId = fallback.providerId;
-           // agentConfig.temperature = check if defined? Default to current
-           
-           console.log(`[AgentService] Switched to fallback model: ${fallback.name} (Context-Safe)`);
+          try {
+            const selector = new ModelSelector();
+            const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
 
-           // Re-create agent
-           agent = await createVolcanoAgent(agentConfig);
+            // [RESILIENCE] If provider capacity exceeded or 429, blacklist provider for this session too
+            if (agentConfig.providerId && /capacity|quota|rate|limit|429/i.test(msg)) {
+                failedProviders.push(agentConfig.providerId);
+                console.log(`[AgentService] 🛑 Provider '${agentConfig.providerId}' seems overloaded. Blacklisting for this session.`);
+            }
+
+            const fallbackId = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, failedModels, failedProviders);
+            const fallback = await prisma.model.findUnique({ where: { id: fallbackId } });
+
+            if (fallback) {
+              agentConfig.modelId = fallback.name;
+              agentConfig.providerId = fallback.providerId;
+              console.log(`[AgentService] 🔄 Switching to fallback: ${fallback.name}`);
+            } else {
+              throw new Error("Selector returned no model");
+            }
+          } catch {
+            console.warn("[AgentService] 🛑 Selector failed to find backup. Trying generic local fallback.");
+            // Emergency Hardcoded Fallbacks if DB selection fails
+            if (agentConfig.providerId !== 'ollama') {
+              agentConfig.providerId = 'ollama';
+              agentConfig.modelId = 'llama3';
+            } else {
+              agentConfig.modelId = 'mistral'; // Try a different local model
+            }
+          }
         }
       }
 
-      // Execute the agent loop and wait for result
+      // [RESILIENCE] Conversation Loop with Hot-Swap
       const { result, logs } = await runtime.runAgentLoop(
-        userGoal,
+        finalUserGoal,
         initialResponse,
         async (retryPrompt: string) => {
-          // Regenerate with the retry prompt
-          const retryResponse = await runtime.generateWithContext(
-            agent,
-            role?.basePrompt || "",
-            retryPrompt,
-            roleId
-          );
-          return retryResponse as string;
+          // Inner loop for multi-turn reliability
+          for (let i = 0; i < 3; i++) {
+            try {
+              return await runtime.generateWithContext(agent!, role?.basePrompt || "", retryPrompt, roleId) as string;
+            } catch (e: unknown) {
+              const errMsg = e instanceof Error ? e.message : String(e);
+              console.warn(`[AgentService] Mid-conversation error: ${errMsg}. Retrying...`);
+              // Simple retry for now, full hot-swap logic can be added here if needed
+              if (i === 2) throw e;
+            }
+          }
+          throw new Error("Agent loop failed");
         }
       );
 
-      console.log(`[AgentService] Session ${sessionId} Completed.`);
+      // [USER REQUEST] Save swappable card to file
+      try {
+        let filePath: string;
 
-      // Get the actual model used
-      const usedConfig = agent.getConfig();
+        if (context?.targetFile) {
+          // User specified a target file — respect it (absolute or relative)
+          filePath = path.isAbsolute(context.targetFile)
+            ? context.targetFile
+            : path.resolve(process.cwd(), context.targetFile);
+        } else {
+          // Default fallback: chats/{cardId}.md
+          const chatsDir = path.join(process.cwd(), 'chats');
+          await fs.mkdir(chatsDir, { recursive: true });
+          filePath = path.join(chatsDir, `${cardId}.md`);
+        }
 
-      // 6. Return session info and result immediately
+        // Ensure directory exists for target file
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+        await fs.writeFile(filePath, result, 'utf-8');
+        console.log(`[AgentService] 💾 Saved session result to ${filePath}`);
+      } catch (saveErr) {
+        console.error('[AgentService] Failed to save card file:', saveErr);
+      }
+
       return {
         sessionId,
-        status: "completed" as const,
+        status: "completed",
         cardId,
         result,
-        logs: [
-            { 
-                message: `Session started using model: ${usedConfig.modelId} (${usedConfig.providerId})`, 
-                type: 'system', 
-                timestamp: new Date().toISOString() 
-            }, 
-            ...logs
-        ],
-        modelId: usedConfig.modelId,
-        providerId: usedConfig.providerId,
+        logs,
+        modelId: agent?.getConfig().modelId || resolvedModelId!,
+        providerId: agent?.getConfig().providerId || resolvedProviderId,
       };
+
     } catch (error) {
-      console.error("[AgentService] Failed to start session:", error);
-      throw new Error(
-        error instanceof Error
-          ? `Failed to start agent session: ${error.message}`
-          : "Failed to start agent session"
-      );
+      console.error("[AgentService] Session Fatal Error:", error);
+      throw error;
     }
   }
 
@@ -330,7 +340,7 @@ export class AgentService {
       );
       schemaContext = rows.length
         ? `The primary table is "${targetTable}" with columns: ` +
-          rows.map((r) => `${r.column_name} (${r.data_type})`).join(", ")
+        rows.map((r) => `${r.column_name} (${r.data_type})`).join(", ")
         : "";
     }
 
@@ -423,7 +433,7 @@ export class AgentService {
         );
 
         // If provider says invalid model, blacklist this model and try again
-        if (/invalid model|not found|invalid model id/i.test(errMsg)) {
+        if (/provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError|fetch|connection|econnrefused|network/i.test(errMsg)) {
           // Persist the failure
           try {
             await recordModelFailure(

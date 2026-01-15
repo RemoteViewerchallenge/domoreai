@@ -9,7 +9,7 @@ export * from './BaseLLMProvider.js';
 
 
 export class ProviderFactory {
-  
+
   static createProvider(type: string, config: any): BaseLLMProvider {
     console.log(`[ProviderFactory] Initializing: ${type} (${config.baseURL || 'default url'})`);
 
@@ -19,7 +19,7 @@ export class ProviderFactory {
         return new MistralProvider(config);
       case 'anthropic':
         return new AnthropicProvider(config);
-        
+
       case 'google': // Gemini Developer API (AI Studio)
       case 'vertex': // Google Vertex AI (Enterprise)
       case 'vertex-studio': // Legacy handling
@@ -29,7 +29,6 @@ export class ProviderFactory {
       // The UI sends these specific names, but they all speak "OpenAI"
       case 'openai':
       case 'openrouter':
-      case 'mistral':
       case 'groq':
       case 'deepseek':
       case 'cerebras':
@@ -55,11 +54,11 @@ export class ProviderFactory {
   private static getDefaultBaseURL(type: string): string | undefined {
     switch (type) {
       case 'openrouter': return 'https://openrouter.ai/api/v1';
-      case 'mistral':    return 'https://api.mistral.ai/v1';
-      case 'groq':       return 'https://api.groq.com/openai/v1';
-      case 'cerebras':   return 'https://api.cerebras.ai/v1';
-      case 'nvidia':     return 'https://integrate.api.nvidia.com/v1';
-      default:           return undefined; // Let SDK default to api.openai.com
+      case 'mistral': return 'https://api.mistral.ai/v1';
+      case 'groq': return 'https://api.groq.com/openai/v1';
+      case 'cerebras': return 'https://api.cerebras.ai/v1';
+      case 'nvidia': return 'https://integrate.api.nvidia.com/v1';
+      default: return undefined; // Let SDK default to api.openai.com
     }
   }
 }

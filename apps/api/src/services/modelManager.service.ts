@@ -35,7 +35,7 @@ export async function logUsage(data: RawProviderOutput) {
   const {
     modelId,
     roleId,
-    userId, // Extract but don't save to DB as column is missing
+    // userId, // Extract but don't save to DB as column is missing
     usage,
     cost,
     ...metadata 
@@ -54,7 +54,8 @@ export async function logUsage(data: RawProviderOutput) {
 
         cost: cost ?? 0.0,
 
-        metadata: { ...metadata, userId } as Prisma.InputJsonValue, // Store userId in metadata
+
+        metadata: { ...metadata } as Prisma.InputJsonValue,
       },
     });
     console.log('Usage log created:', newLog.id);
@@ -78,8 +79,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       return null;
     }
 
-    const metadata = {}; // (role.metadata as any) || {};
-    const _capabilities = ((metadata as Record<string, any>).capabilities as string[]) || [];
+    const metadata = (role.metadata as Prisma.JsonObject) || {};
+    const _capabilities = (metadata.capabilities as string[]) || [];
 
     const whereClause: Prisma.ModelWhereInput = {
       isActive: true,
@@ -163,7 +164,11 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     console.log(`✅ Selected model: ${selected.provider.label}/${selected.name} (free: ${isFree})`);
 
     // Use external ID from providerData, fallback to name, never usage internal CUID
-    const externalId = (selected.providerData as unknown as { id?: string })?.id || selected.name;
+    const providerDataObj = selected.providerData as Prisma.JsonObject;
+    // Helper to safely access 'id' from the JSON object
+    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
+      ? (providerDataObj['id'] as string) 
+      : selected.name;
 
     return {
       modelId: externalId, 
@@ -189,7 +194,10 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
     });
     if (!fallback) return null;
     
-    const externalId = (fallback.providerData as unknown as { id?: string })?.id || fallback.name;
+    const providerDataObj = fallback.providerData as Prisma.JsonObject;
+    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
+      ? (providerDataObj['id'] as string) 
+      : fallback.name;
     
     return {
       modelId: externalId,
@@ -222,7 +230,10 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
   });
 
   if (fallbackModel) {
-      const externalId = (fallbackModel.providerData as unknown as { id?: string })?.id || fallbackModel.name;
+      const providerDataObj = fallbackModel.providerData as Prisma.JsonObject;
+      const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
+        ? (providerDataObj['id'] as string) 
+        : fallbackModel.name;
       return {
           modelId: externalId,
           providerId: fallbackModel.providerId,

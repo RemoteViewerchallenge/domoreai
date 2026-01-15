@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 async function debug() {
     console.log('🔍 DEBUG: Checking Provider Responses...');
-    
+
     const providers = [
         { id: 'groq', url: 'https://api.groq.com/openai/v1/models', headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` } },
         { id: 'mistral', url: 'https://api.mistral.ai/v1/models', headers: { Authorization: `Bearer ${process.env.MISTRAL_API_KEY}` } },
@@ -19,7 +19,7 @@ async function debug() {
         console.log(`\n--- Testing ${p.id.toUpperCase()} ---`);
         console.log(`URL: ${p.url}`);
         console.log(`Key present: ${!!p.headers.Authorization.split(' ')[1]}`); // Don't log key
-        
+
         try {
             const res = await fetch(p.url, { headers: { ...p.headers, 'Content-Type': 'application/json' } });
             console.log(`Status: ${res.status} ${res.statusText}`);
