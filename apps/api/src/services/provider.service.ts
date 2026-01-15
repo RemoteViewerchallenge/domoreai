@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db.js';
-import { encrypt, decrypt } from '../utils/encryption.js';
+// import { encrypt, decrypt } from '../utils/encryption.js'; // REMOVED
 import { ProviderFactory, LLMModel } from '../utils/ProviderFactory.js';
 
 export class ProviderService {
@@ -10,7 +10,7 @@ export class ProviderService {
 
   // [NEW] Manage Providers via UI
   async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
-    const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined;
+    // const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined; // REMOVED
 
     // Note: apiKey is removed from DB schema, but we keep the logic structure 
     // in case we restore it or for consistency with how it was called.

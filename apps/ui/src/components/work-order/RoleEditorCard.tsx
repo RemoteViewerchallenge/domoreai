@@ -35,6 +35,9 @@ interface ExtendedRole extends Role {
 interface RoleEditorCardProps {
     id: string; // Card ID
     initialRoleId?: string;
+    initialModelId?: string | null;
+    initialTemperature?: number;
+    initialMaxTokens?: number;
     onUpdateConfig?: (config: { roleId: string; modelId: string | null; temperature: number; maxTokens: number; }) => void;
     onClose?: () => void;
 }
@@ -72,7 +75,14 @@ const DNATab: React.FC<DNATabProps> = ({ active, onClick, icon: Icon, color }) =
     );
 };
 
-export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, onUpdateConfig, onClose }) => {
+export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ 
+    initialRoleId, 
+    initialModelId,
+    initialTemperature,
+    initialMaxTokens,
+    onUpdateConfig, 
+    onClose 
+}) => {
     const [activeTab, setActiveTab] = useState<DNAModule>('identity');
     const [roleId, setRoleId] = useState<string>(initialRoleId || '');
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -93,9 +103,9 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
         maxTokens: number;
         modelId: string | null;
     }>({
-        temperature: 0.7,
-        maxTokens: 2048,
-        modelId: null
+        temperature: initialTemperature ?? 0.7,
+        maxTokens: initialMaxTokens ?? 2048,
+        modelId: initialModelId ?? null
     });
 
     const currentRole = roles?.find(r => r.id === roleId) as ExtendedRole | undefined;
@@ -106,21 +116,22 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
             // If the role has a variant with DNA, use it
             const variant = currentRole.variants?.[0];
             if (variant) {
+                const cortexConfig = variant.cortexConfig as typeof dna.cortex;
                 setDna({
                     identity: (variant.identityConfig as typeof dna.identity) || DEFAULT_ROLE_FORM_DATA.dna.identity,
-                    cortex: (variant.cortexConfig as typeof dna.cortex) || DEFAULT_ROLE_FORM_DATA.dna.cortex,
+                    cortex: cortexConfig || DEFAULT_ROLE_FORM_DATA.dna.cortex,
                     governance: (variant.governanceConfig as typeof dna.governance) || DEFAULT_ROLE_FORM_DATA.dna.governance,
                     context: (variant.contextConfig as typeof dna.context) || DEFAULT_ROLE_FORM_DATA.dna.context,
-                    tools: (variant.toolsConfig as typeof dna.tools) || { customTools: currentRole.tools || [] }
+                    tools: { customTools: (cortexConfig?.tools as string[]) || currentRole.tools || [] }
                 });
                 setHasUnsavedChanges(false);
             }
-
-            setLegacyParams({
-                temperature: currentRole.defaultTemperature || 0.7,
-                maxTokens: currentRole.defaultMaxTokens || 2048,
-                modelId: currentRole.hardcodedModelId || null
-            });
+            const metadata = (currentRole.metadata as Record<string, unknown>) || {};
+            setLegacyParams(p => ({
+                temperature: initialTemperature ?? (metadata.defaultTemperature as number) ?? p.temperature ?? 0.7,
+                maxTokens: initialMaxTokens ?? (metadata.defaultMaxTokens as number) ?? p.maxTokens ?? 2048,
+                modelId: initialModelId ?? p.modelId // Keep existing if not provided by prop
+            }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentRole]);
@@ -148,23 +159,34 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                 });
             }
 
-            // 2. Persist DNA modules to backend
-            const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools'> = ['identity', 'cortex', 'governance', 'context', 'tools'];
-            for (const mod of modules) {
-                await updateVariantMutation.mutateAsync({
-                    roleId,
-                    configType: mod,
-                    data: dna[mod] as Record<string, unknown>
-                });
-            }
+             // 2. Persist DNA modules to backend
+             const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools'> = ['identity', 'cortex', 'governance', 'context', 'tools'];
+             for (const mod of modules) {
+                 await updateVariantMutation.mutateAsync({
+                     roleId,
+                     configType: mod,
+                     data: dna[mod] as Record<string, unknown>
+                 });
+             }
 
-            toast.success("Lifeform Stabilized", { id: loadingToastId });
-            setHasUnsavedChanges(false);
-            void utils.role.list.invalidate();
-        } catch (e) {
-            console.error(e);
-            toast.error("DNA Corruption Detected", { id: loadingToastId });
-        }
+             // 3. Persist Tuning (Legacy Params) to Role Metadata
+             // [USER REQUEST] Only user can set hardcoded model; we remove persistence of hardcodedModelId to Role here.
+             await updateVariantMutation.mutateAsync({
+                 roleId,
+                 configType: 'tuning',
+                 data: {
+                     defaultTemperature: legacyParams.temperature,
+                     defaultMaxTokens: legacyParams.maxTokens,
+                     // hardcodedModelId is NOT saved to the role context
+                 }
+             });
+             
+             toast.success("Lifeform Stabilized", { id: loadingToastId });
+             void utils.role.list.invalidate();
+         } catch (e) {
+             console.error(e);
+             toast.error("DNA Corruption Detected", { id: loadingToastId });
+         }
     };
 
     const handleAIGenerate = async () => {
@@ -291,7 +313,6 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                     onClick={() => setShowRolePicker(true)}
                                     className="group flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 hover:text-white transition-colors px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 shadow-inner"
                                 >
-                                    <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
                                     <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
                                     <span className="truncate max-w-[100px]">{currentRole?.name || 'GENERIC_ENTITY'}</span>
                                     {hasUnsavedChanges && <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />}
@@ -449,7 +470,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                             <label className="text-[9px] font-bold uppercase text-zinc-500">Thinking Process</label>
                                             <select
                                                 value={dna.identity.thinkingProcess}
-                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value as any } }))}
+                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value as 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING' } }))}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
                                             >
                                                 <option value="SOLO">Solo (Single-Shot)</option>
@@ -509,7 +530,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                                         dna.cortex.capabilities?.includes('moderation') ? 'COMPLIANCE' :
                                                             dna.cortex.capabilities?.includes('reward_model') ? 'JUDGE' :
                                                                 (dna.cortex.capabilities?.includes('medical') || dna.cortex.capabilities?.includes('weather') || dna.cortex.capabilities?.includes('specialized_science')) ? 'RESEARCH' :
-                                                                    (dna.cortex.capabilities?.includes('reasoning') || dna.cortex.capabilities?.includes('coding')) ? 'REASONING' : 'CHAT') as any,
+                                                                    (dna.cortex.capabilities?.includes('reasoning') || dna.cortex.capabilities?.includes('coding')) ? 'REASONING' : 'CHAT'),
                                         preferences: {
                                             reasoning: dna.cortex.preferences?.reasoning || false,
                                             uncensored: dna.cortex.preferences?.uncensored || false,

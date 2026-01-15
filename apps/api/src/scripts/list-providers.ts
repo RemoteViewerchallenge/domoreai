@@ -23,7 +23,7 @@ async function main() {
     for (const id of candidateIds) {
         const p = instance.getProvider(id);
         if (p) {
-            console.log(`✅ Provider Active: "${id}" (BaseURL: ${p['config']?.baseURL})`);
+            console.log(`✅ Provider Active: "${id}" (BaseURL: ${(p as any)['config']?.baseURL})`);
         } else {
             console.log(`❌ Provider Inactive: "${id}"`);
         }

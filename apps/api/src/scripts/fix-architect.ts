@@ -25,6 +25,10 @@ When the user asks for a new agent:
             }
         });
         console.log("Role Architect updated.");
+
+        // NOTE: 'meta' is a native tool - it doesn't need a database record or RoleTool assignment.
+        // The Role Architect will have access to it via the DNA variant's cortexConfig.tools array.
+        console.log("ℹ️  'meta' is available as a native tool (no DB record needed)");
     } else {
         console.log("Role Architect not found under that name. Checking Nebula Architect...");
         const nebula = await prisma.role.findFirst({
