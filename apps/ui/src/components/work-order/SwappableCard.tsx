@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Code, Globe, Terminal, Fingerprint, Folder, X } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -16,15 +16,18 @@ import CompactRoleSelector from '../CompactRoleSelector.js';
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 
+// Helper to get filename from path
+const getBasename = (path: string) => path.split('/').pop() || path;
+
 export const SwappableCard = memo(({ id }: { id: string }) => {
     const {
-        currentPath, navigateTo, readFile, writeFile,
+        currentPath, navigateTo, readFile, writeFile, mkdir,
         files, refresh, createNode, ingestDirectory,
         loadChildren
     } = useCardVFS(id);
 
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
-    // Removed unused updateCard variable
+
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
     const agentConfig = useMemo(() => {
@@ -38,7 +41,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         };
     }, [card]);
 
-    // Initialize state from persisted metadata or defaults
+
     const [activeFile, setActiveFile] = useState<string>(() => {
         const meta = card?.metadata as { activeFile?: string } | undefined;
         return meta?.activeFile || '';
@@ -57,9 +60,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
     const updateCard = useWorkspaceStore(s => s.updateCard);
 
-    // Persistence: Save activeFile and browserUrl to store whenever they change
+    // Persistence
     useEffect(() => {
-        // Access fresh state directly to avoid dependency loops with 'card' object
         const currentCard = useWorkspaceStore.getState().cards.find(c => c.id === id);
         updateCard(id, {
             metadata: {
@@ -70,59 +72,69 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         });
     }, [activeFile, browserUrl, id, updateCard]);
 
-    // Auto-Create Default Session File if needed
+
+    // 🟢 GOOD: Robust Default File Creation (No Crashes)
     useEffect(() => {
         if (!activeFile && viewMode === 'editor') {
-            const defaultPath = `/home/guy/mono/.nebula/sessions/${id}.md`;
-            void writeFile(defaultPath, '').then(() => {
-                setActiveFile(defaultPath);
-            }).catch(() => {
-                // If directory doesn't exist, we might need to create it. 
-                // We can optimistically set it, and file system will error only mostly on write.
-                // But let's try to set it so user isn't stuck in limbo.
-                setActiveFile(defaultPath);
-            });
+            const initDefaultFile = async () => {
+                const sessionsDir = `${currentPath}/sessions`;
+                const filePath = `${sessionsDir}/card-${id}.md`;
+                
+                try {
+                    // Try to write; if it fails, try making the directory first
+                    // We assume mkdir is safe to call (vfs router should handle existence checks or return success)
+                    await mkdir(sessionsDir); 
+                } catch {
+                    // Ignore if dir exists, proceed to write
+                }
+
+                try {
+                   // Create empty file
+                   await writeFile(filePath, ''); 
+                   setActiveFile(filePath);
+                } catch (e) {
+                   console.error("Failed to create default session file", e);
+                   // Fallback to root if folder creation failed entirely
+                   setActiveFile(`${currentPath}/card-${id}.md`);
+                }
+            };
+            
+            void initDefaultFile();
         }
-    }, [activeFile, viewMode, id, writeFile]);
+    }, [activeFile, viewMode, id, currentPath, writeFile, mkdir]);
 
-
-    // Auto-switch view based on file extension or URL
+    // Auto-switch view logic
     useEffect(() => {
         if (activeFile) {
             if (activeFile.startsWith('http')) {
                 setBrowserUrl(prev => prev === activeFile ? prev : activeFile);
-                setViewMode(prev => prev === 'browser' ? prev : 'browser');
-            } else if (/\.(png|jpg|jpeg|gif|svg)$/i.test(activeFile)) {
-                // Future: SmartImageViewer
-                setBrowserUrl(prev => {
-                    const newUrl = `file://${activeFile}`;
-                    return prev === newUrl ? prev : newUrl;
-                });
-                setViewMode(prev => prev === 'browser' ? prev : 'browser');
-            } else if (/\.(html)$/i.test(activeFile)) {
-                setBrowserUrl(prev => {
-                    const newUrl = `file://${activeFile}`;
-                    return prev === newUrl ? prev : newUrl;
-                });
-                setViewMode(prev => prev === 'browser' ? prev : 'browser');
+                setViewMode('browser');
+            } else if (/\.(png|jpg|jpeg|gif|svg|html)$/i.test(activeFile)) {
+                 setBrowserUrl(`file://${activeFile}`);
+                 setViewMode('browser');
             } else {
-                setViewMode(prev => prev === 'editor' ? prev : 'editor');
-                // Only read file if it changed, to avoid loops if readFile is unstable
                 void readFile(activeFile).then(setContent).catch(() => setContent(''));
             }
         }
-    }, [activeFile, readFile]); // Removing viewMode dependency to prevent cycles
+    }, [activeFile, readFile]);
 
     const handleSave = useCallback((val: string | undefined) => {
         if (val === undefined) return;
         setContent(val);
-        if (activeFile) void writeFile(activeFile, val);
-    }, [activeFile, writeFile]);
+        if (activeFile) {
+            // Main Save
+            void writeFile(activeFile, val);
+            
+            // 🟢 GOOD: Background Backup (Hidden)
+            // Save a copy to .nebula/backups for restoration if needed
+            const backupPath = `${currentPath}/.nebula/backups/${getBasename(activeFile)}.bak`;
+            // We use a fire-and-forget approach here, maybe debounce in real-world
+            void writeFile(backupPath, val).catch(() => { /* Silent fail on backup is ok */ });
+        }
+    }, [activeFile, writeFile, currentPath]);
 
     const runAgent = useCallback(async (goal: string, roleIdOverride?: string) => {
         const effectiveRoleId = roleIdOverride || agentConfig.roleId;
-        console.log('[SwappableCard] Running agent with:', { effectiveRoleId, roleIdOverride, cardRole: agentConfig.roleId });
-
         if (!effectiveRoleId) {
             toast.error("Role Required", { description: "Select a role first." });
             setViewMode('config');
@@ -152,23 +164,59 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
     }, [id, agentConfig, startSessionMutation, currentPath, sessionId]);
 
-    // HOTKEY HANDLER
-    // Removed global hotkey handler (handleQuickPrompt) as it is now handled per-component.
-
     return (
         <div className="flex h-full w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] overflow-hidden relative flex-col">
-
-            {/* 1. Header with Quick Prompt */}
+            
+            {/* 1. Header with Clean Filename Display */}
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
-                {/* File Path */}
-                <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6">
-                    <span className="text-[var(--text-muted)] text-[10px] mr-1">/</span>
+                <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
+                    <FileText size={10} className="text-[var(--text-muted)] mr-1.5" />
+                    {/* 🟢 GOOD: Display only basename, but track full path */}
                     <input
-                        value={activeFile}
-                        onChange={(e) => setActiveFile(e.target.value)}
-                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)]"
-                        placeholder="filename..."
+                        value={getBasename(activeFile)} 
+                        onChange={() => {
+                            // Simple rename logic is complex; for now, let's treat it as a filter or visual
+                            // If user really wants to change path, use File Explorer or Save As
+                            // This read-only-ish view prevents "path confusion"
+                        }}
+                        readOnly
+                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)] cursor-default"
+
                     />
+                    <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap">
+                       {activeFile.includes('/sessions/') ? '(Session)' : ''}
+                    </span>
+                </div>
+
+                <div className="flex-1" />
+
+                <div className="flex gap-0.5">
+                    {[
+                        { id: 'files', icon: Folder },
+                        { id: 'editor', icon: Code },
+                        { id: 'terminal', icon: Terminal },
+                        { id: 'browser', icon: Globe },
+                        { id: 'role', icon: Fingerprint }
+                    ].map(t => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                                if (t.id === 'role') {
+                                    setShowRolePicker(!showRolePicker);
+                                } else {
+                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
+                                    setShowRolePicker(false);
+                                }
+                            }}
+                            className={cn(
+                                "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
+                                (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-[var(--bg-primary)]"
+                            )}
+                        >
+                            <t.icon size={12} />
+                        </button>
+                    ))}
                 </div>
 
                 <div className="flex-1" />
@@ -189,7 +237,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 if (t.id === 'role') {
                                     setShowRolePicker(!showRolePicker);
                                 } else {
-                                    setViewMode(t.id as any);
+                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
                                     setShowRolePicker(false);
                                 }
                             }}
@@ -204,12 +252,37 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 </div>
             </div>
 
+
             {/* 2. Content */}
             <div
                 className="flex-1 relative overflow-hidden bg-[var(--bg-background)] select-text"
                 onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
             >
-                {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => { }} onClose={() => setViewMode('editor')} />}
+                {viewMode === 'config' && (
+                    <RoleEditorCard
+                        id={id}
+                        initialRoleId={agentConfig.roleId}
+                        initialModelId={agentConfig.modelId}
+                        initialTemperature={agentConfig.temperature}
+                        initialMaxTokens={agentConfig.maxTokens}
+                        onUpdateConfig={(cfg) => {
+                            updateCard(id, {
+                                roleId: cfg.roleId,
+                                metadata: {
+                                    ...(card?.metadata || {}),
+                                    agentConfig: {
+                                        ...agentConfig,
+                                        roleId: cfg.roleId,
+                                        modelId: cfg.modelId,
+                                        temperature: cfg.temperature,
+                                        maxTokens: cfg.maxTokens
+                                    }
+                                }
+                            });
+                        }}
+                        onClose={() => setViewMode('editor')}
+                    />
+                )}
                 {viewMode === 'editor' && (
                     <SmartEditor
                         fileName={activeFile}
@@ -225,13 +298,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 {viewMode === 'diff' && (
                     <div className="h-full w-full flex flex-col">
                         <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
-                            <span className="text-xs font-bold text-zinc-400">Diff View: {activeFile}</span>
+                            <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
                             <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
                         </div>
                         <div className="flex-1 min-h-0">
                             <MonacoDiffEditor
-                                original={`// Previous version of ${activeFile}\n\n${content}`}
-                                modified={content + '\n// New changes applied by agent'}
+                                original={`// Previous version\n${content}`}
+                                modified={content + '\n// New changes'}
                                 language="typescript"
                             />
                         </div>
@@ -247,21 +320,19 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     onEmbedDir={(p) => void ingestDirectory(p)}
                     onLoadChildren={loadChildren}
                     className="p-2"
-                    // Always allow saving current content to a new file (Save As behavior)
                     activeContent={content}
                     onSaveContent={(path, text) => {
                         void (async () => {
                             await writeFile(path, text);
-                            toast.success("Saved content to " + path.split('/').pop());
+                            toast.success("Saved content to " + getBasename(path));
                             setActiveFile(path);
                             setViewMode('editor');
                         })();
                     }}
                 />}
                 {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
-                {viewMode === 'browser' && <SmartBrowser url={(card?.metadata as { url?: string })?.url || 'https://google.com'} onUrlChange={setBrowserUrl} />}
+                {viewMode === 'browser' && <SmartBrowser url={browserUrl} onUrlChange={setBrowserUrl} />}
 
-                {/* Role Selector Dropdown Popover */}
                 {showRolePicker && (
                     <div className="absolute top-9 right-2 w-72 h-[350px] bg-zinc-950 border border-zinc-800 z-50 shadow-2xl rounded-lg animate-in fade-in zoom-in-95 duration-100 flex flex-col">
                         <div className="flex items-center justify-between p-2.5 border-b border-zinc-800 bg-zinc-900/50 rounded-t-lg">
@@ -280,8 +351,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     updateCard(id, { roleId });
                                     setShowRolePicker(false);
                                 }}
-                                onEdit={(roleId) => {
-                                    updateCard(id, { roleId });
+                                onEdit={() => {
                                     setShowRolePicker(false);
                                     setViewMode('config');
                                 }}
@@ -294,5 +364,4 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         </div>
     );
 });
-
 SwappableCard.displayName = 'SwappableCard';

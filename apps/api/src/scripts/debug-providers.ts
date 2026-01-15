@@ -39,8 +39,8 @@ async function debug() {
             } catch {
                 console.log('Invalid JSON response:', text.slice(0, 200));
             }
-        } catch (e: any) {
-            console.error('Fetch error:', e.message);
+        } catch (e) {
+            console.error('Fetch error:', (e as Error).message);
         }
     }
 

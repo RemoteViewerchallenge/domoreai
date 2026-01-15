@@ -117,6 +117,9 @@ export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/mono
     writeFile: useCallback(async (path: string, content: string) => {
         await utils.client.vfs.write.mutate({ path, content, provider, connectionId, cardId });
         await refresh();
-    }, [utils, provider, connectionId, cardId, refresh])
+    }, [utils, provider, connectionId, cardId, refresh]),
+    mkdir: useCallback(async (path: string) => {
+        await utils.client.vfs.mkdir.mutate({ path, provider, connectionId, cardId });
+    }, [utils, provider, connectionId, cardId])
   };
 };

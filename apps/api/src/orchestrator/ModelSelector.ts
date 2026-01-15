@@ -20,7 +20,7 @@ export interface Role {
 
 export class ModelSelector {
 
-  async resolveModelForRole(role: Role, estimatedInputTokens?: number, excludedModelIds: string[] = []): Promise<string> {
+  async resolveModelForRole(role: Role, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
     const metadata = (role.metadata || {}) as RoleMetadata;
     const requirements = metadata.requirements || {};
     const minContext = requirements.minContext || 0;
@@ -30,7 +30,8 @@ export class ModelSelector {
     const where: Prisma.ModelWhereInput = {
       isActive: true,
       provider: {
-        isEnabled: true // [DB Check] Only enabled providers
+        isEnabled: true,
+        id: excludedProviderIds.length > 0 ? { notIn: excludedProviderIds } : undefined
       },
       id: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
       name: excludedModelIds.length > 0 ? { notIn: excludedModelIds } : undefined,
@@ -50,7 +51,7 @@ export class ModelSelector {
       take: 100 // Grab more candidates since we might filter many out
     });
 
-    // [RUNTIME CHECK] Filter out offline providers AND Deprioritize Google if requested
+    // [RUNTIME CHECK] Filter out offline providers AND de-prioritize Google if requested
     const validCandidates: typeof candidates = [];
     const googleCandidates: typeof candidates = [];
 
@@ -81,17 +82,15 @@ export class ModelSelector {
     // In-Memory Capability Filter
     if (requiredCaps.length > 0) {
       const capableCandidates = candidates.filter(m => {
-        // Check the Relation first, fall back to JSON specs if relation is missing (legacy)
-        const caps = m.capabilities || {};
-        // Legacy access removed to fix Typescript errors
+        const caps = (m.capabilities || {}) as Record<string, unknown>;
 
         if (requiredCaps.includes('vision')) {
-          if ((caps as any).hasVision === true) return true;
+          if (caps.hasVision === true) return true;
           return false;
         }
 
         if (requiredCaps.includes('reasoning')) {
-          if ((caps as any).hasReasoning === true) return true;
+          if (caps.hasReasoning === true) return true;
           return false;
         }
 
@@ -109,8 +108,8 @@ export class ModelSelector {
     // Context Window Filter
     if (minContext > 0) {
       const largeEnough = candidates.filter(m => {
-        // Check Capability Table first (Source of Truth)
-        const capContext = (m.capabilities as any)?.contextWindow || 0;
+        const caps = (m.capabilities || {}) as Record<string, unknown>;
+        const capContext = (caps.contextWindow as number) || 0;
         return capContext >= minContext;
       });
       if (largeEnough.length > 0) {

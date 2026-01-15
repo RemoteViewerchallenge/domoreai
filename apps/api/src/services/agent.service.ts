@@ -2,8 +2,8 @@ import { z } from "zod";
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
-import { createVolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { ModelSelector } from "../orchestrator/ModelSelector.js";
+import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
+import { ModelSelector, type Role as SelectorRole } from "../orchestrator/ModelSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
@@ -76,27 +76,44 @@ export class AgentService {
         finalUserGoal = `Context: Target Directory: ${context.targetDir}\n\n${userGoal}`;
       }
 
+      // 3. Prepare Initial Config (with Fail-Safe Resolution)
+      let resolvedModelId = modelConfig.modelId || null;
+      let resolvedProviderId = modelConfig.providerId || undefined;
+
       // 2. Resolve Role & Tools
       const rawRole = await prisma.role.findUnique({
         where: { id: roleId },
         include: { tools: { include: { tool: true } }, variants: { where: { isActive: true }, take: 1 } }
       });
 
-      let role: ExtendedRole | null = rawRole ? { ...rawRole } as ExtendedRole : null;
+      // Flatten DNA (Shared Logic with Router)
+      // Flatten DNA (Shared Logic with Router)
+      const role: ExtendedRole | null = rawRole ? { ...rawRole } as ExtendedRole : null;
       let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
-
-      // Inject DNA capabilities
+      
       if (role && rawRole?.variants?.length) {
         const v = rawRole.variants[0];
-        const cortex = (v.cortexConfig as Record<string, any>) || {};
-        const identity = (v.identityConfig as Record<string, any>) || {};
-        if (identity.systemPromptDraft) role.basePrompt = identity.systemPromptDraft;
-        if (Array.isArray(cortex.tools)) tools = Array.from(new Set([...tools, ...cortex.tools]));
+        const cortex = (v.cortexConfig as Record<string, unknown>) || {};
+        const identity = (v.identityConfig as Record<string, unknown>) || {};
+        const caps = (Array.isArray(cortex.capabilities) ? cortex.capabilities : []) as string[];
+
+        role.needsVision = caps.includes('vision');
+        role.needsCoding = caps.includes('coding');
+        role.needsReasoning = caps.includes('reasoning');
+        role.needsTools = caps.includes('tools');
+
+        if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
+            role.basePrompt = identity.systemPromptDraft;
+        }
+        
+        if (Array.isArray(cortex.tools)) {
+             const extraTools = cortex.tools as string[];
+             tools = Array.from(new Set([...tools, ...extraTools]));
+        }
+
       }
 
-      // 3. Prepare Initial Config (with Fail-Safe Resolution)
-      let resolvedModelId = modelConfig.modelId || null;
-      let resolvedProviderId = modelConfig.providerId || undefined;
+
 
       // If user provided a specific model, verify it exists/provider is active. If not, clear it to force auto-selection.
       if (resolvedModelId && resolvedProviderId) {
@@ -112,16 +129,15 @@ export class AgentService {
         const selector = new ModelSelector();
         const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
         try {
-          // Pass empty blacklist initially
-          const bestSlug = await selector.resolveModelForRole(safeRole as any, 0, []);
+          const bestSlug = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, []);
           const bestModel = await prisma.model.findUnique({ where: { id: bestSlug } });
           if (bestModel) {
             resolvedModelId = bestModel.name;
             resolvedProviderId = bestModel.providerId;
           }
-        } catch (e) {
+        } catch {
           console.error("[AgentService] Critical: Could not resolve ANY model from DB. Using emergency fallback.");
-          resolvedModelId = "llama3"; // Absolute fallback
+          resolvedModelId = "llama3";
           resolvedProviderId = "ollama";
         }
       }
@@ -137,12 +153,14 @@ export class AgentService {
         projectPrompt,
       };
 
+
       const runtime = await AgentRuntime.create(undefined, tools);
 
       // --- RESILIENCE LOOP ---
-      let agent: any;
+      let agent: VolcanoAgent | undefined;
       let initialResponse = "";
       const failedModels: string[] = [];
+      const failedProviders: string[] = [];
       const MAX_RETRIES = 4; // Generous retries
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -171,8 +189,8 @@ export class AgentService {
           console.warn(`[AgentService] ⚠️ Attempt ${attempt + 1} failed: "${msg}"`);
 
           // [CRITICAL FIX] Catch-all for "fetch", "key", "config", "provider", "found"
-          // We treat almost EVERYTHING as recoverable by switching models, because we want to Fail Open.
-          const isRecoverable = /fetch|network|connect|timeout|refused|key|config|provider|found|credential|rate|limit|quota|401|403|404|429|500|503/i.test(msg);
+          // Added 'capacity' to catch Mistral/Cerebras capacity errors
+          const isRecoverable = /fetch|network|connect|timeout|refused|key|config|provider|found|credential|rate|limit|quota|capacity|401|403|404|429|500|503/i.test(msg);
 
           if (attempt === MAX_RETRIES) {
             console.error("[AgentService] ❌ Exhausted all retries.");
@@ -206,8 +224,13 @@ export class AgentService {
             const selector = new ModelSelector();
             const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
 
-            // Ask for a new model, explicitly excluding the ones that failed
-            const fallbackId = await selector.resolveModelForRole(safeRole as any, 0, failedModels);
+            // [RESILIENCE] If provider capacity exceeded or 429, blacklist provider for this session too
+            if (agentConfig.providerId && /capacity|quota|rate|limit|429/i.test(msg)) {
+                failedProviders.push(agentConfig.providerId);
+                console.log(`[AgentService] 🛑 Provider '${agentConfig.providerId}' seems overloaded. Blacklisting for this session.`);
+            }
+
+            const fallbackId = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, failedModels, failedProviders);
             const fallback = await prisma.model.findUnique({ where: { id: fallbackId } });
 
             if (fallback) {
@@ -217,7 +240,7 @@ export class AgentService {
             } else {
               throw new Error("Selector returned no model");
             }
-          } catch (selectErr) {
+          } catch {
             console.warn("[AgentService] 🛑 Selector failed to find backup. Trying generic local fallback.");
             // Emergency Hardcoded Fallbacks if DB selection fails
             if (agentConfig.providerId !== 'ollama') {
@@ -238,9 +261,10 @@ export class AgentService {
           // Inner loop for multi-turn reliability
           for (let i = 0; i < 3; i++) {
             try {
-              return await runtime.generateWithContext(agent, role?.basePrompt || "", retryPrompt, roleId) as string;
-            } catch (e: any) {
-              console.warn(`[AgentService] Mid-conversation error: ${e.message}. Retrying...`);
+              return await runtime.generateWithContext(agent!, role?.basePrompt || "", retryPrompt, roleId) as string;
+            } catch (e: unknown) {
+              const errMsg = e instanceof Error ? e.message : String(e);
+              console.warn(`[AgentService] Mid-conversation error: ${errMsg}. Retrying...`);
               // Simple retry for now, full hot-swap logic can be added here if needed
               if (i === 2) throw e;
             }
@@ -280,8 +304,8 @@ export class AgentService {
         cardId,
         result,
         logs,
-        modelId: agent.getConfig().modelId,
-        providerId: agent.getConfig().providerId,
+        modelId: agent?.getConfig().modelId || resolvedModelId!,
+        providerId: agent?.getConfig().providerId || resolvedProviderId,
       };
 
     } catch (error) {
