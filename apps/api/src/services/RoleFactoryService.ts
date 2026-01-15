@@ -2,6 +2,13 @@ import { RoleVariant, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
 import { type BaseLLMProvider } from '../utils/BaseLLMProvider.js';
+import { ModelSelector } from '../orchestrator/ModelSelector.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 interface RoleIntent {
     name: string;
@@ -15,12 +22,12 @@ interface IdentityConfig {
     personaName: string;
     systemPromptDraft: string;
     style: string;
+    thinkingProcess: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
+    reflectionEnabled: boolean;
 }
 
 interface CortexConfig {
-    orchestration: string;
     contextRange: { min: number; max: number };
-    reflectionEnabled: boolean;
     capabilities: string[];
     tools: string[]; // List of tool names
 }
@@ -43,38 +50,80 @@ interface GovernanceConfig {
  * Now powered by the "Role Architect" Meta-Agent via ProviderManager.
  */
 export class RoleFactoryService {
-    
+
     /**
      * The Master Method: Assembles a new RoleVariant from intent
+     */
+    private async executeCodeMode<T>(code: string, timeout = 30000): Promise<T> {
+        const tempDir = path.join(process.cwd(), '.temp', 'role-builder');
+        await fs.mkdir(tempDir, { recursive: true });
+        const fileName = `architect_${Date.now()}_${Math.random().toString(36).substring(7)}.ts`;
+        const filePath = path.join(tempDir, fileName);
+
+        // Minimal Shim for Role Building
+        const SHIM = `
+const __result = {};
+const roleBuilder = {
+    setIdentity: (config) => { Object.assign(__result, { identityConfig: config }); },
+    setCortex: (config) => { Object.assign(__result, { cortexConfig: config }); },
+    setContext: (config) => { Object.assign(__result, { contextConfig: config }); },
+    setGovernance: (config) => { Object.assign(__result, { governanceConfig: config }); },
+    setTools: (tools) => { Object.assign(__result, { tools }); }
+};
+
+try {
+    ${code}
+} catch (err) {
+    console.error("RUNTIME_ERROR: " + err.message);
+    process.exit(1);
+}
+
+process.stdout.write(JSON.stringify(__result));
+`;
+
+        try {
+            await fs.writeFile(filePath, SHIM, 'utf-8');
+            const { stdout } = await execAsync(`npx tsx ${filePath}`, { timeout, cwd: tempDir });
+            return JSON.parse(stdout.trim()) as T;
+        } catch (e: any) {
+            console.error(`[RoleFactory] Code Execution Failed:`, e.stderr || e.message);
+            throw new Error(`Architect Code Execution Failed: ${e.message}`);
+        } finally {
+            try { await fs.unlink(filePath); } catch { }
+        }
+    }
+
+    /**
+     * Create a new variant of a role based on intent
      */
     async createRoleVariant(roleId: string, intent: RoleIntent): Promise<RoleVariant> {
         console.log(`[RoleFactory] 🧬 Assembling DNA for role: ${intent.name} (${intent.complexity})`);
 
-        // 0. Get the Provider (The Architect's Brain)
-        // We use the default provider for meta-tasks
-        const provider = ProviderManager.getProvider('openai') || ProviderManager.getProvider('anthropic') || ProviderManager.getProvider('ollama');
-        if (!provider) throw new Error("No Intelligence Provider available for Role Factory.");
+        // 0. Get the Provider and Model (The Architect's Brain)
+        // We use the ModelSelector to find the most capable model for reasoning/architecting
+        const { provider, modelId } = await this.getArchitectBrain();
 
         // 1. Identity Architect (LLM)
-        // Defines WHO the agent is.
-        const identityConfig = await this.identityArchitect(provider, intent);
+        // [CODE MODE] Now returns IdentityConfig via TypeScript execution
+        const identityConfig = await this.identityArchitect(modelId, intent);
 
         // 2. Cortex Architect (LLM)
         // Defines HOW the agent thinks (Orchestration, Context Range).
-        const cortexConfig = await this.cortexArchitect(provider, intent);
+        const cortexConfig = await this.cortexArchitect(modelId, intent);
 
-        // 3. Governance Architect (LLM)
-        // Defines HOW the agent is regulated (Lint, Tests).
-        const governanceConfig = await this.governanceArchitect(provider, intent);
+        // 3. Context Architect (LLM)
+        // Defines WHAT the agent remembers/accesses.
+        const contextConfig = await this.contextArchitect(modelId, intent);
 
-        // 4. Context Strategy (LLM)
-        // Defines MEMORY access.
-        const contextConfig = await this.contextArchitect(provider, intent);
+        // 4. Governance Architect (LLM)
+        // Defines rules and safety boundaries.
+        const governanceConfig = await this.governanceArchitect(modelId, intent);
 
-        // 5. Tool Architect (LLM)
-        // Determines which MCP or System tools this role needs.
-        const suggestedTools = await this.toolArchitect(provider, intent);
-        cortexConfig.tools = suggestedTools;
+        // 5. Tool Architect (LLM) - [NEW]
+        // Defines WHICH tools the agent can use.
+        // We use the same 'modelId' for consistency, or we could ask Selector for a specialized tool-picker.
+        const toolNames = await this.toolArchitect(modelId, intent);
+        cortexConfig.tools = toolNames;
 
         // 5. Persist the DNA
         const variant = await prisma.roleVariant.create({
@@ -87,44 +136,165 @@ export class RoleFactoryService {
                 isActive: true
             }
         });
-        
+
         console.log(`[RoleFactory] ✅ Born: Variant ${variant.id}`);
         return variant;
     }
 
     /**
-     * MODULE A: Identity (The Persona)
-     * "Who am I?"
+     * Resolves the best available model for the Architect to use.
      */
-    private async identityArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<IdentityConfig> {
+    private async getArchitectBrain(): Promise<{ provider: BaseLLMProvider, modelId: string }> {
+        const selector = new ModelSelector();
+
+        // Define virtual requirements for the Architect
+        // We want a smart model with reasoning if possible
+        const architectRequirements = {
+            id: 'role-architect-virtual',
+            metadata: {
+                requirements: {
+                    capabilities: ['reasoning', 'json'],
+                    minContext: 16000
+                }
+            }
+        };
+
+        try {
+            // Ask ModelSelector to pick the best model
+            const bestModelId = await selector.resolveModelForRole(architectRequirements);
+
+            // Get the provider details for this model
+            const modelDef = await prisma.model.findUnique({
+                where: { id: bestModelId },
+                include: { provider: true }
+            });
+
+            if (!modelDef || !modelDef.provider) {
+                throw new Error(`Selected model ${bestModelId} not found in DB`);
+            }
+
+            const provider = ProviderManager.getProvider(modelDef.providerId);
+            if (!provider) {
+                throw new Error(`Provider ${modelDef.providerId} for model ${bestModelId} is not initialized`);
+            }
+
+            // Resolve the actual API Model ID (e.g. "gpt-4o") from metadata
+            let apiModelId = modelDef.name; // Default to name
+            if (modelDef.providerData && typeof modelDef.providerData === 'object') {
+                const data = modelDef.providerData as any;
+                if (data.id) apiModelId = data.id;
+            }
+
+            console.log(`[RoleFactory] 🧠 Architect using ${apiModelId} (DB: ${bestModelId}) via ${modelDef.providerId}`);
+            return { provider, modelId: bestModelId }; // Return DB ID so downstream can resolve provider/slug properly
+
+        } catch (error) {
+            console.warn("[RoleFactory] ⚠️ Failed to resolve smart model via selector. Falling back to simple scan.", error);
+
+            // Fail-safe: Iterate known providers like before, but grab their first available model
+            const candidateProviders = ['openai', 'anthropic', 'openrouter', 'google', 'mistral', 'groq', 'nvidia', 'cerebras', 'ollama'];
+
+            for (const pid of candidateProviders) {
+                const provider = ProviderManager.getProvider(pid);
+                if (provider) {
+                    // Try to get a default model from this provider
+                    try {
+                        const models = await provider.getModels();
+                        if (models.length > 0) {
+                            // Pick the last one (often the most recent/capable?) 
+                            // or just the first. Let's pick the first.
+                            return { provider, modelId: models[0].id };
+                        }
+                    } catch { continue; }
+                }
+            }
+
+            throw new Error("No Intelligence Provider available for Role Factory.");
+        }
+    }
+
+    /**
+     * Helper to get provider instance from modelId
+     */
+    /**
+     * Helper to get provider instance AND api-ready model ID from DB modelId
+     */
+    private async resolveProvider(dbModelId: string): Promise<{ provider: BaseLLMProvider, apiModelId: string }> {
+        const model = await prisma.model.findUnique({ where: { id: dbModelId } });
+        if (!model) throw new Error(`Model ${dbModelId} not found`);
+
+        const provider = ProviderManager.getProvider(model.providerId);
+        if (!provider) throw new Error(`Provider ${model.providerId} not initialized`);
+
+        // Resolve API Slug
+        let apiModelId = model.name;
+        if (model.providerData && typeof model.providerData === 'object') {
+            const data = model.providerData as any;
+            if (data.id) apiModelId = data.id;
+        }
+
+        return { provider, apiModelId };
+    }
+
+    /**
+     * STAGE 1: IDENTITY
+     * Defines exactly WHO the agent is.
+     */
+    async identityArchitect(modelId: string, intent: RoleIntent): Promise<IdentityConfig> {
+        console.log(`[RoleFactory] 👤 Designing Identity for ${intent.name}...`);
+
         const prompt = `
         You are the Identity Architect.
-        Design a persona for a new AI Agent.
-        
-        Intent:
+        Design the core persona for a new AI Role.
+
+        Input Intent:
         - Name: ${intent.name}
-        - Domain: ${intent.domain}
         - Description: ${intent.description}
+        - Domain: ${intent.domain}
+        - Complexity: ${intent.complexity}
+
+        ## INSTRUCTIONS:
+        Write a generic TypeScript block to configure the identity.
+        Use the global 'roleBuilder.setIdentity(config)' function.
         
-        Output JSON with keys:
-        - personaName: A creative codename
-        - systemPromptDraft: A detailed, strict, and highly specialized system prompt (at least 5 sentences).
-        - style: Communication style (e.g., "PROFESSIONAL_CONCISE", "SOCRATIC", "AGGRESSIVE_AUDITOR").
+        Config Interface:
+        interface IdentityConfig {
+            personaName: string;
+            systemPromptDraft: string; // Write a high-quality system prompt here
+            style: 'PROFESSIONAL_CONCISE' | 'FRIENDLY_HELPFUL' | 'ACADEMIC_FORMAL' | 'CREATIVE';
+            thinkingProcess: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'CRITIC_LOOP';
+            reflectionEnabled: boolean;
+        }
+
+        ## RULES:
+        1. Write ONLY valid TypeScript code relative to the interface.
+        2. Do NOT import anything.
+        3. Call roleBuilder.setIdentity({...}) with your config.
         `;
+
+        const { provider, apiModelId } = await this.resolveProvider(modelId);
 
         try {
             const raw = await provider.generateCompletion({
-                modelId: 'gpt-4o',
-                messages: [{ role: 'system', content: 'You are a JSON generator.' }, { role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                modelId: apiModelId,
+                messages: [{ role: 'system', content: 'You are a TypeScript Geneator. Write code only.' }, { role: 'user', content: prompt }]
             });
-            return JSON.parse(raw) as IdentityConfig;
+
+            // Allow for markdown extraction if they wrap in ```
+            let code = raw;
+            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
+            if (match) code = match[1];
+
+            return await this.executeCodeMode<IdentityConfig>(code);
+
         } catch (e: unknown) {
-            console.warn("Identity Architect failed, falling back to gene pool.", e);
+            console.warn("[RoleFactory] ⚠️ Identity Architect failed, falling back to gene pool.", e);
             return {
                 personaName: intent.name,
                 systemPromptDraft: `You are ${intent.name}. ${intent.description}.`,
-                style: 'PROFESSIONAL_CONCISE'
+                style: 'PROFESSIONAL_CONCISE',
+                thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
+                reflectionEnabled: intent.complexity === 'HIGH'
             };
         }
     }
@@ -133,7 +303,7 @@ export class RoleFactoryService {
      * MODULE B: Cortex (The Brain)
      * "How do I think?"
      */
-    private async cortexArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<CortexConfig> {
+    async cortexArchitect(modelId: string, intent: RoleIntent): Promise<CortexConfig> {
         const prompt = `
         You are the Cortex Architect.
         Determine the cognitive load and orchestration strategy.
@@ -142,31 +312,48 @@ export class RoleFactoryService {
         - Complexity: ${intent.complexity}
         - Domain: ${intent.domain}
 
-        Output JSON with keys:
-        - orchestration: "SOLO" or "CHAIN_OF_THOUGHT" or "MULTI_STEP_PLANNING"
-        - contextRange: { min: number, max: number } (Token limits)
-        - reflectionEnabled: boolean (Should it verify its own steps?)
-        - capabilities: string[] (Required hardware/software features: "vision", "reasoning", "tts", "embedding", "coding")
-        `;
+        ## INSTRUCTIONS:
+        Write a generic TypeScript block to configure the cortex.
+        Use the global 'roleBuilder.setCortex(config)' function.
         
+        Config Interface:
+        interface CortexConfig {
+            contextRange: { min: number, max: number }; // Token limits (e.g. 4096-128000)
+            capabilities: string[]; // ["vision", "reasoning", "tts", "embedding"]
+            tools: string[]; // List of tool names to pre-load (e.g. "filesystem")
+        }
+
+        IMPORTANT: Be conservative with capabilities to avoid rate limits!
+        - Only include "reasoning" for deep logic/math/planning.
+        - Only include "vision" for UI/Image tasks.
+        
+        ## RULES:
+        1. Write ONLY valid TypeScript code.
+        2. Call roleBuilder.setCortex({...}) with your config.
+        `;
+
+        const { provider, apiModelId } = await this.resolveProvider(modelId);
+
         try {
             const raw = await provider.generateCompletion({
-                modelId: 'gpt-4o',
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                modelId: apiModelId,
+                messages: [{ role: 'system', content: 'You are a TypeScript Generator. Write code only.' }, { role: 'user', content: prompt }]
             });
-            return JSON.parse(raw) as CortexConfig;
+
+            let code = raw;
+            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
+            if (match) code = match[1];
+
+            return await this.executeCodeMode<CortexConfig>(code);
         } catch (e: unknown) {
-             console.warn("Cortex Architect failed, falling back to gene pool.", e);
+            console.warn("Cortex Architect failed, falling back to gene pool.", e);
             // Fallback heuristic
             const caps: string[] = [];
             if (intent.capabilities?.includes('vision')) caps.push('vision');
             if (intent.capabilities?.includes('reasoning')) caps.push('reasoning');
 
             return {
-                orchestration: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
                 contextRange: { min: 4096, max: 8192 },
-                reflectionEnabled: false,
                 capabilities: caps,
                 tools: []
             };
@@ -177,30 +364,45 @@ export class RoleFactoryService {
      * MODULE C: Context (The Memory)
      * "What do I remember?"
      */
-    private async contextArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<ContextConfig> {
+    async contextArchitect(modelId: string, intent: RoleIntent): Promise<ContextConfig> {
         const prompt = `
         You are the Context Architect.
         Determine how this agent accesses information.
 
         Intent: ${intent.domain}
 
-        Output JSON with keys:
-        - strategy: string[] (Non-exclusive! Can select multiple: "EXPLORATORY" (Find relevant files), "VECTOR_SEARCH" (RAG semantic search), "LOCUS_FOCUS" (Active file only))
-        - permissions: string[] (List of allowed paths like ["/src", "/docs"] or ["ALL"])
+        ## INSTRUCTIONS:
+        Write a generic TypeScript block using 'roleBuilder.setContext(config)'.
         
-        IMPORTANT: strategy is an ARRAY. Most roles should include "EXPLORATORY" as the base strategy.
+        Config Interface:
+        interface ContextConfig {
+            strategy: string[]; // e.g. ["EXPLORATORY", "VECTOR_SEARCH", "LOCUS_FOCUS"]
+            permissions: string[]; // e.g. ["/src", "/docs"] or ["ALL"]
+        }
+        
+        IMPORTANT: Most roles should include "EXPLORATORY" as the base strategy.
         `;
+
+        const { provider, apiModelId } = await this.resolveProvider(modelId);
 
         try {
             const raw = await provider.generateCompletion({
-                modelId: 'gpt-4o',
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                modelId: apiModelId,
+                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
             });
-            return JSON.parse(raw) as ContextConfig;
+
+            let code = raw;
+            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
+            if (match) code = match[1];
+
+            return await this.executeCodeMode<ContextConfig>(code);
         } catch (e: unknown) {
             console.warn("Context Architect failed, falling back to gene pool.", e);
-            return { strategy: ['EXPLORATORY'], permissions: ['ALL'] }; // Default to EXPLORATORY
+            // Fallback
+            return {
+                strategy: ['EXPLORATORY'],
+                permissions: ['ALL']
+            };
         }
     }
 
@@ -208,80 +410,95 @@ export class RoleFactoryService {
      * MODULE D: Governance (The Law)
      * "How am I judged?"
      */
-    private async governanceArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<GovernanceConfig> {
-         const prompt = `
+    async governanceArchitect(modelId: string, intent: RoleIntent): Promise<GovernanceConfig> {
+        const prompt = `
         You are the Governance Architect.
         Set the rules and assessment criteria.
 
-        Intent Domain: ${intent.domain}
+        Intent:
+        - Domain: ${intent.domain}
+        - Complexity: ${intent.complexity}
 
-        Output JSON with keys:
-        - rules: string[] (e.g., "No destructive migrations", "Use arrow functions", "Always type function parameters")
-        - assessmentStrategy: string[] (Non-exclusive! Can select multiple: "LINT_ONLY" (fast syntax check), "VISUAL_CHECK" (user confirmation), "STRICT_TEST_PASS" (must pass tests), "JUDGE" (use judge role), "LIBRARIAN" (code quality analysis))
-        - enforcementLevel: "BLOCK_ON_FAIL" or "WARN_ONLY"
+        ## INSTRUCTIONS:
+        Write a generic TypeScript block using 'roleBuilder.setGovernance(config)'.
         
-        IMPORTANT: assessmentStrategy is an ARRAY. Most coding roles should include at least ["LINT_ONLY"].
+        Config Interface:
+        interface GovernanceConfig {
+            rules: string[]; // e.g. ["Always use TypeScript", "No vague answers"]
+            assessmentStrategy: string[]; // e.g. ["LINT_ONLY", "VISUAL_CHECK", "STRICT_TEST_PASS"]
+            enforcementLevel: "LOW" | "MEDIUM" | "HIGH";
+        }
         `;
+
+        const { provider, apiModelId } = await this.resolveProvider(modelId);
 
         try {
             const raw = await provider.generateCompletion({
-                modelId: 'gpt-4o',
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                modelId: apiModelId,
+                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
             });
-            return JSON.parse(raw) as GovernanceConfig;
+
+            let code = raw;
+            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
+            if (match) code = match[1];
+
+            return await this.executeCodeMode<GovernanceConfig>(code);
         } catch (e: unknown) {
-             console.warn("Governance Architect failed, falling back to gene pool.", e);
-             return {
-                rules: [],
-                assessmentStrategy: ['LINT_ONLY'], // Array as default
-                enforcementLevel: 'WARN_ONLY'
+            console.warn("Governance Architect failed, falling back to gene pool.", e);
+            return {
+                rules: ["Verify work before submitting."],
+                assessmentStrategy: ["VISUAL_CHECK"],
+                enforcementLevel: "MEDIUM"
             };
         }
     }
 
     /**
-     * MODULE E: Tools (The Extensions)
+     * MODULE E: Tools (The Hands)
      * "What can I do?"
      */
-    private async toolArchitect(provider: BaseLLMProvider, intent: RoleIntent): Promise<string[]> {
-        // 1. Get all available tools from the database (including newly synced MCP tools)
-        const dbTools = await prisma.tool.findMany({
-            where: { isEnabled: true },
-            select: { name: true, description: true }
-        });
-
-        const toolsList = dbTools.map((t: { name: string; description: string }) => `- ${t.name}: ${t.description}`).join('\n');
-
+    async toolArchitect(modelId: string, intent: RoleIntent): Promise<string[]> {
         const prompt = `
         You are the Tool Architect.
-        Select the most appropriate tools for this new AI Agent from the available inventory.
-        
+        Select the necessary tools for this agent.
+
         Intent:
         - Domain: ${intent.domain}
         - Description: ${intent.description}
         - Complexity: ${intent.complexity}
 
-        AVAILABLE TOOLS:
-        ${toolsList}
-
-        Output JSON with keys:
-        - selectedTools: string[] (The names of the tools you want to assign)
+        ## INSTRUCTIONS:
+        Write a generic TypeScript block using 'roleBuilder.setTools(tools)'.
+        
+        Available Tools:
+        - "filesystem" (Read/Write files)
+        - "terminal" (Execute commands)
+        - "browser" (Read websites)
+        - "create_role_variant" (Spawn new agents)
+        - "search_codebase" (Grep/Find files)
+        
+        ## RULES:
+        1. Write ONLY valid TypeScript code.
+        2. Call roleBuilder.setTools(["tool1", "tool2"]) with your list.
         `;
+
+        const { provider, apiModelId } = await this.resolveProvider(modelId);
 
         try {
             const raw = await provider.generateCompletion({
-                modelId: 'gpt-4o',
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                modelId: apiModelId,
+                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
             });
-            const result = JSON.parse(raw) as { selectedTools: string[] };
-            // Filter to make sure we only returned tools that actually exist
-            const validNames = new Set(dbTools.map((t: { name: string }) => t.name));
-            return result.selectedTools.filter(name => validNames.has(name));
+
+            let code = raw;
+            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
+            if (match) code = match[1];
+
+            const result = await this.executeCodeMode<{ tools: string[] }>(code);
+            return result.tools || ['filesystem', 'terminal'];
+
         } catch (e: unknown) {
-            console.warn("Tool Architect failed, falling back to basic tools.", e);
-            // Default fallback
+            console.warn("Tool Architect failed, falling back.", e);
             return ['filesystem', 'terminal'];
         }
     }
@@ -296,7 +513,7 @@ export class RoleFactoryService {
         if (existing) return existing;
 
         console.log(`[RoleFactory] 🏗️ Seeding "Nebula Architect"...`);
-        
+
         // Create the Category if needed
         let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
         if (!cat) cat = await prisma.roleCategory.create({ data: { name: 'System', order: 0 } });
@@ -313,7 +530,7 @@ You have access to the 'create_role_variant' tool to biologically spawn new agen
 When the user asks for a new agent:
 1. Clarify the Domain (Frontend, Backend, Research).
 2. Clarify the Complexity (Low/High).
-3. Ask about Special Capabilities (Vision, TTS, Embeddings) if relevant to the domain.
+3. Ask about Special Capabilities (Vision, Reasoning, TTS, Embeddings) if relevant to the domain.
 4. Use 'create_role_variant' to generate the role when you have enough intent.
 `
             }

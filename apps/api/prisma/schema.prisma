@@ -101,6 +101,7 @@ model ModelCapabilities {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @default(now()) @updatedAt
   modelId                 String?  @unique
+  modelName               String?
   contextWindow           Int?
   maxOutput               Int?
   hasVision               Boolean?
@@ -116,6 +117,10 @@ model ModelCapabilities {
   hasImageGen             Boolean?
   hasTTS                  Boolean?
   hasReasoning            Boolean?
+  hasEmbedding            Boolean?
+  hasOCR                  Boolean?
+  hasReward               Boolean?
+  hasModeration           Boolean?
   confidence              String?
   source                  String?
   specs                   Json?    @default("{}")

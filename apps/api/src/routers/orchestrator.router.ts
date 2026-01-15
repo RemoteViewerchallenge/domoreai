@@ -31,47 +31,77 @@ export const orchestratorRouter = createTRPCRouter({
       // Stubbed return to avoid Prisma dependency issues for now
       return [];
     }),
-    
+
   getActiveRegistryData: publicProcedure.query(async ({ ctx }) => {
-     // Return flat list of models for now
-     const models = await ctx.prisma.model.findMany();
-     return {
-         rows: models,
-         models: models
-     };
+    // Return list of models with capabilities and provider metadata
+    const models = await ctx.prisma.model.findMany({
+      where: { isActive: true },
+      include: {
+        capabilities: true,
+        provider: {
+          select: {
+            label: true,
+            type: true
+          }
+        }
+      }
+    });
+
+    // Normalize for UI
+    const normalized = models.map(m => {
+      const caps = m.capabilities || {} as any;
+      return {
+        ...m,
+        providerLabel: m.provider?.label,
+        specs: {
+          ...caps,
+          hasCoding: caps.specs?.coding || false,
+          isLibrarian: caps.specs?.isLibrarian || false,
+          isMedical: caps.specs?.medical || false,
+          isWeather: caps.specs?.weather || false,
+          isScience: caps.specs?.science || false,
+          hasAudioOutput: caps.hasAudioOutput || false
+        }
+      };
+    });
+
+    return {
+      rows: normalized,
+      models: normalized
+    };
   }),
 
   // Tool Example Management
   getToolExamples: publicProcedure
     .input(z.object({ toolName: z.string() }))
     .query(async ({ input, ctx }) => {
-        const tool = await ctx.prisma.tool.findUnique({
-            where: { name: input.toolName }
-        });
-        return { content: tool?.instruction || '' };
+      const tool = await ctx.prisma.tool.findUnique({
+        where: { name: input.toolName }
+      });
+      return { content: tool?.instruction || '' };
     }),
 
   updateToolExamples: protectedProcedure
     .input(z.object({ toolName: z.string(), content: z.string() }))
     .mutation(async ({ input, ctx }) => {
-        return ctx.prisma.tool.update({
-            where: { name: input.toolName },
-            data: { instruction: input.content }
-        });
+      return ctx.prisma.tool.update({
+        where: { name: input.toolName },
+        data: { instruction: input.content }
+      });
     }),
 
   dispatch: protectedProcedure
     .input(z.object({
-        prompt: z.string(),
-        contextId: z.string().optional(),
-        roleId: z.string().optional(),
-        flags: z.object({
-            limitContext: z.boolean().optional(),
-            injectState: z.boolean().optional()
-        }).optional()
+      prompt: z.string(),
+      contextId: z.string().optional(),
+      roleId: z.string().optional(),
+      flags: z.object({
+        limitContext: z.boolean().optional(),
+        injectState: z.boolean().optional()
+      }).optional()
     }))
     .mutation(async ({ input }) => {
-        console.log('[Orchestrator] Dispatch received:', input);
-        return { success: true, message: "Command dispatched successfully" };
+      console.log('[Orchestrator] Dispatch received:', input);
+      return { success: true, message: "Command dispatched successfully" };
     })
 });

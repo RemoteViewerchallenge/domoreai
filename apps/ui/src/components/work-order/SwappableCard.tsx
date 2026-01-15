@@ -12,6 +12,7 @@ import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
 import { RoleEditorCard } from './RoleEditorCard.js';
 import CompactRoleSelector from '../CompactRoleSelector.js';
+
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 
@@ -26,6 +27,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     } = useCardVFS(id);
 
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
+
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
     const agentConfig = useMemo(() => {
@@ -38,6 +40,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             maxTokens: 2048
         };
     }, [card]);
+
+    // Persistence
+    useEffect(() => {
+        const currentCard = useWorkspaceStore.getState().cards.find(c => c.id === id);
+        updateCard(id, {
+            metadata: {
+                ...(currentCard?.metadata || {}),
+                activeFile,
+                url: browserUrl
+            }
+        });
+    }, [activeFile, browserUrl, id, updateCard]);
 
     const [activeFile, setActiveFile] = useState<string>(() => {
         const meta = card?.metadata as { activeFile?: string } | undefined;
@@ -69,6 +83,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         });
     }, [activeFile, browserUrl, id, updateCard]);
 
+
     // 🟢 GOOD: Robust Default File Creation (No Crashes)
     useEffect(() => {
         if (!activeFile && viewMode === 'editor') {
@@ -80,7 +95,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     // Try to write; if it fails, try making the directory first
                     // We assume mkdir is safe to call (vfs router should handle existence checks or return success)
                     await mkdir(sessionsDir); 
-                } catch (e) {
+                } catch {
                     // Ignore if dir exists, proceed to write
                 }
 
@@ -170,13 +185,14 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     {/* 🟢 GOOD: Display only basename, but track full path */}
                     <input
                         value={getBasename(activeFile)} 
-                        onChange={(e) => {
+                        onChange={() => {
                             // Simple rename logic is complex; for now, let's treat it as a filter or visual
                             // If user really wants to change path, use File Explorer or Save As
                             // This read-only-ish view prevents "path confusion"
                         }}
                         readOnly
                         className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)] cursor-default"
+
                     />
                     <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap">
                        {activeFile.includes('/sessions/') ? '(Session)' : ''}
@@ -200,7 +216,39 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 if (t.id === 'role') {
                                     setShowRolePicker(!showRolePicker);
                                 } else {
-                                    setViewMode(t.id as any);
+                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
+                                    setShowRolePicker(false);
+                                }
+                            }}
+                            className={cn(
+                                "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
+                                (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-[var(--bg-primary)]"
+                            )}
+                        >
+                            <t.icon size={12} />
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex-1" />
+
+                {/* View Toggles */}
+                <div className="flex gap-0.5">
+                    {[
+                        { id: 'files', icon: Folder },
+                        { id: 'editor', icon: Code },
+                        { id: 'terminal', icon: Terminal },
+                        { id: 'browser', icon: Globe },
+                        { id: 'role', icon: Fingerprint }
+                    ].map(t => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                                if (t.id === 'role') {
+                                    setShowRolePicker(!showRolePicker);
+                                } else {
+                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
                                     setShowRolePicker(false);
                                 }
                             }}
@@ -215,12 +263,37 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 </div>
             </div>
 
+
             {/* 2. Content */}
             <div
                 className="flex-1 relative overflow-hidden bg-[var(--bg-background)] select-text"
                 onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
             >
-                {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => { }} onClose={() => setViewMode('editor')} />}
+                {viewMode === 'config' && (
+                    <RoleEditorCard
+                        id={id}
+                        initialRoleId={agentConfig.roleId}
+                        initialModelId={agentConfig.modelId}
+                        initialTemperature={agentConfig.temperature}
+                        initialMaxTokens={agentConfig.maxTokens}
+                        onUpdateConfig={(cfg) => {
+                            updateCard(id, {
+                                roleId: cfg.roleId,
+                                metadata: {
+                                    ...(card?.metadata || {}),
+                                    agentConfig: {
+                                        ...agentConfig,
+                                        roleId: cfg.roleId,
+                                        modelId: cfg.modelId,
+                                        temperature: cfg.temperature,
+                                        maxTokens: cfg.maxTokens
+                                    }
+                                }
+                            });
+                        }}
+                        onClose={() => setViewMode('editor')}
+                    />
+                )}
                 {viewMode === 'editor' && (
                     <SmartEditor
                         fileName={activeFile}

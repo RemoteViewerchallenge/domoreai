@@ -92,12 +92,12 @@ Write ONLY clean, executable code.
         identityConfig: {
           personaName: 'Architect Prime',
           style: 'PROFESSIONAL_CONCISE',
-          systemPromptDraft: nebulaArchitect.basePrompt
+          systemPromptDraft: nebulaArchitect.basePrompt,
+          thinkingProcess: 'CHAIN_OF_THOUGHT',
+          reflectionEnabled: true
         },
         cortexConfig: {
-          orchestration: 'CHAIN_OF_THOUGHT',
           contextRange: { min: 8192, max: 128000 },
-          reflectionEnabled: true,
           capabilities: ['reasoning', 'coding'] // Array for multi-select
         },
         governanceConfig: {
@@ -184,12 +184,12 @@ When the user asks for a new agent:
         identityConfig: {
           personaName: 'DNA Synthesizer',
           style: 'SOCRATIC',
-          systemPromptDraft: roleArchitect.basePrompt
+          systemPromptDraft: roleArchitect.basePrompt,
+          thinkingProcess: 'MULTI_STEP_PLANNING',
+          reflectionEnabled: true
         },
         cortexConfig: {
-          orchestration: 'MULTI_STEP_PLANNING',
           contextRange: { min: 8192, max: 32000 },
-          reflectionEnabled: true,
           capabilities: ['reasoning'] // Array for multi-select
         },
         governanceConfig: {
@@ -255,12 +255,12 @@ Always output your judgment in JSON:
         identityConfig: {
           personaName: 'The Gavel',
           style: 'AGGRESSIVE_AUDITOR',
-          systemPromptDraft: judgeRole.basePrompt
+          systemPromptDraft: judgeRole.basePrompt,
+          thinkingProcess: 'CHAIN_OF_THOUGHT',
+          reflectionEnabled: true
         },
         cortexConfig: {
-          orchestration: 'CHAIN_OF_THOUGHT',
           contextRange: { min: 4096, max: 32000 },
-          reflectionEnabled: true,
           capabilities: ['reasoning', 'coding']
         },
         governanceConfig: {
@@ -269,8 +269,8 @@ Always output your judgment in JSON:
           rules: ['Zero tolerance for security risks', 'Strict adherence to TypeScript strict mode']
         },
         contextConfig: {
-            strategy: ['LOCUS_FOCUS'], // Focus only on the work being judged
-            permissions: ['ALL']
+          strategy: ['LOCUS_FOCUS'], // Focus only on the work being judged
+          permissions: ['ALL']
         }
       }
     });
@@ -313,13 +313,13 @@ You use "Exploratory" context to scan the file tree and "Vector Search" to find 
         identityConfig: {
           personaName: 'Curator',
           style: 'SOCRATIC',
-          systemPromptDraft: librarianRole.basePrompt
+          systemPromptDraft: librarianRole.basePrompt,
+          thinkingProcess: 'SOLO',
+          reflectionEnabled: false
         },
         cortexConfig: {
-          orchestration: 'SOLO',
           contextRange: { min: 16000, max: 128000 },
-          reflectionEnabled: false,
-          capabilities: ['embedding'] // Heavily reliant on RAG/Embedding
+          capabilities: [] // General Chat/Knowledge role
         },
         governanceConfig: {
           assessmentStrategy: ['LINT_ONLY'],
@@ -327,8 +327,8 @@ You use "Exploratory" context to scan the file tree and "Vector Search" to find 
           rules: ['Maintain standard directory structure']
         },
         contextConfig: {
-            strategy: ['EXPLORATORY', 'VECTOR_SEARCH'], 
-            permissions: ['ALL']
+          strategy: ['EXPLORATORY', 'VECTOR_SEARCH'],
+          permissions: ['ALL']
         }
       }
     });
