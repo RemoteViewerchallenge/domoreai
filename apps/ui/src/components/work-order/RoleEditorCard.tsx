@@ -71,18 +71,20 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
             // If the role has a variant with DNA, use it
             const variant = currentRole.variants?.[0];
             if (variant) {
+                const cortexConfig = variant.cortexConfig as typeof dna.cortex;
                 setDna({
                     identity: (variant.identityConfig as typeof dna.identity) || DEFAULT_ROLE_FORM_DATA.dna.identity,
-                    cortex: (variant.cortexConfig as typeof dna.cortex) || DEFAULT_ROLE_FORM_DATA.dna.cortex,
+                    cortex: cortexConfig || DEFAULT_ROLE_FORM_DATA.dna.cortex,
                     governance: (variant.governanceConfig as typeof dna.governance) || DEFAULT_ROLE_FORM_DATA.dna.governance,
                     context: (variant.contextConfig as typeof dna.context) || DEFAULT_ROLE_FORM_DATA.dna.context,
-                    tools: (variant.toolsConfig as typeof dna.tools) || { customTools: currentRole.tools || [] }
+                    tools: { customTools: (cortexConfig?.tools as string[]) || currentRole.tools || [] }
                 });
             }
+            const metadata = (currentRole.metadata as Record<string, unknown>) || {};
             setLegacyParams({
-                temperature: currentRole.defaultTemperature || 0.7,
-                maxTokens: currentRole.defaultMaxTokens || 2048,
-                modelId: currentRole.hardcodedModelId || null
+                temperature: (metadata.defaultTemperature as number) || 0.7,
+                maxTokens: (metadata.defaultMaxTokens as number) || 2048,
+                modelId: (metadata.hardcodedModelId as string) || null
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,6 +116,17 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                      data: dna[mod] as Record<string, unknown>
                  });
              }
+
+             // 3. Persist Tuning (Legacy Params) to Role Metadata
+             await updateVariantMutation.mutateAsync({
+                 roleId,
+                 configType: 'tuning',
+                 data: {
+                     defaultTemperature: legacyParams.temperature,
+                     defaultMaxTokens: legacyParams.maxTokens,
+                     hardcodedModelId: legacyParams.modelId
+                 }
+             });
              
              toast.success("Lifeform Stabilized", { id: loadingToastId });
              void utils.role.list.invalidate();

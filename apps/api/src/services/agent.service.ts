@@ -131,6 +131,7 @@ export class AgentService {
       let agent = await createVolcanoAgent(agentConfig);
 
       // 2.5 Fetch Role to get Tools and other defaults
+      console.log(`[AgentService] Fetching configuration for roleId: ${roleId}`);
       const rawRole = await prisma.role.findUnique({
         where: { id: roleId },
         include: { 
@@ -138,6 +139,7 @@ export class AgentService {
             variants: { where: { isActive: true }, take: 1 } // Fetch DNA
         }
       });
+      console.log(`[AgentService] Found Role: ${rawRole?.name} (${rawRole?.id})`);
       
       
       // Flatten DNA (Shared Logic with Router)
@@ -166,6 +168,7 @@ export class AgentService {
       }
 
       let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
+      console.log(`[AgentService] Base Tools from DB:`, tools);
 
       // [FIX] Merge tools from the Active Variant (DNA)
       if (rawRole && rawRole.variants && rawRole.variants.length > 0) {
@@ -179,6 +182,8 @@ export class AgentService {
               tools = Array.from(new Set([...tools, ...variantTools]));
           }
       }
+      
+      console.log(`[AgentService] Final Tool List for Runtime:`, tools);
 
       // 3. Create the agent runtime with selected tools
       const runtime = await AgentRuntime.create(undefined, tools);

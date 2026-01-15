@@ -167,28 +167,32 @@ export const roleRouter = createTRPCRouter({
       },
     });
 
-    // Resolve Operational Intelligence (Model & Scope)
-    const modelSelector = new ModelSelector();
+    // OPTIMIZED: Avoid N+1 Model Resolution
+    // Only resolve hardcoded models. Otherwise, return 'Auto-Detect'.
+    
+    // 1. Collect all hardcoded model IDs
+    const hardcodedIds = new Set<string>();
+    roles.forEach(r => {
+        const meta = r.metadata as Record<string, any>;
+        if (meta?.hardcodedModelId) hardcodedIds.add(meta.hardcodedModelId);
+        
+        // Also check variant
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const variant = r.variants?.[0] as any;
+        if (variant?.hardcodedModelId) hardcodedIds.add(variant.hardcodedModelId);
+    });
 
-    // We fetch model names efficiently to avoid N+1 issues where possible,
-    // but ModelSelector logic is complex so we'll do parallel resolution.
-    // In a real high-scale app, we'd cache this or store 'currentModel' in the DB periodically.
+    // 2. Bulk Fetch Hardcoded Model Names
+    const modelMap = new Map<string, string>();
+    if (hardcodedIds.size > 0) {
+        const models = await prisma.model.findMany({
+            where: { id: { in: Array.from(hardcodedIds) } },
+            select: { id: true, name: true }
+        });
+        models.forEach(m => modelMap.set(m.id, m.name));
+    }
 
-    const enrichedRoles = await Promise.all(roles.map(async (role) => {
-       let currentModelName = 'Auto-Detect';
-       try {
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-           const modelId = await modelSelector.resolveModelForRole(role as Role & { metadata: any });
-           // Fetch the friendly name for this model ID
-           const model = await prisma.model.findUnique({
-               where: { id: modelId },
-               select: { name: true }
-           });
-           if (model) currentModelName = model.name;
-       } catch {
-           currentModelName = 'None Available';
-       }
-
+    const enrichedRoles = roles.map((role) => {
        // Scope Extraction (Simple Heuristic)
        let scope = 'Global';
        const desc = (role.description || '').toLowerCase();
@@ -199,6 +203,18 @@ export const roleRouter = createTRPCRouter({
        // DNA Fusion: Overlay Variant Config if available
        const activeVariant = role.variants?.[0];
        const fusedRole = { ...role } as RouterExtendedRole;
+       
+       // Resolve Model Name logic
+       let currentModelName = 'Auto-Detect';
+       const meta = role.metadata as Record<string, any>;
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       const variant = activeVariant as any;
+       
+       const hardcodedId = variant?.hardcodedModelId || meta?.hardcodedModelId;
+       
+       if (hardcodedId) {
+           currentModelName = modelMap.get(hardcodedId) || 'Unknown Model';
+       }
 
        if (activeVariant) {
            // Safely cast JSON config with type check
@@ -237,7 +253,7 @@ export const roleRouter = createTRPCRouter({
            scope: scope,
            healthScore: 100 // Placeholder for AssessmentService score
        };
-    }));
+    });
 
     // Return roles, or a default role if none exist (prevents UI crash)
     return enrichedRoles.length > 0
@@ -662,27 +678,37 @@ Return ONLY the system prompt, no additional commentary.`;
           const currentCortex = (variant?.cortexConfig as Record<string, unknown>) || {};
           updateData.cortexConfig = { ...currentCortex, tools } as Prisma.InputJsonValue;
 
-          // B. Sync the relational table (RoleTool) for system-wide compatibility
+          // B. Sync the relational table (RoleTool) for MCP tools only
+          // Native tools (meta, nebula, read_file, etc.) don't have Tool records
+          const NATIVE_TOOL_NAMES = [
+              'meta', 'nebula', 'read_file', 'write_file', 'list_files', 
+              'browse', 'terminal_execute', 'search_codebase', 'list_files_tree', 
+              'scan_ui_components', 'research.web_scrape', 'analysis.complexity'
+          ];
+          
+          // Filter out native tools
+          const mcpToolNames = tools.filter(name => !NATIVE_TOOL_NAMES.includes(name));
+          
+          // Clear existing RoleTool entries
           await prisma.roleTool.deleteMany({ where: { roleId: input.roleId } });
-          await prisma.roleTool.createMany({
-              data: tools.map(toolName => ({
-                  roleId: input.roleId,
-                  toolId: toolName // This assumes toolName is actually the Tool.name or ID.
-                                   // In our system, tools are often connected by name.
-              }))
-          }).catch(async () => {
-              // If ID matching fails, try by name
-              for (const name of tools) {
-                  const t = await prisma.tool.findUnique({ where: { name } });
-                  if (t) await prisma.roleTool.create({ data: { roleId: input.roleId, toolId: t.id } });
+          
+          // Create RoleTool entries ONLY for MCP tools
+          for (const toolName of mcpToolNames) {
+              const toolRecord = await prisma.tool.findUnique({ where: { name: toolName } });
+              if (toolRecord) {
+                  await prisma.roleTool.create({ 
+                      data: { roleId: input.roleId, toolId: toolRecord.id } 
+                  }).catch(e => {
+                      console.warn(`Failed to create RoleTool for ${toolName}:`, e);
+                  });
+              } else {
+                  console.warn(`Tool '${toolName}' not found in database - skipping RoleTool creation`);
               }
-          });
+          }
       }
       
-      // Special handling for 'tuning' if you want to store it in cortex or separate
-      // For now, let's mix it into cortex or handle legacy
+      // Special handling for 'tuning' - store in metadata
       if (input.configType === 'tuning') {
-          // Fetch existing role metadata
           const role = await prisma.role.findUnique({
               where: { id: input.roleId },
               select: { metadata: true }
@@ -694,7 +720,9 @@ Return ONLY the system prompt, no additional commentary.`;
               data: {
                   metadata: {
                       ...currentMeta,
-                      ...((input.data || {}))
+                      defaultTemperature: input.data.defaultTemperature,
+                      defaultMaxTokens: input.data.defaultMaxTokens,
+                      hardcodedModelId: input.data.hardcodedModelId
                   } as Prisma.InputJsonValue
               }
           });
