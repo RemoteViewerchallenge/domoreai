@@ -1,0 +1,18 @@
+         label          |    type    
+------------------------+------------
+ openrouter             | openai
+ openrouter             | openai
+ GoogleAI               | google
+ mistral                | mistral
+ openai                 | openai
+ local                  | ollama
+ Google (Auto)          | google
+ Mistral (Auto)         | mistral
+ OpenRouter (Auto)      | openrouter
+ Google AI Studio (Env) | google
+ Mistral API (Env)      | mistral
+ OpenRouter (Env)       | openrouter
+ Groq (Env)             | groq
+ Ollama (Local)         | ollama
+(14 rows)
+
