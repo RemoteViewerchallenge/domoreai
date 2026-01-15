@@ -1,43 +1,66 @@
-# Cooperative OS Glossary
+# Cooperative OS: Living Glossary
 
-## System Core
-* **LaunchPad** (Route: `/`): The system bootloader and hub. Like VSCode's "No Folder Open" state. It handles Project selection, System Configuration, and access to the "Constitution".
-* **Cooperative Workspace** (Route: `/workbench`): The primary Operating System interface. It is an adaptive environment that "eats" code to improve itself. It contains:
-    * **Swappable Cards:** Multi-modal containers (Editor, Terminal, Browser) that condense/expand based on focus.
-    * **Parallel Layouts:** Context-aware layouts (e.g., "Code Mode", "Deploy Mode").
-* **Constitution** (Route: `/settings`): The governing laws, global rules, themes, and hotkeys.
+## 🟢 The Active Core (Stable)
+These components are the "Single Source of Truth" for the current system interaction.
 
-## Orchestration & Command
-* **Command Center** (Route: `/command`): The "General's Tent." It visualizes the **Chain of Command** (Corp -> Dept -> Div -> Team -> Role). Used to route prompts and oversee high-level execution.
-* **Architect Studio** (Route: `/architect`): The "God Mode" for defining **Roles** and **Workflows**. Supports visual grouping (Circling Roles -> Crew -> Division).
-* **Code Visualizer** (Route: `/visualizer`): The "Code Eater." A live graph of the Monorepo, showing file ownership by Role. It allows viewing code (Monaco) and summaries (TipTap).
+### **Nebula UI Builder** (formerly Interface Studio)
+The visual "Text-to-App" engine. It allows users to build React interfaces using natural language.
+* **Role:** The "Factory" that builds the frontend.
+* **Status:** **Active**. This is the primary mechanism for UI generation.
+* **Underlying Tech:** Uses the **Nebula Protocol** (AST transformations) to generate safe, hallucination-free React code.
 
-## Data & Intelligence Infrastructure
-* **Triple Layer Data:** The resiliency strategy for model data:
-    1.  **Layer 1 (Provider Data):** Raw, messy JSON stored exactly as received from the API.
-    2.  **Layer 2 (AI Data):** Inferred knowledge (e.g., "This model likely supports Vision") discovered by the **Model Doctor**.
-    3.  **Layer 3 (Capabilities):** The computed "Specs" used by the application to filter models.
-* **Model Doctor:** An autonomous background service that monitors the `ModelRegistry`. It detects "sick" models (missing specs), infers missing data via heuristics or web search, and "heals" them so they can be used.
-* **Role (The Intent):** A defined persona with a specific job. Roles do not own models; they own **Requirements** (e.g., "Must have 128k context", "Must support Image Generation").
-* **Model (The Capability):** An inference engine provided by a vendor (Groq, OpenAI). Models are treated as interchangeable commodities selected **Just-In-Time** based on the Role's requirements and current API health.
+### **Cooperative Workbench**
+The primary operating environment (`/workbench`). This is the "Grid" where Humans and AI Agents collaborate.
+* **Swappable Cards:** The fundamental unit of the Workbench. A card can be a Terminal, a Code Editor, or a Browser. They are multi-modal containers that agents can populate.
+* **Smart Context:** The Workbench is aware of the active project and user focus.
 
-## Specialized Studios
-* **Data Center** (Route: `/datacenter`): "Data God Mode." Direct SQL/JSON interaction. Features **TableNodes** for visual query building (drawing lines between columns to map data).
-* **Interface Studio** (Route: `/ui-studio`): The Visual UI Factory (Craft.js) for building frontend layouts.
+### **Data Center**
+The "Engine Room" for data (`/datacenter`).
+* **Function:** Direct management of SQL databases and JSON stores.
+* **Database Browser:** A visual tool to inspect tables and run queries.
+* **Status:** **Active**. Essential for backend data verification.
 
-## Universal Components
-* **Global Context Bar:** The persistent top bar containing the **Universal AI Button**.
-* **Universal AI Button:** The "Spark" present at every level (Global, Card, Node). It carries the context of its specific container and supports Voice Input/Output.
+---
 
-## Component Map
-| Component | File Name | Route | Definition & Purpose |
-| :--- | :--- | :--- | :--- |
-| LaunchPad | `LaunchPad.tsx` | `/` | The system bootloader. The map of the OS. |
-| Agent Workbench | `AgentWorkbench.tsx` | `/workbench` | The "Doing" Grid. Where humans and agents work in Swappable Cards. |
-| Command Center | `CommandCenter.tsx` | `/command` | The "General's Tent." High-level dispatch and strategy visualization. |
-| Code Visualizer | `CodeVisualizer.tsx` | `/visualizer` | The "Code Eater." Live graph of backend dependencies. |
-| Org Structure | `OrganizationalStructure.tsx` | `/org-structure` | The "Defining" Canvas. Where Roles and Chains of Command are built. |
-| Data Center | `DataCenter.tsx` | `/datacenter` | "Data God Mode." Manages SQL/JSON and Database Browser. |
-| Interface Studio | `InterfaceStudio.tsx` | `/ui-studio` | The Visual UI Factory for building layouts. |
-| Constitution | `Constitution.tsx` | `/settings` | Global rules, themes, and system settings. |
-| Database Browser | `DatabaseBrowser.tsx` | N/A | Component for viewing tables, importing JSON, and generating SQL. |
+## 🔵 System Architecture Concepts
+
+### **Codemode (Experimental)**
+A pattern where an Agent generates executable code (JavaScript/Python) to orchestrate complex tasks, rather than calling fixed tools one by one.
+* **Why:** Allows for loops, retries, and conditional logic *inside* the tool call.
+* **Integration:** Designed to work heavily with **MCP Servers**.
+
+### **MCP (Model Context Protocol)**
+The standard for connecting AI models to external systems (Filesystem, GitHub, Postgres).
+* **Philosophy:** Tools are not internal functions; they are external **Servers**.
+* **Podman:** We use Podman containers to run these MCP servers securely.
+
+### **Volcano**
+The orchestration framework used to define high-level agent workflows (branching, loops, sub-agents).
+
+### **Exhaustive Fallbacks**
+The system's resilience strategy. It never fails on the first error. It tries:
+1.  Same Provider (Backup Model)
+2.  Different Provider (Equivalent Model)
+3.  Only then does it fail.
+
+---
+
+## 🟠 Legacy & Deprecated (The "Boneyard")
+*Do not rely on these components. They are currently broken or being refactored.*
+
+* **Command Center:** (Legacy) Old high-level strategy view.
+* **Code Visualizer:** (Legacy) The live graph view.
+* **Architect Studio:** (Legacy) The "God Mode" for role definition.
+* **Org Structure:** (Legacy) Chain of command visualizer.
+
+---
+
+## 🟣 Naming & Taxonomy Rules
+
+### **Identity vs. Implementation**
+We strictly distinguish between the *Idea* of an agent and the *Code* that runs it.
+* **The Role (Identity):** A data entity (JSON/Markdown) defining *Intent* (e.g., "Backend Developer").
+* **The Runtime (Implementation):** The TypeScript code handling execution (e.g., `AgentRuntime.ts`).
+
+### **Agent DNA**
+The configuration file that defines a Role. It contains the prompt, tool access, and context budget.
