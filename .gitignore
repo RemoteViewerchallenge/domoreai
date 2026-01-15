@@ -72,4 +72,6 @@ debug_bashrc.txt
 
 # MCP Downloads and Extracted Repos
 mcp/extracted/
+mcp/
+!mcp/*.md
 
