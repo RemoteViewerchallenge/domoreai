@@ -15,7 +15,7 @@ import { createVolcanoTelemetry } from 'volcano-sdk';
 // import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
-import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, ENCRYPTION_KEY_LENGTH, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
+import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
 
 // Initialize Telemetry
 if (process.env.VOLCANO_TELEMETRY_ENABLED === VOLCANO_TELEMETRY_ENABLED) {
@@ -34,11 +34,9 @@ async function startServer() {
   const port = API_PORT;
 
   const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '';
-  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== ENCRYPTION_KEY_LENGTH) {
-    console.error(
-      'FATAL: ENCRYPTION_KEY is not set or is not a 64-character hex string. Please set a strong 32-byte key (as 64 hex chars) in your environment variables.'
-    );
-    // process.exit(1); // Don't exit, just warn for now to allow dev
+  // Removed strict encryption key check as we are using env vars for keys now.
+  if (ENCRYPTION_KEY && ENCRYPTION_KEY.length > 0) {
+      console.log('Encryption key present (legacy check).');
   }
 
   // Apply essential middlewares
@@ -142,7 +140,7 @@ async function startServer() {
   });
 
   server.listen(port, () => {
-    (async () => {
+    void (async () => {
       console.log(`API server listening at ${API_HOST}:${port}`);
     
     // Display free model inventory
@@ -222,7 +220,7 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
     // persistentModelDoctor.stop();
     
     server.close(() => {
-      (async () => {
+      void (async () => {
         console.log('HTTP server closed.');      
       wsService.close(); // Assuming WebSocketService has a .close() method
       await shutdownDb();

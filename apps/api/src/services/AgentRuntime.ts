@@ -74,7 +74,7 @@ export class AgentRuntime {
       // ... existing tool loading logic ...
       const nativeToolNames = [
         "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
-        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula"
+        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula", "meta"
       ];
       
       const { prisma } = await import("../db.js");
@@ -136,7 +136,12 @@ export class AgentRuntime {
         tools: toolsToRegister,
       });
       // ... load docs ...
-      this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
+      const metaDefinitions = (metaTools as unknown as ToolDefinition[]);
+      this.toolDocs = await loadToolDocs(
+          requestedTools, 
+          getNativeTools(this.rootPath, this.fsTools),
+          metaDefinitions
+      );
   }
 
   // ... runAgentLoop ...
@@ -169,6 +174,9 @@ export class AgentRuntime {
         typeof currentResponse === "string"
           ? currentResponse
           : JSON.stringify(currentResponse);
+
+      // [LOGGING] Capture the full thought process + code for the UI
+      allLogs.push(`[Thought Process]:\n${responseStr}`);
 
       // 1. Extract Code
       const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g;
@@ -369,7 +377,9 @@ Instructions:
         );
       } else {
         // Auto-append Protocol + Docs if tag is missing
-        const CODE_MODE_PROTOCOL = `
+        
+        // 1. Specialized Protocol for Nebula Architect (UI Builder)
+        const NEBULA_PROTOCOL = `
 🧠 System Instruction: Nebula Code Mode v2.0
 Role: You are the Nebula Engine Pilot. You do not write code to describe a UI; you write code to construct it using the live nebula runtime instance.
 
@@ -388,80 +398,57 @@ You are operating in **CODE MODE**. Your primary objective is to fulfill the use
 2. **USE CODE BLOCKS.** You MUST wrap your logic in a \` \` \`typescript block.
 3. **USE THE NEBULA OBJECT.** Call nebula methods directly: \`const id = nebula.addNode(...)\`.
 4. **CAPTURE RETURNS.** The addNode function returns an ID. YOU MUST CAPTURE IT.
-   - ✅ Good: \`const cardId = nebula.addNode(...)\`
-   - ❌ Bad: \`nebula.addNode(...)\` (ID is lost, cannot add children).
 5. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
 6. **NEVER HALLUCINATE IDs.** Do not update node_123 unless you created it or confirmed it exists in the tree.
 
-### Phase 1: The "Thinking" Protocol (Mandatory)
-Before writing code, you must output a plan:
-- LOCATE: Which node ID am I attaching to? (Check existence).
-- DEFINE: What specific tokens (Tailwind) and Layouts (flex/grid) will I use?
-- EXECUTE: Write the script.
-
-### Component Registry (Use these as "type" for addNode)
-- **Box**: Layout container (div). Default.
-- **Text**: Props: { content: string, type: 'h1'|'h2'|'h3'|'p' }.
-- **Button**: Props: { children: string, variant: 'default'|'outline'|'ghost' }.
-- **Input / Textarea**: Form inputs.
-- **Badge**: Tiny pill label.
-- **Label**: Form labels.
-- **Slider**: Range input.
-- **Icon**: Props: { name: string } (Lucide names like 'User', 'Settings').
-- **Card**: Composite (CardHeader, CardTitle, CardDescription, CardContent, CardFooter).
-- **Tabs**: Composite (TabsList, TabsTrigger [prop value], TabsContent [prop value]).
-- **AiButton / SuperAiButton**: AI trigger buttons.
-- **Image**: Props: { src: string, alt: string }.
-
-### Phase 2: API Reference (Cheat Sheet)
+### API Reference (Cheat Sheet)
 \`\`\`typescript
-// 1. ADDING NODES (Recursive)
-const parentId = "root"; // Or some captured ID
-const btnId = nebula.addNode(parentId, {
-  type: "Button",
-  props: { children: "Click Me", variant: "default" },
-  style: { background: "bg-primary", padding: "p-4" },
-  layout: { mode: "flex" }
-});
+// 1. ADDING NODES
+const btnId = nebula.addNode(parentId, { type: "Button", props: { children: "Click Me" } });
 
-// cspell:disable-next-line
-// 2. BUILDING COCHLEATED STRUCTURES (Cards)
-const cardId = nebula.addNode("root", { type: "Card", style: { width: "w-80" } });
-const headerId = nebula.addNode(cardId, { type: "CardHeader" });
-nebula.addNode(headerId, { type: "CardTitle", props: { children: "User Profile" } });
-const contentId = nebula.addNode(cardId, { type: "CardContent" });
-nebula.addNode(contentId, { type: "Text", props: { children: "Managing your account settings level here." } });
-
-// 3. UPDATING NODES
+// 2. UPDATING NODES
 nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
-
-// 3. MOVING NODES
-nebula.moveNode(btnId, "new-parent-id", 0); // Index 0
-
-// 4. INGESTION (Raw Code -> Nodes)
-const rawJSX = \`<div className="p-4">...</div>\`;
-const fragment = ast.parse(rawJSX);
-nebula.addNode(parentId, fragment);
-\`\`\`
-
-### Example Pattern: The "Iterator" (Building Lists)
-\`\`\`typescript
-const listId = nebula.addNode(parentId, { type: 'Box', layout: { mode: 'flex', direction: 'column' }});
-const items = ['Pricing', 'Features', 'About'];
-
-items.forEach(item => {
-  nebula.addNode(listId, { 
-    type: 'Button', 
-    props: { children: item, variant: 'ghost' },
-    style: { width: 'w-full', align: 'start' }
-  });
-});
 \`\`\`
 
 ### Available Tools:
-\${this.toolDocs}
+${this.toolDocs}
 `;
-        enhancedSystemPrompt += CODE_MODE_PROTOCOL;
+
+        // 2. Generic Protocol for all other agents (Role Architect, Workers, etc.)
+        const GENERIC_CODE_PROTOCOL = `
+🧠 System Instruction: TypeScript Tooling Mode
+Role: You are a specialized agent operating in a TypeScript Runtime Environment.
+
+## 🛠️ TOOL USAGE PROTOCOL
+You do not just "chat"; you **execute**. To use a tool, you must write valid TypeScript code in a markdown block.
+
+### 🚨 CRITICAL RULES:
+1. **NO CONVERSATIONAL FILLER.** Do not say "Here is the code." Just output the code.
+2. **USE CODE BLOCKS.** Wrap your logic in \` \` \`typescript.
+3. **USE THE 'system' NAMESPACE.** All tools are available under the \`system\` object.
+   - Example: \`await system.read_file({ path: "..." })\`
+   - Example: \`await system.create_role_variant({ ... })\`
+4. **ASYNC/AWAIT.** Always use \`await\` for tool calls.
+5. **CONSOLE LOGGING.** Use \`console.log\` to print results or status updates so you can see them in the next turn.
+
+### Runtime Environment:
+- **system**: The global object containing all your tools.
+- **console**: Standard console for logging.
+
+### Available Tools:
+${this.toolDocs}
+`;
+
+        // Select Protocol based on Role
+        // We need to know if this is the Nebula Architect. 
+        // We can check the roleId (if we have a reliable way to know ID) or check the toolDocs content/roleContext?
+        // Ideally we pass 'roleName' or similar. 
+        // For now, let's look at the system prompt tone or context to sniff "Nebula".
+        // Or assume GENERIC unless "nebula" tool is present?
+        
+        const isNebulaArchitect = enhancedSystemPrompt.includes("Nebula Architect") || this.toolDocs.includes("system.nebula");
+        
+        enhancedSystemPrompt += isNebulaArchitect ? NEBULA_PROTOCOL : GENERIC_CODE_PROTOCOL;
       }
     }
 

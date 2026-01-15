@@ -490,7 +490,7 @@ export class Surveyor {
         providerData.max_context_length,
         providerData.context_length,
         providerData.input_token_limit, // Google
-        (providerData.pricing as any)?.usage // OpenRouter
+        (providerData.pricing as Record<string, unknown>)?.usage // OpenRouter
       ];
 
       for (const c of candidates) {
