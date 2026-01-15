@@ -41,6 +41,17 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         };
     }, [card]);
 
+    // Persistence
+    useEffect(() => {
+        const currentCard = useWorkspaceStore.getState().cards.find(c => c.id === id);
+        updateCard(id, {
+            metadata: {
+                ...(currentCard?.metadata || {}),
+                activeFile,
+                url: browserUrl
+            }
+        });
+    }, [activeFile, browserUrl, id, updateCard]);
 
     const [activeFile, setActiveFile] = useState<string>(() => {
         const meta = card?.metadata as { activeFile?: string } | undefined;
