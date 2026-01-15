@@ -197,7 +197,27 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
       {/* 2. Content */}
       <div className="flex-1 relative overflow-hidden bg-[var(--bg-background)]">
-         {viewMode === 'config' && <RoleEditorCard id={id} initialRoleId={agentConfig.roleId} onUpdateConfig={() => {}} onClose={() => setViewMode('editor')} />}
+         {viewMode === 'config' && <RoleEditorCard 
+            id={id} 
+            initialRoleId={agentConfig.roleId} 
+            onUpdateConfig={(config) => {
+               // Update the card's metadata with the new agent config
+               updateCard(id, {
+                  metadata: {
+                     ...card?.metadata,
+                     agentConfig: {
+                        roleId: config.roleId,
+                        modelId: config.modelId,
+                        temperature: config.temperature,
+                        maxTokens: config.maxTokens,
+                        isLocked: agentConfig.isLocked
+                     }
+                  }
+               });
+               toast.success('Role Configuration Updated');
+            }} 
+            onClose={() => setViewMode('editor')} 
+         />}
          {viewMode === 'editor' && (
              <SmartEditor 
                 fileName={activeFile} 
