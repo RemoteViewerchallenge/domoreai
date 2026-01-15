@@ -1,0 +1,13 @@
+{
+  "id": "general_worker",
+  "name": "General Worker",
+  "category": "Utility",
+  "basePrompt": "You are a versatile AI assistant capable of handling various tasks competently.",
+  "minContext": 32000,
+  "maxContext": 131072,
+  "needsReasoning": false,
+  "needsCoding": false,
+  "tools": ["filesystem", "search_codebase"],
+  "defaultTemperature": 0.5,
+  "defaultMaxTokens": 2048
+}
