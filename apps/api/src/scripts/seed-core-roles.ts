@@ -77,28 +77,29 @@ Write ONLY clean, executable code.
   }
 
   // 3. Create a DNA Variant for Nebula Architect
-  const existingVariant = await prisma.roleVariant.findFirst({
+  const existingNebulaArchitectVariant = await prisma.roleVariant.findFirst({
     where: {
       roleId: nebulaArchitect.id,
       isActive: true
     }
   });
 
-  if (!existingVariant) {
+  if (!existingNebulaArchitectVariant) {
     await prisma.roleVariant.create({
       data: {
         roleId: nebulaArchitect.id,
         isActive: true,
         identityConfig: {
-          personaName: 'Architect Prime',
-          style: 'PROFESSIONAL_CONCISE',
+          personaName: 'Graph Master',
+          style: 'SOCRATIC',
           systemPromptDraft: nebulaArchitect.basePrompt,
           thinkingProcess: 'CHAIN_OF_THOUGHT',
           reflectionEnabled: true
         },
         cortexConfig: {
           contextRange: { min: 8192, max: 128000 },
-          capabilities: ['reasoning', 'coding'] // Array for multi-select
+          capabilities: ['reasoning', 'coding'], // Array for multi-select
+          tools: ['nebula']
         },
         governanceConfig: {
           assessmentStrategy: ['VISUAL_CHECK'], // Array for multi-select
@@ -117,7 +118,30 @@ Write ONLY clean, executable code.
     });
     console.log('✅ Created DNA Variant for Nebula Architect');
   } else {
-    console.log('⏭️  DNA Variant for Nebula Architect already exists');
+    interface DNAIdentity {
+        systemPromptDraft?: string;
+        [key: string]: unknown;
+    }
+    interface DNACortex {
+        tools?: string[];
+        [key: string]: unknown;
+    }
+
+    console.log('🔄 Updating existing DNA Variant for Nebula Architect...');
+    await prisma.roleVariant.update({
+        where: { id: existingNebulaArchitectVariant.id },
+        data: {
+            identityConfig: {
+                ...(existingNebulaArchitectVariant.identityConfig as unknown as DNAIdentity),
+                systemPromptDraft: nebulaArchitect.basePrompt
+            },
+            cortexConfig: {
+                ...(existingNebulaArchitectVariant.cortexConfig as unknown as DNACortex),
+                tools: ['nebula']
+            }
+        }
+    });
+    console.log('✅ Updated DNA Variant for Nebula Architect');
   }
 
   // 4. Ensure Role Architect
@@ -131,32 +155,28 @@ Write ONLY clean, executable code.
         name: 'Role Architect',
         description: 'Designs and evolves AI agent roles using the DNA architecture.',
         categoryId: systemCategory.id,
-        basePrompt: `# Role Architect
+        basePrompt: `You are the Role Architect.
+Your mission is to design specialized AI agents (Roles) for the user's workspace.
+You have access to the 'create_role_variant' tool to biologically spawn new agent lifeforms.
 
-You are the Role Architect, the master designer of AI agents in the Nebula ecosystem.
-
-## 🎯 Mission
-Your mission is to design specialized AI agents (Roles) for the user's workspace by defining their DNA configuration across five modules:
-1. **Identity**: Persona and communication style
-2. **Cortex**: Cognitive capabilities and orchestration
-3. **Governance**: Rules and quality gates
-4. **Context**: Memory strategy and permissions
-5. **Tools**: External capabilities via MCP servers
-
-## 📋 Workflow
 When the user asks for a new agent:
-1. **Clarify Domain**: Frontend, Backend, Research, Testing, etc.
-2. **Assess Complexity**: Low/Medium/High
-3. **Identify Capabilities**: Vision, Reasoning, Coding, Tools
-4. **Design DNA**: Create a complete DNA configuration
-5. **Suggest Refinements**: Based on the use case
+1. Detect Intent: Infer the Name, Description, Domain (Frontend/Backend/Creative/Research), and Complexity (LOW/MEDIUM/HIGH).
+2. DO NOT ASK FOR CLARIFICATION: Act autonomously. Make your best guess.
+3. Output ONLY a JSON tool call in this EXACT format (no markdown, no code blocks, no explanations):
 
-## ⚠️ Critical Rules
-- Always provide a complete DNA structure across all 5 modules
-- Choose appropriate orchestration strategies based on complexity
-- Set sensible defaults for context ranges and capabilities
-- Consider governance rules based on the role's domain
-- Be concise but thorough in your recommendations`,
+{
+  "tool": "system.create_role_variant",
+  "args": {
+    "intent": {
+      "name": "Role Name Here",
+      "description": "What this role does",
+      "domain": "Creative",
+      "complexity": "MEDIUM"
+    }
+  }
+}
+
+4. After the role is created, confirm to the user with a brief message.`,
         metadata: { needsReasoning: true }
       }
     });
@@ -190,7 +210,8 @@ When the user asks for a new agent:
         },
         cortexConfig: {
           contextRange: { min: 8192, max: 32000 },
-          capabilities: ['reasoning'] // Array for multi-select
+          capabilities: ['reasoning'], // Array for multi-select
+          tools: ['meta']
         },
         governanceConfig: {
           assessmentStrategy: ['LINT_ONLY'], // Array for multi-select
@@ -209,7 +230,30 @@ When the user asks for a new agent:
     });
     console.log('✅ Created DNA Variant for Role Architect');
   } else {
-    console.log('⏭️  DNA Variant for Role Architect already exists');
+    interface DNAIdentity {
+        systemPromptDraft?: string;
+        [key: string]: unknown;
+    }
+    interface DNACortex {
+        tools?: string[];
+        [key: string]: unknown;
+    }
+
+    console.log('🔄 Updating existing DNA Variant for Role Architect...');
+    await prisma.roleVariant.update({
+        where: { id: existingRoleArchitectVariant.id },
+        data: {
+            identityConfig: {
+                ...(existingRoleArchitectVariant.identityConfig as unknown as DNAIdentity),
+                systemPromptDraft: roleArchitect.basePrompt
+            },
+            cortexConfig: {
+                ...(existingRoleArchitectVariant.cortexConfig as unknown as DNACortex),
+                tools: ['meta']
+            }
+        }
+    });
+    console.log('✅ Updated DNA Variant for Role Architect');
   }
 
   // 6. Ensure System Judge (for JUDGE assessment strategy)

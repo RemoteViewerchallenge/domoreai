@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import MonacoEditor from './MonacoEditor.js'; 
-import { Bot, Loader2, Play, Copy, Save } from 'lucide-react';
+import { Bot, Loader2, Play, Copy, Save, RefreshCw } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { toast } from 'sonner';
+import { trpc } from '../utils/trpc.js';
 
 type AiResponse = string | { 
   content?: string; 
@@ -26,6 +27,7 @@ interface SmartEditorProps {
 const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void }) => {
   const [isInitializing, setIsInitializing] = React.useState(true);
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
+  const utils = trpc.useContext();
   
   const editor = useEditor({
     extensions: [
@@ -113,6 +115,14 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
                 <Bot size={12}/>
              </button>
              <button type="button" onClick={() => { if(editor) { const text = editor.getHTML(); void navigator.clipboard.writeText(text).then(() => toast.success('Copied')); } }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+              <button 
+                type="button" 
+                onClick={() => { void utils.role.list.invalidate(); toast.success('Roles refreshed'); }} 
+                title="Refresh Role Roster" 
+                className="hover:text-[var(--text-primary)] transition-colors"
+              >
+                <RefreshCw size={10}/>
+              </button>
              <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
           </div>
       }
@@ -149,6 +159,12 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
         if(editor && targetContent) {
           editor.commands.setContent(targetContent);
           onChange(targetContent);
+          
+          // Auto-refresh roles if we see a success message
+          if (targetContent.includes('✅ Role Variant Created Successfully') || targetContent.includes('biologically spawned')) {
+              void utils.role.list.invalidate();
+              toast.success("New role detected! Roster updated.");
+          }
         }
       }}
     >

@@ -1,14 +1,14 @@
 
 import { RoleFactoryService } from '../services/RoleFactoryService.js';
 import { ProviderManager } from '../services/ProviderManager.js';
-import { ModelSelector } from '../orchestrator/ModelSelector.js';
+import { LLMSelector } from '../orchestrator/LLMSelector.js';
 
 async function main() {
     console.log("Initializing ProviderManager...");
     await ProviderManager.initialize();
 
     console.log("Testing ModelSelector Capability Filtering...");
-    const selector = new ModelSelector();
+    const selector = new LLMSelector();
 
     // Test 1: Request Reasoning
     console.log("\n--- TEST 1: Requesting REASONING ---");

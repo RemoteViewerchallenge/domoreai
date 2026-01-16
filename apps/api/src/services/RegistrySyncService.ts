@@ -3,6 +3,7 @@ import { BaseLLMProvider, LLMModel } from '../utils/BaseLLMProvider.js';
 import { RawModelService } from './RawModelService.js';
 import { flattenRawData } from './dataRefinement.service.js';
 import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
 
 interface RawSnapshotData extends LLMModel {
     [key: string]: unknown;
@@ -32,14 +33,13 @@ export class RegistrySyncService {
         providers: Map<string, BaseLLMProvider>,
         providerMetadata: Map<string, ProviderMetadata>
     ) {
-        console.log('[RegistrySyncService] Starting Registry Sync (Unified)...');
+        console.log('[RegistrySyncService] Starting Smart Registry Sync...');
 
         const syncedProviders = new Set<string>();
-        const activeModelNamesByProvider = new Map<string, Set<string>>();
+        const activeModelIds = new Set<string>();
 
         for (const [providerId] of providers.entries()) {
             syncedProviders.add(providerId);
-            activeModelNamesByProvider.set(providerId, new Set());
 
             try {
                 // 1. Get readable name for logs
@@ -59,21 +59,17 @@ export class RegistrySyncService {
                 const models = snapshot.rawData as LLMModel[];
                 console.log(`[RegistrySyncService] Got ${models.length} models from ${providerLabel}.`);
 
-                // Flatten data
+                // Flatten data (Legacy support, maybe optional now?)
                 await this.flattenSnapshot(snapshot.id, providerType, models as RawSnapshotData[]);
 
                 let modelsToSync = models;
 
                 // Filter OpenRouter for free models
-                // [REFAC] Using proper typing instead of 'any'
                 if (providerType === 'openrouter') {
                     modelsToSync = models.filter(m => {
                         const modelWithPricing = m as RawModelWithPricing;
                         const p = modelWithPricing.pricing;
-                        
-                        if (!p) return false; // If no pricing info, assume not free? Or strictly check? logic said: isFreePrompt && isFreeComp
-                        
-                        // Some providers might return strings "0" or numbers 0
+                        if (!p) return false; 
                         const isFreePrompt = p.prompt === '0' || p.prompt === 0;
                         const isFreeComp = p.completion === '0' || p.completion === 0;
                         return isFreePrompt && isFreeComp;
@@ -86,52 +82,80 @@ export class RegistrySyncService {
                     continue; 
                 }
 
-                // Use a Map keyed by the FINAL DATABASE NAME (mId) to prevent unique constraint errors
-                const uniqueModels = new Map<string, RawSnapshotData>();
-                modelsToSync.forEach(m => {
-                    const mId = (m.id || m.model || m.name) as string;
-                    if (mId) {
-                        uniqueModels.set(mId, m as RawSnapshotData);
-                        activeModelNamesByProvider.get(providerId)?.add(mId);
-                    }
-                });
+                console.log(`[Registry Sync] Upserting ${modelsToSync.length} models for ${providerLabel}...`);
 
-                console.log(`[Registry Sync] Upserting ${uniqueModels.size} models for ${providerLabel}...`);
-
-                for (const m of uniqueModels.values()) {
-                    // Defensive: Extract model ID from various possible fields
-                    const modelId = (m.id || m.model || m.name) as string;
-                    if (!modelId) {
-                        console.warn(`[Registry Sync] Skipping model with no ID:`, m);
+                for (const m of modelsToSync) {
+                    // Defensive: Extract model name
+                    const rawName = (m.id || m.model || m.name) as string;
+                    if (!rawName) {
+                        console.warn(`[Registry Sync] Skipping model with no Name/ID:`, m);
                         continue;
                     }
 
+                    // [READABLE ID] Construct deterministic ID: provider:model
+                    const stableId = `${providerId}:${rawName}`;
+                    activeModelIds.add(stableId);
+
                     const cost = m.costPer1k;
+                    const providerData = m as unknown as Prisma.InputJsonValue;
+                    
+                    // [DIFF-BASED UPDATE] Calculate checksum
+                    const currentChecksum = this.calculateChecksum(providerData);
 
                     try {
+                        const existing = await prisma.model.findUnique({
+                            where: { id: stableId },
+                            select: { providerData: true, capabilities: { select: { source: true, confidence: true } } }
+                        });
+
+                        if (existing) {
+                            // Check diff
+                            const existingChecksum = this.calculateChecksum(existing.providerData as Prisma.InputJsonValue);
+                            
+                            if (existingChecksum === currentChecksum) {
+                                // No change in provider data. Ensure it's active and update seen time.
+                                // Do NOT touch aiData or Capabilities.
+                                await prisma.model.update({
+                                    where: { id: stableId },
+                                    data: { 
+                                        isActive: true, 
+                                        lastSeenAt: new Date() 
+                                    }
+                                });
+                                // console.log(`[Registry Sync] Skipped update for ${stableId} (No Change)`);
+                                continue;
+                            } else {
+                                console.log(`[Registry Sync] Detected Data Change for ${stableId}. Updating providerData...`);
+                            }
+                        }
+
+                        // Upsert Logic (New or Changed)
+                        // Note: Prisma update will only touch specified fields.
                         await prisma.model.upsert({
-                            where: {
-                                providerId_name: {
-                                    providerId: providerId,
-                                    name: modelId // Use STABLE id for search
-                                }
-                            },
+                            where: { id: stableId },
                             create: {
+                                id: stableId,
                                 providerId: providerId,
-                                name: modelId, // Use SAME stable id for creation
+                                name: rawName,
                                 costPer1k: cost || 0,
-                                providerData: m as unknown as Prisma.InputJsonValue,
-                                aiData: {}
+                                providerData: providerData,
+                                aiData: {}, // Empty for new
+                                isActive: true
                             },
                             update: {
                                 isActive: true,
                                 costPer1k: cost || 0,
-                                providerData: m as unknown as Prisma.InputJsonValue,
+                                providerData: providerData, // Update source truth
                                 lastSeenAt: new Date()
+                                // aiData and capabilities are implicitly preserved by NOT being here
                             }
                         });
+
+                        // [SPECIALIZATION] Populate Specialized Tables
+                        await this.populateSpecializedTables(stableId, rawName, m);
+
                     } catch (upsertError) {
-                        console.error(`[Registry Sync] Individual Upsert Failed for ${providerLabel} - ${modelId}:`, upsertError);
+                        console.error(`[Registry Sync] Individual Upsert Failed for ${stableId}:`, upsertError);
                     }
                 }
 
@@ -142,50 +166,84 @@ export class RegistrySyncService {
             }
         }
 
-        await this.cleanupGhostRecords(syncedProviders, activeModelNamesByProvider);
+        await this.cleanupGhostRecords(Array.from(activeModelIds));
 
         console.log('[RegistrySyncService] Registry Sync Completed.');
+    }
+
+    private static calculateChecksum(data: Prisma.InputJsonValue): string {
+        return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
+    }
+
+    public static async populateSpecializedTables(modelId: string, modelName: string, rawData: RawSnapshotData) {
+        const lowerName = modelName.toLowerCase();
+        let matchFound = false;
+        // console.log(`[Specialization] Checking ${modelId} (${lowerName}) for detailed capabilities...`);
+
+        // 1. Embedding
+        if (lowerName.includes('embed')) {
+            console.log(`[Specialization] MATCH EMBEDDING: ${modelId}`);
+            await prisma.embeddingModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId, dimensions: (rawData as any).embedding_length || 1536 },
+                update: {} // Don't overwrite if exists
+            });
+            matchFound = true;
+        }
+
+        // 2. Audio / TTS
+        if (lowerName.includes('tts') || lowerName.includes('speech') || lowerName.includes('audio')) {
+             console.log(`[Specialization] MATCH AUDIO: ${modelId}`);
+             await prisma.audioModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId },
+                update: {}
+            });
+            matchFound = true;
+        }
+
+        // [NEW] Unknown Model Fallback
+        if (!matchFound) {
+             console.log(`[Specialization] UNKNOWN: ${modelId} (No specialized traits found). Adding to UnknownModel.`);
+             await prisma.unknownModel.upsert({
+                 where: { modelId: modelId },
+                 create: { modelId: modelId, reason: 'uncategorized' },
+                 update: {}
+             });
+        }
     }
 
     private static async flattenSnapshot(snapshotId: string, providerType: string, models: RawSnapshotData[]) {
         try {
             const tableName = `${providerType}_models`;
-            console.log(`[RegistrySyncService] 🔨 Flattening data into table: ${tableName}...`);
-            const result = await flattenRawData({ snapshotId, tableName, rawData: models });
-            console.log(`[RegistrySyncService] ✅ Created dynamic table ${result.tableName} with ${result.rowCount} rows.`);
+            // console.log(`[RegistrySyncService] 🔨 Flattening data into table: ${tableName}...`);
+            await flattenRawData({ snapshotId, tableName, rawData: models });
         } catch (error) {
             console.error(`[RegistrySyncService] ❌ Failed to snapshot/flatten data for ${providerType}:`, error);
         }
     }
 
-    private static async cleanupGhostRecords(syncedProviders: Set<string>, activeModelNamesByProvider: Map<string, Set<string>>) {
-        console.log('[RegistrySyncService] Starting Cleanup of Ghost Records...');
+    private static async cleanupGhostRecords(activeIds: string[]) {
+        // [FAIL OPEN] We do NOT delete models immediately. We mark them as offline.
+        // We only touch models that were NOT in the activeIds list but ARE in the DB for known providers.
+        // Since we don't know "known providers" easily without the map, we'll simple set all "not seen" to inactive.
+        
+        if (activeIds.length === 0) return;
 
-        const activeProviderIds = Array.from(syncedProviders);
-        if (activeProviderIds.length > 0) {
-            const deletedProviders = await prisma.model.deleteMany({
-                where: {
-                    providerId: { notIn: activeProviderIds }
-                }
-            });
-            if (deletedProviders.count > 0) {
-                console.log(`[RegistrySyncService] 🧹 Deleted ${deletedProviders.count} models from inactive/removed providers.`);
+        console.log('[RegistrySyncService] Marking Ghost Records as Offline...');
+        
+        const result = await prisma.model.updateMany({
+            where: {
+                id: { notIn: activeIds },
+                isActive: true // Only update if currently active
+            },
+            data: {
+                isActive: false
             }
-        }
+        });
 
-        for (const [providerId, seenNames] of activeModelNamesByProvider.entries()) {
-            const seenList = Array.from(seenNames);
-            if (seenList.length > 0) {
-                const deletedOrphans = await prisma.model.deleteMany({
-                    where: {
-                        providerId: providerId,
-                        name: { notIn: seenList }
-                    }
-                });
-                if (deletedOrphans.count > 0) {
-                    console.log(`[RegistrySyncService] 🧹 Deleted ${deletedOrphans.count} orphaned models for ${providerId}.`);
-                }
-            }
+        if (result.count > 0) {
+            console.log(`[RegistrySyncService] 💤 Marked ${result.count} models as Offline (Ghosts).`);
         }
     }
 }

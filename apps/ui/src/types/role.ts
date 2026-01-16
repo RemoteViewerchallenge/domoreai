@@ -37,7 +37,12 @@ export interface Model {
     supportsJsonMode?: boolean;
     hasAudioInput?: boolean;
     hasAudioOutput?: boolean;
+    primaryTask?: string; // [NEW] e.g. "chat", "embedding"
   };
+  embeddingModel?: { dimensions: number; maxContext: number };
+  audioModel?: { voices?: any; sampleRates?: any };
+  imageModel?: { resolutions?: any; styles?: any };
+  safetyModel?: { categories?: any };
 }
 
 export interface RoleDNA {
