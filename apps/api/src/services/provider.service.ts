@@ -108,6 +108,8 @@ export class ProviderService {
           // @ts-ignore - Dynamic specs
           coding: !!model.capabilities?.specs?.coding
         },
+        primaryTask: (model.capabilities as any)?.primaryTask || 'chat',
+        isMultimodal: !!model.capabilities?.isMultimodal,
         capabilities
       };
     });
@@ -179,6 +181,7 @@ export class ProviderService {
         }
       });
 
+      const stableId = `${providerConfig.id}:${displayName}`;
       let dbModel;
       if (existingModel) {
         dbModel = await prisma.model.update({
@@ -193,6 +196,7 @@ export class ProviderService {
       } else {
         dbModel = await prisma.model.create({
           data: {
+            id: stableId,
             providerId: providerConfig.id,
             name: displayName,
             providerData: model as any,

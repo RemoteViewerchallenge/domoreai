@@ -54,7 +54,7 @@ model ModelRegistry {
 }
 
 model Model {
-  id               String             @id @default(cuid())
+  id               String             @id // [READABLE] Manual ID: providerId:modelName
   providerId       String
   name             String
   providerData     Json               @default("{}")
@@ -68,6 +68,13 @@ model Model {
   modelUsage       ModelUsage[]
   knowledgeVectors KnowledgeVector[]
   capabilities     ModelCapabilities?
+  
+  // Specialized Relations (One-to-One)
+  embeddingModel   EmbeddingModel?
+  audioModel       AudioModel?
+  imageModel       ImageModel?
+  safetyModel      SafetyModel?
+  unknownModel     UnknownModel?
 
   @@unique([providerId, name])
 }
@@ -124,9 +131,61 @@ model ModelCapabilities {
   confidence              String?
   source                  String?
   specs                   Json?    @default("{}")
+  primaryTask             String?  // [NEW] e.g. "chat", "embedding", "tts", "image_gen"
+  isLocal                 Boolean? @default(false) // [NEW] True for Ollama/local models (fallback only)
   model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")
+}
+
+// --- SPECIALIZED MODEL TABLES ---
+
+model EmbeddingModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  dimensions  Int?
+  maxContext  Int?
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  
+  @@map("model_embedding")
+}
+
+model AudioModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  voices      Json?    @default("[]") // Supported voice IDs
+  sampleRates Json?    @default("[]") // Supported Hz
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("model_audio")
+}
+
+model ImageModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  resolutions Json?    @default("[]") // ["1024x1024", "512x512"]
+  styles      Json?    @default("[]") // ["vivid", "natural"]
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("model_image")
+}
+
+model SafetyModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  categories  Json?    @default("[]") // ["hate", "sexual", "violence"]
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("model_safety")
+}
+
+model UnknownModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  reason      String?  @default("uncategorized")
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("model_unknown")
 }
 
 model ModelUsage {

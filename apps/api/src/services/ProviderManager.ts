@@ -1,18 +1,12 @@
-
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
 import { IProviderManager } from '../interfaces/IProviderManager.js';
 import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
-import { prisma } from '../db.js';
+import { type ProviderConfig } from '@prisma/client';
 import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, NVIDIA_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
 
 const MS_PER_SECOND = 1000;
-
-
-interface RawSnapshotData extends LLMModel {
-  [key: string]: unknown;
-}
 
 export class ProviderManager implements IProviderManager {
   private providers: Map<string, BaseLLMProvider> = new Map();
@@ -51,7 +45,7 @@ export class ProviderManager implements IProviderManager {
 
     // 2. Load from DB
     try {
-      const configs = await this.repository.getEnabledProviderConfigs();
+      const configs: ProviderConfig[] = await this.repository.getEnabledProviderConfigs();
 
       this.providers.clear();
       this.providerMetadata.clear(); // Clear metadata
@@ -186,7 +180,7 @@ export class ProviderManager implements IProviderManager {
       try {
         const models = await provider.getModels();
         allModels.push(...models);
-      } catch (error) {
+      } catch {
         console.error(`Failed to fetch models from provider ${provider.id}`);
       }
     }
@@ -244,7 +238,7 @@ export class ProviderManager implements IProviderManager {
         const provider = ProviderFactory.createProvider('ollama', { id: providerId, baseURL: ollamaHost });
         this.providers.set(providerId, provider);
       }
-    } catch (e) {
+    } catch {
       // Silent failure - Ollama just isn't running
       // console.debug(`[ProviderManager] Local Ollama not detected at ${ollamaHost}`);
     } finally {
@@ -280,11 +274,21 @@ export class ProviderManager implements IProviderManager {
     return this.instance.hasProvider(partialId);
   }
 
-  static async getAllModels(): Promise<LLMModel[]> {
-    return this.instance.getAllModels();
+  static getProviders() {
+      return this.instance.providers;
   }
 
   static async syncModelsToRegistry() {
     await this.instance.syncModelsToRegistry();
   }
+
+  static getProviderMetadata() {
+      return this.instance.providerMetadata;
+  }
+
+  static getProviderIds() {
+      return Array.from(this.instance.providers.keys());
+  }
+
+
 }

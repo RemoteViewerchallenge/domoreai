@@ -6,7 +6,7 @@ import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
 import type { TerminalMessage } from '@repo/common/agent';
 import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
-import { Terminal as TerminalIcon, ArrowRight, Sparkles } from 'lucide-react';
+import { Terminal as TerminalIcon, ArrowRight, Sparkles, Copy, Check } from 'lucide-react';
 
 interface XtermTerminalProps {
   logs: TerminalMessage[];
@@ -30,6 +30,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
   const [aiRequest, setAiRequest] = useState('');
   const [aiResult, setAiResult] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Keep logsRef in sync
   useEffect(() => {
@@ -229,6 +230,17 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
   }, [logs, processLogs]);
 
   // Handle AI Generation
+  const handleCopyBuffer = () => {
+    // @ts-expect-error custom helper
+    const log = xtermRef.current?.getBufferLog?.();
+    if (log) {
+        void navigator.clipboard.writeText(log).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }
+  };
+
   const handleGenerateCommand = () => {
     if (!aiRequest.trim()) return;
     setIsGenerating(true);
@@ -340,7 +352,19 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
       icon={TerminalIcon}
       aiContext={workingDirectory || 'Local Terminal'}
       settings={settingsContent}
-      headerEnd={headerEnd}
+      headerEnd={
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={handleCopyBuffer}
+                className="flex items-center gap-1.5 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[9px] font-bold uppercase transition-all"
+                title="Copy Terminal Buffer"
+            >
+                {copied ? <Check size={10} className="text-green-400" /> : <Copy size={10} />}
+                {copied ? 'Copied' : 'Copy Logs'}
+            </button>
+            {headerEnd}
+        </div>
+      }
       hideAiButton={true}
     >
       {content}
