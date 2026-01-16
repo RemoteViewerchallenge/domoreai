@@ -145,16 +145,25 @@ export class LLMSelector {
     }
 
     // Context Window Filter
-    if (minContext > 0) {
+    // [STRICT] Enforce contextWindow >= estimatedTokens * 1.5
+    const budgetFactor = 1.5;
+    const requiredContext = Math.max(minContext, (estimatedInputTokens || 0) * budgetFactor);
+
+    if (requiredContext > 0) {
+      console.log(`[LLMSelector] 📏 Filtering for context >= ${requiredContext} (Estimated: ${estimatedInputTokens})`);
       const largeEnough = candidates.filter(m => {
         const caps = m.capabilities;
         const capContext = caps?.contextWindow || 0;
-        return capContext >= minContext;
+        return capContext >= requiredContext;
       });
+      
       if (largeEnough.length > 0) {
         candidates = largeEnough;
       } else {
-        console.warn(`[ModelSelector] ⚠️ Could not find model with context >= ${minContext}. Using largest available.`);
+        // [HARD REQUIREMENT] If we can't find a model with enough context, we must pick the largest available
+        // but warn loudly.
+        console.warn(`[ModelSelector] 🚨 CRITICAL: No model found with context >= ${requiredContext}. Picking largest available.`);
+        candidates.sort((a, b) => (b.capabilities?.contextWindow || 0) - (a.capabilities?.contextWindow || 0));
       }
     }
 
