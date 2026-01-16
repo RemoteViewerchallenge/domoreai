@@ -72,7 +72,8 @@ export class ProviderService {
       orderBy: { lastSeenAt: 'desc' }
     });
 
-    // Background Sync: If no models seen recently or 0 models, trigger a sync
+    // Background Sync: Controlled by index.ts now to prevent duplication
+    /*
     const lastSeen = models[0]?.lastSeenAt;
     const isStale = !lastSeen || (Date.now() - lastSeen.getTime() > 10 * 60 * 1000); // 10 mins
 
@@ -81,6 +82,7 @@ export class ProviderService {
       // We don't await this to keep the response fast
       void this.syncAll().catch(err => console.error("[ProviderService] Background sync failed:", err));
     }
+    */
 
     return models.map((model) => {
       const capabilities: string[] = ['chat']; // Base capability

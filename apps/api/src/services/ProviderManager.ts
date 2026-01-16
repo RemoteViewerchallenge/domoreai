@@ -141,7 +141,7 @@ export class ProviderManager implements IProviderManager {
           console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
           // Create a stable, human-readable ID instead of a random UUID.
           // e.g., "OpenRouter (Env)" -> "openrouter-env"
-          const stableId = `${map.type}-${map.label.split(' ')[1].toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          const stableId = map.type;
 
           const now = new Date();
           await this.repository.createProviderConfig({
@@ -280,6 +280,10 @@ export class ProviderManager implements IProviderManager {
 
   static async syncModelsToRegistry() {
     await this.instance.syncModelsToRegistry();
+  }
+
+  static async getAllModels() {
+    return this.instance.getAllModels();
   }
 
   static getProviderMetadata() {
