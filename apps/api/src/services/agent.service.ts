@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { ModelSelector, type Role as SelectorRole } from "../orchestrator/ModelSelector.js";
+import { LLMSelector, type Role as SelectorRole } from "../orchestrator/LLMSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
@@ -116,8 +116,24 @@ export class AgentService {
 
 
       // If user provided a specific model, verify it exists/provider is active. If not, clear it to force auto-selection.
-      if (resolvedModelId && resolvedProviderId) {
-        if (!ProviderManager.hasProvider(resolvedProviderId)) {
+      if (resolvedModelId) {
+        // [FIX] More robust CUID detection. Stable IDs (provider:name) usually don't start with 'c' 
+        // and have colons. CUIDs start with 'c' and are 25 chars.
+        const isCuid = resolvedModelId.length === 25 && resolvedModelId.startsWith('c');
+        
+        if (isCuid) {
+             console.log(`[AgentService] 🔍 Detected CUID: ${resolvedModelId}. Attempting to resolve to stable ID...`);
+             const modelRecord = await prisma.model.findUnique({ 
+                 where: { id: resolvedModelId },
+                 include: { provider: true }
+             });
+             if (modelRecord) {
+                 resolvedModelId = modelRecord.name;
+                 resolvedProviderId = modelRecord.providerId;
+             }
+        }
+
+        if (resolvedProviderId && !ProviderManager.hasProvider(resolvedProviderId)) {
           console.warn(`[AgentService] ⚠️ Provider '${resolvedProviderId}' not found in memory. Switching to auto-selection.`);
           resolvedModelId = null;
           resolvedProviderId = undefined;
@@ -126,17 +142,20 @@ export class AgentService {
 
       // Auto-Select if needed
       if (!resolvedModelId) {
-        const selector = new ModelSelector();
+        const selector = new LLMSelector();
         const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
         try {
           const bestSlug = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, []);
-          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug } });
+          const bestModel = await prisma.model.findUnique({ 
+            where: { id: bestSlug },
+            include: { provider: true }
+          });
           if (bestModel) {
-            resolvedModelId = bestModel.name;
+            resolvedModelId = bestModel.name; // Use technical name (e.g. gpt-4o)
             resolvedProviderId = bestModel.providerId;
           }
-        } catch {
-          console.error("[AgentService] Critical: Could not resolve ANY model from DB. Using emergency fallback.");
+        } catch (e) {
+          console.error("[AgentService] Critical: Could not resolve ANY model from DB. Using emergency fallback.", e);
           resolvedModelId = "llama3";
           resolvedProviderId = "ollama";
         }
@@ -221,7 +240,7 @@ export class AgentService {
           }
 
           try {
-            const selector = new ModelSelector();
+            const selector = new LLMSelector();
             const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
 
             // [RESILIENCE] If provider capacity exceeded or 429, blacklist provider for this session too

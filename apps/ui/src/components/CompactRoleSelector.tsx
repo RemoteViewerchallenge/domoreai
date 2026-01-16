@@ -16,8 +16,12 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 1. Fetch Data
-    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery();
-    const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery();
+    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery(undefined, {
+        refetchInterval: 60000, 
+    });
+    const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery(undefined, {
+        refetchInterval: 30000, // Categories change less often
+    });
 
     const utils = trpc.useContext();
     const deleteMutation = trpc.role.delete.useMutation({

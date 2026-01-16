@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { chunkText, createEmbedding, vectorStore } from './vector.service.js';
 import { v4 as uuidv4 } from 'uuid';
+import { RegistrySyncService } from './RegistrySyncService.js';
 
 const prisma = new PrismaClient();
 
@@ -166,6 +167,9 @@ export class UnifiedIngestionService {
                       contextWindow: contextWindow
                   }
               });
+
+              // [SPECIALIZATION] Populate Specialized Tables
+              await RegistrySyncService.populateSpecializedTables(model.id, model.name, raw as any);
               
               totalIngested++;
           } catch (err) {

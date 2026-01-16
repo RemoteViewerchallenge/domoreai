@@ -14,7 +14,10 @@
     "Codemode",
     "MCP",
     "Volcano",
-    "Exhaustive Fallbacks"
+    "Exhaustive Fallbacks",
+    "Anti-Corruption Ingestion",
+    "Surveyor",
+    "Specialized Models"
   ],
   "naming_convention": {
     "roles": "kebab-case (Data/Identity)",
