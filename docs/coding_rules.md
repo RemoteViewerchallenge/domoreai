@@ -36,8 +36,17 @@
 * **Requirement:** Roles define **Intent** (Requirements), not specific Model IDs.
 * **Implementation:** The Orchestrator selects the model **Just-In-Time** based on the current health and `Exhaustive Fallback` status.
 
-## 8. Tech Stack Constraints
+## 9. The Rule of Anti-Corruption Ingestion
+* **Process:** Never ingest provider data directly into `Model`. Use `RawDataLake` first to preserve the source of truth perfectly.
+* **Cost Safety:** Filtering MUST happen in the normalization phase (Phase 2), never at the source.
+
+## 10. The Rule of Type Resilience
+* **Philosophy:** The codebase must remain buildable even if Prisma Client generation is out of sync.
+* **Practice:** If the IDE/Build fails on newly added Prisma fields, use local **Delegates** or **Interfaces** and `any` casts in the service layer until the environment stabilizes. Do not stop development for a generator lag.
+
+## 11. Tech Stack Constraints
 * **Frontend:** Next.js + React (Nebula/Workbench).
 * **Backend:** Node.js/TypeScript (Direct DB Access).
+* **Prisma:** Central DB access, but resilient to minor schema shifts.
 * **Containers:** Podman + Podman Compose.
 * **Orchestration:** Volcano.dev + MCP.

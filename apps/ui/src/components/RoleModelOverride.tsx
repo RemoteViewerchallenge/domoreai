@@ -2,16 +2,37 @@ import { useState, useMemo } from 'react';
 import type { FC } from 'react';
 import { trpc } from '../utils/trpc.js';
 import { Cpu, Save, X, Filter } from 'lucide-react';
-import type { Role } from '@prisma/client';
+import type { Role } from '../types/role.js';
 import DualRangeSlider from './ui/DualRangeSlider.js';
 
 interface RoleModelOverrideProps {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - Prisma types might not be updated yet
   role: Role & {
     hardcodedModelId?: string | null;
     hardcodedProviderId?: string | null;
   };
+}
+
+interface AvailableModel {
+  id: string;
+  name: string;
+  providerId: string;
+  providerLabel: string;
+  contextWindow: number;
+  specs: {
+    contextWindow: number;
+    maxOutput: number;
+    hasVision: boolean;
+    hasReasoning: boolean;
+    hasEmbedding: boolean;
+    hasImageGen: boolean;
+    hasOCR: boolean;
+    uncensored?: boolean;
+    coding?: boolean;
+    hasTTS?: boolean;
+  };
+  primaryTask: string;
+  isMultimodal: boolean;
+  capabilities: string[];
 }
 
 /**
@@ -43,7 +64,7 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
   const utils = trpc.useContext();
   const updateRoleMutation = trpc.role.update.useMutation({
     onSuccess: () => {
-      utils.role.list.invalidate();
+      void utils.role.list.invalidate();
       alert('Model override updated!');
     },
     onError: (error) => {
@@ -56,35 +77,38 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
     if (!availableModels) return {};
     
     // Filter first
-    const filtered = availableModels.filter((model: any) => {
+    const filtered = (availableModels as AvailableModel[] | undefined)?.filter((model) => {
         // Context Window
-        // Backend returns `contextWindow` at root level, not in specs
         const ctx = model.contextWindow || model.specs?.contextWindow || 0;
         if (ctx < minContext || ctx > maxContext) return false;
 
-        // Vision
-        if (needsVision && !model.specs?.hasVision) return false;
-        
-        // Reasoning
-        if (needsReasoning && !model.specs?.hasReasoning) return false;
+        // Capabilities & Task
+        const caps = model.specs || {};
+        const isMultimodal = model.isMultimodal || caps.hasVision;
 
-        // Capabilities strings (TTS, Embedding)
-        // Assume capabilities is an array of strings like ['tts', 'embedding', 'chat']
-        const caps = (model.capabilities || []) as string[];
-        if (needsTTS && !caps.includes('tts')) return false;
-        if (needsEmbedding && !caps.includes('embedding')) return false;
+        // Vision Requirement
+        if (needsVision && !caps.hasVision && !isMultimodal) return false;
+        
+        // Reasoning Requirement
+        if (needsReasoning && !caps.hasReasoning) return false;
+
+        // TTS Requirement
+        if (needsTTS && !(model.capabilities || []).includes('tts') && !caps.hasTTS) return false;
+
+        // Embedding Requirement
+        if (needsEmbedding && !(model.capabilities || []).includes('embedding') && !caps.hasEmbedding) return false;
 
         return true;
     });
 
-    return filtered.reduce((acc: Record<string, typeof availableModels>, model) => {
+    return (filtered || []).reduce((acc: Record<string, AvailableModel[]>, model) => {
       const datacenterLabel = model.providerLabel || 'Unknown Datacenter';
       if (!acc[datacenterLabel]) {
         acc[datacenterLabel] = [];
       }
       acc[datacenterLabel].push(model);
       return acc;
-    }, {} as Record<string, typeof availableModels>);
+    }, {} as Record<string, AvailableModel[]>);
   }, [availableModels, minContext, maxContext, needsVision, needsReasoning, needsTTS, needsEmbedding]);
 
   // 6. Handler to save the override
@@ -156,11 +180,13 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
           <option value="">-- Dynamic Selection (No Override) --</option>
           {Object.entries(groupedModels).map(([datacenterLabel, models]) => (
             <optgroup label={datacenterLabel} key={datacenterLabel}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {models.map((model: any) => (
-                <option key={model.id as string} value={`${model.providerId as string}/${model.id as string}`}>
-                  {escapeQuotes(model.name)} {model.contextWindow ? `(${Math.round(model.contextWindow/1000)}k)` : ''}
-                </option>
+              {models.map((model) => (
+                  <option key={model.id} value={`${model.providerId}/${model.id}`}>
+                    {escapeQuotes(model.name)} 
+                    {model.contextWindow ? ` (${Math.round(model.contextWindow/1000)}k)` : ''}
+                    {model.isMultimodal ? ' 👁️' : ''}
+                    {model.specs?.hasReasoning ? ' 🧠' : ''}
+                  </option>
               ))}
             </optgroup>
           ))}

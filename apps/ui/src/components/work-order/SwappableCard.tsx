@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -15,6 +15,7 @@ import CompactRoleSelector from '../CompactRoleSelector.js';
 
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
+import { HistoryPanel } from '../HistoryPanel.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -41,18 +42,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         };
     }, [card]);
 
-    // Persistence
-    useEffect(() => {
-        const currentCard = useWorkspaceStore.getState().cards.find(c => c.id === id);
-        updateCard(id, {
-            metadata: {
-                ...(currentCard?.metadata || {}),
-                activeFile,
-                url: browserUrl
-            }
-        });
-    }, [activeFile, browserUrl, id, updateCard]);
-
     const [activeFile, setActiveFile] = useState<string>(() => {
         const meta = card?.metadata as { activeFile?: string } | undefined;
         return meta?.activeFile || '';
@@ -68,6 +57,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
+    const [headerFilename, setHeaderFilename] = useState('');
+    const [showHistory, setShowHistory] = useState(false);
+
+    // Sync header filename with active file
+    useEffect(() => {
+        if (activeFile) setHeaderFilename(getBasename(activeFile));
+    }, [activeFile]);
 
     const updateCard = useWorkspaceStore(s => s.updateCard);
 
@@ -129,20 +125,42 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
     }, [activeFile, readFile]);
 
-    const handleSave = useCallback((val: string | undefined) => {
+    const handleSave = useCallback(async (val: string | undefined) => {
         if (val === undefined) return;
         setContent(val);
-        if (activeFile) {
-            // Main Save
-            void writeFile(activeFile, val);
-            
-            // 🟢 GOOD: Background Backup (Hidden)
-            // Save a copy to .nebula/backups for restoration if needed
-            const backupPath = `${currentPath}/.nebula/backups/${getBasename(activeFile)}.bak`;
-            // We use a fire-and-forget approach here, maybe debounce in real-world
-            void writeFile(backupPath, val).catch(() => { /* Silent fail on backup is ok */ });
+        if (!activeFile) return;
+
+        // Determine target path
+        const dir = activeFile.substring(0, activeFile.lastIndexOf('/'));
+        const targetPath = headerFilename ? `${dir}/${headerFilename}` : activeFile;
+
+        // Main Save
+        try {
+            await writeFile(targetPath, val);
+            if (targetPath !== activeFile) {
+                setActiveFile(targetPath);
+                toast.success(`Renamed to ${headerFilename}`);
+            }
+        } catch (err) {
+            toast.error("Failed to save", { description: (err as Error).message });
+            return;
         }
-    }, [activeFile, writeFile, currentPath]);
+
+        // 🟢 Versioning (External)
+        // Only for documents (.md, .txt)
+        if (/\.(md|txt)$/i.test(targetPath)) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const versionFilename = `${getBasename(targetPath)}.${timestamp}.md`;
+            const versionPath = `/home/guy/nebula-docs-versions/${versionFilename}`;
+            
+            // Fire-and-forget version save
+            void writeFile(versionPath, val).catch(() => { /* Silent fail on versioning is ok */ });
+        }
+
+        // Legacy Backup (Optional, keeping for safety)
+        const backupPath = `${currentPath}/.nebula/backups/${getBasename(targetPath)}.bak`;
+        void writeFile(backupPath, val).catch(() => {});
+    }, [activeFile, writeFile, currentPath, headerFilename]);
 
     const runAgent = useCallback(async (goal: string, roleIdOverride?: string) => {
         const effectiveRoleId = roleIdOverride || agentConfig.roleId;
@@ -182,57 +200,38 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
                 <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
                     <FileText size={10} className="text-[var(--text-muted)] mr-1.5" />
-                    {/* 🟢 GOOD: Display only basename, but track full path */}
                     <input
-                        value={getBasename(activeFile)} 
-                        onChange={() => {
-                            // Simple rename logic is complex; for now, let's treat it as a filter or visual
-                            // If user really wants to change path, use File Explorer or Save As
-                            // This read-only-ish view prevents "path confusion"
+                        value={headerFilename}
+                        onChange={(e) => setHeaderFilename(e.target.value)}
+                        onBlur={() => {
+                            // If user cleared it, revert to current basename
+                            if (!headerFilename) setHeaderFilename(getBasename(activeFile));
                         }}
-                        readOnly
-                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)] cursor-default"
-
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') void handleSave(content);
+                        }}
+                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)]"
+                        placeholder="filename.md"
                     />
-                    <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap">
+                    <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap ml-1">
                        {activeFile.includes('/sessions/') ? '(Session)' : ''}
                     </span>
+                    <button 
+                        onClick={() => void handleSave(content)}
+                        className="p-1 hover:text-[var(--color-primary)] text-[var(--text-muted)] transition-colors"
+                        title="Save (Ctrl+S)"
+                    >
+                        <Save size={10} />
+                    </button>
+                    <button 
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={cn("p-1 hover:text-[var(--color-primary)] transition-colors", showHistory ? "text-[var(--color-primary)]" : "text-[var(--text-muted)]")}
+                        title="Version History"
+                    >
+                        <History size={10} />
+                    </button>
                 </div>
 
-                <div className="flex-1" />
-
-                <div className="flex gap-0.5">
-                    {[
-                        { id: 'files', icon: Folder },
-                        { id: 'editor', icon: Code },
-                        { id: 'terminal', icon: Terminal },
-                        { id: 'browser', icon: Globe },
-                        { id: 'role', icon: Fingerprint }
-                    ].map(t => (
-                        <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => {
-                                if (t.id === 'role') {
-                                    setShowRolePicker(!showRolePicker);
-                                } else {
-                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
-                                    setShowRolePicker(false);
-                                }
-                            }}
-                            className={cn(
-                                "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
-                                (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-[var(--bg-primary)]"
-                            )}
-                        >
-                            <t.icon size={12} />
-                        </button>
-                    ))}
-                </div>
-
-                <div className="flex-1" />
-
-                {/* View Toggles */}
                 <div className="flex gap-0.5">
                     {[
                         { id: 'files', icon: Folder },
@@ -298,12 +297,22 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     <SmartEditor
                         fileName={activeFile}
                         content={content}
-                        onChange={handleSave}
+                        onChange={(val) => void handleSave(val)}
                         onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
                         onNavigate={(url) => {
                             setBrowserUrl(url);
                             setViewMode('browser');
                         }}
+                    />
+                )}
+                {showHistory && (
+                    <HistoryPanel 
+                        activeFile={activeFile} 
+                        onRestore={(content) => {
+                            setContent(content);
+                            void writeFile(activeFile, content); // Save restored content immediately
+                        }}
+                        onClose={() => setShowHistory(false)}
                     />
                 )}
                 {viewMode === 'diff' && (

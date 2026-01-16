@@ -19,6 +19,13 @@ The "Engine Room" for data (`/datacenter`).
 * **Function:** Direct management of SQL databases and JSON stores.
 * **Database Browser:** A visual tool to inspect tables and run queries.
 * **Status:** **Active**. Essential for backend data verification.
+### **Anti-Corruption Ingestion**
+A two-phase pipeline that protects the system from malformed or expensive provider data.
+* **Phase 1 (The Bag):** Raw JSON from providers is saved to `RawDataLake` untouched.
+* **Phase 2 (The Gatekeeper):** Data is filtered (e.g., rejecting paid models) and normalized into the `Model` table.
+
+### **Surveyor (Model Doctor)**
+An internal service that uses name-based heuristics and metadata inspection to proactively determine model capabilities (Vision, Reasoning, etc.) without making test prompts.
 
 ---
 
@@ -41,7 +48,11 @@ The orchestration framework used to define high-level agent workflows (branching
 The system's resilience strategy. It never fails on the first error. It tries:
 1.  Same Provider (Backup Model)
 2.  Different Provider (Equivalent Model)
-3.  Only then does it fail.
+3.  **Unknown Model Fallback:** Falling back to a generic model from the `UnknownModel` pool if no specialized match exists.
+4.  Only then does it fail.
+
+### **Specialized Models**
+Models linked to specific capability tables (`EmbeddingModel`, `AudioModel`, `ImageModel`) allowing for domain-specific metadata (e.g., embedding dimensions or sample rates).
 
 ---
 

@@ -143,37 +143,145 @@ async function startServer() {
     void (async () => {
       console.log(`API server listening at ${API_HOST}:${port}`);
     
-    // Display free model inventory
+    // Display comprehensive model inventory
     try {
       const { prisma } = await import('./db.js');
-      const allModels = await prisma.model.findMany({
+      // Cast to any to bypass type checking while Prisma client regenerates
+      const allModels = await (prisma.model.findMany({
         select: {
           id: true,
           name: true,
           providerId: true,
-          costPer1k: true
+          costPer1k: true,
+          capabilities: {
+            select: {
+              primaryTask: true,
+              isLocal: true,
+              hasVision: true,
+              hasReasoning: true,
+              hasEmbedding: true,
+              hasImageGen: true,
+              hasTTS: true,
+            }
+          }
         }
+      }) as any);
+      
+      // Build provider x type matrix
+      interface ProviderStats {
+        chat: number;
+        embedding: number;
+        vision: number;
+        reasoning: number;
+        imageGen: number;
+        tts: number;
+        other: number;
+        total: number;
+        isLocal: boolean;
+      }
+      
+      const providerStats: Record<string, ProviderStats> = {};
+      const totals: ProviderStats = {
+        chat: 0,
+        embedding: 0,
+        vision: 0,
+        reasoning: 0,
+        imageGen: 0,
+        tts: 0,
+        other: 0,
+        total: 0,
+        isLocal: false
+      };
+      
+      for (const model of allModels) {
+        const provider = model.providerId;
+        if (!providerStats[provider]) {
+          providerStats[provider] = {
+            chat: 0,
+            embedding: 0,
+            vision: 0,
+            reasoning: 0,
+            imageGen: 0,
+            tts: 0,
+            other: 0,
+            total: 0,
+            isLocal: false
+          };
+        }
+        
+        const caps = model.capabilities;
+        const stats = providerStats[provider];
+        
+        // Track if this provider has any local models
+        if (caps?.isLocal) {
+          stats.isLocal = true;
+        }
+        
+        // Categorize by primary task
+        const task = caps?.primaryTask || 'chat';
+        if (task === 'embedding') {
+          stats.embedding++;
+          totals.embedding++;
+        } else if (task === 'image_gen') {
+          stats.imageGen++;
+          totals.imageGen++;
+        } else if (task === 'tts') {
+          stats.tts++;
+          totals.tts++;
+        } else if (task === 'chat') {
+          stats.chat++;
+          totals.chat++;
+          
+          // Also count special capabilities
+          if (caps?.hasVision) {
+            stats.vision++;
+            totals.vision++;
+          }
+          if (caps?.hasReasoning) {
+            stats.reasoning++;
+            totals.reasoning++;
+          }
+        } else {
+          stats.other++;
+          totals.other++;
+        }
+        
+        stats.total++;
+        totals.total++;
+      }
+      
+      // Sort providers: API first, then local
+      const sortedProviders = Object.entries(providerStats).sort((a, b) => {
+        if (a[1].isLocal !== b[1].isLocal) {
+          return a[1].isLocal ? 1 : -1; // API providers first
+        }
+        return b[1].total - a[1].total; // Then by count
       });
       
-      const freeModels = allModels.filter(m => m.costPer1k === 0);
-      const freeByProvider = freeModels.reduce((acc, m) => {
-        const provider = m.providerId;
-        acc[provider] = (acc[provider] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      // Build the table
+      const pad = (str: string | number, len: number) => String(str).padEnd(len);
+      const padLeft = (str: string | number, len: number) => String(str).padStart(len);
       
       console.log(`
-┌────────────────────────────────────────┐
-│  🚀 C.O.R.E. API Started              │
-├────────────────────────────────────────┤
-│  Total Models: ${String(allModels.length).padEnd(23)}│
-│  ✅ Free Models: ${String(freeModels.length).padEnd(21)}│
-${Object.entries(freeByProvider).map(([provider, count]) => 
-  `│     - ${provider}: ${String(count).padEnd(26 - provider.length)}│`
-).join('\n')}
-│                                        │
-│  💰 Zero-Burn Mode: ACTIVE            │
-└────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🚀 C.O.R.E. Model Inventory                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Provider        │ Chat │ Embed │ Vision │ Reason │ ImgGen │ TTS │ Total   │
+├──────────────────┼──────┼───────┼────────┼────────┼────────┼─────┼─────────┤`);
+      
+      for (const [provider, stats] of sortedProviders) {
+        const localFlag = stats.isLocal ? '🏠' : '  ';
+        const providerName = pad(provider, 14);
+        console.log(
+          `│ ${localFlag}${providerName} │ ${padLeft(stats.chat, 4)} │ ${padLeft(stats.embedding, 5)} │ ${padLeft(stats.vision, 6)} │ ${padLeft(stats.reasoning, 6)} │ ${padLeft(stats.imageGen, 6)} │ ${padLeft(stats.tts, 3)} │ ${padLeft(stats.total, 7)} │`
+        );
+      }
+      
+      console.log(`├──────────────────┼──────┼───────┼────────┼────────┼────────┼─────┼─────────┤`);
+      console.log(
+        `│ ${pad('TOTAL', 16)} │ ${padLeft(totals.chat, 4)} │ ${padLeft(totals.embedding, 5)} │ ${padLeft(totals.vision, 6)} │ ${padLeft(totals.reasoning, 6)} │ ${padLeft(totals.imageGen, 6)} │ ${padLeft(totals.tts, 3)} │ ${padLeft(totals.total, 7)} │`
+      );
+      console.log(`└──────────────────┴──────┴───────┴────────┴────────┴────────┴─────┴─────────┘
       `);
     } catch (err) {
       console.warn('Could not fetch model inventory:', err);

@@ -2,13 +2,24 @@ import { RoleVariant, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
 import { type BaseLLMProvider } from '../utils/BaseLLMProvider.js';
-import { ModelSelector } from '../orchestrator/ModelSelector.js';
+import { LLMSelector } from '../orchestrator/LLMSelector.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
+
+// Type-safe helper for accessing providerData
+interface ProviderDataWithId {
+    id?: string;
+    [key: string]: unknown;
+}
+
+// Type guard for error objects
+interface ExecError extends Error {
+    stderr?: string;
+}
 
 interface RoleIntent {
     name: string;
@@ -55,6 +66,21 @@ export class RoleFactoryService {
      * The Master Method: Assembles a new RoleVariant from intent
      */
     private async executeCodeMode<T>(code: string, timeout = 30000): Promise<T> {
+        // Robust extraction: try to find a block or at least the roleBuilder call
+        let cleanCode = code;
+        
+        // 1. Try to extract triple-backtick block
+        const blockMatch = code.match(/```(?:typescript|ts|javascript|js)?\n([\s\S]*?)```/);
+        if (blockMatch) {
+            cleanCode = blockMatch[1];
+        } else {
+            // 2. See if there is a roleBuilder call anywhere
+            const callMatch = code.match(/(roleBuilder\.set[a-zA-Z]+\s*\([\s\S]*\)\s*;?)/);
+            if (callMatch) {
+                cleanCode = callMatch[1];
+            }
+        }
+
         const tempDir = path.join(process.cwd(), '.temp', 'role-builder');
         await fs.mkdir(tempDir, { recursive: true });
         const fileName = `architect_${Date.now()}_${Math.random().toString(36).substring(7)}.ts`;
@@ -63,6 +89,7 @@ export class RoleFactoryService {
         // Minimal Shim for Role Building
         const SHIM = `
 const __result = {};
+const meta = {}; // Safety shim for models hallucinating a global meta object
 const roleBuilder = {
     setIdentity: (config) => { Object.assign(__result, { identityConfig: config }); },
     setCortex: (config) => { Object.assign(__result, { cortexConfig: config }); },
@@ -72,7 +99,7 @@ const roleBuilder = {
 };
 
 try {
-    ${code}
+    ${cleanCode}
 } catch (err) {
     console.error("RUNTIME_ERROR: " + err.message);
     process.exit(1);
@@ -85,9 +112,10 @@ process.stdout.write(JSON.stringify(__result));
             await fs.writeFile(filePath, SHIM, 'utf-8');
             const { stdout } = await execAsync(`npx tsx ${filePath}`, { timeout, cwd: tempDir });
             return JSON.parse(stdout.trim()) as T;
-        } catch (e: any) {
-            console.error(`[RoleFactory] Code Execution Failed:`, e.stderr || e.message);
-            throw new Error(`Architect Code Execution Failed: ${e.message}`);
+        } catch (e: unknown) {
+            const error = e as ExecError;
+            console.error(`[RoleFactory] Code Execution Failed for snippet: ${cleanCode.substring(0, 100)}...`, error.stderr || error.message);
+            throw new Error(`Architect Code Execution Failed: ${error.message}`);
         } finally {
             try { await fs.unlink(filePath); } catch { }
         }
@@ -100,8 +128,8 @@ process.stdout.write(JSON.stringify(__result));
         console.log(`[RoleFactory] 🧬 Assembling DNA for role: ${intent.name} (${intent.complexity})`);
 
         // 0. Get the Provider and Model (The Architect's Brain)
-        // We use the ModelSelector to find the most capable model for reasoning/architecting
-        const { provider, modelId } = await this.getArchitectBrain();
+        // We use the LLMSelector to find the most capable model for reasoning/architecting
+        const { modelId } = await this.getArchitectBrain();
 
         // 1. Identity Architect (LLM)
         // [CODE MODE] Now returns IdentityConfig via TypeScript execution
@@ -145,7 +173,7 @@ process.stdout.write(JSON.stringify(__result));
      * Resolves the best available model for the Architect to use.
      */
     private async getArchitectBrain(): Promise<{ provider: BaseLLMProvider, modelId: string }> {
-        const selector = new ModelSelector();
+        const selector = new LLMSelector();
 
         // Define virtual requirements for the Architect
         // We want a smart model with reasoning if possible
@@ -160,7 +188,7 @@ process.stdout.write(JSON.stringify(__result));
         };
 
         try {
-            // Ask ModelSelector to pick the best model
+            // Ask LLMSelector to pick the best model
             const bestModelId = await selector.resolveModelForRole(architectRequirements);
 
             // Get the provider details for this model
@@ -181,8 +209,10 @@ process.stdout.write(JSON.stringify(__result));
             // Resolve the actual API Model ID (e.g. "gpt-4o") from metadata
             let apiModelId = modelDef.name; // Default to name
             if (modelDef.providerData && typeof modelDef.providerData === 'object') {
-                const data = modelDef.providerData as any;
-                if (data.id) apiModelId = data.id;
+                const data = modelDef.providerData as ProviderDataWithId;
+                if (data.id && typeof data.id === 'string') {
+                    apiModelId = data.id;
+                }
             }
 
             console.log(`[RoleFactory] 🧠 Architect using ${apiModelId} (DB: ${bestModelId}) via ${modelDef.providerId}`);
@@ -229,8 +259,10 @@ process.stdout.write(JSON.stringify(__result));
         // Resolve API Slug
         let apiModelId = model.name;
         if (model.providerData && typeof model.providerData === 'object') {
-            const data = model.providerData as any;
-            if (data.id) apiModelId = data.id;
+            const data = model.providerData as ProviderDataWithId;
+            if (data.id && typeof data.id === 'string') {
+                apiModelId = data.id;
+            }
         }
 
         return { provider, apiModelId };
@@ -269,7 +301,9 @@ process.stdout.write(JSON.stringify(__result));
         ## RULES:
         1. Write ONLY valid TypeScript code relative to the interface.
         2. Do NOT import anything.
-        3. Call roleBuilder.setIdentity({...}) with your config.
+        3. Do NOT refer to any external variables OR global objects like 'meta', 'intent', or 'prisma'.
+        4. Do NOT use spread operators (...) or ellipsis.
+        5. Call roleBuilder.setIdentity({...}) with your config.
         `;
 
         const { provider, apiModelId } = await this.resolveProvider(modelId);
@@ -277,16 +311,20 @@ process.stdout.write(JSON.stringify(__result));
         try {
             const raw = await provider.generateCompletion({
                 modelId: apiModelId,
-                messages: [{ role: 'system', content: 'You are a TypeScript Geneator. Write code only.' }, { role: 'user', content: prompt }]
+                messages: [
+                    { role: 'system', content: 'OUTPUT ONLY TYPESCRIPT CODE. NO TEXT. NO EXPLANATIONS. JUST CODE.' },
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: 'roleBuilder.setIdentity({' },
+                ]
             });
 
-            // Allow for markdown extraction if they wrap in ```
-            let code = raw;
-            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
-            if (match) code = match[1];
+            const prefix = 'roleBuilder.setIdentity({';
+            let fullCode = raw.trim();
+            if (!fullCode.includes('roleBuilder.setIdentity')) {
+                fullCode = prefix + fullCode;
+            }
 
-            return await this.executeCodeMode<IdentityConfig>(code);
-
+            return await this.executeCodeMode<IdentityConfig>(fullCode);
         } catch (e: unknown) {
             console.warn("[RoleFactory] ⚠️ Identity Architect failed, falling back to gene pool.", e);
             return {
@@ -322,14 +360,16 @@ process.stdout.write(JSON.stringify(__result));
             capabilities: string[]; // ["vision", "reasoning", "tts", "embedding"]
             tools: string[]; // List of tool names to pre-load (e.g. "filesystem")
         }
-
-        IMPORTANT: Be conservative with capabilities to avoid rate limits!
+        
+        IMPORTANT: Do NOT include "coding" as a capability. It is handled by the model choice automatically.
         - Only include "reasoning" for deep logic/math/planning.
         - Only include "vision" for UI/Image tasks.
         
         ## RULES:
         1. Write ONLY valid TypeScript code.
-        2. Call roleBuilder.setCortex({...}) with your config.
+        2. Do NOT refer to any external variables or global objects like 'meta' or 'intent'.
+        3. Do NOT use spread operators (...) or ellipsis.
+        4. Call roleBuilder.setCortex({...}) with your config.
         `;
 
         const { provider, apiModelId } = await this.resolveProvider(modelId);
@@ -337,14 +377,20 @@ process.stdout.write(JSON.stringify(__result));
         try {
             const raw = await provider.generateCompletion({
                 modelId: apiModelId,
-                messages: [{ role: 'system', content: 'You are a TypeScript Generator. Write code only.' }, { role: 'user', content: prompt }]
+                messages: [
+                    { role: 'system', content: 'OUTPUT ONLY TYPESCRIPT CODE. NO TEXT. NO EXPLANATIONS. JUST CODE.' },
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: 'roleBuilder.setCortex({' },
+                ]
             });
 
-            let code = raw;
-            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
-            if (match) code = match[1];
+            const prefix = 'roleBuilder.setCortex({';
+            let fullCode = raw.trim();
+            if (!fullCode.includes('roleBuilder.setCortex')) {
+                fullCode = prefix + fullCode;
+            }
 
-            return await this.executeCodeMode<CortexConfig>(code);
+            return await this.executeCodeMode<CortexConfig>(fullCode);
         } catch (e: unknown) {
             console.warn("Cortex Architect failed, falling back to gene pool.", e);
             // Fallback heuristic
@@ -381,6 +427,11 @@ process.stdout.write(JSON.stringify(__result));
         }
         
         IMPORTANT: Most roles should include "EXPLORATORY" as the base strategy.
+        
+        ## RULES:
+        1. Write ONLY valid TypeScript code.
+        2. Do NOT use spread operators (...) or ellipsis.
+        3. Call roleBuilder.setContext({...}) with your config.
         `;
 
         const { provider, apiModelId } = await this.resolveProvider(modelId);
@@ -388,14 +439,20 @@ process.stdout.write(JSON.stringify(__result));
         try {
             const raw = await provider.generateCompletion({
                 modelId: apiModelId,
-                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
+                messages: [
+                    { role: 'system', content: 'OUTPUT ONLY TYPESCRIPT CODE. NO TEXT. NO EXPLANATIONS. JUST CODE.' },
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: 'roleBuilder.setContext({' },
+                ]
             });
 
-            let code = raw;
-            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
-            if (match) code = match[1];
+            const prefix = 'roleBuilder.setContext({';
+            let fullCode = raw.trim();
+            if (!fullCode.includes('roleBuilder.setContext')) {
+                fullCode = prefix + fullCode;
+            }
 
-            return await this.executeCodeMode<ContextConfig>(code);
+            return await this.executeCodeMode<ContextConfig>(fullCode);
         } catch (e: unknown) {
             console.warn("Context Architect failed, falling back to gene pool.", e);
             // Fallback
@@ -428,6 +485,11 @@ process.stdout.write(JSON.stringify(__result));
             assessmentStrategy: string[]; // e.g. ["LINT_ONLY", "VISUAL_CHECK", "STRICT_TEST_PASS"]
             enforcementLevel: "LOW" | "MEDIUM" | "HIGH";
         }
+        
+        ## RULES:
+        1. Write ONLY valid TypeScript code.
+        2. Do NOT use spread operators (...) or ellipsis.
+        3. Call roleBuilder.setGovernance({...}) with your config.
         `;
 
         const { provider, apiModelId } = await this.resolveProvider(modelId);
@@ -435,14 +497,20 @@ process.stdout.write(JSON.stringify(__result));
         try {
             const raw = await provider.generateCompletion({
                 modelId: apiModelId,
-                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
+                messages: [
+                    { role: 'system', content: 'OUTPUT ONLY TYPESCRIPT CODE. NO TEXT. NO EXPLANATIONS. JUST CODE.' },
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: 'roleBuilder.setGovernance({' },
+                ]
             });
 
-            let code = raw;
-            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
-            if (match) code = match[1];
+            const prefix = 'roleBuilder.setGovernance({';
+            let fullCode = raw.trim();
+            if (!fullCode.includes('roleBuilder.setGovernance')) {
+                fullCode = prefix + fullCode;
+            }
 
-            return await this.executeCodeMode<GovernanceConfig>(code);
+            return await this.executeCodeMode<GovernanceConfig>(fullCode);
         } catch (e: unknown) {
             console.warn("Governance Architect failed, falling back to gene pool.", e);
             return {
@@ -479,7 +547,8 @@ process.stdout.write(JSON.stringify(__result));
         
         ## RULES:
         1. Write ONLY valid TypeScript code.
-        2. Call roleBuilder.setTools(["tool1", "tool2"]) with your list.
+        2. Do NOT use spread operators (...) or ellipsis.
+        3. Call roleBuilder.setTools(["tool1", "tool2"]) with your list.
         `;
 
         const { provider, apiModelId } = await this.resolveProvider(modelId);
@@ -487,14 +556,20 @@ process.stdout.write(JSON.stringify(__result));
         try {
             const raw = await provider.generateCompletion({
                 modelId: apiModelId,
-                messages: [{ role: 'system', content: 'You are a TypeScript Generator.' }, { role: 'user', content: prompt }]
+                messages: [
+                    { role: 'system', content: 'OUTPUT ONLY TYPESCRIPT CODE. NO TEXT. NO EXPLANATIONS. JUST CODE.' },
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: 'roleBuilder.setTools([' },
+                ]
             });
 
-            let code = raw;
-            const match = raw.match(/```(?:typescript|ts)?\n([\s\S]*?)```/);
-            if (match) code = match[1];
+            const prefix = 'roleBuilder.setTools([';
+            let fullCode = raw.trim();
+            if (!fullCode.includes('roleBuilder.setTools')) {
+                fullCode = prefix + fullCode;
+            }
 
-            const result = await this.executeCodeMode<{ tools: string[] }>(code);
+            const result = await this.executeCodeMode<{ tools: string[] }>(fullCode);
             return result.tools || ['filesystem', 'terminal'];
 
         } catch (e: unknown) {
@@ -508,11 +583,11 @@ process.stdout.write(JSON.stringify(__result));
      * This allows the user to chat with the factory.
      */
     async ensureArchitectRole() {
-        const name = "Nebula Architect";
+        const name = "Role Architect";
         const existing = await prisma.role.findUnique({ where: { name } });
         if (existing) return existing;
 
-        console.log(`[RoleFactory] 🏗️ Seeding "Nebula Architect"...`);
+        console.log(`[RoleFactory] 🏗️ Seeding "Role Architect"...`);
 
         // Create the Category if needed
         let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
@@ -528,10 +603,10 @@ Your mission is to design specialized AI agents (Roles) for the user's workspace
 You have access to the 'create_role_variant' tool to biologically spawn new agent lifeforms.
 
 When the user asks for a new agent:
-1. Clarify the Domain (Frontend, Backend, Research).
-2. Clarify the Complexity (Low/High).
-3. Ask about Special Capabilities (Vision, Reasoning, TTS, Embeddings) if relevant to the domain.
-4. Use 'create_role_variant' to generate the role when you have enough intent.
+1. Detect Intent: Infer the Domain (Frontend, Backend, Research), Complexity (Low/High), and Special Capabilities from the user's initial request.
+2. DO NOT ASK FOR CLARIFICATION: Act autonomously. Make your best guess for the parameters.
+3. Use 'create_role_variant' IMMEDIATELY to generate the role. 
+4. Confirm to the user that the agent has been biologically spawned.
 `
             }
         });

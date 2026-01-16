@@ -1,4 +1,5 @@
 // import { saveModelKnowledge } from './ModelKnowledgeBase.js';
+import type { Model, ProviderConfig, ModelCapabilities } from '@prisma/client';
 
 /**
  * SURVEYOR SERVICE
@@ -18,6 +19,7 @@ export interface ModelSpecs {
   };
   confidence?: string;
   source?: string;
+  primaryTask?: string;
 }
 
 interface ProviderPattern {
@@ -104,6 +106,7 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 2048,
         capabilities: ["embedding"],
+        primaryTask: "embedding",
         costPer1k: 0.00001
       }
     }
@@ -202,6 +205,33 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         maxOutput: 4096,
         capabilities: ["text", "tool_use"],
         costPer1k: 0.50
+      }
+    },
+    {
+      pattern: /text-embedding-3-(small|large)/i,
+      specs: {
+        contextWindow: 8191,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0.00002
+      }
+    },
+    {
+      pattern: /text-embedding-ada/i,
+      specs: {
+        contextWindow: 8191,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0.0001
+      }
+    },
+    {
+      pattern: /embed/i,
+      specs: {
+        contextWindow: 8191,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0.0001
       }
     }
   ],
@@ -303,16 +333,60 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         capabilities: ["moderation"],
         costPer1k: 0
       }
+    },
+    {
+      pattern: /ocr/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["ocr", "vision"],
+        primaryTask: "ocr",
+        costPer1k: 0
+      }
     }
   ],
 
   // ===== GROQ =====
   groq: [
     {
+      pattern: /whisper.*turbo/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["audio_in"],
+        primaryTask: "tts",
+        costPer1k: 0
+      }
+    },
+    {
       pattern: /whisper/i,
       specs: {
         contextWindow: 0,
-        capabilities: ["text_to_speech", "audio_in"],
+        capabilities: ["audio_in"],
+        primaryTask: "tts",
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /orpheus/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["audio_in", "text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /allam/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /llama.*prompt.*guard/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["moderation"],
+        primaryTask: "moderation",
         costPer1k: 0
       }
     },
@@ -321,6 +395,7 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 8192,
         capabilities: ["moderation"],
+        primaryTask: "moderation",
         costPer1k: 0
       }
     },
@@ -342,7 +417,15 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       }
     },
     {
-      pattern: /kimi|qwen|gpt-oss|allam/i, // Groq hosted varied models
+      pattern: /kimi|qwen|gpt-oss/i, // Groq hosted varied models
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /compound/i,
       specs: {
         contextWindow: 32768,
         capabilities: ["text"],
@@ -353,11 +436,320 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
 
   // ===== NVIDIA =====
   nvidia: [
+    // Microsoft Phi models
     {
-      pattern: /chatqa/i,
+      pattern: /phi-4.*reasoning/i,
+      specs: {
+        contextWindow: 16384,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /phi-4.*multimodal/i,
+      specs: {
+        contextWindow: 16384,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /phi-[34]/i,
+      specs: {
+        contextWindow: 16384,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    // DeepSeek models
+    {
+      pattern: /deepseek.*v3/i,
       specs: {
         contextWindow: 128000,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /deepseek.*coder/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    // Google models on NVIDIA
+    {
+      pattern: /gemma-3/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /gemma/i,  // Catch older gemma models (gemma-7b, gemma-2b, etc.)
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /codegemma/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /paligemma/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /shieldgemma/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["moderation"],
+        primaryTask: "moderation",
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /deplot/i,
+      specs: {
+        contextWindow: 4096,
+        capabilities: ["vision", "ocr"],
+        primaryTask: "ocr",
+        costPer1k: 0
+      }
+    },
+    // IBM Granite models
+    {
+      pattern: /granite.*guardian/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["moderation"],
+        primaryTask: "moderation",
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /granite.*code/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /granite-3/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    // Mistral models on NVIDIA
+    {
+      pattern: /codestral/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /devstral/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /magistral/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /ministral/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-large-3/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-large/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-small/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-7b/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-nemo/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mistral-nemotron/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mixtral-8x22b/i,
+      specs: {
+        contextWindow: 64000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mixtral-8x7b/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /mamba.*codestral/i,
+      specs: {
+        contextWindow: 32000,
+        capabilities: ["text", "code"],
+        costPer1k: 0
+      }
+    },
+    // Moonshot AI (Kimi)
+    {
+      pattern: /kimi.*thinking/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /kimi/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    // MiniMax
+    {
+      pattern: /minimax/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    // Meta Llama on NVIDIA
+    {
+      pattern: /llama-4.*maverick/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /llama-4.*scout/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /llama.*guard/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["moderation"],
+        primaryTask: "moderation",
+        costPer1k: 0
+      }
+    },
+    // NVIDIA proprietary models
+    {
+      pattern: /cosmos.*reason/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /nemotron.*parse/i,
+      specs: {
+        contextWindow: 32768,
         capabilities: ["text", "rag_optimized"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /nemoretriever/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "rag_optimized"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /nemotron.*nano/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /nemotron.*mini/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
         costPer1k: 0
       }
     },
@@ -374,6 +766,64 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 128000,
         capabilities: ["text", "reasoning"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /neva/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /nvclip/i,
+      specs: {
+        contextWindow: 4096,
+        capabilities: ["vision", "embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /vila/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /streampetr/i,
+      specs: {
+        contextWindow: 4096,
+        capabilities: ["vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /riva.*translate/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text", "translation"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /minitron/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    // Other providers on NVIDIA
+    {
+      pattern: /chatqa/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "rag_optimized"],
         costPer1k: 0
       }
     },
@@ -402,10 +852,171 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       }
     },
     {
-      pattern: /kosmos/i, // NVIDIA often hosts Microsoft's Kosmos
+      pattern: /kosmos/i,
       specs: {
         contextWindow: 32768,
         capabilities: ["text", "vision", "ocr"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /fuyu/i,
+      specs: {
+        contextWindow: 16384,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /bge-m3/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /baichuan/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /seed-oss/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /dbrx/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /sea-lion/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /marin/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /qwen/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /palmyra/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /glm/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /chatglm/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /zamba/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /eurollm|teuken/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /rakutenai/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /sarvam/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /bielik/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /stockmark/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /falcon/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /solar/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /gpt-oss/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text"],
         costPer1k: 0
       }
     }
@@ -452,10 +1063,22 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== OLLAMA (Local) =====
   ollama: [
     {
+      // Specific embedding models
+      pattern: /mxbai.*embed/i,
+      specs: {
+        contextWindow: 512,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0
+      }
+    },
+    {
+      // Generic embedding pattern
       pattern: /embed/i,
       specs: {
         contextWindow: 2048,
         capabilities: ["embedding"],
+        primaryTask: "embedding",
         costPer1k: 0
       }
     },
@@ -466,9 +1089,36 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         capabilities: ["text", "vision"],
         costPer1k: 0
       }
+    },
+    {
+      // Generic fallback for any unknown Ollama model
+      pattern: /.*/,
+      specs: {
+        contextWindow: 8192, // Conservative default
+        capabilities: ["text"],
+        primaryTask: "chat",
+        costPer1k: 0,
+        confidence: 'low',
+        source: 'ollama_fallback'
+      }
     }
   ],
 };
+
+
+interface ModelCapabilitiesDelegate {
+  upsert(args: {
+    where: { modelId: string };
+    update: Record<string, unknown>;
+    create: Record<string, unknown>;
+  }): Promise<ModelCapabilities>;
+}
+
+interface UnknownModelDelegate {
+  findMany(args: { include?: Record<string, unknown> }): Promise<Array<{ id: string; model: Model & { provider: ProviderConfig } }>>;
+  delete(args: { where: { id: string } }): Promise<unknown>;
+  upsert(args: { where: { modelId: string }; create: Record<string, unknown>; update: Record<string, unknown> }): Promise<unknown>;
+}
 
 export class Surveyor {
   /**
@@ -478,7 +1128,8 @@ export class Surveyor {
    * Inspect a model and return its specs via patterns OR raw provider data
    */
   static inspect(provider: string, modelName: string, providerData?: Record<string, unknown>): ModelSpecs | null {
-    const providerKey = provider.toLowerCase();
+    // Extract provider name from labels like "NVIDIA (Env)" or "Groq (Env)"
+    const providerKey = provider.toLowerCase().split(/[\s(]/)[0];
 
     // 0. CHECK RAW DATA FIRST (If available)
     // Sometimes the API explicitly gave us the answer, but Ingestion missed it.
@@ -541,9 +1192,10 @@ export class Surveyor {
     // 4. Fallback Heuristics
     if (!specs) {
       const lower = modelName.toLowerCase();
-      // ... (Keep existing heuristics for capabilities)
-      if (lower.includes('vision') || lower.includes('vl') || lower.includes('pixtral') || lower.includes('omni') || lower.includes('ocr')) {
-        specs = { contextWindow: 4096, capabilities: ["text", "vision", "ocr"], confidence: 'low', source: 'surveyor_heuristic' };
+      if (lower.includes('ocr')) {
+        specs = { contextWindow: 4096, capabilities: ["vision", "ocr"], primaryTask: "ocr", confidence: 'low', source: 'surveyor_heuristic' };
+      } else if (lower.includes('vision') || lower.includes('vl') || lower.includes('pixtral') || lower.includes('omni')) {
+        specs = { contextWindow: 4096, capabilities: ["text", "vision"], confidence: 'low', source: 'surveyor_heuristic' };
       } else if (lower.includes('image') || lower.includes('flux')) {
         specs = { contextWindow: 0, capabilities: ["image_gen"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('deepseek-r1') || lower.includes('reasoner')) {
@@ -559,7 +1211,7 @@ export class Surveyor {
       } else if (lower.includes('math') || lower.includes('physics')) {
         specs = { contextWindow: 4096, capabilities: ["text", "specialized_science"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('embed')) {
-        specs = { contextWindow: 2048, capabilities: ["embedding"], confidence: 'medium', source: 'surveyor_heuristic' };
+        specs = { contextWindow: 2048, capabilities: ["embedding"], primaryTask: "embedding", confidence: 'medium', source: 'surveyor_heuristic' };
       }
     }
 
@@ -591,18 +1243,89 @@ export class Surveyor {
     return specs;
   }
 
-  static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
+  public static async surveyModel(model: Model & { provider: ProviderConfig }): Promise<ModelCapabilities | null> {
     const { prisma } = await import('../db.js');
 
+    // 0. Inspect the model using the general `inspect` method
+    const specs = Surveyor.inspect(model.provider.label, model.name, model.providerData as Record<string, unknown>);
+
+    if (!specs) {
+      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.label}/${model.name}`);
+      return null;
+    }
+
+    // 1. Update ModelCapabilities record
+    // We cast to a custom interface because some fields like 'hasEmbedding' may be missing from the generated client types
+    const mc = (prisma as unknown as { modelCapabilities: ModelCapabilitiesDelegate }).modelCapabilities;
+    const capabilities = await mc.upsert({
+      where: { modelId: model.id },
+      update: {
+        contextWindow: specs.contextWindow,
+        maxOutput: specs.maxOutput,
+        confidence: specs.confidence,
+        source: specs.source,
+        hasVision: specs.capabilities.includes('vision'),
+        hasReasoning: specs.capabilities.includes('reasoning'),
+        hasEmbedding: specs.capabilities.includes('embedding'),
+        hasTTS: specs.capabilities.includes('tts'),
+        hasImageGen: specs.capabilities.includes('image_gen'),
+        isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
+        primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
+        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        specs: specs as unknown as Record<string, unknown>,
+      },
+      create: {
+        modelId: model.id,
+        contextWindow: specs.contextWindow,
+        maxOutput: specs.maxOutput,
+        confidence: specs.confidence,
+        source: specs.source,
+        hasVision: specs.capabilities.includes('vision'),
+        hasReasoning: specs.capabilities.includes('reasoning'),
+        hasEmbedding: specs.capabilities.includes('embedding'),
+        hasTTS: specs.capabilities.includes('tts'),
+        hasImageGen: specs.capabilities.includes('image_gen'),
+        isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
+        primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
+        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        specs: specs as unknown as Record<string, unknown>,
+      },
+    });
+
+    return capabilities;
+  }
+
+  static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
+    const { prisma } = await import('../db.js');
+    const p = prisma as unknown as { unknownModel: UnknownModelDelegate };
+    
+    // [UNKNOWN MODELS] Process Unchecked / Unknown Models
+    const unknowns = await p.unknownModel.findMany({
+        include: { model: { include: { provider: true } } }
+    });
+    
+    console.log(`[Surveyor] Found ${unknowns.length} unknown models to survey...`);
+    
+    for (const unknown of unknowns) {
+        const m = unknown.model;
+        if (!m.isActive) continue;
+        
+        // Survey individual model
+        const capabilities = await Surveyor.surveyModel(m);
+        if (capabilities) {
+             console.log(`[Surveyor] Successfully categorized ${m.name}. Removing from UnknownModel.`);
+             await p.unknownModel.delete({ where: { id: unknown.id } });
+        }
+    }
+
     // Find all active models to check if they need an upgrade
-    // We do this in-memory to be smarter than standard SQL filters
     const models = await prisma.model.findMany({
       where: { isActive: true },
       include: { provider: true, capabilities: true }
     });
 
     let surveyed = 0;
-    let unknown = 0;
+    let unknownCount = 0;
 
     console.log(`[Surveyor] 🔍 Auditing ${models.length} active models...`);
 
@@ -622,56 +1345,22 @@ export class Surveyor {
 
       if (!needsHelp) continue;
 
-      const specs = this.inspect(
-        model.provider.type,
-        model.name,
-        model.providerData as Record<string, unknown>
-      );
+      // Call surveyModel for existing models that need help
+      const capabilities = await Surveyor.surveyModel(model);
 
-      if (specs) {
-        // ... (Saving Logic - same as before)
-        const capsData = {
-          contextWindow: specs.contextWindow || 4096,
-          maxOutput: specs.maxOutput || 4096,
-          hasVision: specs.capabilities.includes('vision'),
-          hasAudioInput: specs.capabilities.includes('audio_in'),
-          supportsFunctionCalling: specs.capabilities.includes('tool_use'),
-          supportsJsonMode: false,
-          hasReasoning: specs.capabilities.includes('reasoning'),
-          hasImageGen: specs.capabilities.includes('image_gen'),
-          hasTTS: specs.capabilities.includes('text_to_speech'),
-          hasAudioOutput: specs.capabilities.includes('audio_out') || specs.capabilities.includes('text_to_speech'),
-          hasReward: specs.capabilities.includes('reward_model'),
-          hasModeration: specs.capabilities.includes('moderation'),
-          specs: {
-            coding: specs.capabilities.includes('code'),
-            uncensored: specs.capabilities.includes('uncensored'),
-            ocr: specs.capabilities.includes('ocr'),
-            embedding: specs.capabilities.includes('embedding'),
-            ragOptimized: specs.capabilities.includes('rag_optimized'),
-            rewardModel: specs.capabilities.includes('reward_model'),
-            moderation: specs.capabilities.includes('moderation'),
-            medical: specs.capabilities.includes('medical'),
-            weather: specs.capabilities.includes('weather'),
-            science: specs.capabilities.includes('specialized_science')
-          },
-          hasEmbedding: specs.capabilities.includes('embedding'),
-          hasOCR: specs.capabilities.includes('ocr'),
-          confidence: specs.confidence || 'medium',
-          source: specs.source || 'surveyor'
-        };
-
-        await prisma.modelCapabilities.upsert({
-          where: { modelId: model.id },
-          create: { modelId: model.id, ...capsData },
-          update: { ...capsData, updatedAt: new Date() }
-        });
+      if (capabilities) {
         surveyed++;
       } else {
-        unknown++;
+        // [UNKNOWN] If strictly unknown, ensure it is in unknown_model table so we know to re-check later
+        await p.unknownModel.upsert({
+             where: { modelId: model.id },
+             create: { modelId: model.id, reason: 'surveyor_failed' },
+             update: {}
+        });
+        unknownCount++;
       }
     }
-    console.log(`[Surveyor] 📊 Audit complete: Upgraded/Fixed ${surveyed} models. ${unknown} still unknown.`);
-    return { surveyed, unknown };
+    console.log(`[Surveyor] 📊 Audit complete: Upgraded/Fixed ${surveyed} models. ${unknownCount} still unknown.`);
+    return { surveyed, unknown: unknownCount };
   }
 }

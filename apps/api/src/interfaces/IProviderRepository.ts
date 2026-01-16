@@ -1,7 +1,9 @@
+import { type ProviderConfig, Prisma } from '@prisma/client';
+
 export interface IProviderRepository {
-  findProviderConfigByLabel(label: string): Promise<any>;
-  findProviderConfigById(id: string): Promise<any>;
-  createProviderConfig(values: any): Promise<void>;
-  getEnabledProviderConfigs(): Promise<any[]>;
-  upsertModel(data: any): Promise<void>;
+  findProviderConfigByLabel(label: string): Promise<ProviderConfig | null>;
+  findProviderConfigById(id: string): Promise<ProviderConfig | null>;
+  createProviderConfig(values: Prisma.ProviderConfigCreateInput): Promise<void>;
+  getEnabledProviderConfigs(): Promise<ProviderConfig[]>;
+  upsertModel(data: Prisma.ModelUpsertArgs): Promise<void>;
 }
