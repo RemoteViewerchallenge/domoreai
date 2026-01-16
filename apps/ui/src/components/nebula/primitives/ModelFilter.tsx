@@ -150,6 +150,27 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
                         <label className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Context Range</label>
+                        <div className="flex items-center gap-2">
+                             <input 
+                                type="number" 
+                                value={criteria.minContext} 
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    onChange({ ...criteria, minContext: val });
+                                }}
+                                className="w-16 bg-[var(--bg-background)] border border-[var(--border-color)] text-[10px] rounded px-1 py-0.5 outline-none font-mono text-[var(--color-primary)]"
+                             />
+                             <span className="text-[8px] text-[var(--text-muted)] italic">to</span>
+                             <input 
+                                type="number" 
+                                value={criteria.maxContext} 
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    onChange({ ...criteria, maxContext: val });
+                                }}
+                                className="w-16 bg-[var(--bg-background)] border border-[var(--border-color)] text-[10px] rounded px-1 py-0.5 outline-none font-mono text-[var(--color-primary)]"
+                             />
+                        </div>
                     </div>
                     <DualRangeSlider
                         min={2048} max={128000} step={1024}
