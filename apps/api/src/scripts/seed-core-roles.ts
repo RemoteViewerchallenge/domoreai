@@ -137,10 +137,14 @@ Write ONLY clean, executable code.
             },
             cortexConfig: {
                 ...(existingNebulaArchitectVariant.cortexConfig as unknown as DNACortex),
-                tools: ['nebula']
-            }
-        }
+                tools: ['nebula'],
+                executionMode: 'CODE_INTERPRETER'
+            },
+            behaviorConfig: { silenceConfirmation: true }
+        } as any
     });
+
+
     console.log('✅ Updated DNA Variant for Nebula Architect');
   }
 
@@ -249,10 +253,14 @@ When the user asks for a new agent:
             },
             cortexConfig: {
                 ...(existingRoleArchitectVariant.cortexConfig as unknown as DNACortex),
-                tools: ['meta']
-            }
-        }
+                tools: ['meta'],
+                executionMode: 'JSON_STRICT'
+            },
+            behaviorConfig: { silenceConfirmation: true }
+        } as any
     });
+
+
     console.log('✅ Updated DNA Variant for Role Architect');
   }
 

@@ -8,8 +8,12 @@ interface RouterExtendedRole extends Role {
   needsTools?: boolean;
   needsJson?: boolean;
   needsImageGeneration?: boolean;
-  variants?: unknown[];
+  variants?: Array<Record<string, unknown>>;
 }
+
+
+
+
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
@@ -664,9 +668,10 @@ Return ONLY the system prompt, no additional commentary.`;
     .input(z.object({
       roleId: z.string(),
       variantId: z.string().optional(), // If not provided, updates the active one
-      configType: z.enum(['identity', 'cortex', 'governance', 'context', 'tuning', 'tools']), // 'tuning' maps to legacy for now or a new blob
+      configType: z.enum(['identity', 'cortex', 'governance', 'context', 'tuning', 'tools', 'behavior']), // 'tuning' maps to legacy for now or a new blob
       data: z.record(z.unknown())
     }))
+
     .mutation(async ({ input }) => {
       // 1. Find the active variant if no ID provided
       let variantId = input.variantId;
@@ -679,7 +684,21 @@ Return ONLY the system prompt, no additional commentary.`;
       }
 
       if (!variantId) {
-        throw new Error("No active DNA variant found for this role. Create one first.");
+        console.log(`[RoleRouter] 🧬 Auto-creating missing DNA Variant for role ${input.roleId}`);
+        const newVariant = await prisma.roleVariant.create({
+            data: {
+                roleId: input.roleId,
+                isActive: true,
+                identityConfig: {},
+                cortexConfig: { executionMode: 'HYBRID_AUTO', contextRange: { min: 4096, max: 128000 }, capabilities: [], tools: [] },
+                governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' },
+                contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
+                behaviorConfig: { silenceConfirmation: false }
+            } as Prisma.RoleVariantCreateInput & { behaviorConfig: Record<string, unknown> }
+        });
+
+        variantId = newVariant.id;
+
       }
 
       // 2. Update the specific JSON blob
@@ -689,6 +708,14 @@ Return ONLY the system prompt, no additional commentary.`;
       if (input.configType === 'cortex') updateData.cortexConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'governance') updateData.governanceConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'context') updateData.contextConfig = input.data as Prisma.InputJsonValue;
+      if (input.configType === 'behavior') {
+          (updateData as Prisma.RoleVariantUpdateInput & { behaviorConfig: Prisma.InputJsonValue }).behaviorConfig = input.data as Prisma.InputJsonValue;
+      }
+
+
+
+
+
 
       // SPECIAL HANDLE: Tools DNA Module
       if (input.configType === 'tools') {

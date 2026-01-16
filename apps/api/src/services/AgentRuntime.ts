@@ -33,24 +33,35 @@ export class AgentRuntime {
   private toolDocs: string = "";
   // [NEW] Track tier
   private tier: string = 'Worker'; 
+  private executionMode: string = 'HYBRID_AUTO';
+  private silenceConfirmation: boolean = false;
 
-  constructor(rootPath: string = process.cwd(), tier: string = 'Worker') {
+
+  constructor(rootPath: string = process.cwd(), tier: string = 'Worker', executionMode: string = 'HYBRID_AUTO', silenceConfirmation: boolean = false) {
     this.rootPath = rootPath;
     this.fsTools = createFsTools(rootPath);
     // use the shared contextManager singleton
     this.contextManager = tokenService;
     this.tier = tier;
+    this.executionMode = executionMode;
+    this.silenceConfirmation = silenceConfirmation;
   }
+
+
 
   static async create(
     rootPath?: string,
     tools: string[] = [],
-    tier: string = 'Worker'
+    tier: string = 'Worker',
+    executionMode: string = 'HYBRID_AUTO',
+    silenceConfirmation: boolean = false
   ): Promise<AgentRuntime> {
-    const runtime = new AgentRuntime(rootPath, tier);
+    const runtime = new AgentRuntime(rootPath, tier, executionMode, silenceConfirmation);
+
     await runtime.init(tools);
     return runtime;
   }
+
 
   // ... init method ...
   // I'll keep init method mostly same but handle GitAwareInjection if needed or rely on executeTask
@@ -375,64 +386,74 @@ console.log(data);
 ${this.toolDocs}
 `;
 
-        // Select Protocol based on Role
+        // 3. Strict JSON Protocol
+        const JSON_STRICT_PROTOCOL = `
+🧠 System Instruction: JSON-RPC Mode
+Role: You are an atomic agent operating via structured JSON-RPC.
+
+### 🛠️ TOOL CALL PROTOCOL
+When you need to execute an action/tool:
+1. **JSON ONLY.** Output a raw JSON object.
+2. **NO MARKDOWN.** Do NOT wrap the tool call in backticks.
+3. **NO FILLER.** Do not say "I am calling the tool..." - just output the JSON.
+4. **ONE AT A TIME.** Generate exactly one tool call per turn.
+
+### Format:
+{ "tool": "system.tool_name", "args": { "param": "value" } }
+
+
+### Available Tools:
+${this.toolDocs}
+`;
+
+        // 4. Strict Code Protocol
+        const CODE_STRICT_PROTOCOL = `
+🧠 System Instruction: TypeScript Engine Mode
+Role: You are a high-performance TypeScript engine.
+
+### 🚨 CRITICAL RULES:
+1. **CODE ONLY.** Every action must be wrapped in a \` \` \`typescript block.
+2. **FULL LOGIC.** You can pipe data, use loops, and handle complex logic.
+3. **LOG OUTPUTS.** Use \`console.log\` to see the results of your tool calls.
+4. **NO JSON.** Do NOT use raw JSON blocks.
+
+### Format:
+\`\`\`typescript
+const result = await system.tool_name({ ... });
+console.log(result);
+\`\`\`
+
+### Available Tools:
+${this.toolDocs}
+`;
+
+        // Select Protocol based on Role and Execution Mode
         const isNebulaArchitect = enhancedSystemPrompt.includes("Nebula Architect") || this.toolDocs.includes("system.nebula");
-        const isRoleArchitect = enhancedSystemPrompt.includes("Role Architect") || enhancedSystemPrompt.includes("identityArchitect") || this.toolDocs.includes("create_role_variant");
         
-        console.log('[AgentRuntime] 🔍 Role Detection Debug:');
-        console.log('  - Prompt includes "Role Architect":', enhancedSystemPrompt.includes("Role Architect"));
-        console.log('  - Prompt includes "identityArchitect":', enhancedSystemPrompt.includes("identityArchitect"));
-        console.log('  - Tools include "create_role_variant":', this.toolDocs.includes("create_role_variant"));
-        console.log('  - isRoleArchitect:', isRoleArchitect);
-        
-        let protocol = isNebulaArchitect ? NEBULA_PROTOCOL : GENERIC_CODE_PROTOCOL;
+        console.log(`[AgentRuntime] 🤖 Mode: ${this.executionMode} | Tier: ${this.tier}`);
 
-        if (isRoleArchitect) {
-             console.log('[AgentRuntime] 🎯 ROLE ARCHITECT DETECTED - Injecting JSON-RPC protocol');
-             protocol = `
-🧠 CRITICAL DIRECTIVE: ROLE CREATION VIA JSON TOOL CALL
+        let protocol = GENERIC_CODE_PROTOCOL;
 
-You are the Role Architect. Your ONLY job is to call the 'system.create_role_variant' tool using JSON-RPC format.
+        if (isNebulaArchitect) {
+            protocol = NEBULA_PROTOCOL;
+        } else if (this.executionMode === 'JSON_STRICT') {
+            protocol = JSON_STRICT_PROTOCOL;
+        } else if (this.executionMode === 'CODE_INTERPRETER') {
+            protocol = CODE_STRICT_PROTOCOL;
+        } 
+        // else HYBRID_AUTO is default (GENERIC_CODE_PROTOCOL)
 
-### ⛔ FORBIDDEN:
-- NO TypeScript code blocks
-- NO Python code
-- NO shell commands
-- NO explanations
-
-### ✅ REQUIRED FORMAT (JSON-RPC):
-When the user asks for a new role, output ONLY this JSON structure (no markdown, no code blocks):
-
-{
-  "tool": "system.create_role_variant",
-  "args": {
-    "intent": {
-      "name": "Prompt Enhancement Specialist",
-      "description": "Analyzes and refines user prompts for syntax, clarity, and effectiveness",
-      "domain": "Creative",
-      "complexity": "MEDIUM"
-    }
-  }
-}
-
-### 🎯 EXAMPLE:
-User: "Create a role to improve prompts"
-Your response (RAW JSON, no backticks):
-{
-  "tool": "system.create_role_variant",
-  "args": {
-    "intent": {
-      "name": "Prompt Improver",
-      "description": "Refines user prompts for clarity and effectiveness",
-      "domain": "Creative",
-      "complexity": "MEDIUM"
-    }
-  }
-}
-
-RESPOND WITH JSON ONLY. NO OTHER TEXT.
+        if (this.silenceConfirmation) {
+            protocol += `\n\n### 🚨 AUTONOMOUS BEHAVIOR:
+1. **NO CONVERSATION.** Do not explain yourself, confirm tasks, or say "Finished."
+2. **TOOL OUTPUT ONLY.** Only output tool calls or raw data results.
+3. **TASK COMPLETE.** When the user's intent is logically fulfilled by previous tool outputs, stop responding.
 `;
         }
+
+        // Add tool documentation
+        protocol += `\n\n### Available Tools:\n${this.toolDocs}`;
+
 
         enhancedSystemPrompt += protocol;
       }

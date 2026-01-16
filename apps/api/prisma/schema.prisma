@@ -86,6 +86,8 @@ model RoleVariant {
   cortexConfig     Json             @default("{}")
   contextConfig    Json             @default("{}")
   governanceConfig Json             @default("{}")
+  behaviorConfig   Json             @default("{}")
+
   isActive         Boolean          @default(true)
   createdAt        DateTime         @default(now())
   role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
