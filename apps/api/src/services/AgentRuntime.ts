@@ -30,7 +30,8 @@ export class AgentRuntime {
   private fsTools: ReturnType<typeof createFsTools>;
   private rootPath: string;
   private contextManager = tokenService;
-  private toolDocs: string = "";
+  private toolDocsFull: string = "";
+  private toolDocsSignatures: string = "";
   // [NEW] Track tier
   private tier: string = 'Worker'; 
   private executionMode: string = 'HYBRID_AUTO';
@@ -142,13 +143,33 @@ export class AgentRuntime {
             // For now, let's assume `jobId` comes from environment or args in execution.
       }
 
+      
+      // Add lookup_tool_docs tool
+      toolsToRegister.push({
+          name: "lookup_tool_docs",
+          description: "Fetch detailed usage examples and full documentation for specific tools. Use this if the initial documentation only contains signatures.",
+          inputSchema: {
+              type: "object",
+              properties: {
+                  toolNames: { type: "array", items: { type: "string" }, description: "List of tools to get full documentation for" }
+              },
+              required: ["toolNames"]
+          },
+          handler: async (args: any) => {
+              const docs = await loadToolDocs(args.toolNames);
+              return [{ type: 'text', text: docs.fullDocs }];
+          }
+      } as unknown as ToolDefinition);
+
       await this.client.registerManual({
         name: "system",
         call_template_type: "local",
         tools: toolsToRegister,
       });
       // ... load docs ...
-       this.toolDocs = await loadToolDocs(requestedTools);
+      const docs = await loadToolDocs(requestedTools);
+      this.toolDocsFull = docs.fullDocs;
+      this.toolDocsSignatures = docs.signatures;
   }
 
   // ... runAgentLoop ...
@@ -303,16 +324,11 @@ Instructions:
     }\n\n${memoryStr}\n\n${historyStr}`.trim();
 
     // Inject Tool Documentation
-    if (this.toolDocs) {
-      if (enhancedSystemPrompt.includes("{{tool_definitions}}")) {
-        enhancedSystemPrompt = enhancedSystemPrompt.replace(
-          "{{tool_definitions}}",
-          this.toolDocs
-        );
-      } else {
-        // Auto-append Protocol + Docs if tag is missing
+    if (this.toolDocsSignatures || this.toolDocsFull) {
+        // 1. Calculate Budget (Simplified estimation)
+        const baseLength = enhancedSystemPrompt.length + prompt.length;
         
-        // 1. Specialized Protocol for Nebula Architect (UI Builder)
+        // 2. Protocols (Hardcoded strings for now as per requirement, but logic is cleaned up)
         const NEBULA_PROTOCOL = `
 🧠 System Instruction: Nebula Code Mode v2.0
 Role: You are the Nebula Engine Pilot. You do not write code to describe a UI; you write code to construct it using the live nebula runtime instance.
@@ -343,12 +359,8 @@ const btnId = nebula.addNode(parentId, { type: "Button", props: { children: "Cli
 // 2. UPDATING NODES
 nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
 \`\`\`
-
-### Available Tools:
-${this.toolDocs}
 `;
 
-        // 2. Generic Protocol for all other agents (Role Architect, Workers, etc.)
         const GENERIC_CODE_PROTOCOL = `
 🧠 System Instruction: TypeScript Tooling Mode
 Role: You are a specialized agent operating in a TypeScript Runtime Environment.
@@ -381,12 +393,8 @@ console.log(data);
 ### Runtime Environment:
 - **system**: The global object containing all your tools.
 - **console**: Standard console for logging.
-
-### Available Tools:
-${this.toolDocs}
 `;
 
-        // 3. Strict JSON Protocol
         const JSON_STRICT_PROTOCOL = `
 🧠 System Instruction: JSON-RPC Mode
 Role: You are an atomic agent operating via structured JSON-RPC.
@@ -400,13 +408,8 @@ When you need to execute an action/tool:
 
 ### Format:
 { "tool": "system.tool_name", "args": { "param": "value" } }
-
-
-### Available Tools:
-${this.toolDocs}
 `;
 
-        // 4. Strict Code Protocol
         const CODE_STRICT_PROTOCOL = `
 🧠 System Instruction: TypeScript Engine Mode
 Role: You are a high-performance TypeScript engine.
@@ -422,26 +425,32 @@ Role: You are a high-performance TypeScript engine.
 const result = await system.tool_name({ ... });
 console.log(result);
 \`\`\`
-
-### Available Tools:
-${this.toolDocs}
 `;
 
-        // Select Protocol based on Role and Execution Mode
-        const isNebulaArchitect = enhancedSystemPrompt.includes("Nebula Architect") || this.toolDocs.includes("system.nebula");
-        
-        console.log(`[AgentRuntime] 🤖 Mode: ${this.executionMode} | Tier: ${this.tier}`);
+        const SPECIALIZED_ARCHITECT_PROTOCOL = `
+🧠 System Instruction: Meta-Evolution Protocol
+Role: You are an Architect specializing in the creation and evolution of AI roles.
 
+### 🛠️ ARCHITECT GOALS:
+1. Discover existing roles using 'system.role_registry_list'.
+2. Evolve new capabilities using 'system.role_variant_evolve'.
+3. Fine-tune behavior using 'system.role_config_patch'.
+
+Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
+`;
+
+        // 3. Selection (Protocol Selection Logic)
         let protocol = GENERIC_CODE_PROTOCOL;
-
-        if (isNebulaArchitect) {
-            protocol = NEBULA_PROTOCOL;
+        
+        if (this.tier === 'Architect') {
+            protocol = SPECIALIZED_ARCHITECT_PROTOCOL;
         } else if (this.executionMode === 'JSON_STRICT') {
             protocol = JSON_STRICT_PROTOCOL;
         } else if (this.executionMode === 'CODE_INTERPRETER') {
             protocol = CODE_STRICT_PROTOCOL;
-        } 
-        // else HYBRID_AUTO is default (GENERIC_CODE_PROTOCOL)
+        } else if (this.tier === 'Nebula' || this.toolDocsSignatures.includes("nebula(")) {
+            protocol = NEBULA_PROTOCOL;
+        }
 
         if (this.silenceConfirmation) {
             protocol += `\n\n### 🚨 AUTONOMOUS BEHAVIOR:
@@ -451,12 +460,17 @@ ${this.toolDocs}
 `;
         }
 
-        // Add tool documentation
-        protocol += `\n\n### Available Tools:\n${this.toolDocs}`;
-
-
-        enhancedSystemPrompt += protocol;
-      }
+        // 4. Just-in-Time Documentation Truncation
+        const toolHeader = "\n\n### Available Tools:\n";
+        
+        if (baseLength < 8000) {
+            // High budget: Full documentation
+            enhancedSystemPrompt += protocol + toolHeader + this.toolDocsFull;
+        } else {
+            // Low budget: Signatures only + lookup tool
+            enhancedSystemPrompt += protocol + toolHeader + this.toolDocsSignatures + 
+                "\n\nNOTE: Use 'system.lookup_tool_docs' for full examples if you are unsure how to use a tool.";
+        }
     }
 
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();

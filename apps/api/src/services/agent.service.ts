@@ -167,8 +167,13 @@ export class AgentService {
       if (!resolvedModelId) {
         const selector = new LLMSelector();
         const safeRole = role || ({ id: 'default', metadata: {} } as ExtendedRole);
+        
+        // Estimate tokens (char count / 3.5 as a safe buffer for words + tools)
+        const totalEstimatedChars = (role?.basePrompt?.length || 0) + finalUserGoal.length + 5000; // +5k for tools
+        const estimatedTokens = Math.ceil(totalEstimatedChars / 3.5);
+
         try {
-          const bestSlug = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, []);
+          const bestSlug = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, estimatedTokens, []);
           const bestModel = await prisma.model.findUnique({ 
             where: { id: bestSlug },
             include: { provider: true }
@@ -273,7 +278,11 @@ export class AgentService {
                 console.log(`[AgentService] 🛑 Provider '${agentConfig.providerId}' seems overloaded. Blacklisting for this session.`);
             }
 
-            const fallbackId = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, 0, failedModels, failedProviders);
+            // Estimate tokens for fallback (History might have grown)
+            const fallbackChars = (role?.basePrompt?.length || 0) + finalUserGoal.length + 8000; // more tools/history
+            const fallbackTokens = Math.ceil(fallbackChars / 3.5);
+
+            const fallbackId = await selector.resolveModelForRole(safeRole as unknown as SelectorRole, fallbackTokens, failedModels, failedProviders);
             const fallback = await prisma.model.findUnique({ where: { id: fallbackId } });
 
             if (fallback) {
