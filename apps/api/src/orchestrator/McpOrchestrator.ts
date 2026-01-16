@@ -143,7 +143,7 @@ export class McpOrchestrator implements IMcpOrchestrator {
       // Document the server
       // We run this in background so it doesn't block startup
       void import('../services/ToolDocumenter.js').then(({ ToolDocumenter }) => {
-        void ToolDocumenter.documentServer(serverName, client).catch(err => {
+        void ToolDocumenter.documentMcpServer(serverName, client).catch((err: unknown) => {
           console.error(`[Orchestrator] Failed to document ${serverName}:`, err);
         });
       });

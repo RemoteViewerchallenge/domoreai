@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ProviderManager } from './ProviderManager.js';
+import { LLMModel } from '../utils/BaseLLMProvider.js';
 
 interface Tool {
   name: string;
@@ -130,8 +131,8 @@ export class ToolDocumenter {
     try {
         const allModels = await ProviderManager.getAllModels();
         const capableModels = allModels
-            .filter(m => ((m.specs?.contextWindow || 0) >= 32000))
-            .sort((a, b) => {
+            .filter((m: LLMModel) => ((m.specs?.contextWindow || 0) >= 32000))
+            .sort((a: LLMModel, b: LLMModel) => {
                 const costA = a.costPer1k || 0;
                 const costB = b.costPer1k || 0;
                 if (costA !== costB) return costA - costB;
