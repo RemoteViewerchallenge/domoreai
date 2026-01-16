@@ -23,7 +23,7 @@ interface ExecError extends Error {
 
 export type AgentExecutionMode = 'JSON_STRICT' | 'CODE_INTERPRETER' | 'HYBRID_AUTO';
 
-interface RoleIntent {
+export interface RoleIntent {
     name: string;
     description: string;
     domain: string; // e.g., "Frontend", "Backend", "Creative"
@@ -31,7 +31,7 @@ interface RoleIntent {
     capabilities?: string[]; // e.g. ['vision', 'reasoning', 'tts', 'embedding']
 }
 
-interface IdentityConfig {
+export interface IdentityConfig {
     personaName: string;
     systemPromptDraft: string;
     style: string; // [FLEXIBLE] Allow legacy styles like 'SOCRATIC'
@@ -40,19 +40,19 @@ interface IdentityConfig {
 }
 
 
-interface CortexConfig {
+export interface CortexConfig {
     executionMode: AgentExecutionMode;
     contextRange: { min: number; max: number };
     capabilities: string[];
     tools: string[]; // List of tool names
 }
 
-interface ContextConfig {
+export interface ContextConfig {
     strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
     permissions: string[];
 }
 
-interface GovernanceConfig {
+export interface GovernanceConfig {
     rules: string[];
     assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
     enforcementLevel: 'LOW' | 'MEDIUM' | 'HIGH';

@@ -69,7 +69,7 @@ export async function autoLoadRawJsonFiles() {
         )`;
 
         await prisma.$executeRawUnsafe(createSql);
-        console.log(`[JsonLoader] ✅ Created table ${tableName}`);
+    //     console.log(`[JsonLoader] ✅ Created table ${tableName}`);
 
         // Insert all rows
         let inserted = 0;
@@ -93,13 +93,13 @@ export async function autoLoadRawJsonFiles() {
           inserted++;
         }
 
-        console.log(`[JsonLoader] ✅ Inserted ${inserted} rows into ${tableName}`);
+        // console.log(`[JsonLoader] ✅ Inserted ${inserted} rows into ${tableName}`);
       } catch (err) {
         console.error(`[JsonLoader] ✗ Failed to load ${file}:`, (err as Error).message);
       }
     }
 
-    console.log('[JsonLoader] ✅ Raw JSON load complete');
+    // console.log('[JsonLoader] ✅ Raw JSON load complete');
   } catch (err) {
     console.error('[JsonLoader] ❌ Error:', (err as Error).message);
   }

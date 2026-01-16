@@ -687,14 +687,14 @@ Return ONLY the system prompt, no additional commentary.`;
         console.log(`[RoleRouter] 🧬 Auto-creating missing DNA Variant for role ${input.roleId}`);
         const newVariant = await prisma.roleVariant.create({
             data: {
-                roleId: input.roleId,
+                role: { connect: { id: input.roleId } },
                 isActive: true,
                 identityConfig: {},
                 cortexConfig: { executionMode: 'HYBRID_AUTO', contextRange: { min: 4096, max: 128000 }, capabilities: [], tools: [] },
                 governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' },
                 contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
                 behaviorConfig: { silenceConfirmation: false }
-            } as Prisma.RoleVariantCreateInput & { behaviorConfig: Record<string, unknown> }
+            } as Prisma.RoleVariantCreateInput
         });
 
         variantId = newVariant.id;

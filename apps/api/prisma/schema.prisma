@@ -70,10 +70,13 @@ model Model {
   capabilities     ModelCapabilities?
   
   // Specialized Relations (One-to-One)
+  chatModel        ChatModel?
   embeddingModel   EmbeddingModel?
+  visionModel      VisionModel?
   audioModel       AudioModel?
   imageModel       ImageModel?
-  safetyModel      SafetyModel?
+  complianceModel  ComplianceModel?
+  rewardModel      RewardModel?
   unknownModel     UnknownModel?
 
   @@unique([providerId, name])
@@ -142,14 +145,29 @@ model ModelCapabilities {
 
 // --- SPECIALIZED MODEL TABLES ---
 
+model ChatModel {
+  id               String   @id @default(cuid())
+  modelId          String   @unique
+  contextWindow    Int?
+  supportsTools    Boolean  @default(true)
+  supportsJson     Boolean  @default(true)
+  model            Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
 model EmbeddingModel {
   id          String   @id @default(cuid())
   modelId     String   @unique
   dimensions  Int?
   maxContext  Int?
   model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  
-  @@map("model_embedding")
+}
+
+model VisionModel {
+  id              String   @id @default(cuid())
+  modelId         String   @unique
+  maxResolution   String?
+  supportsVideo   Boolean  @default(false)
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model AudioModel {
@@ -158,8 +176,6 @@ model AudioModel {
   voices      Json?    @default("[]") // Supported voice IDs
   sampleRates Json?    @default("[]") // Supported Hz
   model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  @@map("model_audio")
 }
 
 model ImageModel {
@@ -168,17 +184,20 @@ model ImageModel {
   resolutions Json?    @default("[]") // ["1024x1024", "512x512"]
   styles      Json?    @default("[]") // ["vivid", "natural"]
   model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  @@map("model_image")
 }
 
-model SafetyModel {
+model ComplianceModel {
   id          String   @id @default(cuid())
   modelId     String   @unique
   categories  Json?    @default("[]") // ["hate", "sexual", "violence"]
   model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
 
-  @@map("model_safety")
+model RewardModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  scoreType   String?  // e.g. " Bradley-Terry"
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model UnknownModel {
@@ -186,8 +205,6 @@ model UnknownModel {
   modelId     String   @unique
   reason      String?  @default("uncategorized")
   model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-
-  @@map("model_unknown")
 }
 
 model ModelUsage {

@@ -20,11 +20,12 @@ export class AgentConfigRepository {
   }
 
   static async createModel(modelDef: ModelDef): Promise<Model> {
+    const name = modelDef.name || modelDef.id;
     return prisma.model.create({
       data: {
-        // modelId: modelDef.id, // Removed if not in schema
+        id: `${modelDef.providerId}:${name}`,
         provider: { connect: { id: modelDef.providerId } },
-        name: modelDef.name || modelDef.id,
+        name,
         // Pack transient/spec fields into the specs JSON
         costPer1k: modelDef.costPer1k ?? 0,
         // isFree: modelDef.isFree ?? false,
