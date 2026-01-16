@@ -1,18 +1,30 @@
-import { UnifiedIngestionService } from "../services/UnifiedIngestionService.js";
-import { prisma } from "../db.js";
-import { ModelSelector } from "../services/ModelSelector.js";
+import { UnifiedIngestionService } from "../src/services/UnifiedIngestionService.js";
+import { prisma } from "../src/db.js";
+import { LLMSelector } from "../src/orchestrator/LLMSelector.js";
+import { ProviderManager } from "../src/services/ProviderManager.js";
 
 async function main() {
-    console.log("--- 1. Triggering Ingestion ---");
-    await UnifiedIngestionService.ingestAllModels();
+    // [SKIP] Ingestion is handled by force-sync.ts to ensure raw files are present
+    // console.log("--- 1. Triggering Ingestion ---");
+    // await UnifiedIngestionService.ingestAllModels();
 
-    console.log("--- 2. Verifying Filters ---");
-    const openRouterCount = await prisma.model.count({
-        where: { providerId: 'openrouter' }
+    const totalModels = await prisma.model.count();
+    const activeModels = await prisma.model.count({ where: { isActive: true } });
+    // Cast to any for unknownModel
+    const unknownModels = await (prisma as any).unknownModel.count();
+
+    console.log(`--- 2. Verifying Filters ---`);
+    console.log(`Model Verification:`);
+    console.log(` - Total: ${totalModels}`);
+    console.log(` - Active: ${activeModels}`);
+    console.log(` - Unknown: ${unknownModels}`);
+
+    const counts = await prisma.model.groupBy({
+        by: ['providerId'],
+        _count: { id: true }
     });
-    console.log(`OpenRouter Count: ${openRouterCount} (Should be > 0 and < Total Available if filter works)`);
-    
-    console.log("--- 2. Verifying Filters (Breakdown) ---");
+    console.log(`OpenRouter Count: ${counts.find(c => c.providerId === 'openrouter-env')?._count.id || 0}`);
+    console.log(`--- 2. Verifying Filters (Breakdown) ---`);
     
     // Group by Provider
     const breakdown = await prisma.model.groupBy({
@@ -44,7 +56,7 @@ async function main() {
     console.log(`Capabilities Count: ${capsCount}`);
 
     console.log("--- 4. Verifying ModelSelector Resolution ---");
-    const selector = new ModelSelector();
+    const selector = new LLMSelector();
     // Create a dummy role matching the Interface
     const role = {
         id: 'test-role',
@@ -59,6 +71,16 @@ async function main() {
     try {
         const bestModelId = await selector.resolveModelForRole(role as any);
         console.log(`Resolved High Context Model ID: ${bestModelId}`);
+        
+        const total = await prisma.model.count();
+        const active = await prisma.model.count({ where: { isActive: true } });
+        // Cast to any for unknownModel
+        const unknownCount = await (prisma as any).unknownModel.count();
+        
+        console.log(`Model Verification:`);
+        console.log(` - Total: ${total}`);
+        console.log(` - Active: ${active}`);
+        console.log(` - Unknown: ${unknownCount}`);
         
         const model = await prisma.model.findUnique({ where: { id: bestModelId }, include: { capabilities: true } });
         console.log(`Selected Model Name: ${model?.name}`);

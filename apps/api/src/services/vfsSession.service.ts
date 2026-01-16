@@ -21,8 +21,14 @@ export class VfsManager {
   }): Promise<IVfsProvider> {
     
     if (options.provider === 'local') {
-      const projectHome = '/home/guy/mono';
-      let fsRoot = options.rootPath || (existsSync(projectHome) ? projectHome : os.homedir());
+      const projectHome = '/home/guy'; // Broadened from /home/guy/mono
+      let fsRoot = options.rootPath || (existsSync('/home/guy/mono') ? '/home/guy/mono' : os.homedir());
+
+      // If we want to allow going UP, we should actually set the root to homeDir or /
+      // But let's stay reasonable: if no specific root requested, we use /home/guy
+      if (!options.rootPath) {
+          fsRoot = projectHome;
+      }
 
       if (options.cardId) {
         const card = await prisma.workOrderCard.findUnique({

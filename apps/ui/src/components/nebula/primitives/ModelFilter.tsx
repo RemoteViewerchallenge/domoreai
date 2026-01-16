@@ -57,10 +57,14 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
 
             switch (criteria.mode) {
                 case 'CHAT':
-                    if (isDomainSpecific) {
-                        isMatch = false;
-                    } else if (strictlySpecialized) {
-                        isMatch = !!(caps.hasReasoning || caps.hasCoding || caps.isMultimodal);
+                    // Exclude strictly specialized models unless multimodal
+                    if (caps.primaryTask && caps.primaryTask !== 'chat' && !caps.isMultimodal) {
+                         isMatch = false;
+                    } else if (m.embeddingModel || m.audioModel || m.safetyModel) {
+                        // If it has specialized tables but NO chat capability, exclude
+                        // But wait, some generic models might get specialized tables if we detected "embed" in name.
+                        // Better to rely on primaryTask if available, or fallback to heuristics
+                        isMatch = !!(caps.hasReasoning || caps.hasCoding || caps.isMultimodal || !caps.primaryTask); // Default to True if no primaryTask
                     } else {
                         isMatch = true;
                     }
@@ -69,19 +73,20 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     isMatch = !!caps.hasVision || !!caps.isMultimodal;
                     break;
                 case 'AUDIO':
-                    isMatch = !!caps.hasTTS || !!caps.hasAudioInput || !!caps.hasAudioOutput;
+                    // Check AudioModel existence + Capabilities
+                    isMatch = !!m.audioModel || !!caps.hasTTS || !!caps.hasAudioInput || !!caps.hasAudioOutput;
                     break;
                 case 'EMBEDDING':
-                    isMatch = !!caps.hasEmbedding;
+                    isMatch = !!m.embeddingModel || !!caps.hasEmbedding;
                     break;
                 case 'REASONING':
                     isMatch = !!caps.hasReasoning || !!caps.hasCoding;
                     break;
                 case 'IMAGE_GEN':
-                    isMatch = !!caps.hasImageGen;
+                    isMatch = !!m.imageModel || !!caps.hasImageGen;
                     break;
                 case 'COMPLIANCE':
-                    isMatch = !!caps.hasModeration;
+                    isMatch = !!m.safetyModel || !!caps.hasModeration;
                     break;
                 case 'JUDGE':
                     isMatch = !!caps.hasReward;

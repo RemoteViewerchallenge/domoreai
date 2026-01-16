@@ -11,6 +11,7 @@ import {
 } from "./protocols/LocalProtocol.js";
 import { getNativeTools } from "./tools/NativeToolsRegistry.js";
 import { loadToolDocs } from "./tools/ToolDocumentationLoader.js";
+import { IExecutionStrategy, CodeModeStrategy, JsonRpcStrategy } from "./tooling/ExecutionStrategies.js";
 // import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js";
 
 // Register the protocol globally (idempotent)
@@ -110,7 +111,7 @@ export class AgentRuntime {
       // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
       if (this.tier === 'Worker') {
             // We need jobId and vfsToken. 
-            // Ideally passed in constructor or executeTask.
+            // Ideally passed in constructor or executeTask. 
             // Since init is async, we might not have them yet. 
             // But strict requirement says "Inject... into Worker runtime".
             // I'll inject the definition here if I can, OR handle it dynamically in executeTask.
@@ -136,12 +137,7 @@ export class AgentRuntime {
         tools: toolsToRegister,
       });
       // ... load docs ...
-      const metaDefinitions = (metaTools as unknown as ToolDefinition[]);
-      this.toolDocs = await loadToolDocs(
-          requestedTools, 
-          getNativeTools(this.rootPath, this.fsTools),
-          metaDefinitions
-      );
+       this.toolDocs = await loadToolDocs(requestedTools);
   }
 
   // ... runAgentLoop ...
@@ -178,131 +174,58 @@ export class AgentRuntime {
       // [LOGGING] Capture the full thought process + code for the UI
       allLogs.push(`[Thought Process]:\n${responseStr}`);
 
-      // 1. Extract Code
-      const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g;
-      let match;
-      const blocks: string[] = [];
-      while ((match = codeBlockRegex.exec(responseStr)) !== null) {
-        if (match[1].trim()) blocks.push(match[1].trim());
+
+      // 1. Router Logic (JSON-RPC has priority over Code Mode)
+      let strategy: IExecutionStrategy | null = null;
+      if (JsonRpcStrategy.canHandle(responseStr)) {
+        strategy = new JsonRpcStrategy(this.client);
+      } else if (CodeModeStrategy.canHandle(responseStr)) {
+        strategy = new CodeModeStrategy(this.client);
       }
 
-      // Fallback: If no blocks but looks like code
-      let codeToExecute = blocks.join("\n\n");
-      if (
-        !codeToExecute &&
-        /^(?:import|const|let|var|function|class|await|system\.|nebula\.)/m.test(
-          responseStr.trim()
-        )
-      ) {
-        codeToExecute = responseStr;
-      }
-
-      // 2. Sanitize "Thinking" lines (LOCATE/DEFINE/EXECUTE)
-      if (codeToExecute) {
-        codeToExecute = codeToExecute
-          .split("\n")
-          .filter((l) => !/^\s*(\d+\.\s+)?(LOCATE|DEFINE|EXECUTE):/.test(l))
-          .join("\n");
-      }
-
-      // 🛑 STOP CONDITION: If no code to execute, assume we are done
-      if (!codeToExecute || codeToExecute.trim().length === 0) {
-        console.log(
-          "[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown."
-        );
-        return { result: responseStr, logs: allLogs };
-      }
-
-      // 3. Execute Code
-      console.log("[AgentRuntime] ⚡ Executing code...");
+      // 2. Execution or Fallback
       let turnResult = "";
       let turnLogs: string[] = [];
 
-      try {
-        // Check if we should use the specialized TypeScript interpreter for Nebula Code Mode
-        const useSpecializedInterpreter =
-          codeToExecute.includes("nebula.") || codeToExecute.includes("ast.");
-
-        if (useSpecializedInterpreter) {
-          console.log(
-            "[AgentRuntime] Using specialized Nebula Code Mode interpreter..."
-          );
-          const { typescriptInterpreterTool } = await import(
-            "../tools/typescriptInterpreter.js"
-          );
-          const interpreterResponse = await (
-            typescriptInterpreterTool.handler as (args: {
-              code: string;
-            }) => Promise<{ text: string; meta?: { nebula_actions?: unknown[] } }[]>
-          )({ code: codeToExecute });
-
-          // The interpreter tool returns an array of message objects
-          const firstMessage = interpreterResponse[0];
-          const responseText = firstMessage?.text || "";
-          const actions = firstMessage?.meta?.nebula_actions || [];
-
-          // Check if execution failed
-          if (
-            responseText.includes("❌ Execution Error:") ||
-            responseText.includes("ERROR:")
-          ) {
-            throw new Error(responseText);
-          }
-
-          const toolResults: unknown[] = [];
-          // If we have actions, we need to execute them via the nebula tool
-          if (actions.length > 0) {
-            console.log(
-              `[AgentRuntime] Executing ${actions.length} captured Nebula actions...`
-            );
-            for (const action of actions) {
-              const toolOutput = (await this.client.callTool(
-                "system.nebula",
-                action as Record<string, unknown>
-              )) as unknown;
-              toolResults.push(toolOutput);
-            }
-          }
-
-          // Parse result and logs from the response text
-          const outputMatch = responseText.match(
-            /Output:\n([\s\S]*?)(?:\nWarnings\/Errors:|$)/
-          );
-          const parsedResult = outputMatch
-            ? outputMatch[1].trim()
-            : responseText;
-
-          // Return both the text output and the captured tool results
-          const combinedResult = [
-            { type: "text", content: parsedResult },
-            ...toolResults,
-          ];
-
-          turnResult = JSON.stringify(combinedResult);
-          turnLogs = [responseText];
-        } else {
-          // Standard Sandbox Execution
-          const sandboxResponse = (await this.client.callToolChain(
-            codeToExecute
-          )) as { result: string; logs: string[] };
-          turnResult =
-            sandboxResponse?.result ||
-            "Command executed successfully with no output.";
-          turnLogs = sandboxResponse?.logs || [];
-        }
-
-        allLogs.push(...turnLogs);
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        turnResult = `Error: ${errorMessage}`;
-        allLogs.push(turnResult);
+      if (strategy) {
+        console.log(`[AgentRuntime] 🔀 Routing to ${strategy.name}`);
+        const result = await strategy.execute(responseStr, {
+          roleId: undefined, // Add logic to pass roleId/sessionId if available in loop
+          sessionId: undefined
+        });
+        turnResult = result.output;
+        turnLogs = result.logs;
+      } else {
+        // No strategy matched -> Assume conversational text
+        console.log("[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown.");
+        return { result: responseStr, logs: allLogs };
       }
+
+      allLogs.push(...turnLogs);
 
       // 4. FEEDBACK LOOP (The Critical Fix)
       // Instead of returning, we feed the output back to the model
-      const observationPrompt = `
+      
+      // Check if this was a successful role creation
+      const isRoleCreationSuccess = turnResult.includes('✅ Role Variant Created Successfully') || 
+                                     turnResult.includes('biologically spawned');
+      
+      const observationPrompt = isRoleCreationSuccess 
+        ? `
 [SYSTEM_OBSERVATION]
-The code executed.
+✅ SUCCESS! The role was created successfully.
+
+Output:
+${turnResult}
+
+Instructions:
+Respond with a brief confirmation message to the user. DO NOT create another role. DO NOT output more JSON.
+Example: "I've successfully created the [Role Name] role. It's now available in your roster."
+`
+        : `
+[SYSTEM_OBSERVATION]
+The action was executed.
+
 Output:
 ${turnResult}
 
@@ -310,12 +233,12 @@ Logs:
 ${turnLogs.join("\n")}
 
 Instructions:
-1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks).
-2. If you need more information or need to take another step, generate the NEXT code block.
+1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks or JSON).
+2. If you need more information or need to take another step, generate the NEXT code block or JSON tool call.
 `;
 
       // Append observation to context
-      contextAccumulator += `\nAssistant's Code:\n${codeToExecute}\n\nSystem Output:\n${turnResult}\n`;
+      contextAccumulator += `\nAssistant's Action:\n${responseStr}\n\nSystem Output:\n${turnResult}\n`;
 
       console.log(`[AgentRuntime] 🔙 Feeding result back to model...`);
       currentResponse = await regenerateCallback(
@@ -419,17 +342,30 @@ ${this.toolDocs}
 🧠 System Instruction: TypeScript Tooling Mode
 Role: You are a specialized agent operating in a TypeScript Runtime Environment.
 
-## 🛠️ TOOL USAGE PROTOCOL
-You do not just "chat"; you **execute**. To use a tool, you must write valid TypeScript code in a markdown block.
+### 🛠️ HYBRID PROTOCOL: DYNAMIC SWITCHING
+You have access to two execution modes. Choose the right one for the task.
+
+### 1. CODE MODE (High Complexity)
+**Trigger:** Complex logic, piping data between tools, loops, or file manipulation.
+**Format:** Wrap TypeScript logic in a markdown block.
+\`\`\`typescript
+const data = await system.read_file({ path: "..." });
+console.log(data);
+\`\`\`
+
+### 2. JSON MODE (Low Latency / Atomic)
+**Trigger:** Single, simple tool calls (e.g., looking up a quick fact or checking time).
+**Format:** Output a raw JSON block (NO markdown backticks).
+{ "tool": "system.time", "args": {} }
+
+### Heuristic:
+- IF you need to process the output of Tool A before calling Tool B -> **USE CODE MODE**.
+- IF you just need to call Tool A and show the user the result -> **USE JSON MODE**.
 
 ### 🚨 CRITICAL RULES:
-1. **NO CONVERSATIONAL FILLER.** Do not say "Here is the code." Just output the code.
-2. **USE CODE BLOCKS.** Wrap your logic in \` \` \`typescript.
-3. **USE THE 'system' NAMESPACE.** All tools are available under the \`system\` object.
-   - Example: \`await system.read_file({ path: "..." })\`
-   - Example: \`await system.create_role_variant({ ... })\`
-4. **ASYNC/AWAIT.** Always use \`await\` for tool calls.
-5. **CONSOLE LOGGING.** Use \`console.log\` to print results or status updates so you can see them in the next turn.
+1. **NO CONVERSATIONAL FILLER.** Do not say "Here is the code." Just output the code or JSON.
+2. **ASYNC/AWAIT.** Always use \`await\` for tool calls in Code Mode.
+3. **CONSOLE LOGGING.** In Code Mode, use \`console.log\` to print results so you can see them in the next turn.
 
 ### Runtime Environment:
 - **system**: The global object containing all your tools.
@@ -440,15 +376,65 @@ ${this.toolDocs}
 `;
 
         // Select Protocol based on Role
-        // We need to know if this is the Nebula Architect. 
-        // We can check the roleId (if we have a reliable way to know ID) or check the toolDocs content/roleContext?
-        // Ideally we pass 'roleName' or similar. 
-        // For now, let's look at the system prompt tone or context to sniff "Nebula".
-        // Or assume GENERIC unless "nebula" tool is present?
-        
         const isNebulaArchitect = enhancedSystemPrompt.includes("Nebula Architect") || this.toolDocs.includes("system.nebula");
+        const isRoleArchitect = enhancedSystemPrompt.includes("Role Architect") || enhancedSystemPrompt.includes("identityArchitect") || this.toolDocs.includes("create_role_variant");
         
-        enhancedSystemPrompt += isNebulaArchitect ? NEBULA_PROTOCOL : GENERIC_CODE_PROTOCOL;
+        console.log('[AgentRuntime] 🔍 Role Detection Debug:');
+        console.log('  - Prompt includes "Role Architect":', enhancedSystemPrompt.includes("Role Architect"));
+        console.log('  - Prompt includes "identityArchitect":', enhancedSystemPrompt.includes("identityArchitect"));
+        console.log('  - Tools include "create_role_variant":', this.toolDocs.includes("create_role_variant"));
+        console.log('  - isRoleArchitect:', isRoleArchitect);
+        
+        let protocol = isNebulaArchitect ? NEBULA_PROTOCOL : GENERIC_CODE_PROTOCOL;
+
+        if (isRoleArchitect) {
+             console.log('[AgentRuntime] 🎯 ROLE ARCHITECT DETECTED - Injecting JSON-RPC protocol');
+             protocol = `
+🧠 CRITICAL DIRECTIVE: ROLE CREATION VIA JSON TOOL CALL
+
+You are the Role Architect. Your ONLY job is to call the 'system.create_role_variant' tool using JSON-RPC format.
+
+### ⛔ FORBIDDEN:
+- NO TypeScript code blocks
+- NO Python code
+- NO shell commands
+- NO explanations
+
+### ✅ REQUIRED FORMAT (JSON-RPC):
+When the user asks for a new role, output ONLY this JSON structure (no markdown, no code blocks):
+
+{
+  "tool": "system.create_role_variant",
+  "args": {
+    "intent": {
+      "name": "Prompt Enhancement Specialist",
+      "description": "Analyzes and refines user prompts for syntax, clarity, and effectiveness",
+      "domain": "Creative",
+      "complexity": "MEDIUM"
+    }
+  }
+}
+
+### 🎯 EXAMPLE:
+User: "Create a role to improve prompts"
+Your response (RAW JSON, no backticks):
+{
+  "tool": "system.create_role_variant",
+  "args": {
+    "intent": {
+      "name": "Prompt Improver",
+      "description": "Refines user prompts for clarity and effectiveness",
+      "domain": "Creative",
+      "complexity": "MEDIUM"
+    }
+  }
+}
+
+RESPOND WITH JSON ONLY. NO OTHER TEXT.
+`;
+        }
+
+        enhancedSystemPrompt += protocol;
       }
     }
 
