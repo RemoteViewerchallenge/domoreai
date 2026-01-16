@@ -97,7 +97,8 @@ Ensure the output is parseable by JSON.parse().`
 
             // Robust JSON extraction
             let jsonStr = response.trim();
-            const blockMatch = jsonStr.match(/```json\n([\s\S]*?)```/);
+            // Allow ```json, ```JSON, or just ```
+            const blockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/i);
             if (blockMatch) {
                 jsonStr = blockMatch[1];
             } else {
@@ -175,39 +176,103 @@ process.stdout.write(JSON.stringify(__result));
     }
 
 
-    /**
-     * Create a new variant of a role based on intent
-     */
     async createRoleVariant(roleId: string, intent: RoleIntent): Promise<RoleVariant> {
         console.log(`[RoleFactory] 🧬 Assembling DNA for role: ${intent.name} (${intent.complexity})`);
 
-        // 0. Get the Provider and Model (The Architect's Brain)
-        // We use the LLMSelector to find the most capable model for reasoning/architecting
-        const { modelId } = await this.getArchitectBrain();
+        // State for Sticky Model Selection
+        let currentModelId: string | null = null;
+        let currentProvider: BaseLLMProvider | null = null;
+        const excludedModelIds: string[] = [];
 
-        // 1. Identity Architect (LLM)
-        // [CODE MODE] Now returns IdentityConfig via TypeScript execution
-        const identityConfig = await this.identityArchitect(modelId, intent);
+        // Helper to ensure we have a working brain
+        const ensureBrain = async () => {
+            if (currentModelId && currentProvider) return { modelId: currentModelId, provider: currentProvider };
+            
+            try {
+                const brain = await this.getArchitectBrain(excludedModelIds);
+                currentModelId = brain.modelId;
+                currentProvider = brain.provider;
+                return brain;
+            } catch (err) {
+                console.error("[RoleFactory] 💀 Critical: Could not find ANY capable architect model.", err);
+                throw err;
+            }
+        };
 
-        // 2. Cortex Architect (LLM)
-        // Defines HOW the agent thinks (Orchestration, Context Range).
-        const cortexConfig = await this.cortexArchitect(modelId, intent);
+        // Resilience Wrapper: Tries current model, if fails -> records exclusion -> picks new model -> retries
+        const executeWithResilience = async <T>(
+            stageName: string, 
+            operation: (modelId: string) => Promise<T>,
+            fallbackGenerator: () => T
+        ): Promise<T> => {
+            const MAX_RETRIES = 2;
+            let attempts = 0;
 
-        // 3. Context Architect (LLM)
-        // Defines WHAT the agent remembers/accesses.
-        const contextConfig = await this.contextArchitect(modelId, intent);
+            while (attempts <= MAX_RETRIES) {
+                try {
+                    const brain = await ensureBrain();
+                    return await operation(brain.modelId);
+                } catch (error) {
+                    attempts++;
+                    const isLastAttempt = attempts > MAX_RETRIES;
+                    const errorMsg = error instanceof Error ? error.message : String(error);
 
-        // 4. Governance Architect (LLM)
-        // Defines rules and safety boundaries.
-        const governanceConfig = await this.governanceArchitect(modelId, intent);
+                    console.warn(`[RoleFactory] ⚠️ ${stageName} Architect failed with model ${currentModelId} (Attempt ${attempts}/${MAX_RETRIES + 1}). Error: ${errorMsg}`);
 
-        // 5. Tool Architect (LLM) - [NEW]
-        // Defines WHICH tools the agent can use.
-        // We use the same 'modelId' for consistency, or we could ask Selector for a specialized tool-picker.
-        const toolNames = await this.toolArchitect(modelId, intent);
+                    // Mark current model as bad for this session
+                    if (currentModelId) {
+                        excludedModelIds.push(currentModelId);
+                        currentModelId = null; // Force refresh
+                        currentProvider = null;
+                    }
+
+                    if (isLastAttempt) {
+                        console.error(`[RoleFactory] ❌ ${stageName} Architect exhausted all retries. Using Fallback.`);
+                        break;
+                    }
+                }
+            }
+
+            return fallbackGenerator();
+        };
+
+        // 1. Identity Architect
+        const identityConfig = await executeWithResilience<IdentityConfig>(
+            "Identity",
+            (mid) => this.identityArchitect(mid, intent),
+            () => this.getIdentityFallback(intent)
+        );
+
+        // 2. Cortex Architect
+        const cortexConfig = await executeWithResilience<CortexConfig>(
+            "Cortex",
+            (mid) => this.cortexArchitect(mid, intent),
+            () => this.getCortexFallback(intent)
+        );
+
+        // 3. Context Architect
+        const contextConfig = await executeWithResilience<ContextConfig>(
+            "Context",
+            (mid) => this.contextArchitect(mid, intent),
+            () => this.getContextFallback(intent)
+        );
+
+        // 4. Governance Architect
+        const governanceConfig = await executeWithResilience<GovernanceConfig>(
+            "Governance",
+            (mid) => this.governanceArchitect(mid, intent),
+            () => this.getGovernanceFallback(intent)
+        );
+
+        // 5. Tool Architect
+        const toolNames = await executeWithResilience<string[]>(
+            "Tool",
+            (mid) => this.toolArchitect(mid, intent),
+            () => ['filesystem', 'terminal']
+        );
         cortexConfig.tools = toolNames;
 
-        // 5. Persist the DNA
+        // 6. Persist the DNA
         const variant = await prisma.roleVariant.create({
             data: {
                 roleId: roleId,
@@ -226,7 +291,7 @@ process.stdout.write(JSON.stringify(__result));
     /**
      * Resolves the best available model for the Architect to use.
      */
-    private async getArchitectBrain(): Promise<{ provider: BaseLLMProvider, modelId: string }> {
+    private async getArchitectBrain(excludedModelIds: string[] = []): Promise<{ provider: BaseLLMProvider, modelId: string }> {
         const selector = new LLMSelector();
 
         // Define virtual requirements for the Architect
@@ -243,7 +308,8 @@ process.stdout.write(JSON.stringify(__result));
 
         try {
             // Ask LLMSelector to pick the best model
-            const bestModelId = await selector.resolveModelForRole(architectRequirements);
+            // PASS EXCLUSIONS
+            const bestModelId = await selector.resolveModelForRole(architectRequirements, undefined, excludedModelIds);
 
             // Get the provider details for this model
             const modelDef = await prisma.model.findUnique({
@@ -284,10 +350,11 @@ process.stdout.write(JSON.stringify(__result));
                     // Try to get a default model from this provider
                     try {
                         const models = await provider.getModels();
-                        if (models.length > 0) {
-                            // Pick the last one (often the most recent/capable?) 
-                            // or just the first. Let's pick the first.
-                            return { provider, modelId: models[0].id };
+                        // Filter out excluded ones
+                        const available = models.filter(m => !excludedModelIds.includes(m.id));
+                        
+                        if (available.length > 0) {
+                            return { provider, modelId: available[0].id };
                         }
                     } catch { continue; }
                 }
@@ -324,10 +391,6 @@ process.stdout.write(JSON.stringify(__result));
 
     /**
      * STAGE 1: IDENTITY
-     * Defines exactly WHO the agent is.
-     */
-    /**
-     * STAGE 1: IDENTITY
      */
     async identityArchitect(modelId: string, intent: RoleIntent): Promise<IdentityConfig> {
         const prompt = `
@@ -347,19 +410,18 @@ process.stdout.write(JSON.stringify(__result));
             "reflectionEnabled": boolean
         }
         `;
+        // Pass through errors to resilience layer
+        return await this.executeJsonMode<IdentityConfig>(modelId, prompt, "Identity");
+    }
 
-        try {
-            return await this.executeJsonMode<IdentityConfig>(modelId, prompt, "Identity");
-        } catch (e: unknown) {
-            console.warn("[RoleFactory] ⚠️ Identity Architect fallback.", e);
-            return {
-                personaName: intent.name,
-                systemPromptDraft: `You are ${intent.name}. ${intent.description}.`,
-                style: 'PROFESSIONAL_CONCISE',
-                thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
-                reflectionEnabled: intent.complexity === 'HIGH'
-            };
-        }
+    private getIdentityFallback(intent: RoleIntent): IdentityConfig {
+        return {
+            personaName: intent.name,
+            systemPromptDraft: `You are ${intent.name}. ${intent.description}.`,
+            style: 'PROFESSIONAL_CONCISE',
+            thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
+            reflectionEnabled: intent.complexity === 'HIGH'
+        };
     }
 
     /**
@@ -386,18 +448,16 @@ process.stdout.write(JSON.stringify(__result));
             "tools": string[] // ["filesystem", "terminal", "browser", "search_codebase"]
         }
         `;
+        return await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
+    }
 
-        try {
-            return await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
-        } catch (e: unknown) {
-            console.warn("[RoleFactory] ⚠️ Cortex Architect fallback.", e);
-            return {
-                executionMode: intent.complexity === 'HIGH' ? 'HYBRID_AUTO' : 'JSON_STRICT',
-                contextRange: { min: 4096, max: 128000 },
-                capabilities: intent.capabilities || [],
-                tools: ['filesystem', 'terminal']
-            };
-        }
+    private getCortexFallback(intent: RoleIntent): CortexConfig {
+        return {
+            executionMode: intent.complexity === 'HIGH' ? 'HYBRID_AUTO' : 'JSON_STRICT',
+            contextRange: { min: 4096, max: 128000 },
+            capabilities: intent.capabilities || [],
+            tools: ['filesystem', 'terminal']
+        };
     }
 
     /**
@@ -414,13 +474,11 @@ process.stdout.write(JSON.stringify(__result));
             "permissions": ["/src", "/docs", "ALL"]
         }
         `;
+        return await this.executeJsonMode<ContextConfig>(modelId, prompt, "Context");
+    }
 
-        try {
-            return await this.executeJsonMode<ContextConfig>(modelId, prompt, "Context");
-        } catch (e: unknown) {
-            console.warn("[RoleFactory] ⚠️ Context Architect fallback.", e);
-            return { strategy: ['EXPLORATORY'], permissions: ['ALL'] };
-        }
+    private getContextFallback(intent: RoleIntent): ContextConfig {
+        return { strategy: ['EXPLORATORY'], permissions: ['ALL'] };
     }
 
     /**
@@ -438,17 +496,15 @@ process.stdout.write(JSON.stringify(__result));
             "enforcementLevel": "LOW" | "MEDIUM" | "HIGH"
         }
         `;
+        return await this.executeJsonMode<GovernanceConfig>(modelId, prompt, "Governance");
+    }
 
-        try {
-            return await this.executeJsonMode<GovernanceConfig>(modelId, prompt, "Governance");
-        } catch (e: unknown) {
-            console.warn("[RoleFactory] ⚠️ Governance Architect fallback.", e);
-            return {
-                rules: ["Verify work before submitting."],
-                assessmentStrategy: ["VISUAL_CHECK"],
-                enforcementLevel: "MEDIUM"
-            };
-        }
+    private getGovernanceFallback(intent: RoleIntent): GovernanceConfig {
+        return {
+            rules: ["Verify work before submitting."],
+            assessmentStrategy: ["VISUAL_CHECK"],
+            enforcementLevel: "MEDIUM"
+        };
     }
 
     /**
@@ -466,14 +522,8 @@ process.stdout.write(JSON.stringify(__result));
             "tools": string[]
         }
         `;
-
-        try {
-            const res = await this.executeJsonMode<{ tools: string[] }>(modelId, prompt, "Tool");
-            return res.tools || ['filesystem', 'terminal'];
-        } catch (e: unknown) {
-            console.warn("[RoleFactory] ⚠️ Tool Architect fallback.", e);
-            return ['filesystem', 'terminal'];
-        }
+        const res = await this.executeJsonMode<{ tools: string[] }>(modelId, prompt, "Tool");
+        return res.tools || ['filesystem', 'terminal'];
     }
 
 
