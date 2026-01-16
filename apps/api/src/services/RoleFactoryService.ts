@@ -308,8 +308,8 @@ process.stdout.write(JSON.stringify(__result));
 
         try {
             // Ask LLMSelector to pick the best model
-            // PASS EXCLUSIONS
-            const bestModelId = await selector.resolveModelForRole(architectRequirements, undefined, excludedModelIds);
+            // PASS EXCLUSIONS and estimate context needs (Architect tasks are heavy)
+            const bestModelId = await selector.resolveModelForRole(architectRequirements, 16000, excludedModelIds);
 
             // Get the provider details for this model
             const modelDef = await prisma.model.findUnique({

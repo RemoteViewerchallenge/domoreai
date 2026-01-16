@@ -1,9 +1,14 @@
+import fs from 'fs/promises';
+import path from 'path';
+
+export interface ToolDocs {
+    signatures: string;
+    fullDocs: string;
+}
+
 export async function loadToolDocs(
     tools: string[]
-): Promise<string> {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
+): Promise<ToolDocs> {
     // Resolve path to .domoreai/tools
     let rootDir = process.cwd();
     if (rootDir.endsWith('apps/api')) {
@@ -11,26 +16,41 @@ export async function loadToolDocs(
     }
     const toolsDir = path.join(rootDir, '.domoreai/tools');
 
-    const examples: string[] = [];
+    const signatureParts: string[] = [];
+    const exampleParts: string[] = [];
 
-    // Load requested toolsets (system, filesystem, git, or MCP server names)
+    // Load requested toolsets
     for (const toolRequest of tools) {
+        let content = "";
         try {
-            // Check if it's a grouped doc (e.g., system_examples.md, filesystem_examples.md)
-            const content = await fs.readFile(path.join(toolsDir, `${toolRequest}_examples.md`), 'utf-8');
-            examples.push(content);
+            content = await fs.readFile(path.join(toolsDir, `${toolRequest}_examples.md`), 'utf-8');
         } catch {
-            // Try fallback to just server name if examples suffix is missing
             try {
-                const content = await fs.readFile(path.join(toolsDir, `${toolRequest}.md`), 'utf-8');
-                examples.push(content);
+                content = await fs.readFile(path.join(toolsDir, `${toolRequest}.md`), 'utf-8');
             } catch {
-                // Ignore if no doc found
+                continue;
+            }
+        }
+
+        if (content) {
+            // Split by SIGNATURES header if exists
+            const sigMatch = content.match(/## 🛠️ TOOL SIGNATURES\n([\s\S]*?)(?=\n---|\n### Usage|\n##|$)/);
+            if (sigMatch) {
+                signatureParts.push(sigMatch[1].trim());
+                
+                // The rest is examples
+                const examples = content.replace(sigMatch[0], "").trim();
+                if (examples) exampleParts.push(examples);
+            } else {
+                // If no signatures header, treat entire thing as full docs, signatures empty or extracted simply
+                // For MCP servers we might not have the header yet
+                exampleParts.push(content);
             }
         }
     }
 
-    if (examples.length === 0) return "";
-
-    return examples.join('\n\n---\n\n');
+    return {
+        signatures: signatureParts.join('\n\n'),
+        fullDocs: exampleParts.join('\n\n---\n\n')
+    };
 }
