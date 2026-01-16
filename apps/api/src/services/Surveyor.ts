@@ -20,6 +20,7 @@ export interface ModelSpecs {
   confidence?: string;
   source?: string;
   primaryTask?: string;
+  embedding_length?: number; // For embedding models
 }
 
 interface ProviderPattern {
@@ -335,10 +336,19 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       }
     },
     {
+      pattern: /mistral-embed/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0.1
+      }
+    },
+    {
       pattern: /ocr/i,
       specs: {
         contextWindow: 8192,
-        capabilities: ["ocr", "vision"],
+        capabilities: ["vision", "ocr"],
         primaryTask: "ocr",
         costPer1k: 0
       }
@@ -1034,6 +1044,15 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       }
     },
     {
+      pattern: /llama-?3\.?1-70b/i,
+      specs: {
+        contextWindow: 128000,
+        maxOutput: 8192,
+        capabilities: ["text", "tool_use"],
+        costPer1k: 0.60
+      }
+    },
+    {
       pattern: /llama-?3\.?1-8b/i,
       specs: {
         contextWindow: 128000,
@@ -1292,6 +1311,62 @@ export class Surveyor {
       },
     });
 
+    // 2. Populate Specialized Tables based on detected specs
+    if (specs.capabilities.includes('embedding')) {
+        await prisma.embeddingModel.upsert({
+            where: { modelId: model.id },
+            create: { modelId: model.id, dimensions: specs.embedding_length || 1536 },
+            update: {}
+        });
+    }
+
+    if (specs.capabilities.includes('vision') || specs.capabilities.includes('ocr')) {
+        await prisma.visionModel.upsert({
+            where: { modelId: model.id },
+            create: { modelId: model.id },
+            update: {}
+        });
+    }
+
+    if (specs.capabilities.includes('tts') || specs.capabilities.includes('audio_in') || specs.capabilities.includes('audio_out')) {
+        await prisma.audioModel.upsert({
+            where: { modelId: model.id },
+            create: { modelId: model.id },
+            update: {}
+        });
+    }
+
+    if (specs.capabilities.includes('moderation') || specs.capabilities.includes('compliance')) {
+        await prisma.complianceModel.upsert({
+            where: { modelId: model.id },
+            create: { modelId: model.id },
+            update: {}
+        });
+    }
+
+    if (specs.capabilities.includes('reward') || specs.capabilities.includes('reward_model')) {
+        await prisma.rewardModel.upsert({
+            where: { modelId: model.id },
+            create: { modelId: model.id },
+            update: {}
+        });
+    }
+
+    if (specs.primaryTask === 'chat' || specs.capabilities.includes('text')) {
+        await prisma.chatModel.upsert({
+            where: { modelId: model.id },
+            create: { 
+                modelId: model.id,
+                contextWindow: specs.contextWindow || 4096,
+                supportsTools: specs.capabilities.includes('tool_use')
+            },
+            update: {
+                contextWindow: specs.contextWindow || 4096,
+                supportsTools: specs.capabilities.includes('tool_use')
+            }
+        });
+    }
+
     return capabilities;
   }
 
@@ -1304,7 +1379,9 @@ export class Surveyor {
         include: { model: { include: { provider: true } } }
     });
     
-    console.log(`[Surveyor] Found ${unknowns.length} unknown models to survey...`);
+    if (unknowns.length > 0) {
+        console.log(`[Surveyor] Found ${unknowns.length} unknown models to survey...`);
+    }
     
     for (const unknown of unknowns) {
         const m = unknown.model;
@@ -1318,18 +1395,38 @@ export class Surveyor {
         }
     }
 
-    // Find all active models to check if they need an upgrade
-    const models = await prisma.model.findMany({
-      where: { isActive: true },
+    // Find models that explicitly need an upgrade (optimization)
+    // We only fetch models that are missing capabilities OR have the suspicious 4096 default context
+    // AND are not already marked as 'high' confidence (manual/agent overrides)
+    const modelsNeedingHelp = await prisma.model.findMany({
+      where: { 
+          isActive: true,
+          OR: [
+              { capabilities: { is: null } },
+              { capabilities: { contextWindow: 4096 } },
+              // We can't easily check 'isMultimodal' vs 'name' in Prisma query, so we catch those in the loop below
+          ]
+      },
       include: { provider: true, capabilities: true }
     });
+
+    // If we have nothing obvious, we can skip the heavy logic, 
+    // BUT we still want to catch edge cases (like 'vision' in name but not flagged multimodal)
+    // So we'll keep a lightweight check if the list above is empty.
+    
+    const candidates = modelsNeedingHelp;
+    
+    // If we handled all the obvious ones, do a quick sanity check on 'vision' models periodically?
+    // For now, let's stick to the efficient query. Only if that returns items do we log.
+    
+    if (candidates.length > 0) {
+        // console.log(`[Surveyor] 🔍 Auditing ${candidates.length} potentially misconfigured models...`);
+    }
 
     let surveyed = 0;
     let unknownCount = 0;
 
-    console.log(`[Surveyor] 🔍 Auditing ${models.length} active models...`);
-
-    for (const model of models) {
+    for (const model of candidates) {
       // CRITERIA:
       // 1. No capabilities record
       // 2. OR Context is default 4096 (likely failed ingestion)

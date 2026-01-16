@@ -24,6 +24,14 @@ interface RawModelWithPricing extends LLMModel {
     pricing?: ModelPricing;
 }
 
+// Interface for model specs to avoid 'any'
+interface ModelSpecs {
+    context_window?: number;
+    max_context_length?: number;
+    embedding_length?: number;
+    [key: string]: unknown;
+}
+
 export class RegistrySyncService {
     
     /**
@@ -166,7 +174,7 @@ export class RegistrySyncService {
             }
         }
 
-        await this.cleanupGhostRecords(Array.from(activeModelIds));
+        await this.cleanupGhostRecords(Array.from(activeModelIds), Array.from(syncedProviders));
 
         console.log('[RegistrySyncService] Registry Sync Completed.');
     }
@@ -177,39 +185,85 @@ export class RegistrySyncService {
 
     public static async populateSpecializedTables(modelId: string, modelName: string, rawData: RawSnapshotData) {
         const lowerName = modelName.toLowerCase();
-        let matchFound = false;
         // console.log(`[Specialization] Checking ${modelId} (${lowerName}) for detailed capabilities...`);
 
-        // 1. Embedding
-        if (lowerName.includes('embed')) {
-            console.log(`[Specialization] MATCH EMBEDDING: ${modelId}`);
-            await prisma.embeddingModel.upsert({
+        // 1. Chat
+        // Most models are chat models unless explicitly specialized
+        const isNotChat = lowerName.includes('embed') || 
+                         lowerName.includes('reward') || 
+                         lowerName.includes('moderation') || 
+                         lowerName.includes('whisper') ||
+                         lowerName.includes('tts-');
+
+        if (!isNotChat) {
+            const specs = rawData as unknown as ModelSpecs;
+            await prisma.chatModel.upsert({
                 where: { modelId: modelId },
-                create: { modelId: modelId, dimensions: (rawData as any).embedding_length || 1536 },
-                update: {} // Don't overwrite if exists
+                create: { 
+                    modelId: modelId, 
+                    contextWindow: specs.context_window || specs.max_context_length || 4096 
+                },
+                update: {
+                    contextWindow: specs.context_window || specs.max_context_length || 4096
+                }
             });
-            matchFound = true;
         }
 
-        // 2. Audio / TTS
-        if (lowerName.includes('tts') || lowerName.includes('speech') || lowerName.includes('audio')) {
+        // 2. Embedding
+        if (lowerName.includes('embed')) {
+            console.log(`[Specialization] MATCH EMBEDDING: ${modelId}`);
+            const specs = rawData as unknown as ModelSpecs;
+            await prisma.embeddingModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId, dimensions: specs.embedding_length || 1536 },
+                update: {} // Don't overwrite if exists
+            });
+        }
+
+        // 3. Vision
+        if (lowerName.includes('vision') || lowerName.includes('pixtral') || lowerName.includes('vl') || lowerName.includes('omni')) {
+            await prisma.visionModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId },
+                update: {}
+            });
+        }
+
+        // 4. Audio / TTS
+        if (lowerName.includes('tts') || lowerName.includes('speech') || lowerName.includes('audio') || lowerName.includes('whisper') || lowerName.includes('voxtral') || lowerName.includes('orpheus')) {
              console.log(`[Specialization] MATCH AUDIO: ${modelId}`);
              await prisma.audioModel.upsert({
                 where: { modelId: modelId },
                 create: { modelId: modelId },
                 update: {}
             });
-            matchFound = true;
         }
 
-        // [NEW] Unknown Model Fallback
-        if (!matchFound) {
-             console.log(`[Specialization] UNKNOWN: ${modelId} (No specialized traits found). Adding to UnknownModel.`);
-             await prisma.unknownModel.upsert({
-                 where: { modelId: modelId },
-                 create: { modelId: modelId, reason: 'uncategorized' },
-                 update: {}
-             });
+        // 4.5 Image
+        if (lowerName.includes('image') || lowerName.includes('flux') || lowerName.includes('stable-diffusion') || lowerName.includes('dall-e')) {
+            await prisma.imageModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId },
+                update: {}
+            });
+        }
+
+        // 5. Compliance / Safety
+        if (lowerName.includes('moderation') || lowerName.includes('guard') || lowerName.includes('shield')) {
+            await prisma.complianceModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId },
+                update: {}
+            });
+        }
+
+        // 6. Reward
+        if (lowerName.includes('reward')) {
+            await prisma.rewardModel.upsert({
+                where: { modelId: modelId },
+                create: { modelId: modelId },
+                update: {}
+            });
         }
     }
 
@@ -223,27 +277,29 @@ export class RegistrySyncService {
         }
     }
 
-    private static async cleanupGhostRecords(activeIds: string[]) {
-        // [FAIL OPEN] We do NOT delete models immediately. We mark them as offline.
-        // We only touch models that were NOT in the activeIds list but ARE in the DB for known providers.
-        // Since we don't know "known providers" easily without the map, we'll simple set all "not seen" to inactive.
-        
-        if (activeIds.length === 0) return;
+    private static async cleanupGhostRecords(activeIds: string[], syncedProviderIds: string[]) {
+        try {
+            // [FAIL OPEN] We only mark as offline if we actually successfully synced some providers.
+            if (activeIds.length === 0 || syncedProviderIds.length === 0) return;
 
-        console.log('[RegistrySyncService] Marking Ghost Records as Offline...');
-        
-        const result = await prisma.model.updateMany({
-            where: {
-                id: { notIn: activeIds },
-                isActive: true // Only update if currently active
-            },
-            data: {
-                isActive: false
+            console.log(`[RegistrySyncService] Marking Ghost Records as Offline for ${syncedProviderIds.length} synced providers...`);
+            
+            const result = await prisma.model.updateMany({
+                where: {
+                    providerId: { in: syncedProviderIds },
+                    id: { notIn: activeIds },
+                    isActive: true 
+                },
+                data: {
+                    isActive: false
+                }
+            });
+
+            if (result.count > 0) {
+                console.log(`[RegistrySyncService] 💤 Marked ${result.count} models as Offline (Ghosts).`);
             }
-        });
-
-        if (result.count > 0) {
-            console.log(`[RegistrySyncService] 💤 Marked ${result.count} models as Offline (Ghosts).`);
+        } catch (error) {
+            console.warn('[RegistrySyncService] ⚠️ Ghost cleanup failed (non-critical).', error);
         }
     }
 }

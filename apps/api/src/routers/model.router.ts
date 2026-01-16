@@ -12,10 +12,13 @@ export const modelRouter = createTRPCRouter({
       include: {
         provider: true,
         capabilities: true,
+        chatModel: true,
         embeddingModel: true,
+        visionModel: true,
         audioModel: true,
         imageModel: true,
-        safetyModel: true
+        complianceModel: true,
+        rewardModel: true
       },
       orderBy: { lastSeenAt: 'desc' }
     });
@@ -29,10 +32,13 @@ export const modelRouter = createTRPCRouter({
         include: {
            provider: true,
            capabilities: true,
+           chatModel: true,
            embeddingModel: true,
+           visionModel: true,
            audioModel: true,
            imageModel: true,
-           safetyModel: true
+           complianceModel: true,
+           rewardModel: true
         }
       });
     }),
@@ -45,9 +51,8 @@ export const modelRouter = createTRPCRouter({
 
   runDoctor: protectedProcedure
     .input(z.object({ force: z.boolean().optional() }).optional())
-    .mutation(async ({ input }) => {
-        const surveyor = new Surveyor();
-        await surveyor.scanAllModels(input?.force);
+    .mutation(async () => {
+        await Surveyor.surveyAll();
         return { success: true };
     })
 });

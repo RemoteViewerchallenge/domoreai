@@ -40,9 +40,12 @@ export interface Model {
     primaryTask?: string; // [NEW] e.g. "chat", "embedding"
   };
   embeddingModel?: { dimensions: number; maxContext: number };
-  audioModel?: { voices?: any; sampleRates?: any };
-  imageModel?: { resolutions?: any; styles?: any };
-  safetyModel?: { categories?: any };
+  chatModel?: { contextWindow: number; supportsTools?: boolean; supportsJson?: boolean };
+  visionModel?: { maxResolution?: string; supportsVideo?: boolean };
+  audioModel?: { voices?: string[]; sampleRates?: number[] };
+  imageModel?: { resolutions?: string[]; styles?: string[] };
+  complianceModel?: { categories?: string[] };
+  rewardModel?: { scoreType?: string };
 }
 
 export interface RoleDNA {
