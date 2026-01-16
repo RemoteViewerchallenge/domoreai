@@ -134,6 +134,18 @@ export class AgentService {
              tools = Array.from(new Set([...tools, ...extraTools]));
         }
 
+        if (cortex.contextRange && typeof cortex.contextRange === 'object') {
+             const range = cortex.contextRange as { min?: number; max?: number };
+             role.metadata = {
+                 ...((role.metadata as Record<string, unknown>) || {}),
+                 requirements: {
+                     ...((((role.metadata as Record<string, unknown>) || {}).requirements as Record<string, unknown>) || {}),
+                     minContext: range.min || 0,
+                     maxContext: range.max || 0
+                 }
+             };
+        }
+
       }
 
 
@@ -201,7 +213,16 @@ export class AgentService {
       };
 
 
-      const runtime = await AgentRuntime.create(undefined, tools, 'Worker', executionMode, silenceConfirmation);
+      let tier = 'Worker';
+      if (role?.name.toLowerCase().includes('architect')) {
+        tier = 'Architect';
+      } else if (role?.name.toLowerCase().includes('nebula')) {
+        tier = 'Nebula';
+      } else if (tools.includes('meta')) {
+        tier = 'Architect';
+      }
+
+      const runtime = await AgentRuntime.create(undefined, tools, tier, executionMode, silenceConfirmation);
 
 
       // --- RESILIENCE LOOP ---

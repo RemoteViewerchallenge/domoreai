@@ -4,6 +4,7 @@ import { ProviderManager } from '../services/ProviderManager.js';
 
 export interface ModelRequirements {
   minContext?: number;
+  maxContext?: number;
   capabilities?: string[];
 }
 
@@ -42,9 +43,12 @@ export class LLMSelector {
   }
 
   async resolveModelForRole(role: Role, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
-    const metadata = (role.metadata || {}) as RoleMetadata;
+    const metadata = (role.metadata || {}) as RoleMetadata & Record<string, unknown>;
     const requirements = metadata.requirements || {};
-    const minContext = requirements.minContext || 0;
+    
+    // Support both top-level metadata (RoleCreatorPanel) and nested requirements (AgentService/DNA)
+    const minContext = requirements.minContext || (metadata.minContext as number) || 0;
+    const maxContext = requirements.maxContext || (metadata.maxContext as number) || 0;
     const requiredCaps = requirements.capabilities || [];
 
     // 1. Basic Filters
@@ -146,24 +150,36 @@ export class LLMSelector {
 
     // Context Window Filter
     // [STRICT] Enforce contextWindow >= estimatedTokens * 1.5
+    // [RANGE] Respect min/max context from role metadata if present
     const budgetFactor = 1.5;
-    const requiredContext = Math.max(minContext, (estimatedInputTokens || 0) * budgetFactor);
+    const minRequired = Math.max(minContext, (estimatedInputTokens || 0) * budgetFactor);
+    const maxLimit = maxContext > 0 ? maxContext : Infinity;
 
-    if (requiredContext > 0) {
-      console.log(`[LLMSelector] 📏 Filtering for context >= ${requiredContext} (Estimated: ${estimatedInputTokens})`);
-      const largeEnough = candidates.filter(m => {
+    if (minRequired > 0 || maxLimit !== Infinity) {
+      console.log(`[LLMSelector] 📏 Filtering for context: ${minRequired} <= window <= ${maxLimit} (Estimated: ${estimatedInputTokens})`);
+      const rangeMatching = candidates.filter(m => {
         const caps = m.capabilities;
         const capContext = caps?.contextWindow || 0;
-        return capContext >= requiredContext;
+        
+        // If max is set, model MUST be under it. If min is set, model MUST be over it.
+        return capContext >= minRequired && capContext <= maxLimit;
       });
       
-      if (largeEnough.length > 0) {
-        candidates = largeEnough;
+      if (rangeMatching.length > 0) {
+        candidates = rangeMatching;
       } else {
-        // [HARD REQUIREMENT] If we can't find a model with enough context, we must pick the largest available
-        // but warn loudly.
-        console.warn(`[ModelSelector] 🚨 CRITICAL: No model found with context >= ${requiredContext}. Picking largest available.`);
-        candidates.sort((a, b) => (b.capabilities?.contextWindow || 0) - (a.capabilities?.contextWindow || 0));
+        // [HARD REQUIREMENT] If we can't find a model within range, we prioritize the MINIMUM first.
+        // If it's over the max, we warn but allow it if no other choice (max is usually for cost/performance control)
+        console.warn(`[ModelSelector] 🚨 No model found in context range [${minRequired}, ${maxLimit}]. Picking best available fit.`);
+        
+        // Pick models that at least meet the minimum
+        const atLeastMin = candidates.filter(m => (m.capabilities?.contextWindow || 0) >= minRequired);
+        if (atLeastMin.length > 0) {
+          candidates = atLeastMin;
+        } else {
+          console.error("[ModelSelector] 💀 CRITICAL: NO models meet minimum context! Picking largest.");
+          candidates.sort((a,b) => (b.capabilities?.contextWindow || 0) - (a.capabilities?.contextWindow || 0));
+        }
       }
     }
 
