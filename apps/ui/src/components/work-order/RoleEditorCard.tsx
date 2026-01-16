@@ -25,7 +25,9 @@ interface VariantConfig {
     governanceConfig?: unknown;
     contextConfig?: unknown;
     toolsConfig?: unknown;
+    behaviorConfig?: unknown;
 }
+
 
 interface ExtendedRole extends Role {
     variants?: VariantConfig[];
@@ -122,8 +124,10 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                     cortex: cortexConfig || DEFAULT_ROLE_FORM_DATA.dna.cortex,
                     governance: (variant.governanceConfig as typeof dna.governance) || DEFAULT_ROLE_FORM_DATA.dna.governance,
                     context: (variant.contextConfig as typeof dna.context) || DEFAULT_ROLE_FORM_DATA.dna.context,
-                    tools: { customTools: (cortexConfig?.tools as string[]) || currentRole.tools || [] }
+                    tools: { customTools: (cortexConfig?.tools as string[]) || currentRole.tools || [] },
+                    behavior: (variant.behaviorConfig as typeof dna.behavior) || DEFAULT_ROLE_FORM_DATA.dna.behavior
                 });
+
                 setHasUnsavedChanges(false);
             }
             const metadata = (currentRole.metadata as Record<string, unknown>) || {};
@@ -160,7 +164,8 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
             }
 
              // 2. Persist DNA modules to backend
-             const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools'> = ['identity', 'cortex', 'governance', 'context', 'tools'];
+             const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools' | 'behavior'> = ['identity', 'cortex', 'governance', 'context', 'tools', 'behavior'];
+
              for (const mod of modules) {
                  await updateVariantMutation.mutateAsync({
                      roleId,
@@ -455,14 +460,17 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                             <label className="text-[9px] font-bold uppercase text-zinc-500">Communication Style</label>
                                             <select
                                                 value={dna.identity.style}
-                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, style: e.target.value as typeof dna.identity.style } }))}
+                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, style: e.target.value } }))}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
                                             >
                                                 <option value="PROFESSIONAL_CONCISE">Professional & Concise</option>
                                                 <option value="SOCRATIC">Socratic (Questioning)</option>
+                                                <option value="FRIENDLY_HELPFUL">Friendly & Helpful</option>
+                                                <option value="ACADEMIC_FORMAL">Academic & Formal</option>
+                                                <option value="CREATIVE">Creative (Unconventional)</option>
                                                 <option value="AGGRESSIVE_AUDITOR">Aggressive Auditor</option>
-                                                <option value="CREATIVE_EXPLORER">Creative Explorer</option>
                                             </select>
+
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -470,25 +478,37 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                             <label className="text-[9px] font-bold uppercase text-zinc-500">Thinking Process</label>
                                             <select
                                                 value={dna.identity.thinkingProcess}
-                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value as 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING' } }))}
+                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value } }))}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
                                             >
                                                 <option value="SOLO">Solo (Single-Shot)</option>
                                                 <option value="CHAIN_OF_THOUGHT">Chain of Thought</option>
+                                                <option value="CRITIC_LOOP">Critic Loop (Self-Correcting)</option>
                                                 <option value="MULTI_STEP_PLANNING">Multi-Step Planning</option>
                                             </select>
+
                                         </div>
-                                        <div className="flex items-center gap-4 pt-5">
+                                        <div className="flex flex-col gap-2 pt-5">
                                             <label className="flex items-center gap-2 cursor-pointer group">
                                                 <input
                                                     type="checkbox"
                                                     checked={dna.identity.reflectionEnabled}
                                                     onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, reflectionEnabled: e.target.checked } }))}
-                                                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-blue-600 focus:ring-blue-600 focus:ring-offset-zinc-900"
+                                                    className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-blue-600 focus:ring-1 focus:ring-blue-600 focus:ring-offset-0"
                                                 />
-                                                <span className="text-[10px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Self-Reflection</span>
+                                                <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Self-Reflection</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={dna.behavior?.silenceConfirmation || false}
+                                                    onChange={e => updateDna(prev => ({ ...prev, behavior: { ...prev.behavior, silenceConfirmation: e.target.checked } }))}
+                                                    className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-1 focus:ring-purple-600 focus:ring-offset-0"
+                                                />
+                                                <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Silence Confirmation</span>
                                             </label>
                                         </div>
+
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-bold uppercase text-zinc-500 flex items-center justify-between">
@@ -513,8 +533,25 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                         <Cpu size={12} /> Cognitive Module
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
-                                        {/* Capabilities are handled individually or via ModelFilter */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold uppercase text-zinc-500">Execution Strategy</label>
+                                            <select
+                                                value={dna.cortex.executionMode || 'HYBRID_AUTO'}
+                                                onChange={e => updateDna(prev => ({ ...prev, cortex: { ...prev.cortex, executionMode: e.target.value as any } }))}
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-purple-600 text-zinc-300"
+                                            >
+                                                <option value="HYBRID_AUTO">Hybrid (Auto-Switch)</option>
+                                                <option value="JSON_STRICT">Strict JSON-RPC</option>
+                                                <option value="CODE_INTERPRETER">TypeScript Interpreter</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center gap-4 pt-5">
+                                             <label className="text-[8px] text-zinc-500 leading-tight">
+                                                 Hybrid: AI picks Mode. JSON: High speed, specific. Code: High logic, piping.
+                                             </label>
+                                        </div>
                                     </div>
+
                                 </section>
 
                                 <ModelFilter
@@ -608,12 +645,14 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                         <label className="text-[9px] font-bold uppercase text-zinc-500">Enforcement Level</label>
                                         <select
                                             value={dna.governance.enforcementLevel}
-                                            onChange={e => updateDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as typeof dna.governance.enforcementLevel } }))}
+                                            onChange={e => updateDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as any } }))}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-red-600 text-zinc-300"
                                         >
-                                            <option value="BLOCK_ON_FAIL">Block on Fail</option>
-                                            <option value="WARN_ONLY">Warn Only</option>
+                                            <option value="LOW">Low (Warn Only)</option>
+                                            <option value="MEDIUM">Medium (Supervised)</option>
+                                            <option value="HIGH">High (Strict / Block)</option>
                                         </select>
+
                                     </div>
                                 </section>
                             </div>
@@ -632,27 +671,28 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                                 { value: 'EXPLORATORY', label: 'Exploratory (Find Files)' },
                                                 { value: 'VECTOR_SEARCH', label: 'Vector Search (RAG)' },
                                                 { value: 'LOCUS_FOCUS', label: 'Locus (Active File)' }
-                                            ].map(strat => (
-                                                <label key={strat.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
+                                            ].map(strategy => (
+                                                <label key={strategy.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
                                                     <input
                                                         type="checkbox"
-                                                        checked={dna.context.strategy.includes(strat.value)}
+                                                        checked={dna.context.strategy.includes(strategy.value)}
                                                         onChange={e => {
                                                             setDna(prev => ({
                                                                 ...prev,
                                                                 context: {
                                                                     ...prev.context,
                                                                     strategy: e.target.checked
-                                                                        ? [...prev.context.strategy, strat.value]
-                                                                        : prev.context.strategy.filter(s => s !== strat.value)
+                                                                        ? [...prev.context.strategy, strategy.value]
+                                                                        : prev.context.strategy.filter(s => s !== strategy.value)
                                                                 }
                                                             }));
                                                         }}
                                                         className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-emerald-600 focus:ring-1 focus:ring-emerald-600 focus:ring-offset-0"
                                                     />
-                                                    <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors capitalize">{strat.label}</span>
+                                                    <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors capitalize">{strategy.label}</span>
                                                 </label>
                                             ))}
+
                                         </div>
                                     </div>
                                 </section>

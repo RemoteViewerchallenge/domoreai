@@ -48,12 +48,13 @@ export interface Model {
 export interface RoleDNA {
   identity: {
     personaName: string;
-    style: 'PROFESSIONAL_CONCISE' | 'SOCRATIC' | 'AGGRESSIVE_AUDITOR' | 'CREATIVE_EXPLORER';
+    style: string; // [FLEXIBLE] e.g. 'PROFESSIONAL_CONCISE', 'SOCRATIC', 'FRIENDLY_HELPFUL'
     systemPromptDraft: string;
-    thinkingProcess: 'SOLO' | 'CHAIN_OF_THOUGHT' | 'MULTI_STEP_PLANNING';
+    thinkingProcess: string; // [FLEXIBLE] e.g. 'SOLO', 'CHAIN_OF_THOUGHT', 'CRITIC_LOOP'
     reflectionEnabled: boolean;
   };
   cortex: {
+    executionMode?: 'JSON_STRICT' | 'CODE_INTERPRETER' | 'HYBRID_AUTO';
     capabilities: string[]; // Non-exclusive: vision, reasoning, tts, embedding, coding
     preferences?: {
       reasoning?: boolean;
@@ -63,11 +64,14 @@ export interface RoleDNA {
       imageGen?: boolean;
     };
     contextRange: { min: number; max: number };
+    tools?: string[];
   };
+
+
   governance: {
     rules: string[];
     assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
-    enforcementLevel: 'BLOCK_ON_FAIL' | 'WARN_ONLY';
+    enforcementLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   };
   context: {
     strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
@@ -76,7 +80,11 @@ export interface RoleDNA {
   tools: {
     customTools: string[];
   };
+  behavior?: {
+    silenceConfirmation?: boolean;
+  };
 }
+
 
 export interface Role {
   id: string;
@@ -132,7 +140,9 @@ export interface Role {
 
   currentModel?: string; // Resolved model name
   scope?: string;
+  metadata?: Record<string, unknown>;
 }
+
 
 export interface CategoryNode {
   id: string;

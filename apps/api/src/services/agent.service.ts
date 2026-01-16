@@ -58,6 +58,15 @@ export interface ExtendedRole extends Omit<Role, 'basePrompt'> {
   variants?: unknown[];
 }
 
+interface RoleVariantWithBehavior {
+    identityConfig: Record<string, unknown>;
+    cortexConfig: Record<string, unknown>;
+    contextConfig: Record<string, unknown>;
+    governanceConfig: Record<string, unknown>;
+    behaviorConfig: { silenceConfirmation?: boolean };
+}
+
+
 export class AgentService {
   async startSession(input: StartSessionInput) {
     const { roleId, modelConfig, userGoal, cardId, context } = input;
@@ -90,7 +99,10 @@ export class AgentService {
       // Flatten DNA (Shared Logic with Router)
       const role: ExtendedRole | null = rawRole ? { ...rawRole } as ExtendedRole : null;
       let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
-      
+      let executionMode: string = 'HYBRID_AUTO';
+      let silenceConfirmation: boolean = false;
+
+
       if (role && rawRole?.variants?.length) {
         const v = rawRole.variants[0];
         const cortex = (v.cortexConfig as Record<string, unknown>) || {};
@@ -102,6 +114,17 @@ export class AgentService {
         role.needsReasoning = caps.includes('reasoning');
         role.needsTools = caps.includes('tools');
 
+        if (typeof cortex.executionMode === 'string') {
+            executionMode = cortex.executionMode;
+        }
+
+        const behavior = (v as unknown as RoleVariantWithBehavior).behaviorConfig || {};
+
+
+        if (typeof behavior.silenceConfirmation === 'boolean') {
+            silenceConfirmation = behavior.silenceConfirmation;
+        }
+        
         if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) {
             role.basePrompt = identity.systemPromptDraft;
         }
@@ -173,7 +196,8 @@ export class AgentService {
       };
 
 
-      const runtime = await AgentRuntime.create(undefined, tools);
+      const runtime = await AgentRuntime.create(undefined, tools, 'Worker', executionMode, silenceConfirmation);
+
 
       // --- RESILIENCE LOOP ---
       let agent: VolcanoAgent | undefined;

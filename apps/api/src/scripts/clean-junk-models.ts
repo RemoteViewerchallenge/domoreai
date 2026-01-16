@@ -1,7 +1,9 @@
-
 // Run this via: npx ts-node --esm src/scripts/clean-junk-models.ts
 import { PrismaClient } from '@prisma/client';
 import { ProviderService } from '../services/provider.service.js';
+
+
+
 
 const prisma = new PrismaClient();
 const service = new ProviderService();
