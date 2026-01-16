@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Model } from '../../../types/role.js';
 import DualRangeSlider from '../../ui/DualRangeSlider.js';
-import { Check, Cpu, Eye, Image, Mic, Zap, FileText, Shield, Hammer, FlaskConical, Terminal } from 'lucide-react';
+import { Check, Cpu, Eye, Image, Mic, Zap, FileText, Shield, Hammer, FlaskConical, Terminal, type LucideIcon } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
 export type FilterMode = 'CHAT' | 'VISION' | 'AUDIO' | 'EMBEDDING' | 'REASONING' | 'IMAGE_GEN' | 'COMPLIANCE' | 'JUDGE' | 'RESEARCH';
@@ -45,32 +45,22 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
 
             // Categorical Filtering (Mutually Exclusive)
             let isMatch = false;
-            const strictlySpecialized = !!(
-                caps.hasEmbedding || caps.hasOCR || caps.hasTTS || caps.hasImageGen ||
-                caps.hasAudioInput || caps.hasAudioOutput || caps.hasReward || caps.hasModeration ||
-                caps.isMedical || caps.isWeather || caps.isScience
-            );
-
-            const isDomainSpecific = !!(
-                caps.isMedical || caps.isWeather || caps.isScience || caps.hasReward || caps.hasModeration || caps.isLibrarian
-            );
 
             switch (criteria.mode) {
                 case 'CHAT':
-                    // Exclude strictly specialized models unless multimodal
-                    if (caps.primaryTask && caps.primaryTask !== 'chat' && !caps.isMultimodal) {
-                         isMatch = false;
-                    } else if (m.embeddingModel || m.audioModel || m.safetyModel) {
-                        // If it has specialized tables but NO chat capability, exclude
-                        // But wait, some generic models might get specialized tables if we detected "embed" in name.
-                        // Better to rely on primaryTask if available, or fallback to heuristics
-                        isMatch = !!(caps.hasReasoning || caps.hasCoding || caps.isMultimodal || !caps.primaryTask); // Default to True if no primaryTask
+                    // Check ChatModel existence + Heuristics
+                    if (m.chatModel) {
+                        isMatch = true;
+                    } else if (caps.primaryTask && caps.primaryTask !== 'chat' && !caps.isMultimodal) {
+                        isMatch = false;
+                    } else if (m.embeddingModel || m.audioModel || m.complianceModel) {
+                        isMatch = !!(caps.hasReasoning || caps.hasCoding || caps.isMultimodal || !caps.primaryTask);
                     } else {
                         isMatch = true;
                     }
                     break;
                 case 'VISION':
-                    isMatch = !!caps.hasVision || !!caps.isMultimodal;
+                    isMatch = !!m.visionModel || !!caps.hasVision || !!caps.isMultimodal;
                     break;
                 case 'AUDIO':
                     // Check AudioModel existence + Capabilities
@@ -86,10 +76,10 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     isMatch = !!m.imageModel || !!caps.hasImageGen;
                     break;
                 case 'COMPLIANCE':
-                    isMatch = !!m.safetyModel || !!caps.hasModeration;
+                    isMatch = !!m.complianceModel || !!caps.hasModeration;
                     break;
                 case 'JUDGE':
-                    isMatch = !!caps.hasReward;
+                    isMatch = !!m.rewardModel || !!caps.hasReward;
                     break;
                 case 'RESEARCH':
                     isMatch = !!caps.isMedical || !!caps.isWeather || !!caps.isScience;
@@ -237,7 +227,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
     );
 };
 
-const ModeToggle = ({ label, icon: Icon, active, onClick }: { label: string; icon: any; active: boolean; onClick: () => void }) => (
+const ModeToggle = ({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active: boolean; onClick: () => void }) => (
     <button onClick={onClick} type="button" className={cn(
         "flex flex-col items-center justify-center p-2 rounded border transition-all gap-1",
         active ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]" : "bg-[var(--bg-background)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--text-muted)]"
@@ -247,7 +237,7 @@ const ModeToggle = ({ label, icon: Icon, active, onClick }: { label: string; ico
     </button>
 );
 
-const CapToggle = ({ label, icon: Icon, active, onClick }: { label: string; icon: any; active: boolean; onClick: () => void }) => (
+const CapToggle = ({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active: boolean; onClick: () => void }) => (
     <button onClick={onClick} type="button" className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded border transition-all text-[10px] font-bold",
         active ? "bg-blue-500/10 border-blue-500 text-blue-500" : "bg-[var(--bg-background)] border-[var(--border-color)] text-[var(--text-muted)]"
