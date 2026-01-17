@@ -12,62 +12,11 @@ declare namespace system {
   };
   function updateThemeValue(args: SystemUpdateThemeValueArgs): Promise<any>;
 
+  function updateThemeValue(args: SystemUpdateThemeValueArgs): Promise<any>;
+
   /**
-   * A layout engine tool for manipulating the Nebula UI tree. 
-    
-    NEBULA CODE MODE v2.0:
-    When writing TypeScript to manipulate the UI, use the global 'nebula' and 'ast' objects.
-    
-    1. addNode(parentId, node): Adds a node and RETURNS a unique nodeId. ALWAYS capture this ID.
-    2. updateNode(nodeId, update): Updates an existing node.
-    3. moveNode(nodeId, targetParentId, index): Moves a node.
-    4. deleteNode(nodeId): Deletes a node.
-    5. ast.parse(jsx): Parses raw JSX into a fragment for ingestion.
-    
-    Example:
-    const cardId = nebula.addNode('root', { type: 'Box', props: { className: 'p-4' } });
-    nebula.addNode(cardId, { type: 'Text', props: { children: 'Hello v2.0' } });
-   */
-  type SystemNebulaArgs = {
-    /** The operation to perform on the layout. */
-    action: 'addNode' | 'updateNode' | 'moveNode' | 'deleteNode' | 'ingest' | 'setTheme';
-    /** The ID of the parent node (required for addNode and ingest). */
-    parentId?: string;
-    /** The ID of the node to manipulate (required for updateNode, moveNode, deleteNode). */
-    nodeId?: string;
-    /** The node definition (required for addNode). Should include type, props, style, layout, bindings, and actions. */
-    node?: {
-      type?: 'Box' | 'Text' | 'Button' | 'Card' | 'Image' | 'Input' | 'Icon';
-      props?: Record<string, any>;
-      style?: Record<string, any>;
-      layout?: Record<string, any>;
-      bindings?: ({
-        propName?: string;
-        sourcePath?: string;
-      })[];
-      actions?: ({
-        trigger?: 'onClick' | 'onSubmit';
-        type?: 'navigate' | 'mutation' | 'toast';
-        payload?: Record<string, any>;
-      })[];
-      meta?: Record<string, any>;
-    };
-    /** The raw JSX string to ingest (required for ingest). */
-    rawJsx?: string;
-    /** The theme configuration (required for setTheme). */
-    theme?: {
-      primary?: string;
-      radius?: number;
-      font?: string;
-    };
-    /** The properties to update (required for updateNode). */
-    update?: Record<string, any>;
-    /** The new parent ID (required for moveNode). */
-    targetParentId?: string;
-    /** The index to insert/move the node to (required for moveNode). */
-    index?: number;
-  };
-  function nebula(args: SystemNebulaArgs): Promise<any>;
+   * Execute raw TypeScript code. 
+
 
   /**
    * Execute raw TypeScript code. 
@@ -166,34 +115,10 @@ RULES:
   function scan_ui_components(args: SystemScan_ui_componentsArgs): Promise<any>;
 
   /**
-   * Use the Role Factory to biologically evolve a new Role Variant (DNA). PREFERRED method for creating high-quality agents.
+   * Returns a list of available UI components and their import paths
    */
-  type SystemCreate_role_variantArgs = any;
-  function create_role_variant(args: SystemCreate_role_variantArgs): Promise<any>;
-
-  /**
-   * Create a new AI role with specific capabilities and constraints. Use this to define new agent personas.
-   */
-  type SystemCreate_roleArgs = any;
-  function create_role(args: SystemCreate_roleArgs): Promise<any>;
-
-  /**
-   * List all available roles in the system
-   */
-  type SystemList_rolesArgs = any;
-  function list_roles(args: SystemList_rolesArgs): Promise<any>;
-
-  /**
-   * Update an existing role's configuration
-   */
-  type SystemUpdate_roleArgs = any;
-  function update_role(args: SystemUpdate_roleArgs): Promise<any>;
-
-  /**
-   * Delete a role from the system
-   */
-  type SystemDelete_roleArgs = any;
-  function delete_role(args: SystemDelete_roleArgs): Promise<any>;
+  type SystemScan_ui_componentsArgs = Record<string, any>;
+  function scan_ui_components(args: SystemScan_ui_componentsArgs): Promise<any>;
 
 }
 ```
@@ -211,27 +136,7 @@ await system.updateThemeValue({ /* ... */ });
 
 ---
 
-### Usage: `system.nebula`
-**Description:** A layout engine tool for manipulating the Nebula UI tree. 
-    
-    NEBULA CODE MODE v2.0:
-    When writing TypeScript to manipulate the UI, use the global 'nebula' and 'ast' objects.
-    
-    1. addNode(parentId, node): Adds a node and RETURNS a unique nodeId. ALWAYS capture this ID.
-    2. updateNode(nodeId, update): Updates an existing node.
-    3. moveNode(nodeId, targetParentId, index): Moves a node.
-    4. deleteNode(nodeId): Deletes a node.
-    5. ast.parse(jsx): Parses raw JSX into a fragment for ingestion.
-    
-    Example:
-    const cardId = nebula.addNode('root', { type: 'Box', props: { className: 'p-4' } });
-    nebula.addNode(cardId, { type: 'Text', props: { children: 'Hello v2.0' } });
-
-**Code Mode Example:**
-```typescript
-// Example for system.nebula
-await system.nebula({ /* ... */ });
-```
+### Usage: `system.typescript_interpreter`
 
 ---
 
@@ -359,61 +264,6 @@ await system.list_files_tree({ /* ... */ });
 ```typescript
 // Example for system.scan_ui_components
 await system.scan_ui_components({ /* ... */ });
-```
-
----
-
-### Usage: `system.create_role_variant`
-**Description:** Use the Role Factory to biologically evolve a new Role Variant (DNA). PREFERRED method for creating high-quality agents.
-
-**Code Mode Example:**
-```typescript
-// Example for system.create_role_variant
-await system.create_role_variant({ /* ... */ });
-```
-
----
-
-### Usage: `system.create_role`
-**Description:** Create a new AI role with specific capabilities and constraints. Use this to define new agent personas.
-
-**Code Mode Example:**
-```typescript
-// Example for system.create_role
-await system.create_role({ /* ... */ });
-```
-
----
-
-### Usage: `system.list_roles`
-**Description:** List all available roles in the system
-
-**Code Mode Example:**
-```typescript
-// Example for system.list_roles
-await system.list_roles({ /* ... */ });
-```
-
----
-
-### Usage: `system.update_role`
-**Description:** Update an existing role's configuration
-
-**Code Mode Example:**
-```typescript
-// Example for system.update_role
-await system.update_role({ /* ... */ });
-```
-
----
-
-### Usage: `system.delete_role`
-**Description:** Delete a role from the system
-
-**Code Mode Example:**
-```typescript
-// Example for system.delete_role
-await system.delete_role({ /* ... */ });
 ```
 
 ---

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
@@ -28,6 +29,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     } = useCardVFS(id);
 
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
+    const navigate = useNavigate();
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
@@ -269,29 +271,19 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
             >
                 {viewMode === 'config' && (
-                    <RoleEditorCard
-                        id={id}
-                        initialRoleId={agentConfig.roleId}
-                        initialModelId={agentConfig.modelId}
-                        initialTemperature={agentConfig.temperature}
-                        initialMaxTokens={agentConfig.maxTokens}
-                        onUpdateConfig={(cfg) => {
-                            updateCard(id, {
-                                roleId: cfg.roleId,
-                                metadata: {
-                                    ...(card?.metadata || {}),
-                                    agentConfig: {
-                                        ...agentConfig,
-                                        roleId: cfg.roleId,
-                                        modelId: cfg.modelId,
-                                        temperature: cfg.temperature,
-                                        maxTokens: cfg.maxTokens
-                                    }
-                                }
-                            });
-                        }}
-                        onClose={() => setViewMode('editor')}
-                    />
+                    <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
+                        <div className="max-w-xs space-y-4">
+                            <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
+                            <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
+                            <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
+                            <button 
+                                onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
+                                className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
+                            >
+                                Open DNA Lab
+                            </button>
+                        </div>
+                    </div>
                 )}
                 {viewMode === 'editor' && (
                     <SmartEditor
@@ -371,9 +363,9 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     updateCard(id, { roleId });
                                     setShowRolePicker(false);
                                 }}
-                                onEdit={() => {
+                                onEdit={(roleId) => {
                                     setShowRolePicker(false);
-                                    setViewMode('config');
+                                    navigate(`/org-structure?roleId=${roleId}`);
                                 }}
                                 className="border-none"
                             />

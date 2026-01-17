@@ -731,7 +731,9 @@ Return ONLY the system prompt, no additional commentary.`;
         const NATIVE_TOOL_NAMES = [
             'meta', 'nebula', 'read_file', 'write_file', 'list_files', 
             'browse', 'terminal_execute', 'search_codebase', 'list_files_tree', 
-            'scan_ui_components', 'research.web_scrape', 'analysis.complexity'
+            'scan_ui_components', 'research.web_scrape', 'analysis.complexity',
+            'ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate',
+            'role_registry_list', 'role_variant_evolve', 'role_config_patch'
         ];
           
         // Filter out native tools
