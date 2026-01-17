@@ -6,6 +6,8 @@ import { RoleManagementGrid } from "../features/roles/RoleManagementGrid.js";
 import { Canvas } from "../components/nebula/system/Canvas.js";
 import { PropertyPanel } from "../components/nebula/system/PropertyPanel.js";
 import { cn } from "../lib/utils.js";
+import { AgentWorkbenchScaffold } from "../pages/AgentWorkbench.js";
+
 
 export type ComponentCategory = 'layout' | 'atom' | 'molecule' | 'data' | 'feature' | 'system';
 
@@ -220,6 +222,22 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
     component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
     meta: { label: "Menu Bar (Alias)", category: "layout", icon: "sidebar", hidden: true },
     propSchema: {}
+  },
+  "Flex": {
+    component: ({ children, className }: BaseProps) => <div className={cn("flex", className)}>{children}</div>,
+    meta: { label: "Flex Box", category: "layout" },
+    propSchema: {
+        className: { type: "string" }
+    }
+  },
+  "Scaffold": {
+    component: AgentWorkbenchScaffold,
+    meta: { label: "Workbench Shell", category: "layout" },
+    propSchema: {
+        header: { type: "json" },
+        sidebar: { type: "json" },
+        content: { type: "json" }
+    }
   }
 };
 
