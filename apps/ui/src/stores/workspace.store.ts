@@ -65,6 +65,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         { id: '4', roleId: '', column: 1, screenspaceId: 1 },
         { id: '5', roleId: '', column: 2, screenspaceId: 1 },
         { id: '6', roleId: '', column: 2, screenspaceId: 1 },
+        // Refactor screenspace
+        { id: 'r1', roleId: '', column: 0, screenspaceId: 2 },
+        { id: 'r2', roleId: '', column: 1, screenspaceId: 2 },
+        { id: 'r3', roleId: '', column: 2, screenspaceId: 2 },
+        // Logs screenspace
+        { id: 'l1', roleId: '', column: 0, screenspaceId: 3 },
+        { id: 'l2', roleId: '', column: 1, screenspaceId: 3 },
+        { id: 'l3', roleId: '', column: 2, screenspaceId: 3 },
       ],
       setCards: (cards) => set({ cards }),
       addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
