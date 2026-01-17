@@ -64,6 +64,20 @@ export class McpOrchestrator implements IMcpOrchestrator {
     ];
   }
 
+  /**
+   * Hot-loads an MCP server and returns the new tools.
+   */
+  async attachToolToSession(serverName: string): Promise<SandboxTool[]> {
+    console.log(`[Orchestrator] JIT-loading server: ${serverName}`);
+    await this.ensureServerRunning(serverName);
+    
+    const server = this.activeServers.get(serverName);
+    if (!server) throw new Error(`Failed to activate server: ${serverName}`);
+
+    const { tools } = await server.client.listTools();
+    return tools.map((tool) => this.formatToolForSandbox(serverName, server, tool));
+  }
+
 
   private formatToolForSandbox(serverName: string, server: ActiveServer, tool: { name: string; description?: string; inputSchema: Record<string, unknown> }): SandboxTool {
     const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');

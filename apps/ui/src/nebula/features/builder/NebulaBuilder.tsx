@@ -5,7 +5,7 @@ import { Canvas as BuilderCanvas } from '../../../components/nebula/system/Canva
 import { PropertyPanel } from '../../../components/nebula/system/PropertyPanel.js';
 import { BuilderToolbar } from '../../features/navigation/toolbars/BuilderToolbar.js';
 import type { NebulaTree } from '@repo/nebula'; 
-import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box } from 'lucide-react';
+import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box, Zap } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { useVFS } from '../../../hooks/useVFS.js';
 import { SuperAiButton } from '../../../components/ui/SuperAiButton.js';
@@ -58,6 +58,11 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   // TRPC Mutations
   const parseJsxMutation = trpc.nebula.parseJsx.useMutation();
   const generateCodeMutation = trpc.nebula.generateCode.useMutation();
+  const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
+    onSuccess: (data) => {
+        handleAiSuccess(data);
+    }
+  });
 
   // --- ACTIONS ---
 
@@ -145,7 +150,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
       if (def.meta.hidden) return false;
       const matchesSearch = _key.toLowerCase().includes(searchQuery.toLowerCase()) || def.meta.label.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
-      if (activeCategory === 'all') return def.meta.category !== 'system';
+      if (activeCategory === 'all') return def.meta.category !== 'system' && def.meta.category !== 'logic';
       return def.meta.category === activeCategory;
     }), [activeCategory, searchQuery]);
 
@@ -290,52 +295,66 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
            {/* B. AI ASSISTANT TAB */}
            {sidebarTab === 'assistant' && (
                <div className="flex flex-col h-full bg-zinc-900/50">
-                   <div className="flex-1 p-4 overflow-y-auto">
+                   <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                       {/* Context Stats Panel */}
                        <div className="p-4 rounded border border-purple-500/20 bg-purple-500/5 mb-4">
                            <h4 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                               <Bot size={14}/> Active Context
+                               <Bot size={14}/> Intelligence Context
                            </h4>
                            <div className="text-[10px] text-zinc-400 space-y-1 font-mono">
                                <div className="flex justify-between">
-                                   <span>Tree Nodes:</span>
-                                   <span className="text-zinc-200">{(JSON.stringify(tree).length / 1024).toFixed(1)} KB</span>
-                               </div>
-                               <div className="flex justify-between">
-                                   <span>Viewport:</span>
-                                   <span className="text-zinc-200 uppercase">{viewport}</span>
+                                   <span>Tree Complexity:</span>
+                                   <span className="text-zinc-200">{Object.keys(tree.nodes).length} Nodes</span>
                                </div>
                                <div className="flex justify-between">
                                    <span>Active File:</span>
-                                   <span className="text-zinc-200 truncate max-w-[100px]">{currentFile || 'None'}</span>
+                                   <span className="text-zinc-200 truncate max-w-[120px]">{currentFile || 'nebula-project.json'}</span>
                                </div>
                            </div>
                        </div>
                        
-                       <div className="text-xs text-zinc-500 leading-relaxed text-center mt-8">
-                           "I can generate layouts, refactor components, or analyze your current tree. Select a specialized Role below."
-                       </div>
-                   </div>
-
-                   {/* Prompt Area */}
-                   <div className="p-4 border-t border-zinc-800 bg-zinc-950">
-                       <div className="relative">
+                       {/* Expanded Prompt Area */}
+                       <div className="space-y-2">
+                           <label className="text-[10px] font-bold text-zinc-500 uppercase">Evolution Prompt</label>
                            <textarea
-                               className="w-full h-32 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 focus:border-purple-500 focus:outline-none resize-none custom-scrollbar mb-2"
-                               placeholder="Describe your UI needs (e.g., 'Add a 3-column grid with cards')..."
+                               className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none resize-none custom-scrollbar transition-all"
+                               placeholder="Describe high-level layout changes, e.g., 'Convert the main content into a 3-column dashboard with a dark glassmorphism theme and real-time data widgets'..."
                                value={aiPrompt}
                                onChange={e => setAiPrompt(e.target.value)}
                            />
-                           
-                           <div className="flex justify-between items-center">
-                               <span className="text-[10px] text-zinc-600 uppercase font-bold">Model: Nebula-70B</span>
-                               <SuperAiButton 
-                                    contextGetter={getAiContext}
-                                    onSuccess={handleAiSuccess}
-                                    defaultPrompt={aiPrompt}
-                                    className="z-50"
-                                    defaultRoleId="nebula-architect"
-                               />
-                           </div>
+                       </div>
+                   </div>
+
+                   {/* Action Orchestrator */}
+                   <div className="p-4 border-t border-zinc-800 bg-zinc-950 space-y-3">
+                       {/* 1. Hardcoded Nebula Architect Button (The "Power" Action) */}
+                       <button
+                           onClick={() => {
+                               if (!aiPrompt.trim()) return;
+                               // Directly dispatch using the architect role
+                               dispatchMutation.mutate({
+                                   prompt: aiPrompt,
+                                   contextId: JSON.stringify(getAiContext()),
+                                   roleId: 'nebula-architect'
+                               });
+                           }}
+                           disabled={!aiPrompt.trim() || dispatchMutation.isLoading}
+                           className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[11px] font-bold py-3 rounded flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/10 uppercase tracking-tighter"
+                       >
+                           {dispatchMutation.isLoading ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                           Run Nebula Architect
+                       </button>
+
+                       {/* 2. SuperAiButton (The Versatile Contextual Tool) */}
+                       <div className="flex items-center justify-between px-1">
+                           <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Advanced Orchestration</span>
+                           <SuperAiButton 
+                               contextGetter={getAiContext}
+                               onSuccess={handleAiSuccess}
+                               defaultPrompt={aiPrompt}
+                               defaultRoleId="nebula-architect" // Pre-set to fix selection issue
+                               side="left" // Expand inward
+                           />
                        </div>
                    </div>
                </div>

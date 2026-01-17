@@ -1,4 +1,6 @@
 import puppeteer, { Browser, Page, KeyInput } from 'puppeteer';
+import path from 'path';
+import fs from 'fs/promises';
 
 interface BrowserSession {
   browser: Browser;
@@ -10,17 +12,23 @@ class BrowserService {
   private sessions: Map<string, BrowserSession> = new Map();
   private readonly SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
-  async getOrCreateSession(sessionId: string): Promise<BrowserSession> {
-    let session = this.sessions.get(sessionId);
+  async getOrCreateSession(sessionId: string, sessionIdentityId?: string): Promise<BrowserSession> {
+    const sessionKey = sessionIdentityId ? `${sessionId}_${sessionIdentityId}` : sessionId;
+    let session = this.sessions.get(sessionKey);
 
     if (session) {
       session.lastActivity = Date.now();
       return session;
     }
 
-    // Create new browser instance
+    // Create new browser instance with isolated profile
+    const profileId = sessionIdentityId || 'default';
+    const userDataDir = path.join(process.cwd(), '.sessions', profileId);
+    await fs.mkdir(userDataDir, { recursive: true });
+
     const browser = await puppeteer.launch({
       headless: true,
+      userDataDir,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -38,7 +46,7 @@ class BrowserService {
       lastActivity: Date.now()
     };
 
-    this.sessions.set(sessionId, session);
+    this.sessions.set(sessionKey, session);
     
     // Auto-cleanup old sessions
     this.cleanupOldSessions();

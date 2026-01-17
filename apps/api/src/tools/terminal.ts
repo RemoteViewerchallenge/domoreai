@@ -12,12 +12,21 @@ const ExecuteInputSchema = z.object({
 export const terminalTools = {
   execute: {
     name: 'terminal_execute',
-    description: 'EXECUTE: Run a bash command in the project root.\n\nRULES:\n1. You are in a secure environment.\n2. Output (stdout/stderr) is captured and returned to you.\n3. Use this to run tests, install packages (npm install), or manage git.\n4. Do NOT run interactive commands (like `top` or `nano`).\n5. Commands run with a 30s timeout; long-running tasks should be broken into smaller steps.',
+    description: 'EXECUTE: Run a bash command in the project root.\n\nRULES:\n1. Never use sudo for global installs. Use npx or local npm prefix.\n2. Output (stdout/stderr) is captured and returned to you.\n3. Use this to run tests, install packages (npm install), or manage git.\n4. Do NOT run interactive commands.\n5. Commands run with a 45s watchdog; if no output is detected for 45s, the process will be killed.',
     inputSchema: ExecuteInputSchema,
     handler: async ({ command, cwd }: { command: string; cwd?: string }) => {
+      if (command.includes('sudo ') && (command.includes('npm install') || command.includes('-g'))) {
+        return {
+          status: 'error',
+          stdout: '',
+          stderr: 'Policy Violation: Sudo is forbidden for global installs. Please use npx or local prefix.',
+          exitCode: 1
+        };
+      }
+
       try {
         console.log(`[Terminal] 💻 Executing: ${command}`);
-        const { stdout, stderr } = await execAsync(command, { cwd: cwd || process.cwd(), timeout: 30000 });
+        const { stdout, stderr } = await execAsync(command, { cwd: cwd || process.cwd(), timeout: 45000 });
         return {
           status: 'success',
           stdout: stdout ? stdout.toString().trim() : '',
@@ -25,6 +34,15 @@ export const terminalTools = {
           exitCode: 0,
         };
       } catch (error: any) {
+        if (error.signal === 'SIGTERM' || error.killed) {
+           console.error(`[Terminal] Watchdog triggered for: ${command}`);
+           return {
+             status: 'error',
+             stdout: '',
+             stderr: 'Process stalled for > 45s (Watchdog). Retrying with npx recommended.',
+             exitCode: 124
+           };
+        }
         console.warn(`[Terminal] ⚠️ Error executing: ${command}`);
         return {
           status: 'error',

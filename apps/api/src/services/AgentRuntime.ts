@@ -36,6 +36,9 @@ export class AgentRuntime {
   private tier: string = 'Worker'; 
   private executionMode: string = 'HYBRID_AUTO';
   private silenceConfirmation: boolean = false;
+  private traceId: string = '';
+  private roleId?: string;
+  private baggage: Record<string, string> = {};
 
 
   constructor(rootPath: string = process.cwd(), tier: string = 'Worker', executionMode: string = 'HYBRID_AUTO', silenceConfirmation: boolean = false) {
@@ -46,6 +49,8 @@ export class AgentRuntime {
     this.tier = tier;
     this.executionMode = executionMode;
     this.silenceConfirmation = silenceConfirmation;
+    this.traceId = `trace-${Math.random().toString(36).substring(7)}`;
+    this.roleId = undefined; // Will be set in runAgentLoop if needed
   }
 
 
@@ -203,10 +208,20 @@ export class AgentRuntime {
 
     // We maintain a "conversation history" effectively by appending new context
     let contextAccumulator = `Original Goal: ${userGoal}\n\n`;
+    
+    // [PHASE 1] Instrumentation
+    this.baggage = { ...this.baggage, screenspaceId: process.env.ACTIVE_SCREENSPACE_ID || '1' };
 
     while (turn < MAX_TURNS) {
       turn++;
       console.log(`[AgentRuntime] 🔄 Turn ${turn}/${MAX_TURNS}`);
+
+      // [PHASE 2] Hot-Reloading DNA every 5 turns (or exactly at 5, or every 5)
+      // Since MAX_TURNS is 5, let's do it if turn === 3 or something to show it works, 
+      // but user said "every 5 turns".
+      if (turn % 5 === 0 && this.roleId) {
+          await this.checkDnaUpdates();
+      }
 
       // Convert response to string if it's an object (some providers return objects)
       const responseStr =
@@ -231,13 +246,26 @@ export class AgentRuntime {
       let turnLogs: string[] = [];
 
       if (strategy) {
-        console.log(`[AgentRuntime] 🔀 Routing to ${strategy.name}`);
+        console.log(`[AgentRuntime] 🔀 Routing to ${strategy.name} (Trace: ${this.traceId})`);
         const result = await strategy.execute(responseStr, {
-          roleId: undefined, // Add logic to pass roleId/sessionId if available in loop
-          sessionId: undefined
-        });
+          roleId: this.roleId,
+          sessionId: undefined,
+          traceId: this.traceId,
+          baggage: this.baggage
+        } as any);
         turnResult = result.output;
         turnLogs = result.logs;
+
+        // [JIT TOOL INJECTION] Check for REQUEST_TOOL signal in output
+        if (turnResult.includes("REQUEST_TOOL:")) {
+          const match = turnResult.match(/REQUEST_TOOL:([a-zA-Z0-9_-]+)/);
+          if (match) {
+            const requestedTool = match[1];
+            console.log(`[AgentRuntime] 🧰 JIT Tool Request Detected: ${requestedTool}`);
+            await this.injectTools(requestedTool);
+            turnResult = `[SYSTEM]: Tool '${requestedTool}' has been hot-loaded and is now available in 'system.${requestedTool.replace(/-/g, '_')}'. Please retry your action.`;
+          }
+        }
       } else {
         // No strategy matched -> Assume conversational text
         console.log("[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown.");
@@ -544,5 +572,29 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
     );
     
     return result;
+  }
+
+  public async injectTools(serverName: string) {
+      const newTools = await mcpOrchestrator.attachToolToSession(serverName);
+      await this.client.registerManual({
+          name: "system",
+          call_template_type: "local",
+          tools: newTools as any,
+      });
+      console.log(`[AgentRuntime] Successfully injected ${newTools.length} tools from ${serverName}`);
+  }
+
+  public async checkDnaUpdates() {
+      if (!this.roleId) return;
+      const { prisma } = await import("../db.js");
+      const variant = await prisma.roleVariant.findFirst({
+          where: { roleId: this.roleId, isActive: true }
+      });
+      if (variant) {
+          console.log(`[AgentRuntime] 🧬 Polling DNA for ${this.roleId}...`);
+          const cortex = (variant.cortexConfig as any) || {};
+          if (cortex.executionMode) this.executionMode = cortex.executionMode;
+          // Could update basePrompt here if we pass it through system prompt enhancer
+      }
   }
 }
