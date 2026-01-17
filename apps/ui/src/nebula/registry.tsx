@@ -9,7 +9,7 @@ import { cn } from "../lib/utils.js";
 import { AgentWorkbenchScaffold } from "../pages/AgentWorkbench.js";
 
 
-export type ComponentCategory = 'layout' | 'atom' | 'molecule' | 'data' | 'feature' | 'system';
+export type ComponentCategory = 'layout' | 'atom' | 'molecule' | 'data' | 'feature' | 'system' | 'logic';
 
 export interface PropSchema {
   type: 'string' | 'number' | 'boolean' | 'select' | 'color' | 'function' | 'json';
@@ -263,6 +263,36 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
     meta: { label: "Floating Nav", category: "layout", icon: "navigation" },
     propSchema: {
         className: { type: "string" }
+    }
+  },
+
+  // ==============================
+  // 🧠 LOGIC (The Brain) - Headless Components
+  // ==============================
+
+  "Logic:DataFetcher": {
+    component: (_props: { url?: string, onData?: (data: unknown) => void }) => { console.log('DataFetcher logic'); return null; },
+    meta: { label: "Data Fetcher", category: "logic", icon: "download" },
+    propSchema: {
+        url: { type: "string", defaultValue: "https://api.example.com/data" },
+        onData: { type: "function" }
+    }
+  },
+
+  "Logic:StateProvider": {
+    component: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    meta: { label: "State Provider", category: "logic", icon: "database" },
+    propSchema: {
+        initialState: { type: "json", defaultValue: {} }
+    }
+  },
+
+  "Logic:KeyboardListener": {
+    component: (_props: { onKey?: (key: string) => void }) => { console.log('KeyboardListener logic'); return null; },
+    meta: { label: "Keyboard Listener", category: "logic", icon: "keyboard" },
+    propSchema: {
+        keys: { type: "string", defaultValue: "cmd+s" },
+        onKey: { type: "function" }
     }
   }
 };

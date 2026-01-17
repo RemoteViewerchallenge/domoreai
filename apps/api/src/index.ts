@@ -305,6 +305,11 @@ async function startServer() {
         .catch(err => console.error('[McpSync] Startup sync failed:', err));
     });
 
+    // [AUTONOMIC RESILIENCE] Start LogWarden
+    void import('./services/LogWarden.js').then(({ logWarden }) => {
+      logWarden.start();
+    }).catch(err => console.error('[LogWarden] Failed to start:', err));
+
     // Start persistent model doctor
     // try {
     //   await persistentModelDoctor.start();

@@ -8,6 +8,9 @@ export interface ExecutionResult {
 export interface AgentContext {
   roleId?: string;
   sessionId?: string;
+  traceId?: string;
+  spanId?: string;
+  baggage?: Record<string, string>;
 }
 
 export interface IExecutionStrategy {
@@ -121,7 +124,12 @@ export class CodeModeStrategy implements IExecutionStrategy {
         turnLogs = [responseText];
       } else {
         // Standard Sandbox Execution
-        const sandboxResponse = (await this.client.callToolChain(codeToExecute)) as {
+        // [OTEL] Propagate traceId and baggage if available
+        const sandboxResponse = (await this.client.callToolChain(codeToExecute, {
+           traceId: _context.traceId,
+           spanId: _context.spanId,
+           baggage: _context.baggage
+        } as any)) as {
           result: string;
           logs: string[];
         };
@@ -188,7 +196,11 @@ export class JsonRpcStrategy implements IExecutionStrategy {
       }
 
       console.log(`[AgentRuntime] ⚡ Executing JSON tool call: ${toolName}`);
-      const toolOutput = (await this.client.callTool(toolName, args)) as unknown;
+      const toolOutput = (await (this.client as any).callTool(toolName, args, {
+          traceId: _context.traceId,
+          spanId: _context.spanId,
+          baggage: _context.baggage
+      })) as unknown;
       
       turnResult = typeof toolOutput === "string" ? toolOutput : JSON.stringify(toolOutput);
       turnLogs = [`Executed tool ${toolName} with output: ${turnResult}`];

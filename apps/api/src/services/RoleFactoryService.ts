@@ -7,6 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { COORDINATOR_PROTOCOL_SNIPPET } from '../prompts/CoordinatorProtocol.js';
 
 const execAsync = promisify(exec);
 
@@ -581,6 +582,109 @@ process.stdout.write(JSON.stringify(__result));
             });
             // Re-fetch to return with variant
             return await prisma.role.findUnique({ where: { id: role.id } });
+        }
+
+        return role;
+    }
+
+    public async seedCoordinator() {
+        const name = "Grand Orchestrator";
+        const slug = "coordinator";
+        
+        let role = await prisma.role.findFirst({ where: { name } });
+        
+        if (!role) {
+            console.log(`[RoleFactory] 👑 Seeding "Grand Orchestrator"...`);
+            let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
+            if (!cat) cat = await prisma.roleCategory.create({ data: { name: 'System', order: 0 } });
+
+            role = await prisma.role.create({
+                data: {
+                    name,
+                    description: "The primary entry point for all complex requests.",
+                    categoryId: cat.id,
+                    basePrompt: COORDINATOR_PROTOCOL_SNIPPET
+                }
+            });
+        }
+
+        const activeVariant = await prisma.roleVariant.findFirst({
+            where: { roleId: role.id, isActive: true }
+        });
+
+        if (!activeVariant) {
+            await prisma.roleVariant.create({
+                data: {
+                    roleId: role.id,
+                    isActive: true,
+                    identityConfig: {
+                        personaName: 'Coordinator',
+                        style: 'PROFESSIONAL_CONCISE',
+                        systemPromptDraft: COORDINATOR_PROTOCOL_SNIPPET,
+                        thinkingProcess: 'CHAIN_OF_THOUGHT',
+                        reflectionEnabled: true
+                    } as Prisma.InputJsonValue,
+                    cortexConfig: {
+                        executionMode: 'JSON_STRICT',
+                        contextRange: { min: 8192, max: 128000 },
+                        capabilities: ['reasoning'],
+                        tools: ["role_registry_list", "role_variant_evolve", "volcano.execute_task"]
+                    } as Prisma.InputJsonValue,
+                    contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] } as Prisma.InputJsonValue,
+                    governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' } as Prisma.InputJsonValue
+                }
+            });
+        }
+
+        return role;
+    }
+
+    public async seedLiaison() {
+        const name = "Terminal Liaison";
+        
+        let role = await prisma.role.findFirst({ where: { name } });
+        
+        if (!role) {
+            console.log(`[RoleFactory] 🤝 Seeding "Terminal Liaison"...`);
+            let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
+            if (!cat) cat = await prisma.roleCategory.create({ data: { name: 'System', order: 0 } });
+
+            role = await prisma.role.create({
+                data: {
+                    name,
+                    description: "Expert at local execution and avoiding sudo hangs.",
+                    categoryId: cat.id,
+                    basePrompt: "You are the Terminal Liaison. You are an expert at avoiding sudo hangs. Always use npx or local --prefix for CLI tool installations."
+                }
+            });
+        }
+
+        const activeVariant = await prisma.roleVariant.findFirst({
+            where: { roleId: role.id, isActive: true }
+        });
+
+        if (!activeVariant) {
+            await prisma.roleVariant.create({
+                data: {
+                    roleId: role.id,
+                    isActive: true,
+                    identityConfig: {
+                        personaName: 'Liaison',
+                        style: 'CONCISE',
+                        systemPromptDraft: role.basePrompt,
+                        thinkingProcess: 'SOLO',
+                        reflectionEnabled: false
+                    } as Prisma.InputJsonValue,
+                    cortexConfig: {
+                        executionMode: 'CODE_INTERPRETER',
+                        contextRange: { min: 4096, max: 32000 },
+                        capabilities: ['coding'],
+                        tools: ["terminal_execute", "system.context_fetch"]
+                    } as Prisma.InputJsonValue,
+                    contextConfig: { strategy: ['LOCUS_FOCUS'], permissions: ['ALL'] } as Prisma.InputJsonValue,
+                    governanceConfig: { rules: ["Never use sudo"], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'HIGH' } as Prisma.InputJsonValue
+                }
+            });
         }
 
         return role;

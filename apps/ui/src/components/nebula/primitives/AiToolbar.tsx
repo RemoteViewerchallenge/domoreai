@@ -42,14 +42,25 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
         borderLeft: `3px solid ${colorVar}` 
       }}
     >
-      <div className="flex items-center gap-3">
-        {/* ✅ Pass the variable down so the button glows the right color */}
+      <div className="flex items-center gap-2">
+        {/* Spark 2: Meta/Refine (Prompt Engineer) */}
+        <SuperAiButton 
+          contextGetter={aiContextGetter}
+          onSuccess={(res: unknown) => onAiAction('REFINE_GOAL', res)}
+          contextId={contextId}
+          defaultRoleId="prompt-engineer"
+          label="Meta"
+          className="scale-90 opacity-70 hover:opacity-100 transition-opacity"
+          style={{ '--ai-btn-primary': 'var(--ai-intent-architect)', '--ai-btn-size': '22px' } as React.CSSProperties} 
+        />
+
+        {/* Spark 1: Intent (Primary) */}
         <SuperAiButton 
           contextGetter={aiContextGetter}
           onSuccess={(res: unknown) => onAiAction('APPLY_RESPONSE', res)}
           onGenerate={onGenerate}
           contextId={contextId}
-          style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '24px' } as React.CSSProperties} 
+          style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '26px' } as React.CSSProperties} 
         />
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80">
           {title}
