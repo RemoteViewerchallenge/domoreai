@@ -269,21 +269,21 @@ export class MockKeywordListenerEngine implements KeywordListenerEngine {
 /**
  * Initialize mock engines
  */
-export function initializeMockEngines() {
-  const { getVoiceEngineRegistry } = require('./engineRegistry.js');
+export async function initializeMockEngines() {
+  const { getVoiceEngineRegistry } = await import('./engineRegistry.js');
   const registry = getVoiceEngineRegistry();
 
   // Register mock STT engine
   const mockSTT = new MockSTTEngine();
-  registry.registerEngine(mockSTT);
+  await registry.registerEngine(mockSTT);
 
   // Register mock TTS engine
   const mockTTS = new MockTTSEngine();
-  registry.registerEngine(mockTTS);
+  await registry.registerEngine(mockTTS);
 
   // Register mock keyword listener
   const mockKeyword = new MockKeywordListenerEngine();
-  registry.registerEngine(mockKeyword);
+  await registry.registerEngine(mockKeyword);
 
   console.log('[Mock Engines] All mock engines registered');
 }

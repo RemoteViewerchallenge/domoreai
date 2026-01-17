@@ -320,7 +320,7 @@ async function startServer() {
     
     // Initialize mock voice engines for development
     try {
-      initializeMockEngines();
+      await initializeMockEngines();
       console.log('✅ Mock voice engines initialized');
     } catch (err) {
       console.warn('⚠️ Failed to initialize mock voice engines:', err);

@@ -78,7 +78,7 @@ export class InputController {
     }
     
     const result: TranscriptionResult = {
-      id: `transcription_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `transcription_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       inputEventId: event.id,
       text: transcription,
       engineId: engine.config.id,
@@ -159,7 +159,7 @@ export class InputController {
    */
   async processMicrophoneInput(audioData: Buffer, metadata?: Record<string, any>): Promise<TranscriptionResult> {
     const event: InputEvent = {
-      id: `mic_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `mic_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       source: 'microphone',
       timestamp: new Date(),
       audioData,
@@ -174,7 +174,7 @@ export class InputController {
    */
   async processFileInput(audioData: Buffer, filename: string, metadata?: Record<string, any>): Promise<TranscriptionResult> {
     const event: InputEvent = {
-      id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       source: 'file',
       timestamp: new Date(),
       audioData,
@@ -189,7 +189,7 @@ export class InputController {
    */
   async processAndroidInput(audioData: Buffer, deviceId: string, metadata?: Record<string, any>): Promise<TranscriptionResult> {
     const event: InputEvent = {
-      id: `android_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `android_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       source: 'android',
       timestamp: new Date(),
       audioData,
@@ -204,7 +204,7 @@ export class InputController {
    */
   async processKeywordTrigger(keyword: string, audioData?: Buffer, metadata?: Record<string, any>): Promise<TranscriptionResult> {
     const event: InputEvent = {
-      id: `keyword_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `keyword_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       source: 'keyword_trigger',
       timestamp: new Date(),
       audioData,

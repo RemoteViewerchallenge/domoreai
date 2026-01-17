@@ -162,7 +162,7 @@ export class KeywordListenerService {
     }
     
     const event: KeywordDetectionEvent = {
-      id: `keyword_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `keyword_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       keyword: normalizedKeyword,
       timestamp: new Date(),
       engineId,

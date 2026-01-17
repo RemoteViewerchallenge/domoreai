@@ -66,7 +66,7 @@ export const voiceRouter = createTRPCRouter({
       const audioBuffer = Buffer.from(input.audioData, 'base64');
       
       const result = await controller.processInput({
-        id: `input_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `input_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         source: input.source,
         timestamp: new Date(),
         audioData: audioBuffer,
