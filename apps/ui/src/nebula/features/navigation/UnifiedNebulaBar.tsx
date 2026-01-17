@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Hammer, Palette, Rocket, Command, Sparkles, LayoutGrid, 
-  Settings, Monitor, FolderGit2, X
+  Settings, Monitor, FolderGit2, X, Users, Database
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
@@ -21,8 +21,12 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
 
   // Context Detection
   const isBuilder = location.pathname.includes('/builder');
-  const isTheme = location.pathname.includes('/theme'); // Legacy route check
-  const isWorkbench = !isBuilder && !isTheme;
+  const isTheme = location.pathname.includes('/theme');
+  const isWorkbench = location.pathname === '/' || location.pathname === '/workbench';
+  const isOrg = location.pathname === '/org-structure';
+  const isVisualizer = location.pathname === '/visualizer' || location.pathname === '/code-visualizer';
+  const isData = location.pathname === '/datacenter';
+  const isSettings = location.pathname === '/settings';
 
   return (
     <div className="flex-none h-10 bg-[var(--bg-secondary)] border-b border-[var(--border-color)] flex items-center justify-between select-none px-2 gap-2">
@@ -54,14 +58,32 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
           <NavButton 
             icon={Rocket} 
             active={isWorkbench} 
-            onClick={() => navigate('/')} 
+            onClick={() => navigate('/workbench')} 
             tooltip="Workbench (Cmd+1)" 
+          />
+          <NavButton 
+            icon={Users} 
+            active={isOrg} 
+            onClick={() => navigate('/org-structure')} 
+            tooltip="Agent DNA Lab (Cmd+2)" 
+          />
+          <NavButton 
+            icon={Monitor} 
+            active={isVisualizer} 
+            onClick={() => navigate('/visualizer')} 
+            tooltip="System Visualizer (Cmd+3)" 
+          />
+          <NavButton 
+            icon={Database} 
+            active={isData} 
+            onClick={() => navigate('/datacenter')} 
+            tooltip="Data Center (Cmd+4)" 
           />
           <NavButton 
             icon={Hammer} 
             active={isBuilder} 
             onClick={() => navigate('/admin/builder/workbench')} 
-            tooltip="Interface Builder (Cmd+2)" 
+            tooltip="Interface Studio" 
           />
           
           <div className="w-px h-4 bg-[var(--border-color)] mx-1" />
@@ -73,10 +95,11 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
             onClick={onToggleTheme || (() => {})} 
             tooltip="Theme Engine (Cmd+E)" 
           />
-           <NavButton 
-            icon={Monitor} 
-            onClick={() => navigate('/code-visualizer')} 
-            tooltip="System Visualizer" 
+          <NavButton 
+            icon={Settings} 
+            active={isSettings} 
+            onClick={() => navigate('/settings')} 
+            tooltip="Constitution & Settings" 
           />
       </div>
 
