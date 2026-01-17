@@ -198,7 +198,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     <div className="col-span-5 text-right">{viewMode === 'HARD_SELECTION' ? 'Selection' : 'Status'}</div>
                 </div>
 
-                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                     {Object.entries(stats.providerMap)
                         .filter(([_, data]) => data.matching.length > 0 || (viewMode === 'DNA_ONLY' && data.total > 0))
                         .map(([provider, data]) => {
@@ -240,8 +240,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                 </div>
             </div>
 
-            <div className="flex justify-between items-center text-[10px] text-[var(--text-muted)] px-1">
-                <span>Category: {criteria.mode}</span>
+            <div className="flex justify-end items-center text-[10px] text-[var(--text-muted)] px-1">
                 <span className="font-bold text-[var(--color-primary)]">{stats.totalMatching} matches</span>
             </div>
         </div>

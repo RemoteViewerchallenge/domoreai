@@ -188,6 +188,8 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
                     items={items}
                     categories={allCategories}
                     selectedId={selectedRoleId}
+                    accordion
+                    defaultExpanded={false}
                     onSelect={onSelect}
                     onDelete={handleDelete}
                     onEdit={onEdit}

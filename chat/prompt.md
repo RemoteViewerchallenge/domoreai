@@ -1,1 +1,1 @@
-<p>create a prompt improvement role that edits user prompt for syntax spelling, punctuation and clarity.</p><p></p>
+<p>create a prompt improvment role that edits users prompt for clarity grammar spelling and punctuation</p>

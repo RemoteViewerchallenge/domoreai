@@ -75,10 +75,12 @@ export interface RoleDNA {
     rules: string[];
     assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
     enforcementLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+    attachedFiles?: string[];
   };
   context: {
     strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
     permissions: string[];
+    attachedFiles?: string[];
   };
   tools: {
     customTools: string[];
