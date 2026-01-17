@@ -370,7 +370,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     }}
                 />}
                 {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
-                {viewMode === 'browser' && <SmartBrowser url={browserUrl} onUrlChange={setBrowserUrl} />}
+                {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                 
                 {/* [NEW] SupplementaryAgentSlot */}
                 {showSupplementary && (

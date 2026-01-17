@@ -36,13 +36,15 @@ const isElectron = () => {
 };
 
 interface BrowserCardProps {
+  cardId?: string;
+  screenspaceId?: number;
   headerEnd?: React.ReactNode;
   initialUrl?: string;
   onLoad?: (content: string) => void;
   hideWrapper?: boolean;
 }
 
-export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper }) => {
+export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId, headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper }) => {
   const [url, setUrl] = useState(initialUrl);
   const [input, setInput] = useState(url);
   const webviewRef = useRef<HTMLWebViewElement>(null);
@@ -67,7 +69,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
         setUrl(initialUrl);
         setInput(initialUrl);
     }
-  }, [initialUrl]); 
+  }, [initialUrl, url]); 
   
   // Settings State
   const [showDebugView, setShowDebugView] = useState(false);
@@ -245,7 +247,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ headerEnd, initialUrl 
             )}
             {showDebugView ? (
                 <div className="w-full h-full bg-card">
-                    <ResearchBrowser initialUrl={url} />
+                    <ResearchBrowser cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
                 </div>
             ) : (
                 isElectron() ? (
