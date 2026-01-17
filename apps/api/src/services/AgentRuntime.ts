@@ -39,6 +39,8 @@ export class AgentRuntime {
   private traceId: string = '';
   private roleId?: string;
   private baggage: Record<string, string> = {};
+  private injectedServers: Set<string> = new Set();
+  private availableTools: string[] = [];
 
 
   constructor(rootPath: string = process.cwd(), tier: string = 'Worker', executionMode: string = 'HYBRID_AUTO', silenceConfirmation: boolean = false) {
@@ -177,6 +179,9 @@ export class AgentRuntime {
           expandedDocsTools.push("role_registry_list", "role_variant_evolve", "role_config_patch");
       }
 
+      
+      this.availableTools = toolsToRegister.map(t => t.name);
+
       await this.client.registerManual({
         name: "system",
         call_template_type: "local",
@@ -199,9 +204,9 @@ export class AgentRuntime {
   async runAgentLoop(
     userGoal: string,
     initialResponse: string,
-    regenerateCallback: (retryPrompt: string) => Promise<string>
+    regenerateCallback: (retryPrompt: string) => Promise<string>,
+    maxTurns: number = 5
   ): Promise<{ result: string; logs: string[] }> {
-    const MAX_TURNS = 5; // Allow up to 5 back-and-forth turns
     let turn = 0;
     let currentResponse = initialResponse;
     const allLogs: string[] = [];
@@ -212,9 +217,9 @@ export class AgentRuntime {
     // [PHASE 1] Instrumentation
     this.baggage = { ...this.baggage, screenspaceId: process.env.ACTIVE_SCREENSPACE_ID || '1' };
 
-    while (turn < MAX_TURNS) {
+    while (turn < maxTurns) {
       turn++;
-      console.log(`[AgentRuntime] 🔄 Turn ${turn}/${MAX_TURNS}`);
+      console.log(`[AgentRuntime] 🔄 Turn ${turn}/${maxTurns}`);
 
       // [PHASE 2] Hot-Reloading DNA every 5 turns (or exactly at 5, or every 5)
       // Since MAX_TURNS is 5, let's do it if turn === 3 or something to show it works, 
@@ -241,29 +246,60 @@ export class AgentRuntime {
         strategy = new CodeModeStrategy(this.client);
       }
 
+      // [JIT TOOL INJECTION] Check for REQUEST_TOOL signal in model's response BEFORE execution
+      if (responseStr.includes("REQUEST_TOOL:")) {
+        const match = responseStr.match(/REQUEST_TOOL:([a-zA-Z0-9_-]+)/);
+        if (match) {
+          const requestedTool = match[1];
+          const logMsg = `[AgentRuntime] 🧰 JIT Tool Request Detected in Response: ${requestedTool}`;
+          console.log(logMsg);
+          allLogs.push(logMsg);
+          try {
+            await this.injectTools(requestedTool);
+          } catch (injectError: any) {
+            const errLog = `[AgentRuntime] Failed to hot-load tool '${requestedTool}': ${injectError.message}`;
+            console.warn(errLog);
+            allLogs.push(errLog);
+          }
+        }
+      }
+
       // 2. Execution or Fallback
       let turnResult = "";
       let turnLogs: string[] = [];
 
       if (strategy) {
         console.log(`[AgentRuntime] 🔀 Routing to ${strategy.name} (Trace: ${this.traceId})`);
-        const result = await strategy.execute(responseStr, {
-          roleId: this.roleId,
-          sessionId: undefined,
-          traceId: this.traceId,
-          baggage: this.baggage
-        } as any);
-        turnResult = result.output;
-        turnLogs = result.logs;
+        try {
+          const result = await strategy.execute(responseStr, {
+            roleId: this.roleId,
+            sessionId: undefined,
+            traceId: this.traceId,
+            baggage: this.baggage
+          } as any);
+          turnResult = result.output;
+          turnLogs = result.logs;
+        } catch (execError: any) {
+          turnResult = `[EXECUTION_ERROR]: ${execError.message}`;
+          turnLogs = [execError.stack || execError.message];
+        }
 
-        // [JIT TOOL INJECTION] Check for REQUEST_TOOL signal in output
+        // [JIT TOOL INJECTION] Also check for REQUEST_TOOL signal in output (from a tool call)
         if (turnResult.includes("REQUEST_TOOL:")) {
           const match = turnResult.match(/REQUEST_TOOL:([a-zA-Z0-9_-]+)/);
           if (match) {
             const requestedTool = match[1];
-            console.log(`[AgentRuntime] 🧰 JIT Tool Request Detected: ${requestedTool}`);
-            await this.injectTools(requestedTool);
-            turnResult = `[SYSTEM]: Tool '${requestedTool}' has been hot-loaded and is now available in 'system.${requestedTool.replace(/-/g, '_')}'. Please retry your action.`;
+            const logMsg = `[AgentRuntime] 🧰 JIT Tool Request Detected in Output: ${requestedTool}`;
+            console.log(logMsg);
+            allLogs.push(logMsg);
+            try {
+              await this.injectTools(requestedTool);
+              const safeNamespace = requestedTool.replace(/-/g, '_');
+              turnResult = `[SYSTEM]: Tools from '${requestedTool}' have been hot-loaded and are now available in the '${safeNamespace}' namespace. Please retry your action.`;
+            } catch (injectError: any) {
+              turnResult = `[SYSTEM_ERROR]: Failed to hot-load tool '${requestedTool}': ${injectError.message}`;
+              allLogs.push(turnResult);
+            }
           }
         }
       } else {
@@ -281,6 +317,10 @@ export class AgentRuntime {
       const isRoleCreationSuccess = turnResult.includes('✅ Role Variant Created Successfully') || 
                                      turnResult.includes('biologically spawned');
       
+      const hasErrors = turnLogs.some(log => log.toLowerCase().includes("error") || log.toLowerCase().includes("failed")) || 
+                        turnResult.toLowerCase().includes("error") || 
+                        turnResult.toLowerCase().includes("failed");
+
       const observationPrompt = isRoleCreationSuccess 
         ? `
 [SYSTEM_OBSERVATION]
@@ -296,6 +336,8 @@ Example: "I've successfully created the [Role Name] role. It's now available in 
         : `
 [SYSTEM_OBSERVATION]
 The action was executed.
+${hasErrors ? '🚨 ERRORS DETECTED: A technical failure occurred. You must now generate a "Fix Strategy" to repair the system.' : ''}
+${(hasErrors && !isRoleCreationSuccess) ? `\n[AVAILABLE_TOOLS]: ${this.availableTools.join(', ')}\n[CONSTRAINT]: You MUST NOT use tools outside this list. If you need a missing tool, check if you can hot-load it.` : ''}
 
 Output:
 ${turnResult}
@@ -304,8 +346,9 @@ Logs:
 ${turnLogs.join("\n")}
 
 Instructions:
-1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks or JSON).
-2. If you need more information or need to take another step, generate the NEXT code block or JSON tool call.
+${hasErrors ? 
+  "1. Analyze the error logs above identify the root cause (e.g. TypeError = missing tool).\n2. Output a FIX STRATEGY.\n3. Execute any necessary tool calls from the [AVAILABLE_TOOLS] list to apply the fix." : 
+  "1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks or JSON).\n2. If you need more information or need to take another step, generate the NEXT code block or JSON tool call."}
 `;
 
       // Append observation to context
@@ -575,13 +618,21 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
   }
 
   public async injectTools(serverName: string) {
+      if (this.injectedServers.has(serverName)) {
+          console.log(`[AgentRuntime] Server '${serverName}' already hot-loaded. Skipping.`);
+          return;
+      }
+
       const newTools = await mcpOrchestrator.attachToolToSession(serverName);
+      const safeNamespace = serverName.replace(/-/g, '_');
+      
       await this.client.registerManual({
-          name: "system",
+          name: safeNamespace,
           call_template_type: "local",
           tools: newTools as any,
       });
-      console.log(`[AgentRuntime] Successfully injected ${newTools.length} tools from ${serverName}`);
+      this.injectedServers.add(serverName);
+      console.log(`[AgentRuntime] Successfully injected ${newTools.length} tools into namespace '${safeNamespace}' from ${serverName}`);
   }
 
   public async checkDnaUpdates() {
