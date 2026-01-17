@@ -265,8 +265,40 @@ export class LLMSelector {
       throw new Error('No active models found in database.');
     }
 
-    // 3. Simple Random selection from top candidates (Bandit logic can go here)
-    const selected = candidates[Math.floor(Math.random() * candidates.length)];
-    return selected.id;
+    // 3. Score-based selection
+    // Weight candidates based on specialized scores for coding and JSON mode
+    const scoredCandidates = candidates.map(m => {
+        let score = 100;
+        const caps = m.capabilities as ExtendedCaps | null;
+        const specs = (caps?.specs || {}) as Record<string, unknown>;
+        
+        // Boost for coding tasks
+        if (requiredCaps.includes('coding')) {
+            const codingScore = (specs.coding_score as number) || (specs.coding === true ? 80 : 0);
+            score += codingScore;
+        }
+
+        // Boost for JSON tasks
+        if (requiredCaps.includes('json') || role.id === 'coordinator' || role.id === 'role-architect') {
+            const jsonScore = (specs.json_score as number) || (specs.json_mode === true ? 50 : 0);
+            score += jsonScore;
+        }
+
+        // Penalty for local models unless specifically asked
+        if (caps?.isLocal && !requiredCaps.includes('local')) {
+            score -= 50;
+        }
+
+        return { model: m, score };
+    });
+
+    // Sort by score descending
+    scoredCandidates.sort((a, b) => b.score - a.score);
+    
+    // Pick the best one (or sample from top 3 for variation)
+    const topResult = scoredCandidates[0].model;
+    console.log(`[LLMSelector] Selected ${topResult.name} (Score: ${scoredCandidates[0].score})`);
+    
+    return topResult.id;
   }
 }

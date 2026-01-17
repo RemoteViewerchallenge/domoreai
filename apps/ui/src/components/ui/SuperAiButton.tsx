@@ -22,6 +22,7 @@ type SuperAiButtonProps = {
   onGenerate?: (prompt: string, options?: { roleId?: string }) => void;
   defaultPrompt?: string;
   defaultRoleId?: string;
+  label?: string;
 };
 
 
@@ -35,7 +36,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   side = 'right', // CHANGE DEFAULT TO RIGHT (expands into the screen)
   onGenerate,
   defaultPrompt = '',
-  defaultRoleId
+  defaultRoleId,
+  label
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
@@ -181,7 +183,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         onClick={handleLeftClick}
         onContextMenu={handleRightClick}
         className={cn(
-          "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Square & Smaller (h-7 w-7 matches SwappableCard)
+          "h-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Removed forced w-7 to allow label expansion
+          !label && "w-7",
           "shadow-sm hover:shadow-md active:scale-95 group",
           state !== 'idle'
             ? "bg-[var(--color-background-secondary)] border-[var(--color-primary)] text-[var(--color-primary)]" 
@@ -195,7 +198,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         {state === 'menu' || state === 'role_select' || state === 'config' ? (
              <X size={14} />
           ) : (
-             <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
+             <div className="flex items-center gap-1.5 px-1.5">
+                <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
+                {label && <span className="text-[10px] font-black uppercase tracking-widest pt-0.5">{label}</span>}
+             </div>
           )}
       </button>
 

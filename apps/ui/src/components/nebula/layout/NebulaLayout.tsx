@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
 import { ThemeSidebar } from '../ThemeSidebar.js';
 import { cn } from '../../../lib/utils.js';
+import { UnifiedNebulaBar } from '../../../nebula/features/navigation/UnifiedNebulaBar.js';
 
 const KEY_MAP = {
     TOGGLE_THEME: ['ctrl+e', 'command+e'],
@@ -12,6 +13,7 @@ const KEY_MAP = {
 
 export const NebulaLayout = ({ children, header }: { children: React.ReactNode, header?: React.ReactNode }) => {
     const [showTheme, setShowTheme] = useState(false);
+    const [showAi, setShowAi] = useState(false);
 
     // Close theme on Escape
     const handlers = {
@@ -33,9 +35,16 @@ export const NebulaLayout = ({ children, header }: { children: React.ReactNode, 
             <div className="flex flex-col h-screen w-screen bg-[var(--bg-background)] overflow-hidden text-[var(--text-primary)] font-sans selection:bg-[var(--color-primary)] selection:text-black">
                 
                 {/* 1. TOP COMMAND STRIP (Headless) */}
-                {header && (
+                {header !== null && (
                     <div className="flex-none z-50 shadow-md">
-                        {header}
+                        {header || (
+                            <UnifiedNebulaBar 
+                                aiOpen={showAi} 
+                                setAiOpen={setShowAi} 
+                                themeOpen={showTheme} 
+                                onToggleTheme={() => setShowTheme(p => !p)} 
+                            />
+                        )}
                     </div>
                 )}
 
