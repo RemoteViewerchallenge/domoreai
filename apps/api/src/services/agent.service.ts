@@ -199,7 +199,7 @@ export class AgentService {
 
     // Save final state
     try {
-      const filePath = context.input.context?.targetFile || path.join(process.cwd(), 'chats', `${input.cardId}.md`);
+      const filePath = context.input.context?.targetFile || path.join(process.cwd(), 'sessions', `${input.cardId}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, result, 'utf-8');
     } catch (e) { console.error("File save error", e); }
