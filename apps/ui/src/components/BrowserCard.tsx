@@ -247,11 +247,12 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
             )}
             {showDebugView ? (
                 <div className="w-full h-full bg-card">
-                    <ResearchBrowser cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
+                    <ResearchBrowser key={`research-${cardId}-${screenspaceId}`} cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
                 </div>
             ) : (
                 isElectron() ? (
                     <WebView
+                        key={`browser-${cardId}-${screenspaceId}-${url}`}
                         ref={webviewRef}
                         src={url}
                         style={{ width: '100%', height: '100%', visibility: isReaderMode ? 'hidden' : 'visible' }}
