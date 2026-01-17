@@ -75,7 +75,7 @@ export class OutputController {
     const audioData = await engine.synthesize(request.text, options);
     
     const result: TTSResult = {
-      id: `tts_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tts_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       requestId: request.id,
       audioData,
       engineId: engine.config.id,
@@ -143,7 +143,7 @@ export class OutputController {
     
     // Build complete result
     const result: TTSResult = {
-      id: `tts_stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tts_stream_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       requestId: request.id,
       audioData: Buffer.concat(chunks),
       engineId: engine.config.id,
@@ -227,7 +227,7 @@ export class OutputController {
     }
   ): Promise<TTSResult> {
     const request: TTSRequest = {
-      id: `tts_req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tts_req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       text,
       ...options,
     };
@@ -250,7 +250,7 @@ export class OutputController {
     }
   ): Promise<void> {
     const request: TTSRequest = {
-      id: `tts_stream_req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tts_stream_req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       text,
       ...options,
     };
