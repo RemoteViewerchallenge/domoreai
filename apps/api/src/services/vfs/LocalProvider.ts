@@ -12,8 +12,11 @@ export class LocalProvider implements IVfsProvider {
 
   private resolvePath(relativePath: string): string {
     // 1. If it's already an absolute path that is within our root, trust it
-    if (path.isAbsolute(relativePath) && relativePath.startsWith(this.rootPath)) {
-      return path.resolve(relativePath);
+    if (path.isAbsolute(relativePath)) {
+      const resolved = path.resolve(relativePath);
+      if (resolved.startsWith(this.rootPath)) {
+        return resolved;
+      }
     }
 
     // 2. Otherwise, treat it as relative to rootPath for VFS scoping
@@ -21,8 +24,10 @@ export class LocalProvider implements IVfsProvider {
     const resolved = path.resolve(this.rootPath, sanitizedRelative);
     
     // Ensure the resolved path is within the rootPath (fencing)
-    if (!resolved.startsWith(this.rootPath)) {
-      throw new Error(`Access denied: Path '${relativePath}' is outside the allowable scope.`);
+    // We add a separator to ensure we don't match /home/guy-old with /home/guy
+    const rootWithTrailing = this.rootPath.endsWith(path.sep) ? this.rootPath : this.rootPath + path.sep;
+    if (!resolved.startsWith(this.rootPath) && resolved !== this.rootPath) {
+       throw new Error(`Access denied: Path '${relativePath}' is outside the allowable scope.`);
     }
     
     return resolved;

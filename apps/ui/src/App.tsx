@@ -25,7 +25,7 @@ function App() {
               } />
 
               {/* 2. THE ADMIN TOOLS (The Workbench) */}
-              <Route path="/admin/builder/:projectId" element={<BuilderPage />} />
+              <Route path="/ui-studio/:projectId" element={<BuilderPage />} />
               <Route path="/admin/theme" element={<ThemeManager />} />
             </Routes>
           </NebulaLayout>
