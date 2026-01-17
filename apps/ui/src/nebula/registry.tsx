@@ -29,6 +29,14 @@ export interface ComponentDefinition {
   };
 }
 
+interface BaseProps {
+    className?: string;
+    children?: React.ReactNode;
+    style?: Record<string, string>;
+    layout?: Record<string, string>;
+    [key: string]: unknown;
+}
+
 export const ComponentManifest: Record<string, ComponentDefinition> = {
   // ==============================
   // 🟢 PRIMITIVES (The Body)
@@ -62,7 +70,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Box": {
-    component: ({ className, children, style, layout, ...props }: any) => {
+    component: ({ className, children, style, layout, ...props }: BaseProps) => {
         const tokenClasses = cn(
             style?.padding, style?.background, style?.color, style?.radius, 
             style?.shadow, style?.width, style?.height, style?.border,
@@ -77,7 +85,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Text": {
-    component: ({ content, children, className, style, layout, ...props }: any) => {
+    component: ({ content, children, className, style, layout, ...props }: BaseProps & { content?: string }) => {
         const tokenClasses = cn(
             style?.padding, style?.color, style?.fontSize, style?.fontWeight, style?.textAlign,
             layout?.mode
@@ -92,7 +100,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Image": {
-    component: ({ src, alt, className, style, layout, ...props }: any) => {
+    component: ({ src, alt, className, style, layout, ...props }: BaseProps & { src?: string, alt?: string }) => {
         const tokenClasses = cn(
             style?.padding, style?.radius, style?.width, style?.height, style?.border,
             layout?.mode
@@ -107,7 +115,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Input": {
-    component: ({ placeholder, value, type = "text", className, style, layout, ...props }: any) => {
+    component: ({ placeholder, value, type = "text", className, style, layout, ...props }: BaseProps & { placeholder?: string, value?: string, type?: string }) => {
         const tokenClasses = cn(
             style?.padding, style?.background, style?.color, style?.radius, 
             style?.width, style?.height, style?.border,
@@ -117,7 +125,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
             <input 
                 type={type}
                 placeholder={placeholder} 
-                value={value} 
+                value={value as string} 
                 className={cn("bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs", tokenClasses, className)} 
                 {...props} 
             />
@@ -141,7 +149,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Component": {
-    component: ({ name, children, ...props }: any) => (
+    component: ({ name, children, ...props }: BaseProps & { name?: string, componentName?: string }) => (
         <div className="border border-dashed border-indigo-500/50 rounded p-2 bg-indigo-500/5">
             <div className="text-[9px] text-indigo-400 font-bold uppercase mb-1">Component: {name || props.componentName}</div>
             {children}
@@ -155,10 +163,14 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Icon": {
-    component: ({ name, size = 16, className, ...props }: any) => (
-        <div className={cn("inline-flex items-center justify-center bg-zinc-800 rounded p-1", className)}>
-            <div className="text-[8px] text-zinc-400 font-mono">ICON:{name}</div>
-        </div>
+    component: ({ name, size = 16, className, ...props }: { name?: string, size?: number, className?: string, [key: string]: unknown }) => (
+      <div 
+        className={cn("inline-flex items-center justify-center bg-zinc-800 rounded p-1", className)}
+        style={{ width: size, height: size }}
+        {...props}
+      >
+        <div className="text-[8px] text-zinc-400 font-mono">ICON:{name}</div>
+      </div>
     ),
     meta: { label: "Semantic Icon", category: "atom", icon: "image" },
     propSchema: {
@@ -191,9 +203,29 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
     component: PropertyPanel,
     meta: { label: "Property Editor", category: "system", hidden: true },
     propSchema: {}
+  },
+
+  "AgentWorkbench": {
+    component: React.lazy(() => import("../pages/AgentWorkbench.js")),
+    meta: { label: "Agent Workbench", category: "feature", icon: "layout" },
+    propSchema: {}
+  },
+
+  "UnifiedNebulaBar": {
+    component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
+    meta: { label: "Nebula Header", category: "layout", icon: "sidebar" },
+    propSchema: {}
+  },
+  "UnifiedMenuBar": {
+    component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
+    meta: { label: "Menu Bar (Alias)", category: "layout", icon: "sidebar", hidden: true },
+    propSchema: {}
   }
 };
 
+/**
+ * Component Map for fast lookup
+ */
 export const ComponentMap: Record<string, React.ElementType> = Object.keys(ComponentManifest).reduce(
   (acc, key) => {
     acc[key] = ComponentManifest[key].component;
@@ -202,6 +234,9 @@ export const ComponentMap: Record<string, React.ElementType> = Object.keys(Compo
   {} as Record<string, React.ElementType>
 );
 
+/**
+ * Resolve a component by its manifest name
+ */
 export const resolveComponent = (name: string): React.ElementType => {
     return ComponentMap[name] || ComponentMap['Box'];
 };

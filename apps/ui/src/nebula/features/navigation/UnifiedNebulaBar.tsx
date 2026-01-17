@@ -20,7 +20,7 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
   // Context Detection
-  const isBuilder = location.pathname.includes('/builder');
+  const isBuilder = location.pathname.includes('/ui-studio');
   const isTheme = location.pathname.includes('/theme');
   const isWorkbench = location.pathname === '/' || location.pathname === '/workbench';
   const isOrg = location.pathname === '/org-structure';
@@ -82,7 +82,7 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
           <NavButton 
             icon={Hammer} 
             active={isBuilder} 
-            onClick={() => navigate('/admin/builder/workbench')} 
+            onClick={() => navigate('/ui-studio/workbench')} 
             tooltip="Interface Studio" 
           />
           
