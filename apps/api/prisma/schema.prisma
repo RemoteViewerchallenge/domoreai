@@ -374,6 +374,89 @@ model google_models_example {
   maxTemperature             Int?
 }
 
+// --- LEGACY PROVIDER TABLES (FOR INGESTION) ---
+
+model cerebras_models {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at          DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  model_external_id  String?   @map("id")
+  object             String?
+  created            String?
+  owned_by           String?
+}
+
+model groq_models {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at             DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  model_external_id     String?   @map("id")
+  object                String?
+  created               String?
+  owned_by              String?
+  active                String?
+  context_window        String?
+  public_apps           String?
+  max_completion_tokens String?
+}
+
+model mistral_models {
+  id                            String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at                     DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  model_external_id             String?   @map("id")
+  object                        String?
+  created                       String?
+  owned_by                      String?
+  capabilities                  String?
+  name                          String?
+  description                   String?
+  max_context_length            String?
+  aliases                       String?
+  deprecation                   String?
+  deprecation_replacement_model String?
+  default_model_temperature     String?
+  type                          String?
+}
+
+model nvidia_models {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at          DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  model_external_id  String?   @map("id")
+  object             String?
+  created            String?
+  owned_by           String?
+}
+
+model ollama_models {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at   DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  name        String?
+  model       String?
+  modified_at String?
+  size        String?
+  digest      String?
+  details     String?
+}
+
+model openrouter_models {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @map("_id") @db.Uuid
+  loaded_at            DateTime? @default(now()) @map("_loaded_at") @db.Timestamptz(6)
+  model_external_id    String?   @map("id")
+  canonical_slug       String?
+  hugging_face_id      String?
+  name                 String?
+  created              String?
+  description          String?
+  context_length       String?
+  architecture         String?
+  pricing              String?
+  top_provider         String?
+  per_request_limits   String?
+  supported_parameters String?
+  default_parameters   String?
+  expiration_date      String?
+}
+
+// --- VOICE PLAYGROUND ---
+
 model VoiceEngine {
   id        String   @id @default(cuid())
   name      String
@@ -400,3 +483,4 @@ model VoiceRole {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
