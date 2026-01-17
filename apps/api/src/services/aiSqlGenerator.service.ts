@@ -196,7 +196,9 @@ Return ONLY the SQL query, no explanations.
     }
 
     // Check for multiple statements
-    if (sql.includes(';') && sql.trim().indexOf(';') < sql.trim().length - 1) {
+    const trimmed = sql.trim();
+    const lastSemicolon = trimmed.lastIndexOf(';');
+    if (lastSemicolon >= 0 && lastSemicolon < trimmed.length - 1) {
       errors.push('Multiple SQL statements are not allowed');
     }
 

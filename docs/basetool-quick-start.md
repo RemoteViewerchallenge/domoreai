@@ -286,7 +286,7 @@ Always add validation to important fields:
   "type": "email",
   "required": true,
   "validation": {
-    "pattern": "^[^@]+@[^@]+\\.[^@]+$",
+    "pattern": "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
     "message": "Please enter a valid email"
   }
 }

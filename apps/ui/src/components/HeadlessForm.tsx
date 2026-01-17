@@ -244,7 +244,16 @@ export const HeadlessForm: React.FC<HeadlessFormProps> = ({
             value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
             onChange={(e) => {
               try {
-                const parsed = JSON.parse(e.target.value);
+                const inputValue = e.target.value;
+                // Limit JSON size to prevent DoS
+                if (inputValue.length > 100000) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    [field.name]: 'JSON content too large (max 100KB)'
+                  }));
+                  return;
+                }
+                const parsed = JSON.parse(inputValue);
                 handleChange(field.name, parsed);
               } catch {
                 // Allow invalid JSON during editing
