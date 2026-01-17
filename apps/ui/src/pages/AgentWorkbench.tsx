@@ -8,6 +8,30 @@ import { trpc } from '../utils/trpc.js';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { cn } from '../lib/utils.js';
 
+
+// Suggested Edit: Headless Scaffold Pattern
+export const AgentWorkbenchScaffold = ({ 
+  header, 
+  sidebar, 
+  content 
+}: { 
+  header?: React.ReactNode, 
+  sidebar?: React.ReactNode, 
+  content?: React.ReactNode 
+}) => {
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950">
+      {header && <div className="h-16 border-b border-zinc-800">{header}</div>}
+      <div className="flex flex-1 overflow-hidden">
+        {sidebar && <div className="w-64 border-r border-zinc-800">{sidebar}</div>}
+        <main className="flex-1 overflow-auto">
+          {content}
+        </main>
+      </div>
+    </div>
+  );
+};
+
 export default function AgentWorkbench({ className }: { className?: string }) {
   const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); 
