@@ -21,7 +21,7 @@ interface RoleConfigPatchArgs {
     };
 }
 
-export const metaTools: SandboxTool[] = [
+export const roleArchitectTools: SandboxTool[] = [
   {
     name: 'role_registry_list',
     description: 'List available personas and roles in the system. Use for discovery.',
@@ -156,11 +156,11 @@ Status: Ready for deployment.`
   },
 ];
 
-export async function canUseMetaTools(roleId: string): Promise<boolean> {
+export async function canUseRoleArchitectTools(roleId: string): Promise<boolean> {
   const role = await prisma.role.findUnique({
     where: { id: roleId },
     include: { tools: { include: { tool: true } } },
   });
 
-  return role?.tools.some(rt => rt.tool.name === 'meta') || false;
+  return role?.tools.some(rt => rt.tool.name === 'role_architect') || false;
 }

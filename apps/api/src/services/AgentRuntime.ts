@@ -2,7 +2,7 @@ import { CodeModeUtcpClient } from "@utcp/code-mode";
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
 import { mcpOrchestrator } from "../orchestrator/McpOrchestrator.js";
-import { metaTools } from "../tools/meta.js";
+import { roleArchitectTools } from "../tools/roleArchitectTools.js";
 import { tokenService } from "./TokenService.js";
 import {
   LocalCommunicationProtocol,
@@ -87,7 +87,9 @@ export class AgentRuntime {
       // ... existing tool loading logic ...
       const nativeToolNames = [
         "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
-        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula", "meta"
+        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", 
+        "ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate",
+        "role_registry_list", "role_variant_evolve", "role_config_patch"
       ];
       
       const { prisma } = await import("../db.js");
@@ -114,10 +116,10 @@ export class AgentRuntime {
       const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
       const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
       // ... meta tools logic ...
-      if (requestedTools.includes("meta")) {
-          // ...
-          const wrappedMeta = (metaTools as unknown as ToolDefinition[]).map(t => ({...t, handler: t.handler })); // Simplified for replacement
-          toolsToRegister.push(...wrappedMeta);
+      if (requestedTools.includes("role_architect") || requestedTools.includes("meta")) {
+          // Flatten role architect tools into the registry
+          const wrappedTools = (roleArchitectTools as unknown as ToolDefinition[]).map(t => ({...t, handler: t.handler }));
+          toolsToRegister.push(...wrappedTools);
       }
       
       // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
@@ -161,13 +163,22 @@ export class AgentRuntime {
           }
       } as unknown as ToolDefinition);
 
+      // [NEW] Expand monolithic tool names for documentation loading
+      const expandedDocsTools = [...requestedTools];
+      if (requestedTools.includes("nebula")) {
+          expandedDocsTools.push("ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate");
+      }
+      if (requestedTools.includes("meta") || requestedTools.includes("role_architect")) {
+          expandedDocsTools.push("role_registry_list", "role_variant_evolve", "role_config_patch");
+      }
+
       await this.client.registerManual({
         name: "system",
         call_template_type: "local",
         tools: toolsToRegister,
       });
       // ... load docs ...
-      const docs = await loadToolDocs(requestedTools);
+      const docs = await loadToolDocs(expandedDocsTools);
       this.toolDocsFull = docs.fullDocs;
       this.toolDocsSignatures = docs.signatures;
   }
@@ -329,35 +340,45 @@ Instructions:
         const baseLength = enhancedSystemPrompt.length + prompt.length;
         
         // 2. Protocols (Hardcoded strings for now as per requirement, but logic is cleaned up)
-        const NEBULA_PROTOCOL = `
-🧠 System Instruction: Nebula Code Mode v2.0
-Role: You are the Nebula Engine Pilot. You do not write code to describe a UI; you write code to construct it using the live nebula runtime instance.
+        const UI_ARCHITECT_PROTOCOL = `
+🧠 System Instruction: UI Architect Code Mode
+Role: You are the UI Architect. You do not write code to describe a UI; you write code to construct it using the atomic UI tools.
 
-The Prime Directive: NEVER write code without first verifying the current state.
+The Prime Directive: NEVER write code without first verifying the current state using 'system.ui_architect_tree_inspect'.
 
 Your Runtime Environment:
-- Global Object: nebula (Instance of NebulaOps)
-- Global Helper: ast (Instance of AstTransformer)
-- Context: tree (Read-only access to current NebulaTree state)
+- system.ui_architect_tree_inspect: Read current tree.
+- system.ui_architect_node_mutate: Update/Move/Delete nodes.
+- system.ui_factory_layout_generate: Add nodes or ingest JSX.
 
 ## 🛠️ TOOL USAGE PROTOCOL
-You are operating in **CODE MODE**. Your primary objective is to fulfill the user's request by calling available tools. 
+You are operating in **CODE MODE**. 
 
 ### 🚨 CRITICAL RULES:
-1. **NO CONVERSATIONAL FILLER.** Do not say "Sure, I can help with that." 
-2. **USE CODE BLOCKS.** You MUST wrap your logic in a \` \` \`typescript block.
-3. **USE THE NEBULA OBJECT.** Call nebula methods directly: \`const id = nebula.addNode(...)\`.
-4. **CAPTURE RETURNS.** The addNode function returns an ID. YOU MUST CAPTURE IT.
-5. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
-6. **NEVER HALLUCINATE IDs.** Do not update node_123 unless you created it or confirmed it exists in the tree.
+1. **NO CONVERSATIONAL FILLER.**
+2. **USE CODE BLOCKS.**
+3. **CAPTURE RETURNS.** Some tools return IDs. YOU MUST CAPTURE THEM.
+4. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
+5. **NEVER HALLUCINATE IDs.** Verify existence before mutation.
 
 ### API Reference (Cheat Sheet)
 \`\`\`typescript
-// 1. ADDING NODES
-const btnId = nebula.addNode(parentId, { type: "Button", props: { children: "Click Me" } });
+// 1. INSPECT
+const tree = await system.ui_architect_tree_inspect({});
 
-// 2. UPDATING NODES
-nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
+// 2. ADDING NODES
+const btnId = await system.ui_factory_layout_generate({ 
+    action: "addNode", 
+    parentId: "root", 
+    node: { type: "Button", props: { children: "Click Me" } } 
+});
+
+// 3. UPDATING NODES
+await system.ui_architect_node_mutate({ 
+    action: "updateNode", 
+    nodeId: btnId, 
+    update: { style: { background: "bg-red-500" } } 
+});
 \`\`\`
 `;
 
@@ -448,8 +469,8 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
             protocol = JSON_STRICT_PROTOCOL;
         } else if (this.executionMode === 'CODE_INTERPRETER') {
             protocol = CODE_STRICT_PROTOCOL;
-        } else if (this.tier === 'Nebula' || this.toolDocsSignatures.includes("nebula(")) {
-            protocol = NEBULA_PROTOCOL;
+        } else if (this.tier === 'Nebula' || this.toolDocsSignatures.includes("ui_architect_")) {
+            protocol = UI_ARCHITECT_PROTOCOL;
         }
 
         if (this.silenceConfirmation) {

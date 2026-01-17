@@ -81,6 +81,13 @@ export const orchestratorRouter = createTRPCRouter({
       return { content: tool?.instruction || '' };
     }),
 
+  getBulkToolDocs: publicProcedure
+    .input(z.object({ toolNames: z.array(z.string()) }))
+    .query(async ({ input }) => {
+      const { loadToolDocs } = await import('../services/tools/ToolDocumentationLoader.js');
+      return loadToolDocs(input.toolNames);
+    }),
+
   updateToolExamples: protectedProcedure
     .input(z.object({ toolName: z.string(), content: z.string() }))
     .mutation(async ({ input, ctx }) => {

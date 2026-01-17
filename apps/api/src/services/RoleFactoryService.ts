@@ -515,7 +515,7 @@ process.stdout.write(JSON.stringify(__result));
         Select the necessary tools.
         Intent: ${intent.description}
 
-        Available Options: ["filesystem", "terminal", "browser", "create_role_variant", "search_codebase"]
+        Available Options: ["read_file", "write_file", "terminal_execute", "browse", "role_variant_evolve", "role_registry_list", "search_codebase", "ui_architect_tree_inspect", "ui_factory_layout_generate"]
 
         ## JSON Schema:
         {
@@ -573,7 +573,7 @@ process.stdout.write(JSON.stringify(__result));
                         executionMode: 'JSON_STRICT',
                         contextRange: { min: 8192, max: 128000 },
                         capabilities: ['reasoning'],
-                        tools: ['meta']
+                        tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch']
                     } as Prisma.InputJsonValue,
                     contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] } as Prisma.InputJsonValue,
                     governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' } as Prisma.InputJsonValue
