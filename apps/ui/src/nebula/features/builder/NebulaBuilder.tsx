@@ -348,7 +348,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
               <div 
                 className={cn(
                   "transition-all duration-500 shadow-2xl bg-zinc-900 border border-zinc-800 ring-4 ring-zinc-950 rounded-sm origin-top",
-                  viewport === 'mobile' ? 'w-[390px]' : viewport === 'tablet' ? 'w-[768px]' : 'w-full max-w-5xl'
+                  viewport === 'mobile' ? 'w-[390px]' : viewport === 'tablet' ? 'w-[768px]' : 'w-full h-full'
                 )}
                 style={{ minHeight: '800px' }}
               >
