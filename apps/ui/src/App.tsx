@@ -14,21 +14,19 @@ function App() {
   return (
     <ThemeProvider>
         <FileSystemProvider>
+      <Routes>
+        {/* 1. THE PUBLIC APP (The Player) */}
+        <Route path="/*" element={
           <NebulaLayout>
-            <Routes>
-              {/* 1. THE PUBLIC APP (The Player) */}
-              <Route path="/*" element={
-                <>
-                  <NebulaShell />
-                  <Toaster />
-                </>
-              } />
-
-              {/* 2. THE ADMIN TOOLS (The Workbench) */}
-              <Route path="/ui-studio/:projectId" element={<BuilderPage />} />
-              <Route path="/admin/theme" element={<ThemeManager />} />
-            </Routes>
+            <NebulaShell />
+            <Toaster />
           </NebulaLayout>
+        } />
+
+        {/* 2. THE ADMIN TOOLS (The Workbench) */}
+        <Route path="/ui-studio/:projectId" element={<BuilderPage />} />
+        <Route path="/admin/theme" element={<ThemeManager />} />
+      </Routes>
         </FileSystemProvider>
     </ThemeProvider>
   );

@@ -10,6 +10,12 @@ export interface CardData {
   metadata?: Record<string, unknown>;
 }
 
+export interface Screenspace {
+  id: number;
+  name: string;
+  cardIds: string[];
+}
+
 export interface WorkspaceState {
   columns: number;
   setColumns: (columns: number) => void;
@@ -35,6 +41,11 @@ export interface WorkspaceState {
     injectedState: boolean;
   };
   setAiContext: (context: Partial<WorkspaceState['aiContext']>) => void;
+
+  // [NEW] Screenspaces
+  activeScreenspaceId: number;
+  screenspaces: Screenspace[];
+  switchDesktop: (id: number) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -70,6 +81,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         injectedState: false
       },
       setAiContext: (ctx) => set((state) => ({ aiContext: { ...state.aiContext, ...ctx } })),
+
+      activeScreenspaceId: 1,
+      screenspaces: [
+        { id: 1, name: 'Main', cardIds: ['1', '2', '3', '4', '5', '6'] },
+        { id: 2, name: 'Refactor', cardIds: [] },
+        { id: 3, name: 'Logs', cardIds: [] },
+      ],
+      switchDesktop: (id) => set({ activeScreenspaceId: id }),
     }),
     {
       name: 'workspace-storage', // unique name
