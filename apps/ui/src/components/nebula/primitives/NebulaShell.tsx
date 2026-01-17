@@ -6,6 +6,7 @@ import OrganizationalStructure from '../../../pages/OrganizationalStructure.js';
 import CodeVisualizer from '../../../pages/CodeVisualizer.js';
 import DataCenter from '../../../pages/DataCenter.js';
 import Constitution from '../../../pages/Constitution.js';
+import VoicePlayground from '../../../pages/VoicePlayground.js';
 
 export function NebulaShell() {
   // Inject Nebula Physics on mount
@@ -24,6 +25,7 @@ export function NebulaShell() {
                 <Route path="/visualizer" element={<CodeVisualizer />} />
                 <Route path="/datacenter" element={<DataCenter />} />
                 <Route path="/settings" element={<Constitution />} />
+                <Route path="/voice-playground" element={<VoicePlayground />} />
                 
                 {/* Legacy or helper redirects */}
                 <Route path="/code-visualizer" element={<Navigate to="/visualizer" replace />} />
