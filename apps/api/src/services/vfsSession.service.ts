@@ -5,6 +5,7 @@ import Client from 'ssh2-sftp-client';
 import { prisma } from '../db.js';
 import crypto from 'crypto';
 import os from 'os';
+import path from 'path';
 import { existsSync } from 'fs';
 
 export class VfsManager {
@@ -21,14 +22,11 @@ export class VfsManager {
   }): Promise<IVfsProvider> {
     
     if (options.provider === 'local') {
-      const projectHome = '/home/guy'; // Broadened from /home/guy/mono
-      let fsRoot = options.rootPath || (existsSync('/home/guy/mono') ? '/home/guy/mono' : os.homedir());
-
-      // If we want to allow going UP, we should actually set the root to homeDir or /
-      // But let's stay reasonable: if no specific root requested, we use /home/guy
-      if (!options.rootPath) {
-          fsRoot = projectHome;
-      }
+      const homeDir = os.homedir();
+      const monoDir = path.join(homeDir, 'mono');
+      const projectHome = existsSync(monoDir) ? monoDir : homeDir;
+      
+      let fsRoot = options.rootPath || projectHome;
 
       if (options.cardId) {
         const card = await prisma.workOrderCard.findUnique({

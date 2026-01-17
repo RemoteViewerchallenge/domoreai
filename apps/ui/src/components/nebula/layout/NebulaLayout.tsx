@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
-import { UnifiedNebulaBar } from '../../../nebula/features/navigation/UnifiedNebulaBar.js';
 import { ThemeSidebar } from '../ThemeSidebar.js';
 import { cn } from '../../../lib/utils.js';
 
@@ -11,38 +10,34 @@ const KEY_MAP = {
     ESCAPE: ['esc']
 };
 
-export const NebulaLayout = ({ children }: { children: React.ReactNode }) => {
+export const NebulaLayout = ({ children, header }: { children: React.ReactNode, header?: React.ReactNode }) => {
     const [showTheme, setShowTheme] = useState(false);
-    const [showAi, setShowAi] = useState(false);
 
     // Close theme on Escape
     const handlers = {
         TOGGLE_THEME: (e?: KeyboardEvent) => { e?.preventDefault(); setShowTheme(p => !p); },
         TOGGLE_AI: (e?: KeyboardEvent) => { 
             e?.preventDefault(); 
-            setShowAi(true);
-            setTimeout(() => document.getElementById('nebula-ai-input')?.focus(), 50);
+            // 🟢 In Headless mode, the header should handle this or we dispatch an event
+            window.dispatchEvent(new CustomEvent('nebula:toggle-ai'));
         },
         SAVE: (e?: KeyboardEvent) => {
              e?.preventDefault();
              window.dispatchEvent(new CustomEvent('nebula:save'));
         },
-        ESCAPE: () => { setShowTheme(false); setShowAi(false); }
+        ESCAPE: () => { setShowTheme(false); }
     };
 
     return (
         <GlobalHotKeys keyMap={KEY_MAP} handlers={handlers} allowChanges>
             <div className="flex flex-col h-screen w-screen bg-[var(--bg-background)] overflow-hidden text-[var(--text-primary)] font-sans selection:bg-[var(--color-primary)] selection:text-black">
                 
-                {/* 1. TOP COMMAND STRIP (High Density) */}
-                <div className="flex-none z-50 shadow-md">
-                    <UnifiedNebulaBar 
-                        aiOpen={showAi} 
-                        setAiOpen={setShowAi} 
-                        onToggleTheme={() => setShowTheme(p => !p)}
-                        themeOpen={showTheme}
-                    />
-                </div>
+                {/* 1. TOP COMMAND STRIP (Headless) */}
+                {header && (
+                    <div className="flex-none z-50 shadow-md">
+                        {header}
+                    </div>
+                )}
 
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* 2. THE STAGE (Full Width) */}
