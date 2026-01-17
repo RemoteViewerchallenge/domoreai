@@ -6,15 +6,16 @@ import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { trpc } from '../utils/trpc.js';
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { cn } from '../lib/utils.js';
 
-export default function AgentWorkbench() {
+export default function AgentWorkbench({ className }: { className?: string }) {
   const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); 
   const availableRoles = Array.isArray(roles) ? roles : [];
 
   useEffect(() => {
     if (!activeWorkspace) loadWorkspace('default');
-  }, []);
+  }, [activeWorkspace, loadWorkspace]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
   const { setColumnFocus } = useColumnFocus(columns);
@@ -95,7 +96,7 @@ export default function AgentWorkbench() {
   );
 
   return (
-    <div className="h-full w-full flex flex-col bg-zinc-950 overflow-hidden relative">
+    <div className={cn("h-full w-full flex flex-col overflow-hidden relative", className)}>
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 flex gap-0 overflow-hidden">
           {Array.from({ length: columns }).map((_, columnIndex) => {
