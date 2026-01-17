@@ -173,10 +173,19 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                         </div>
                     </div>
                     <DualRangeSlider
-                        min={2048} max={128000} step={1024}
-                        value={[criteria.minContext, criteria.maxContext]}
+                        min={2048} max={500000} step={1024}
+                        value={[criteria.minContext, Math.min(criteria.maxContext, 500000)]}
                         onChange={([min, max]: [number, number]) => onChange({ ...criteria, minContext: min, maxContext: max })}
                     />
+                    <label className="flex items-center gap-2 cursor-pointer mt-1">
+                        <input 
+                            type="checkbox" 
+                            checked={criteria.maxContext > 500000}
+                            onChange={e => onChange({ ...criteria, maxContext: e.target.checked ? 999999999 : 128000 })}
+                            className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-1 focus:ring-purple-600 focus:ring-offset-0"
+                        />
+                        <span className="text-[9px] font-bold uppercase text-zinc-400">Unlimited Max (500k+)</span>
+                    </label>
                 </div>
                 <div className="flex gap-2 items-end">
                     <CapToggle label="Thinking" active={!!criteria.preferences.reasoning}
@@ -214,15 +223,15 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                                     <div className="col-span-5 text-right">
                                         {viewMode === 'HARD_SELECTION' ? (
                                             <select
-                                                className="w-full bg-[var(--bg-background)] border border-[var(--border-color)] text-[10px] rounded px-1 py-1 outline-none"
+                                                className="w-full bg-[var(--bg-background)] border border-[var(--border-color)] text-[var(--text-secondary)] text-[10px] rounded px-1 py-1 outline-none"
                                                 value={criteria.hardCodedModelId || ''}
                                                 onChange={(e) => onChange({ ...criteria, hardCodedModelId: e.target.value || null })}
                                                 disabled={data.matching.length === 0}
                                             >
-                                                <option value="">Auto-Select</option>
+                                                <option value="" className="text-[var(--text-secondary)]">Auto-Select</option>
                                                 <optgroup label={provider}>
                                                     {data.matching.map(m => (
-                                                        <option key={m.id} value={m.id}>
+                                                        <option key={m.id} value={m.id} className="text-[var(--text-secondary)]">
                                                             {m.name} {Math.round(m.score)}
                                                         </option>
                                                     ))}
