@@ -6,6 +6,7 @@
 # Build artifacts
 dist
 .turbo
+out/
 
 # Logs
 *.log
@@ -72,6 +73,9 @@ debug_bashrc.txt
 
 # MCP Downloads and Extracted Repos
 mcp/extracted/
+
+# Archives (Consolidated historical scripts and docs)
+**/archive/
 
 
 

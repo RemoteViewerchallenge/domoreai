@@ -75,6 +75,46 @@ if (name.includes('vision') || name.includes('llava')) {
 npx tsx apps/api/scripts/ingest_latest_models.ts
 ```
 
+## Scripts Reference
+
+### Primary Operations
+```bash
+# Full system sync (models + MCP tools)
+npx tsx scripts/sync-all.ts
+
+# Or individual syncs:
+
+# Full model sync
+npx tsx apps/api/scripts/ingest_latest_models.ts
+
+# Check providers
+npx tsx apps/api/scripts/check_providers.ts
+
+# Model inventory
+npx tsx apps/api/scripts/check_models.ts
+```
+
+### Utilities
+```bash
+# Audit models for issues
+npx tsx apps/api/scripts/audit-models.ts
+
+# Check model capabilities
+npx tsx apps/api/scripts/check-capabilities.ts
+
+# Provider management
+npx tsx apps/api/scripts/manage_providers.ts
+```
+
+### Debug/Inspection
+```bash
+# Inspect database
+npx tsx apps/api/scripts/inspect-db.ts
+
+# Export DB to JSON
+npx tsx apps/api/scripts/export_db_to_json.ts
+```
+
 ---
 
 **Key Point:** Models are selected at runtime based on role requirements, NOT hardcoded!

@@ -53,6 +53,32 @@ Each has 3 retry attempts + fallback.
 - **Medium:** 8K - 128K (balanced)
 - **Large:** 32K - 500K (quality)
 
+## Scripts Reference
+
+### Inspection
+```bash
+# List all roles
+npx tsx apps/api/scripts/check-roles.ts
+
+# Alternative (same thing)
+npx tsx apps/api/scripts/list_roles.ts
+
+# Export role data
+npx tsx apps/api/scripts/dump_roles.ts
+
+# View role prompts
+npx tsx apps/api/scripts/inspect-role-prompts.ts
+```
+
+### Management
+```bash
+# Sync roles
+npx tsx apps/api/scripts/sync_roles.ts
+
+# Import from JSON
+npx tsx apps/api/scripts/sync_roles_from_json.ts
+```
+
 ---
 
 **Key Point:** Roles define what they need, LLMSelector finds the best model dynamically!

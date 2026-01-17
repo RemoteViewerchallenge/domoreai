@@ -67,6 +67,35 @@ AI chooses best mode dynamically.
 - `apps/api/src/services/mcp-registry-client.ts` - MCP servers
 - `apps/api/src/services/tools/NativeToolsRegistry.ts` - Native tools
 
+## Scripts Reference
+
+### MCP Testing
+```bash
+# Test single MCP server
+npx tsx apps/api/scripts/debug_mcp_server.ts <server-name>
+
+# Example
+npx tsx apps/api/scripts/debug_mcp_server.ts filesystem
+```
+
+### Tool Documentation
+```bash
+# Generate MCP manifests
+npx tsx scripts/generate_mcp_manifests.ts
+
+# Generate native tool docs
+npx tsx scripts/generate_native_docs.ts
+```
+
+### RAG & Codebase
+```bash
+# Setup vector database
+npx tsx apps/api/scripts/setup-vector-db.ts
+
+# Ingest codebase for search
+npx tsx apps/api/scripts/ingest-codebase.ts
+```
+
 ---
 
 **Last Updated:** 2026-01-17  
