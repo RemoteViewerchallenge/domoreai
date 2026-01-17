@@ -73,9 +73,10 @@ export const VisualQueryBuilder: React.FC = () => {
         setSelectedTables((prev) => [...prev, newTable]);
       } catch (error) {
         console.error('Error adding table:', error);
+        alert(`Failed to add table "${tableName}". Please try again.`);
       }
     },
-    [selectedTables]
+    [selectedTables, utils]
   );
 
   // Remove a table from the canvas
