@@ -154,9 +154,12 @@ export class JsonRpcStrategy implements IExecutionStrategy {
   static canHandle(response: string): boolean {
     const trimmed = response.trim();
     
-    // 1. Check for raw JSON
-    if (trimmed.startsWith("{") && trimmed.endsWith("}") && trimmed.includes('"tool":')) {
-      return true;
+    // 1. Check for raw JSON (even if surrounded by text)
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
+        const potentialJson = trimmed.substring(firstBrace, lastBrace + 1);
+        if (potentialJson.includes('"tool":')) return true;
     }
     
     // 2. Check for JSON in ```json blocks
@@ -179,12 +182,20 @@ export class JsonRpcStrategy implements IExecutionStrategy {
     let turnLogs: string[] = [];
 
     try {
-      // Extract JSON from ```json blocks if present
+      // Extract JSON: prioritize ```json blocks, then fallback to first/last brace search
       let jsonStr = response.trim();
       const jsonBlockMatch = jsonStr.match(/```json\s*\n([\s\S]*?)```/);
+      
       if (jsonBlockMatch) {
         jsonStr = jsonBlockMatch[1].trim();
         console.log(`[JsonRpcStrategy] Extracted JSON from markdown block`);
+      } else {
+        const firstBrace = jsonStr.indexOf("{");
+        const lastBrace = jsonStr.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
+            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+            console.log(`[JsonRpcStrategy] Extracted JSON using brace matching`);
+        }
       }
       
       const json = JSON.parse(jsonStr) as { tool?: string; args?: Record<string, unknown> };

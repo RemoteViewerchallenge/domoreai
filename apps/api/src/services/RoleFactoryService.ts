@@ -120,7 +120,8 @@ Ensure the output is parseable by JSON.parse().`
     /**
      * Master method for code execution (Legacy/Hybrid support)
      */
-    private async executeCodeMode<T>(code: string, timeout = 30000): Promise<T> {
+    private async executeCodeMode<T>(code: string, timeoutInput: any = 30000): Promise<T> {
+        const timeout = typeof timeoutInput === 'number' ? timeoutInput : (Number(timeoutInput) || 30000);
         // Robust extraction: try to find a block or at least the roleBuilder call
         let cleanCode = code;
         
@@ -371,7 +372,7 @@ process.stdout.write(JSON.stringify(__result));
     /**
      * Helper to get provider instance AND api-ready model ID from DB modelId
      */
-    private async resolveProvider(dbModelId: string): Promise<{ provider: BaseLLMProvider, apiModelId: string }> {
+    public async resolveProvider(dbModelId: string): Promise<{ provider: BaseLLMProvider, apiModelId: string }> {
         const model = await prisma.model.findUnique({ where: { id: dbModelId } });
         if (!model) throw new Error(`Model ${dbModelId} not found`);
 
@@ -429,17 +430,24 @@ process.stdout.write(JSON.stringify(__result));
      * MODULE B: Cortex (The Brain)
      */
     async cortexArchitect(modelId: string, intent: RoleIntent): Promise<CortexConfig> {
+        const isHealthProbe = intent.name === 'System Health Probe';
+        const isAuditor = intent.name === 'MCP Capability Auditor';
+
         const prompt = `
         Determine the cognitive load and execution strategy for this agent.
         Intent:
+        - Name: ${intent.name}
         - Complexity: ${intent.complexity}
         - Domain: ${intent.domain}
 
-        ## DNA SETTING: 
+        ## DNA SETTINGS: 
         Determine if this agent should use:
         1. JSON_STRICT: Best for Architects/Managers (Data input/output).
         2. CODE_INTERPRETER: Best for Workers/Engineers (Writing/Running code).
         3. HYBRID_AUTO: Best for generalists who need to pick the best tool.
+
+        ${isHealthProbe ? 'NOTE: For System Health Probes, HYBRID_AUTO is MANDATORY.' : ''}
+        ${isAuditor ? 'NOTE: For Capability Auditors, HYBRID_AUTO is MANDATORY.' : ''}
 
         ## JSON Schema:
         {
@@ -449,7 +457,13 @@ process.stdout.write(JSON.stringify(__result));
             "tools": string[] // ["filesystem", "terminal", "browser", "search_codebase"]
         }
         `;
-        return await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
+        const config = await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
+        
+        if (isHealthProbe || isAuditor) {
+            config.executionMode = 'HYBRID_AUTO';
+        }
+        
+        return config;
     }
 
     private getCortexFallback(intent: RoleIntent): CortexConfig {
@@ -486,9 +500,12 @@ process.stdout.write(JSON.stringify(__result));
      * MODULE D: Governance (The Law)
      */
     async governanceArchitect(modelId: string, intent: RoleIntent): Promise<GovernanceConfig> {
+        const isHealthProbe = intent.name === 'System Health Probe';
+        const isAuditor = intent.name === 'MCP Capability Auditor';
+
         const prompt = `
         Set the rules and assessment criteria.
-        Intent: ${intent.domain} (${intent.complexity})
+        Intent: ${intent.name} in ${intent.domain} (${intent.complexity})
 
         ## JSON Schema:
         {
@@ -497,7 +514,17 @@ process.stdout.write(JSON.stringify(__result));
             "enforcementLevel": "LOW" | "MEDIUM" | "HIGH"
         }
         `;
-        return await this.executeJsonMode<GovernanceConfig>(modelId, prompt, "Governance");
+        const config = await this.executeJsonMode<GovernanceConfig>(modelId, prompt, "Governance");
+
+        if (isHealthProbe) {
+            config.assessmentStrategy = ["STRICT_TEST_PASS"];
+        }
+
+        if (isAuditor) {
+            config.assessmentStrategy = ["JUDGE"]; // Auditor needs to judge logic
+        }
+
+        return config;
     }
 
     private getGovernanceFallback(intent: RoleIntent): GovernanceConfig {

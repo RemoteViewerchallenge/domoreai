@@ -81,14 +81,15 @@ export class LLMSelector {
     const localCandidates: (Model & { capabilities: ModelCapabilities | null })[] = [];
     const googleCandidates: (Model & { capabilities: ModelCapabilities | null })[] = [];
 
+    const allProviders = ProviderManager.getProviderIds();
+
     for (const m of candidates) {
       const p = ProviderManager.getProvider(m.providerId);
       if (!p) {
-           console.warn(`[LLMSelector] ❌ Provider '${m.providerId}' NOT found/enabled in Manager. Available: ${ProviderManager.getProviderIds().join(', ')}`);
+           // Skip silently unless we have no other options later
            continue;
       }
 
-      // Separate local models (Ollama) - they are fallback only
       const caps = m.capabilities as ExtendedCaps | null;
       const isLocal = caps?.isLocal === true;
       if (isLocal) {
@@ -96,14 +97,15 @@ export class LLMSelector {
         continue;
       }
 
-      // [USER PREF] "Continuous use of google... where is it getting api key"
-      // User clearly wants to avoid Google if possible (likely due to rate limits/reliability).
-      // We separate them to use only as a fallback.
       if (m.providerId.includes('google')) {
         googleCandidates.push(m);
       } else {
         apiCandidates.push(m);
       }
+    }
+
+    if (apiCandidates.length === 0 && googleCandidates.length === 0 && localCandidates.length === 0) {
+        console.warn(`[LLMSelector] ⚠️ No healthy providers for ${candidates.length} potential models. Available: ${allProviders.join(', ')}`);
     }
 
     // Priority: API models → Google models → Local models (Ollama)
