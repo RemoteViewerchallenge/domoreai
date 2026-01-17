@@ -22,8 +22,7 @@ class BrowserService {
     }
 
     // Create new browser instance with isolated profile
-    const profileId = sessionIdentityId || 'default';
-    const userDataDir = path.join(process.cwd(), '.sessions', profileId);
+    const userDataDir = path.join(process.cwd(), '.browser-data', sessionId);
     await fs.mkdir(userDataDir, { recursive: true });
 
     const browser = await puppeteer.launch({

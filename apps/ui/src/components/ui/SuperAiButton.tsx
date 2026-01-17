@@ -5,6 +5,7 @@ import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react
 import { cn } from '@/lib/utils.js';
 import { trpc } from '../../utils/trpc.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { z } from 'zod';
 
 // Lazy load the role selector
 import CompactRoleSelector from '../CompactRoleSelector.js';
@@ -41,7 +42,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || 'liaison-v1');
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -124,9 +125,17 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   }, [contextId, defaultRoleId]);
 
   const handleRoleSelect = (roleId: string) => {
-    setSelectedRoleId(roleId);
+    // Resilience Check: Add a Zod check to the role selection to prevent "String Handoff" errors.
+    const result = z.string().min(1).safeParse(roleId);
+    if (!result.success) {
+      console.error('❌ Invalid role selection:', roleId);
+      return;
+    }
+
+    const cleanRoleId = result.data;
+    setSelectedRoleId(cleanRoleId);
     if (typeof contextId === 'string') {
-        localStorage.setItem(`super-ai-role-${contextId}`, roleId);
+        localStorage.setItem(`super-ai-role-${contextId}`, cleanRoleId);
     }
     setState('active'); // Return to prompt view after selection
   };

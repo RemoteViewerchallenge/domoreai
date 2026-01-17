@@ -5,6 +5,7 @@ export interface CardData {
   id: string;
   roleId: string;
   column: number;
+  screenspaceId: number;
   title?: string;
   type?: string;
   metadata?: Record<string, unknown>;
@@ -45,7 +46,7 @@ export interface WorkspaceState {
   // [NEW] Screenspaces
   activeScreenspaceId: number;
   screenspaces: Screenspace[];
-  switchDesktop: (id: number) => void;
+  switchScreenspace: (id: number) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -58,12 +59,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setSidebarOpen: (open) => set({ showSidebar: open }),
       
       cards: [
-        { id: '1', roleId: '', column: 0 },
-        { id: '2', roleId: '', column: 0 },
-        { id: '3', roleId: '', column: 1 },
-        { id: '4', roleId: '', column: 1 },
-        { id: '5', roleId: '', column: 2 },
-        { id: '6', roleId: '', column: 2 },
+        { id: '1', roleId: '', column: 0, screenspaceId: 1 },
+        { id: '2', roleId: '', column: 0, screenspaceId: 1 },
+        { id: '3', roleId: '', column: 1, screenspaceId: 1 },
+        { id: '4', roleId: '', column: 1, screenspaceId: 1 },
+        { id: '5', roleId: '', column: 2, screenspaceId: 1 },
+        { id: '6', roleId: '', column: 2, screenspaceId: 1 },
       ],
       setCards: (cards) => set({ cards }),
       addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
@@ -84,15 +85,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeScreenspaceId: 1,
       screenspaces: [
-        { id: 1, name: 'Main', cardIds: ['1', '2', '3', '4', '5', '6'] },
+        { id: 1, name: 'Main', cardIds: [] },
         { id: 2, name: 'Refactor', cardIds: [] },
         { id: 3, name: 'Logs', cardIds: [] },
       ],
-      switchDesktop: (id) => set({ activeScreenspaceId: id }),
+      switchScreenspace: (id) => set({ activeScreenspaceId: id }),
     }),
     {
       name: 'workspace-storage', // unique name
-      partialize: (state) => ({ columns: state.columns, cards: state.cards }), // Persist cards!
+      partialize: (state) => ({ columns: state.columns, cards: state.cards, activeScreenspaceId: state.activeScreenspaceId }), // Persist cards!
     }
   )
 );

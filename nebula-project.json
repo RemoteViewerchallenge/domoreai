@@ -148,7 +148,7 @@
       "id": "B9slsuRAAf4BFU-_tdFnX",
       "type": "Text",
       "props": {
-        "content": "{assignedRole && (\n          <div clas...}",
+        "content": "{assignedRole && (\n          <div class...}",
         "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
       },
       "style": {},
