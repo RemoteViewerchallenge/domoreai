@@ -93,11 +93,11 @@ export class VoiceEngineRegistry {
     this.engines.delete(engineId);
     
     // Clear active if this was the active engine
-    for (const [type, activeId] of this.activeEngines.entries()) {
+    this.activeEngines.forEach((activeId, type) => {
       if (activeId === engineId) {
         this.activeEngines.delete(type);
       }
-    }
+    });
   }
   
   /**
