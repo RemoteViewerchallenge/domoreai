@@ -8,6 +8,8 @@ interface RouterExtendedRole extends Role {
   needsTools?: boolean;
   needsJson?: boolean;
   needsImageGeneration?: boolean;
+  minContext?: number;
+  maxContext?: number;
   variants?: Array<Record<string, unknown>>;
 }
 
@@ -271,6 +273,20 @@ export const roleRouter = createTRPCRouter({
        // RE-INSTATE COMMON CODE logic for System Prompt overlay if needed
        // ...
        
+        // Explicitly map metadata fields to top-level properties effectively
+        fusedRole.minContext = typeof meta.minContext === 'number' ? meta.minContext : undefined;
+        fusedRole.maxContext = typeof meta.maxContext === 'number' ? meta.maxContext : undefined;
+
+        if (activeVariant) {
+             // If DNA exists, it overrides legacy metadata
+             const cortex = (activeVariant.cortexConfig as Record<string, unknown>) || {};
+             const range = cortex.contextRange as { min: number, max: number } | undefined;
+             if (range) {
+                 fusedRole.minContext = range.min;
+                 fusedRole.maxContext = range.max;
+             }
+        }
+
        return {
            ...fusedRole,
            tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
