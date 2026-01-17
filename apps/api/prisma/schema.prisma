@@ -373,3 +373,30 @@ model google_models_example {
   topK                       Int?
   maxTemperature             Int?
 }
+
+model VoiceEngine {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT'
+  provider  String   // e.g., 'whisper', 'vosk', 'google', 'coqui', 'picovoice'
+  isEnabled Boolean  @default(true)
+  config    Json     @default("{}")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VoiceRole {
+  id               String   @id @default(cuid())
+  name             String
+  description      String
+  personality      String
+  systemPrompt     String   @db.Text
+  contextModifiers Json?
+  responseStyle    Json?
+  voiceSettings    Json?
+  isActive         Boolean  @default(true)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
