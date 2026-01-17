@@ -25,6 +25,7 @@ export interface ComponentDefinition {
     category: ComponentCategory;
     icon?: string;
     hidden?: boolean;
+    slots?: string[];
   };
   propSchema: {
     [key: string]: PropSchema;
@@ -212,6 +213,13 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
     meta: { label: "Agent Workbench", category: "feature", icon: "layout" },
     propSchema: {}
   },
+  "Feature:SwappableCard": {
+    component: React.lazy(() => import("../components/work-order/SwappableCard.js").then(m => ({ default: m.SwappableCard }))),
+    meta: { label: "Swappable Card", category: "feature", icon: "square" },
+    propSchema: {
+        id: { type: "string" }
+    }
+  },
 
   "UnifiedNebulaBar": {
     component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
@@ -232,11 +240,29 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
   "Scaffold": {
     component: AgentWorkbenchScaffold,
-    meta: { label: "Workbench Shell", category: "layout" },
+    meta: { 
+        label: "Workbench Shell", 
+        category: "layout",
+        slots: ["header", "sidebar", "content"]
+    },
     propSchema: {
         header: { type: "json" },
         sidebar: { type: "json" },
         content: { type: "json" }
+    }
+  },
+  "NebulaCanvas": {
+    component: ({ children, className }: BaseProps) => <div className={cn("flex flex-1", className)}>{children}</div>,
+    meta: { label: "Canvas Slot", category: "layout", icon: "layout" },
+    propSchema: {
+        className: { type: "string" }
+    }
+  },
+  "FloatingNavigation": {
+    component: ({ className }: BaseProps) => <div className={cn("w-16 border-r border-zinc-800 bg-zinc-900 flex flex-col items-center py-4", className)}>NAV</div>,
+    meta: { label: "Floating Nav", category: "layout", icon: "navigation" },
+    propSchema: {
+        className: { type: "string" }
     }
   }
 };
