@@ -1,7 +1,7 @@
 import { 
-  Save, Undo, Redo, Monitor, Tablet, Smartphone, Eye, Hand, MousePointer2 
+  Save, Undo, Redo, Monitor, Tablet, Smartphone, Eye, Hand, MousePointer2, LayoutGrid 
 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useBuilderStore } from '../../../../stores/builder.store.js';
 import { cn } from '../../../../lib/utils.js';
 
@@ -14,6 +14,15 @@ export const BuilderToolbar = () => {
       
       {/* GROUP 1: Context (What am I editing?) */}
       <div className="flex items-center gap-3 pl-2">
+        <Link 
+            to="/workbench" 
+            className="flex items-center gap-2 px-2 py-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors group"
+            title="Go to Agent Workbench"
+        >
+            <LayoutGrid size={14} className="group-hover:text-indigo-400" />
+            <span className="text-[10px] font-black uppercase tracking-tighter">Workbench</span>
+        </Link>
+        <div className="h-4 w-px bg-zinc-800" />
         <span className="text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
           Construction
         </span>

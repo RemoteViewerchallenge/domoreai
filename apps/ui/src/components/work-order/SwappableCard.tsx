@@ -11,12 +11,12 @@ import { type CardAgentState } from '../settings/AgentSettings.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
-import { RoleEditorCard } from './RoleEditorCard.js';
 import CompactRoleSelector from '../CompactRoleSelector.js';
 
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
+import { RefreshCcw, Activity } from 'lucide-react';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -61,6 +61,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [showRolePicker, setShowRolePicker] = useState(false);
     const [headerFilename, setHeaderFilename] = useState('');
     const [showHistory, setShowHistory] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [recoveryStep, setRecoveryStep] = useState('');
+    const [showSupplementary, setShowSupplementary] = useState(false);
+    const [supplementaryLogs, setSupplementaryLogs] = useState<TerminalMessage[]>([]);
 
     // Sync header filename with active file
     useEffect(() => {
@@ -171,7 +175,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             setViewMode('config');
             return;
         }
+
+        setIsRecovering(false);
         toast.loading("Running Agent...", { id: 'agent-run' });
+        
         try {
             const session = await startSessionMutation.mutateAsync({
                 cardId: id,
@@ -187,11 +194,17 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             });
             toast.success("Done", { id: 'agent-run' });
             if (session.logs) {
-                setTerminalLogs(p => [...p, ...session.logs.map(l => ({ message: l, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage))]);
+                setTerminalLogs(p => [...p, ...session.logs.map((l: string) => ({ message: l, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage))]);
             }
             setViewMode('terminal');
         } catch (err) {
-            toast.error("Failed", { id: 'agent-run', description: (err as Error).message });
+            const msg = (err as Error).message;
+            if (msg.includes('Watchdog') || msg.includes('timeout') || msg.includes('429')) {
+                setIsRecovering(true);
+                setRecoveryStep('OODA: OBSERVING FAILURE -> ORIENTING TO FALLBACK');
+                setTimeout(() => setRecoveryStep('OODA: DECIDING ON RECOVERY PATH -> ACTING: RETRYING WITH NPX/FALLBACK'), 1500);
+            }
+            toast.error("Failed", { id: 'agent-run', description: msg });
         }
     }, [id, agentConfig, startSessionMutation, currentPath, sessionId]);
 
@@ -261,15 +274,29 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             <t.icon size={12} />
                         </button>
                     ))}
+                    <button
+                        onClick={() => setShowSupplementary(!showSupplementary)}
+                        className={cn(
+                            "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
+                            showSupplementary && "text-orange-500 bg-[var(--bg-primary)]"
+                        )}
+                        title="Toggle Supplementary Liaison (Worker)"
+                    >
+                        <Activity size={12} />
+                    </button>
                 </div>
             </div>
 
 
-            {/* 2. Content */}
-            <div
-                className="flex-1 relative overflow-hidden bg-[var(--bg-background)] select-text"
-                onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
-            >
+            {/* 2. Content Split */}
+            <div className="flex-1 flex overflow-hidden relative select-text">
+                <div 
+                    className={cn(
+                        "flex-1 relative overflow-hidden bg-[var(--bg-background)] transition-all duration-300",
+                        showSupplementary ? "w-[75%]" : "w-full"
+                    )}
+                    onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
+                >
                 {viewMode === 'config' && (
                     <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
                         <div className="max-w-xs space-y-4">
@@ -344,6 +371,26 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 />}
                 {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
                 {viewMode === 'browser' && <SmartBrowser url={browserUrl} onUrlChange={setBrowserUrl} />}
+                
+                {/* [NEW] SupplementaryAgentSlot */}
+                {showSupplementary && (
+                    <div className="absolute right-0 top-0 bottom-0 w-[30%] min-w-[200px] border-l border-[var(--border-color)] bg-zinc-950 flex flex-col z-[40] animate-in slide-in-from-right duration-300">
+                        <div className="h-8 border-b border-zinc-900 bg-zinc-900/50 flex items-center px-4 justify-between">
+                            <span className="text-[9px] font-black tracking-widest text-zinc-500 uppercase">Worker Liaison</span>
+                            <button onClick={() => setShowSupplementary(false)} className="hover:text-white text-zinc-600"><X size={10} /></button>
+                        </div>
+                        <div className="flex-1 min-h-0 bg-black/40">
+                             <SmartTerminal 
+                                workingDirectory={currentPath} 
+                                logs={supplementaryLogs} 
+                                onInput={(msg) => {
+                                    // Worker logic: Start a separate session or delegate
+                                    setSupplementaryLogs(p => [...p, { message: `Queuing: ${msg}`, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage]);
+                                }} 
+                             />
+                        </div>
+                    </div>
+                )}
 
                 {showRolePicker && (
                     <div className="absolute top-9 right-2 w-72 h-[350px] bg-zinc-950 border border-zinc-800 z-50 shadow-2xl rounded-lg animate-in fade-in zoom-in-95 duration-100 flex flex-col">
@@ -372,7 +419,35 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         </div>
                     </div>
                 )}
-            </div>
+
+                {isRecovering && (
+                    <div className="absolute inset-0 z-[100] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                        <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4 animate-pulse border border-orange-500/50">
+                            <Activity className="text-orange-500" size={32} />
+                        </div>
+                        <h2 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Autonomic Recovery Active</h2>
+                        <div className="bg-zinc-900 border border-zinc-800 rounded px-4 py-2 mb-6">
+                            <span className="text-[10px] font-mono text-orange-400 animate-pulse">{recoveryStep}</span>
+                        </div>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsRecovering(false)}
+                                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-[10px] font-bold uppercase tracking-widest transition-all"
+                            >
+                                Dismiss
+                            </button>
+                            <button 
+                                onClick={() => void runAgent("Retry the last failed command.")}
+                                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]"
+                            >
+                                <RefreshCcw size={12} />
+                                Force Retry
+                            </button>
+                        </div>
+                    </div>
+                )}
+                </div> {/* End Main Content Area */}
+            </div> {/* End Content Split */}
         </div>
     );
 });
