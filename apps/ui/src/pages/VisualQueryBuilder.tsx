@@ -43,6 +43,9 @@ export const VisualQueryBuilder: React.FC = () => {
   const generateSQLMutation = trpc.basetool.generateSQL.useMutation();
   const executeSQLMutation = trpc.basetool.executeSQL.useMutation();
 
+  // Query for getting table schema
+  const utils = trpc.useContext();
+
   // Add a table to the canvas
   const handleAddTable = useCallback(
     async (tableName: string) => {
@@ -52,10 +55,8 @@ export const VisualQueryBuilder: React.FC = () => {
       }
 
       try {
-        // Fetch table schema
-        const schema = await trpc.basetool.getTableSchema.useQuery({
-          tableName
-        });
+        // Fetch table schema using tRPC
+        const schema = await utils.basetool.getTableSchema.fetch({ tableName });
 
         const newTable: SelectedTable = {
           name: tableName,
