@@ -2,13 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, RotateCw, Home, Loader2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 
-export default function ResearchBrowser({ initialUrl = 'https://google.com' }: { initialUrl?: string }) {
+export default function ResearchBrowser({ cardId, screenspaceId, initialUrl = 'https://google.com' }: { cardId?: string; screenspaceId?: number; initialUrl?: string }) {
   const [url, setUrl] = useState(initialUrl);
   const [currentUrl, setCurrentUrl] = useState(initialUrl);
   const [title, setTitle] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => `browser-${Date.now()}-${Math.random()}`);
+  
+  // Rule: each cardId is the sessionId, but we prefix with screenspace purpose
+  const sessionIdentityId = screenspaceId === 1 ? 'session-google' : 'session-github';
+  const sessionId = `${sessionIdentityId}-${cardId || `browser-${Date.now()}`}`;
   const [zoom, setZoom] = useState(1.0);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [keyboardInput, setKeyboardInput] = useState('');
@@ -149,7 +152,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
   }, [sessionId, goForwardMutation]);
 
   const handleRefresh = useCallback(() => {
-    handleNavigate();
+    void handleNavigate();
   }, [handleNavigate]);
 
   const handleHome = useCallback(() => {
@@ -179,10 +182,10 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
 
   useEffect(() => {
     if (initialUrl) {
-      handleNavigate();
+      void handleNavigate();
     }
     return () => {
-      closeSessionMutation.mutate({ sessionId });
+      void closeSessionMutation.mutateAsync({ sessionId });
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -206,7 +209,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
       <div className="h-10 flex items-center gap-2 px-2 bg-zinc-950 border-b border-zinc-800">
         <button 
           className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
-          onClick={handleBack}
+          onClick={() => void handleBack()}
           disabled={isLoading}
           title="Back"
         >
@@ -214,7 +217,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         </button>
         <button 
           className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
-          onClick={handleForward}
+          onClick={() => void handleForward()}
           disabled={isLoading}
           title="Forward"
         >
@@ -222,7 +225,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         </button>
         <button 
           className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
-          onClick={handleRefresh}
+          onClick={() => void handleRefresh()}
           disabled={isLoading}
           title="Refresh"
         >
@@ -230,7 +233,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         </button>
         <button 
           className="p-1.5 hover:bg-zinc-800 rounded text-[var(--color-text-secondary)] hover:text-white disabled:opacity-30"
-          onClick={handleHome}
+          onClick={() => void handleHome()}
           disabled={isLoading}
           title="Home"
         >
@@ -245,7 +248,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                handleNavigate();
+                void handleNavigate();
               }
             }}
             placeholder="Search or enter URL..."
@@ -290,7 +293,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
         {screenshot ? (
           <div 
             className="relative inline-block border border-zinc-800 shadow-2xl" 
-            onWheel={handleScroll}
+            onWheel={(e) => void handleScroll(e)}
             style={{
               minWidth: `${1280 * zoom}px`,
               minHeight: `${720 * zoom}px`
@@ -306,7 +309,7 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
               src={screenshot}
               alt="Browser content"
               className="cursor-pointer block"
-              onClick={handleClick}
+              onClick={(e) => void handleClick(e)}
               style={{ 
                 width: '1280px',
                 height: '720px',
@@ -344,32 +347,32 @@ export default function ResearchBrowser({ initialUrl = 'https://google.com' }: {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleKeyboardSubmit();
-                  handleKeyPress('Enter');
+                  void handleKeyboardSubmit();
+                  void handleKeyPress('Enter');
                 } else if (e.key === 'Tab') {
                   e.preventDefault();
-                  handleKeyPress('Tab');
+                  void handleKeyPress('Tab');
                 }
               }}
               placeholder="Type text here (Ctrl+K to toggle, Enter to submit)"
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-3 py-1.5 text-xs text-zinc-300 focus:border-cyan-500 focus:outline-none"
             />
             <button
-              onClick={handleKeyboardSubmit}
+              onClick={() => void handleKeyboardSubmit()}
               className="px-3 py-1.5 bg-cyan-900/30 border border-cyan-700 text-cyan-400 hover:bg-cyan-900/50 rounded text-xs font-bold"
               title="Send text"
             >
               Send
             </button>
             <button
-              onClick={() => handleKeyPress('Enter')}
+              onClick={() => void handleKeyPress('Enter')}
               className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[var(--color-text-secondary)] rounded text-xs"
               title="Press Enter"
             >
               ↵
             </button>
             <button
-              onClick={() => handleKeyPress('Tab')}
+              onClick={() => void handleKeyPress('Tab')}
               className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[var(--color-text-secondary)] rounded text-xs"
               title="Press Tab"
             >

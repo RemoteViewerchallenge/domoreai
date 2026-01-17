@@ -1,12 +1,13 @@
-import React from 'react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { BrowserCard } from './BrowserCard.js';
 
-export const SmartBrowser = ({ url, onUrlChange }: { url: string; onUrlChange?: (url: string) => void }) => {
+export const SmartBrowser = ({ cardId, screenspaceId, url, onUrlChange }: { cardId: string; screenspaceId: number; url: string; onUrlChange?: (url: string) => void }) => {
   return (
     <SmartContainer type="BROWSER" title="Live Preview">
       {(registerContext) => (
         <BrowserCard 
+           cardId={cardId}
+           screenspaceId={screenspaceId}
            initialUrl={url}
            hideWrapper
            onLoad={(frameContent: string) => {

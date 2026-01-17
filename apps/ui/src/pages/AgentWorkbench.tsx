@@ -34,7 +34,7 @@ export const AgentWorkbenchScaffold = ({
 };
 
 export default function AgentWorkbench({ className }: { className?: string }) {
-  const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace, activeScreenspaceId, screenspaces } = useWorkspaceStore();
+  const { columns, cards, setCards, addCard, loadWorkspace, activeWorkspace, activeScreenspaceId } = useWorkspaceStore();
   const { data: roles } = trpc.role.list.useQuery(); 
   const availableRoles = Array.isArray(roles) ? roles : [];
 
@@ -58,17 +58,11 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, cards]);
 
-  const activeScreenspaceData = useMemo(() => 
-    screenspaces.find(s => s.id === activeScreenspaceId), 
-    [screenspaces, activeScreenspaceId]
-  );
 
   const filteredCards = useMemo(() => {
-    if (!activeScreenspaceData) return cards;
-    // If screenspace has cardIds, filter. If empty, maybe show nothing or all?
-    // Following the spirit of "virtual desktops", we only show cards assigned to it.
-    return cards.filter(c => activeScreenspaceData.cardIds.includes(c.id));
-  }, [cards, activeScreenspaceData]);
+    const spaceId = activeScreenspaceId || 1;
+    return cards.filter(c => (c.screenspaceId || 1) === spaceId);
+  }, [cards, activeScreenspaceId]);
 
   const cardsByColumn = useMemo(() => {
     const buckets: { [key: number]: typeof cards } = {};
@@ -90,7 +84,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     }
     const newId = String(Date.now());
     const newRoleId = availableRoles[0].id;
-    addCard({ id: newId, roleId: newRoleId, column: columnIndex });
+    addCard({ id: newId, roleId: newRoleId, column: columnIndex, screenspaceId: activeScreenspaceId });
   };
 
   const scrollToCardIndex = (columnIndex: number, cardIndex: number) => {

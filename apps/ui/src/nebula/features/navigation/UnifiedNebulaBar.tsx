@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
-  Hammer, Palette, Rocket, Command, Sparkles, LayoutGrid, 
+  Hammer, Palette, Rocket, Command, Sparkles, 
   Settings, Monitor, FolderGit2, X, Users, Database
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
+import { SmartSwitch } from '../../../components/workspace/SmartSwitch.js';
 
 interface UnifiedNebulaBarProps {
     aiOpen?: boolean;
@@ -21,7 +22,6 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
 
   // Context Detection
   const isBuilder = location.pathname.includes('/ui-studio');
-  const isTheme = location.pathname.includes('/theme');
   const isWorkbench = location.pathname === '/' || location.pathname === '/workbench';
   const isOrg = location.pathname === '/org-structure';
   const isVisualizer = location.pathname === '/visualizer' || location.pathname === '/code-visualizer';
@@ -104,17 +104,20 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
       </div>
 
       {/* 2. CONTEXT AWARE CENTER */}
-      <div className="flex-1 flex justify-center items-center overflow-hidden">
+      <div className="flex-1 flex justify-center items-center overflow-hidden gap-4">
          {isBuilder ? (
              <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-full px-3 py-0.5">
                  <span className="text-[10px] font-bold text-[var(--color-primary)]">BUILDER MODE</span>
                  <span className="text-[9px] text-[var(--text-muted)] hidden sm:block">Drafting: {projectId}</span>
              </div>
          ) : (
-            <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-                 <Command size={10} />
-                 <span className="text-[10px] font-mono tracking-widest uppercase">{projectId ?? 'NEBULA OS'}</span>
-            </div>
+            <>
+                <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                    <Command size={10} />
+                    <span className="text-[10px] font-mono tracking-widest uppercase">{projectId ?? 'NEBULA OS'}</span>
+                </div>
+                {isWorkbench && <SmartSwitch />}
+            </>
          )}
       </div>
 
