@@ -218,7 +218,8 @@ export class LLMSelector {
                    !name.includes('moderation') &&
                    !name.includes('ocr') &&
                    !name.includes('embedding') &&
-                   !name.includes('whisper');
+                   !name.includes('whisper') &&
+                   !name.includes('reward');
         });
     }
 

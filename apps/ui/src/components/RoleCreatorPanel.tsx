@@ -311,11 +311,11 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                      }}
                      className="flex-grow px-3 py-2 bg-transparent text-sm text-[var(--color-text-muted)] focus:outline-none border-b border-[var(--color-border)] focus:border-[var(--color-primary)]"
                    >
-                     <option value="" disabled>Select Category</option>
+                     <option value="" disabled className="bg-[var(--color-background)] text-[var(--color-text)]">Select Category</option>
                      {uniqueCategories.map(cat => (
-                       <option key={cat} value={cat}>{cat}</option>
+                       <option key={cat} value={cat} className="bg-[var(--color-background)] text-[var(--color-text)]">{cat}</option>
                      ))}
-                     <option value="new">+ Create New Category</option>
+                     <option value="new" className="bg-[var(--color-background)] text-[var(--color-text)]">+ Create New Category</option>
                    </select>
                  )}
                  
