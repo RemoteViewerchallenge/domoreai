@@ -7,7 +7,7 @@ import { terminalTools } from '../../tools/terminal.js';
 import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
-import { nebulaTool } from '../../tools/nebulaTool.js';
+import { uiArchitectTools } from '../../tools/uiArchitectTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
 
@@ -19,12 +19,13 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
              description: themeEditorTool.description,
              input_schema: themeEditorTool.inputSchema as Record<string, unknown>
          },
-         {
-             name: nebulaTool.name,
-             handler: nebulaTool.handler as (args: unknown) => unknown,
-             description: nebulaTool.description,
-             input_schema: nebulaTool.input_schema as Record<string, unknown>
-         },
+         // Atomized UI Architect Tools
+         ...uiArchitectTools.map(t => ({
+             name: t.name,
+             handler: t.handler as (args: unknown) => unknown,
+             description: t.description,
+             input_schema: (t.inputSchema || {}) as Record<string, unknown>
+         })),
          {
            name: typescriptInterpreterTool.name,
            handler: typescriptInterpreterTool.handler as (args: unknown) => unknown,

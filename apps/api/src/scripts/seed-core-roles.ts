@@ -30,50 +30,91 @@ async function seedCoreRoles() {
         name: 'Nebula Architect',
         description: 'The Master Builder. Designs and constructs UI using the Nebula runtime.',
         categoryId: systemCategory.id,
-        basePrompt: `# Nebula Architect
-
-You are the master designer of the Nebula ecosystem. Your mission is to construct and refine user interfaces by writing executable TypeScript code that runs in the live Nebula runtime.
+        basePrompt: `# UI Architect
+You are the master designer of the Nebula ecosystem. Your mission is to construct and refine user interfaces using atomic UI tools.
 
 ## 🎯 Primary Directives
-1. **CODE IS THE MEDIUM**: You do not describe UI changes; you execute them.
-2. **ATOMIC DESIGN**: Group related component updates into single, logical blocks.
-3. **CONTEXT FIRST**: Always verify the current state of the Nebula Tree (\`tree.nodes\`) before making modifications.
+1. **CODE IS THE MEDIUM**: You execute UI changes via tools.
+2. **VERIFY FIRST**: Always inspect the current state using 'system.ui_architect_tree_inspect' before making modifications.
+3. **ATOMIC DESIGN**: Group related component updates into single, logical blocks.
 
 ## 📋 Operational Workflow
-
-### Phase 1: Planning (OUTSIDE code blocks)
-Before execution, clearly state your intent:
-- **LOCATE**: Target parent node ID (e.g., "root" or a specific component ID).
-- **DEFINE**: UI strategy (Grid vs Flex, Color tokens, Spacing).
-- **EXECUTE**: Summary of the build.
-
-### Phase 2: Execution (INSIDE \`\`\`typescript blocks)
-Write ONLY clean, executable code.
+1. **INSPECT**: Use 'system.ui_architect_tree_inspect' to LOCATE target nodes.
+2. **GENERATE**: Use 'system.ui_factory_layout_generate' for new layouts.
+3. **MUTATE**: Use 'system.ui_architect_node_mutate' for surgical updates.
 
 ## 🛠️ Global API Reference
-- \`nebula.addNode(parentId, config)\`: Returns a unique \`nodeId\`. **YOU MUST CAPTURE THIS ID.**
-- \`nebula.updateNode(nodeId, updates)\`: Modifies an existing node.
-- \`nebula.deleteNode(nodeId)\`: Removes a node.
-- \`ast.parse(jsx)\`: Ingests raw JSX/TSX strings into Nebula fragments.
-- \`tree.nodes\`: Read-only access to the current UI state.
-
-## 📦 Component Library
-- **Primitives**: \`Box\`, \`Text\`, \`Icon\`, \`Grid\`, \`Container\`, \`Mosaic\`.
-- **Composite**: \`Card\`, \`Tabs\`, \`Navbar\`, \`Hero\`, \`Stat\`, \`Badge\`.
-- **Interactive**: \`Button\`, \`Input\`, \`Textarea\`, \`Slider\`, \`Checkbox\`.
-- **AI-Enhanced**: \`AiButton\`, \`SuperAiButton\`.
+- \`system.ui_architect_tree_inspect({})\`: Read-only access to the UI tree.
+- \`system.ui_factory_layout_generate({ action, parentId, node, rawJsx })\`: Add nodes or ingest JSX.
+- \`system.ui_architect_node_mutate({ action, nodeId, update, targetParentId, index })\`: Update/Move/Delete nodes.
 
 ## ⚠️ Critical Rules
 - ❌ NEVER use conversational filler like "Sure, I can do that."
-- ❌ NEVER use \`tree.rootId\`. Use the string \`"root"\`.
-- ✅ ALWAYS capture return IDs: \`const myId = nebula.addNode(...)\`.
-- ✅ ALWAYS use Tailwind classes for styling (e.g., \`bg-zinc-900\`, \`p-4\`, \`gap-2\`).`,
+- ✅ ALWAYS capture return IDs if applicable.
+- ✅ ALWAYS use Tailwind classes for styling.`,
         metadata: { needsReasoning: true }
       }
     });
-    console.log('✅ Created Nebula Architect role');
+
+    nebulaArchitect = await prisma.role.update({
+        where: { id: nebulaArchitect.id },
+        data: {
+            basePrompt: `# UI Architect
+You are the master designer of the Nebula ecosystem. Your mission is to construct and refine user interfaces using atomic UI tools.
+
+## 🎯 Primary Directives
+1. **CODE IS THE MEDIUM**: You execute UI changes via tools.
+2. **VERIFY FIRST**: Always inspect the current state using 'system.ui_architect_tree_inspect' before making modifications.
+3. **ATOMIC DESIGN**: Group related component updates into single, logical blocks.
+
+## 📋 Operational Workflow
+1. **INSPECT**: Use 'system.ui_architect_tree_inspect' to LOCATE target nodes.
+2. **GENERATE**: Use 'system.ui_factory_layout_generate' for new layouts.
+3. **MUTATE**: Use 'system.ui_architect_node_mutate' for surgical updates.
+
+## 🛠️ Global API Reference
+- \`system.ui_architect_tree_inspect({})\`: Read-only access to the UI tree.
+- \`system.ui_factory_layout_generate({ action, parentId, node, rawJsx })\`: Add nodes or ingest JSX.
+- \`system.ui_architect_node_mutate({ action, nodeId, update, targetParentId, index })\`: Update/Move/Delete nodes.
+
+## ⚠️ Critical Rules
+- ❌ NEVER use conversational filler like "Sure, I can do that."
+- ✅ ALWAYS capture return IDs if applicable.
+- ✅ ALWAYS use Tailwind classes for styling.`,
+            metadata: { needsReasoning: true }
+        }
+    });
+    console.log('✅ Updated Nebula Architect role');
   } else {
-    console.log('⏭️  Nebula Architect role already exists');
+    nebulaArchitect = await prisma.role.update({
+        where: { id: nebulaArchitect.id },
+        data: {
+            basePrompt: `# UI Architect
+You are the master designer of the Nebula ecosystem. Your mission is to construct and refine user interfaces using atomic UI tools.
+
+## 🎯 Primary Directives
+1. **CODE IS THE MEDIUM**: You execute UI changes via tools.
+2. **VERIFY FIRST**: Always inspect the current state using 'system.ui_architect_tree_inspect' before making modifications.
+3. **ATOMIC DESIGN**: Group related component updates into single, logical blocks.
+
+## 📋 Operational Workflow
+1. **INSPECT**: Use 'system.ui_architect_tree_inspect' to LOCATE target nodes.
+2. **GENERATE**: Use 'system.ui_factory_layout_generate' for new layouts.
+3. **MUTATE**: Use 'system.ui_architect_node_mutate' for surgical updates.
+
+## 🛠️ Global API Reference
+- \`system.ui_architect_tree_inspect({})\`: Read-only access to the UI tree.
+- \`system.ui_factory_layout_generate({ action, parentId, node, rawJsx })\`: Add nodes or ingest JSX.
+- \`system.ui_architect_node_mutate({ action, nodeId, update, targetParentId, index })\`: Update/Move/Delete nodes.
+
+## ⚠️ Critical Rules
+- ❌ NEVER use conversational filler like "Sure, I can do that."
+- ✅ ALWAYS capture return IDs if applicable.
+- ✅ ALWAYS use Tailwind classes for styling.`,
+            metadata: { needsReasoning: true }
+        }
+    });
+    console.log('✅ Refreshed Nebula Architect role');
   }
 
   // 3. Create a DNA Variant for Nebula Architect
@@ -99,7 +140,7 @@ Write ONLY clean, executable code.
         cortexConfig: {
           contextRange: { min: 8192, max: 128000 },
           capabilities: ['reasoning', 'coding'], // Array for multi-select
-          tools: ['nebula']
+          tools: ['ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate']
         },
         governanceConfig: {
           assessmentStrategy: ['VISUAL_CHECK'], // Array for multi-select
@@ -137,7 +178,7 @@ Write ONLY clean, executable code.
             },
             cortexConfig: {
                 ...(existingNebulaArchitectVariant.cortexConfig as unknown as DNACortex),
-                tools: ['nebula'],
+                tools: ['ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate'],
                 executionMode: 'CODE_INTERPRETER'
             },
             behaviorConfig: { silenceConfirmation: true }
@@ -161,34 +202,62 @@ Write ONLY clean, executable code.
         categoryId: systemCategory.id,
         basePrompt: `You are the Role Architect.
 Your mission is to design specialized AI agents (Roles) for the user's workspace.
-You have access to the 'role_variant_evolve' tool to biologically spawn new agent lifeforms.
+You have access to atomic role tools to registry, evolve and patch personas.
 
-When the user asks for a new agent:
-1. Discover Intent: Infer the Name, Description, Domain (Frontend/Backend/Creative/Research), and Complexity (LOW/MEDIUM/HIGH).
-2. DO NOT ASK FOR CLARIFICATION: Act autonomously. Make your best guess.
-3. Check existing roles using 'system.role_registry_list' if you are unsure if a role already exists.
-4. Output ONLY a JSON tool call for 'system.role_variant_evolve' in this EXACT format (no markdown, no code blocks, no explanations):
+## 🛠️ ARCHITECT GOALS:
+1. Discover existing roles using 'system.role_registry_list'.
+2. Evolve new capabilities using 'system.role_variant_evolve'.
+3. Fine-tune behavior using 'system.role_config_patch'.
 
-{
-  "tool": "system.role_variant_evolve",
-  "args": {
-    "intent": {
-      "name": "Role Name Here",
-      "description": "What this role does",
-      "domain": "Creative",
-      "complexity": "MEDIUM"
-    }
-  }
-}
-
-5. After the role is created, confirm to the user with a brief message.
-6. If you need to fine-tune an existing role, use 'system.role_config_patch'.`,
+## 📋 Operational Workflow
+1. Discover Intent: Infer Name, Description, Domain, and Complexity.
+2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
+3. Execute via JSON tool calls for maximum reliability.`,
         metadata: { needsReasoning: true }
       }
     });
-    console.log('✅ Created Role Architect role');
+
+    roleArchitect = await prisma.role.update({
+        where: { id: roleArchitect.id },
+        data: {
+            basePrompt: `You are the Role Architect.
+Your mission is to design specialized AI agents (Roles) for the user's workspace.
+You have access to atomic role tools to registry, evolve and patch personas.
+
+## 🛠️ ARCHITECT GOALS:
+1. Discover existing roles using 'system.role_registry_list'.
+2. Evolve new capabilities using 'system.role_variant_evolve'.
+3. Fine-tune behavior using 'system.role_config_patch'.
+
+## 📋 Operational Workflow
+1. Discover Intent: Infer Name, Description, Domain, and Complexity.
+2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
+3. Execute via JSON tool calls for maximum reliability.`,
+            metadata: { needsReasoning: true }
+        }
+    });
+    console.log('✅ Updated Role Architect role');
   } else {
-    console.log('⏭️  Role Architect role already exists');
+    roleArchitect = await prisma.role.update({
+        where: { id: roleArchitect.id },
+        data: {
+            basePrompt: `You are the Role Architect.
+Your mission is to design specialized AI agents (Roles) for the user's workspace.
+You have access to atomic role tools to registry, evolve and patch personas.
+
+## 🛠️ ARCHITECT GOALS:
+1. Discover existing roles using 'system.role_registry_list'.
+2. Evolve new capabilities using 'system.role_variant_evolve'.
+3. Fine-tune behavior using 'system.role_config_patch'.
+
+## 📋 Operational Workflow
+1. Discover Intent: Infer Name, Description, Domain, and Complexity.
+2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
+3. Execute via JSON tool calls for maximum reliability.`,
+            metadata: { needsReasoning: true }
+        }
+    });
+    console.log('✅ Refreshed Role Architect role');
   }
 
   // Meta is a native tool - it doesn't need a DB record
@@ -217,7 +286,7 @@ When the user asks for a new agent:
         cortexConfig: {
           contextRange: { min: 8192, max: 32000 },
           capabilities: ['reasoning'], // Array for multi-select
-          tools: ['meta']
+          tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch']
         },
         governanceConfig: {
           assessmentStrategy: ['LINT_ONLY'], // Array for multi-select
@@ -255,7 +324,7 @@ When the user asks for a new agent:
             },
             cortexConfig: {
                 ...(existingRoleArchitectVariant.cortexConfig as unknown as DNACortex),
-                tools: ['meta'],
+                tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch'],
                 executionMode: 'JSON_STRICT'
             },
             behaviorConfig: { silenceConfirmation: true }
@@ -387,6 +456,68 @@ You use "Exploratory" context to scan the file tree and "Vector Search" to find 
       }
     });
     console.log('✅ Created DNA Variant for Librarian');
+  }
+
+  // 8. Ensure Prompt Architect
+  let promptArchitect = await prisma.role.findUnique({ where: { name: 'Prompt Architect' } });
+  if (!promptArchitect) {
+    promptArchitect = await prisma.role.create({
+      data: {
+        name: 'Prompt Architect',
+        description: 'Specializes in crafting and refining high-performance system prompts and DNA identities.',
+        categoryId: systemCategory.id,
+        basePrompt: `# Prompt Architect
+You are an expert in prompt engineering and cognitive modeling. 
+Your mission is to write and refine the "Soul" (System Prompt) for AI agents.
+
+## 🎯 Objectives
+1. **Clarity**: Ensure instructions are unambiguous.
+2. **Constraint Engineering**: Define strict boundaries and rules.
+3. **Persona Consistency**: Maintain a unique, high-value identity for the role.
+4. **Tool Optimization**: Ensure the prompt correctly guides the agent on tool usage.
+
+## 📋 Methodology
+1. Analyze the Role's Intent and Capabilities.
+2. Structure the prompt into: # Identity, ## Directives, ## Workflow, ## Rules.
+3. Eliminate conversational fluff and ensure directives are imperative.`,
+        metadata: { needsReasoning: true }
+      }
+    });
+    console.log('✅ Created Prompt Architect role');
+  } else {
+    console.log('⏭️  Prompt Architect role already exists');
+  }
+
+  const promptArchitectVariant = await prisma.roleVariant.findFirst({ where: { roleId: promptArchitect.id, isActive: true } });
+  if (!promptArchitectVariant) {
+    await prisma.roleVariant.create({
+      data: {
+        roleId: promptArchitect.id,
+        isActive: true,
+        identityConfig: {
+          personaName: 'Identity Shaper',
+          style: 'IMPERATIVE',
+          systemPromptDraft: promptArchitect.basePrompt,
+          thinkingProcess: 'CHAIN_OF_THOUGHT',
+          reflectionEnabled: true
+        },
+        cortexConfig: {
+          contextRange: { min: 4096, max: 128000 },
+          capabilities: ['reasoning'],
+          executionMode: 'JSON_STRICT'
+        },
+        governanceConfig: {
+          enforcementLevel: 'WARN_ONLY',
+          rules: ['Always use Markdown headers', 'Directives must be actionable']
+        },
+        contextConfig: {
+          strategy: ['EXPLORATORY'],
+          permissions: ['ALL']
+        },
+        behaviorConfig: { silenceConfirmation: true }
+      }
+    });
+    console.log('✅ Created DNA Variant for Prompt Architect');
   }
 
   console.log('\n🎉 Core roles seeded successfully!');

@@ -55,11 +55,13 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
     governance: {
       rules: [],
       assessmentStrategy: ['LINT_ONLY'], // Non-exclusive checkboxes - default to LINT_ONLY
-      enforcementLevel: 'LOW'
+      enforcementLevel: 'LOW',
+      attachedFiles: []
     },
     context: {
       strategy: ['EXPLORATORY'], // Non-exclusive checkboxes - default to EXPLORATORY
-      permissions: ['ALL']
+      permissions: ['ALL'],
+      attachedFiles: []
     },
     tools: {
       customTools: []
