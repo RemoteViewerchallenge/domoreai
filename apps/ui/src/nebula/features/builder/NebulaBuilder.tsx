@@ -13,6 +13,26 @@ import { toast } from 'sonner';
 import { FileExplorer } from '../../../components/FileExplorer.js';
 import { trpc } from '../../../utils/trpc.js';
 
+// --- UTILS ---
+const flattenTree = (node: any, nodes: Record<string, any> = {}): string => {
+    const id = node.id || `node-${Math.random().toString(36).substring(2, 9)}`;
+    const children = Array.isArray(node.children) ? node.children : [];
+    const childrenIds = children.map((child: any) => {
+        if (typeof child === 'string') return child;
+        return flattenTree(child, nodes);
+    });
+
+    nodes[id] = { ...node, id, children: childrenIds };
+    return id;
+};
+
+const normalizeProject = (project: any): NebulaTree => {
+    if (project.rootId && project.nodes) return project as NebulaTree;
+    const nodes: Record<string, any> = {};
+    const rootId = flattenTree(project, nodes);
+    return { rootId, nodes } as NebulaTree;
+};
+
 // --- TYPES ---
 interface NebulaBuilderProps {
   initialTree: NebulaTree; 
@@ -61,20 +81,28 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   // VFS Import
   const handleVfsSelect = async (path: string) => {
     const fileName = path.split('/').pop() || '';
-    if (!/\.(tsx|jsx|ts|js)$/.test(fileName)) {
-        toast.error("Invalid File Type", { description: "Please select a React/TS files." });
+    if (!/\.(tsx|jsx|ts|js|json)$/.test(fileName)) {
+        toast.error("Invalid File Type", { description: "Please select a React/TS or JSON file." });
         return;
     }
 
     try {
         const content = await vfs.readFile(path);
-        const newTree = await parseJsxMutation.mutateAsync({ code: content });
+        let newTree: NebulaTree;
+
+        if (fileName.endsWith('.json')) {
+            const project = JSON.parse(content);
+            newTree = normalizeProject(project);
+        } else {
+            newTree = await parseJsxMutation.mutateAsync({ code: content });
+        }
+
         setTree(newTree);
         setCurrentFile(path.split('/').pop() || path);
         setIsDirty(true);
-        toast("Component Imported", { description: `Successfully parsed ${path} into Nebula Tree.` });
+        toast("File Imported", { description: `Successfully loaded ${path} into Nebula Tree.` });
     } catch (err) {
-        toast.error("Parse Error", { description: (err as Error).message });
+        toast.error("Open Error", { description: (err as Error).message });
     }
   };
 

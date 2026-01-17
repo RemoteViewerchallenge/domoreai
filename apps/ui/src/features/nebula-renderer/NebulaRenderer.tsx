@@ -1,10 +1,11 @@
 import React, { useState, useContext, createContext, useMemo } from "react";
 import type { NebulaTree, NebulaNode } from "@repo/nebula";
 import { cn } from "../../lib/utils.js";
-import { resolveComponent } from "../../nebula/registry.js";
+import { resolveComponent, ComponentManifest } from "../../nebula/registry.js";
 import { SuperAiButton } from "../../components/ui/SuperAiButton.js";
 import { Eye, EyeOff } from "lucide-react";
 import { useMediaQuery } from "../../hooks/useMediaQuery.js";
+import { useWorkspaceStore } from "../../stores/workspace.store.js";
 
 // --- THE CONTEXT FOR STATE & ACTIONS ---
 interface NebulaContextType {
@@ -38,7 +39,17 @@ export const NebulaRendererRoot: React.FC<NebulaRootProps> = ({ tree, initialBin
     setBindings(prev => ({ ...prev, [key]: value }));
   };
 
+  const { addCard } = useWorkspaceStore();
+
   const handleAction = (action: string, payload?: unknown) => {
+      if (action === 'workbench:spawn-card') {
+          const { roleId, column = 0 } = (payload as { roleId?: string, column?: number }) || {};
+          addCard({ 
+              id: String(Date.now()), 
+              roleId: roleId || 'developer', 
+              column: column 
+          });
+      }
       onAction?.(action, payload, bindings);
   };
 
@@ -129,8 +140,22 @@ export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = 
       props.onClick = () => handleAction(props['data-action'] as string);
     }
 
+    // --- SLOT RESOLUTION ---
+    const manifest = ComponentManifest[node.type] || ComponentManifest[node.componentName || ''];
+    if (manifest?.meta?.slots) {
+      manifest.meta.slots.forEach(slotName => {
+        const slotValue = props[slotName];
+        if (slotValue) {
+          const slotNode = typeof slotValue === 'string' ? tree.nodes[slotValue] : (slotValue as NebulaNode);
+          if (slotNode) {
+            props[slotName] = <NebulaRenderer key={slotNode.id} node={slotNode} tree={tree} />;
+          }
+        }
+      });
+    }
+
     return props;
-  }, [node.props, node.id, node.className, node.responsive, node.type, node.componentName, isMobile, bindings, setBinding, handleAction]);
+  }, [node.props, node.id, node.className, node.responsive, node.type, node.componentName, isMobile, bindings, setBinding, handleAction, tree]);
 
   const childrenToRender = useMemo(() => {
     if (!node.children || node.children.length === 0) return null;
@@ -153,13 +178,20 @@ export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = 
      position: 'relative'
   };
 
+  interface LayoutProps {
+    className?: string;
+    flex?: number;
+    hFull?: boolean;
+  }
+  const p = (node.props || {}) as LayoutProps;
+
   const layoutClasses = cn(
     "relative group/node",
     node.className,
-    (node.props as any)?.className, // Allow props to dictate layout
+    p.className, // Allow props to dictate layout
     node.type === 'Flex' ? "flex" : "block",
-    (node.props as any)?.flex === 1 ? "flex-1" : "",
-    (node.props as any)?.hFull ? "h-full" : ""
+    p.flex === 1 ? "flex-1" : "",
+    p.hFull ? "h-full" : ""
   );
 
   return (
