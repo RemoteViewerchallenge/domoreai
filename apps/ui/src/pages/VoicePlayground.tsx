@@ -7,12 +7,11 @@
 
 import { useState, useEffect } from 'react';
 import { Mic, Play, Pause, Settings, Smartphone, Radio, Zap } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
-import { Button } from '@/components/ui/button';
-import AudioPlayer from '@/components/AudioPlayer';
+import { trpc } from '../utils/trpc.js';
+import { Button } from '../components/ui/button.js';
+import AudioPlayer from '../components/AudioPlayer.js';
 
 type InputSource = 'microphone' | 'file' | 'android' | 'keyword';
-type EngineType = 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT';
 
 export default function VoicePlayground() {
   const [selectedInputSource, setSelectedInputSource] = useState<InputSource>('microphone');
@@ -21,7 +20,6 @@ export default function VoicePlayground() {
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [transcribedText, setTranscribedText] = useState<string>('');
   const [synthesizedAudioUrl, setSynthesizedAudioUrl] = useState<string>('');
-  const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Queries
@@ -78,7 +76,6 @@ export default function VoicePlayground() {
   const handleStartKeywordListener = async () => {
     try {
       await startKeywordListenerMutation.mutateAsync({});
-      setIsListening(true);
     } catch (error) {
       console.error('Error starting keyword listener:', error);
     }
@@ -87,7 +84,6 @@ export default function VoicePlayground() {
   const handleStopKeywordListener = async () => {
     try {
       await stopKeywordListenerMutation.mutateAsync();
-      setIsListening(false);
     } catch (error) {
       console.error('Error stopping keyword listener:', error);
     }
@@ -191,7 +187,7 @@ export default function VoicePlayground() {
             <div className="mt-4 flex items-center gap-2">
               {keywordStatus?.isListening ? (
                 <Button
-                  onClick={handleStopKeywordListener}
+                  onClick={() => void handleStopKeywordListener()}
                   variant="outline"
                   size="sm"
                   className="text-red-400 border-red-400 hover:bg-red-400/10"
@@ -201,7 +197,7 @@ export default function VoicePlayground() {
                 </Button>
               ) : (
                 <Button
-                  onClick={handleStartKeywordListener}
+                  onClick={() => void handleStartKeywordListener()}
                   variant="outline"
                   size="sm"
                   className="text-green-400 border-green-400 hover:bg-green-400/10"
@@ -234,7 +230,7 @@ export default function VoicePlayground() {
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200"
             >
               <option value="">Default</option>
-              {sttEngines?.map((engine) => (
+              {sttEngines?.map((engine: any) => (
                 <option key={engine.id} value={engine.id}>
                   {engine.name} ({engine.provider})
                 </option>
@@ -258,7 +254,7 @@ export default function VoicePlayground() {
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200"
             >
               <option value="">Default</option>
-              {ttsEngines?.map((engine) => (
+              {ttsEngines?.map((engine: any) => (
                 <option key={engine.id} value={engine.id}>
                   {engine.name} ({engine.provider})
                 </option>
@@ -279,10 +275,10 @@ export default function VoicePlayground() {
           </h3>
           
           <div className="grid md:grid-cols-3 gap-3">
-            {roles?.map((role) => (
+            {roles?.map((role: any) => (
               <button
                 key={role.id}
-                onClick={() => handleRoleChange(role.id)}
+                onClick={() => void handleRoleChange(role.id)}
                 className={`p-4 rounded-lg border text-left transition-all ${
                   selectedRole === role.id
                     ? 'bg-purple-500/20 border-purple-500'

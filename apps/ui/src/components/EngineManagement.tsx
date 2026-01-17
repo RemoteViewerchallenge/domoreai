@@ -6,8 +6,8 @@
 
 import { useState } from 'react';
 import { Plus, Trash2, Edit2, Power } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
-import { Button } from './ui/button';
+import { trpc } from '../utils/trpc.js';
+import { Button } from './ui/button.js';
 
 interface EngineFormData {
   name: string;
