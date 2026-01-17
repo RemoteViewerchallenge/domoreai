@@ -73,15 +73,22 @@ export const NebulaRendererRoot: React.FC<NebulaRootProps> = ({ tree, initialBin
   );
 };
 
+// --- LOCAL TYPE EXTENSION ---
+interface ExtendedNebulaNode extends Omit<NebulaNode, 'type' | 'children'> {
+  type: string; // Allow string for component names
+  className?: string;
+  children?: (string | NebulaNode | ExtendedNebulaNode)[];
+}
+
 // --- CONSOLIDATED RECURSIVE RENDERER ---
-export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = ({ node, tree }) => {
+export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = ({ node: baseNode, tree }) => {
+  const node = baseNode as unknown as ExtendedNebulaNode;
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { showAiOverlay, bindings, setBinding, handleAction } = useContext(NebulaContext);
 
   // 1. Prepare Hooks FIRST (Rules of Hooks)
   const ComponentToRender = useMemo(() => {
-     let type = node.type;
-     if (type === 'Component' && node.componentName) type = node.componentName;
+     const type = (node.type === 'Component' && node.componentName) ? node.componentName : node.type;
      return resolveComponent(type);
   }, [node.type, node.componentName]);
 
@@ -131,7 +138,7 @@ export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = 
     return node.children.map((childOrId, idx) => {
         const childNode = typeof childOrId === 'string' ? tree.nodes[childOrId] : childOrId;
         if (!childNode) return null;
-        return <NebulaRenderer key={childNode.id || idx} node={childNode} tree={tree} />;
+        return <NebulaRenderer key={(childNode as NebulaNode).id || idx} node={childNode as NebulaNode} tree={tree} />;
     });
   }, [node.children, tree]);
 
@@ -147,9 +154,12 @@ export const NebulaRenderer: React.FC<{ node: NebulaNode; tree: NebulaTree }> = 
   };
 
   const layoutClasses = cn(
-    "group/node relative",
+    "relative group/node",
     node.className,
-    node.props?.flex === 1 ? "flex-1" : "" 
+    (node.props as any)?.className, // Allow props to dictate layout
+    node.type === 'Flex' ? "flex" : "block",
+    (node.props as any)?.flex === 1 ? "flex-1" : "",
+    (node.props as any)?.hFull ? "h-full" : ""
   );
 
   return (
