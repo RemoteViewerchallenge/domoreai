@@ -2,10 +2,11 @@ import { useState, useEffect, type FC } from 'react';
 import { 
   Folder, FileText, ChevronRight, ChevronDown, ArrowUp, 
   RefreshCw, Eye, EyeOff, Brain, 
-  Server, FilePlus, FolderPlus, Save
+  FilePlus, FolderPlus, Save
 } from 'lucide-react';
 import type { VFile } from '../stores/FileSystemTypes.js';
 import { cn } from '@/lib/utils.js';
+import { SuperAiButton } from './ui/SuperAiButton.js';
 
 interface FileExplorerProps {
   files: VFile[];
@@ -194,10 +195,13 @@ export const FileExplorer: FC<FileExplorerProps> = ({
           </div>
 
           <div className="flex items-center justify-between">
-             <div className="flex gap-1">
+             <div className="flex gap-1 items-center">
                 <button onClick={() => setIsCreating('file')} className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[10px] text-zinc-300"><FilePlus size={10} /> File</button>
                 <button onClick={() => setIsCreating('folder')} className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[10px] text-zinc-300"><FolderPlus size={10} /> Folder</button>
-                <button onClick={() => alert("SSH Connection Panel will open here.")} className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 hover:bg-blue-900/30 rounded text-[10px] text-blue-400"><Server size={10} /> Connect</button>
+                <SuperAiButton 
+                   contextGetter={() => ({ currentPath, files })}
+                   className="scale-75"
+                />
              </div>
              
              <button onClick={() => onEmbedDir?.(currentPath || '.')} className="flex items-center gap-1 px-2 py-0.5 bg-green-900/20 hover:bg-green-900/40 border border-green-900/50 rounded text-[10px] text-green-400"><Brain size={10} /> Ingest</button>

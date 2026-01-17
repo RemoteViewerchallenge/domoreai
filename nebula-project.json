@@ -1,6 +1,18 @@
 {
-  "rootId": "BwfPab3Frc52YOvQHC3oY",
+  "rootId": "workbench-root",
   "nodes": {
+    "workbench-root": {
+      "id": "workbench-root",
+      "type": "Component",
+      "componentName": "AgentWorkbench",
+      "props": {
+        "flex": 1 
+      },
+      "className": "flex-1 w-full h-full overflow-hidden",
+      "style": {
+        "minHeight": "100vh"
+      }
+    },
     "6_5lbPgtYmlLTIyKb8eo4": {
       "id": "6_5lbPgtYmlLTIyKb8eo4",
       "type": "Component",
