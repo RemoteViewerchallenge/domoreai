@@ -113,6 +113,10 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
 
   // 6. Handler to save the override
   const handleSaveOverride = () => {
+    if (!selectedOverride) {
+        handleClearOverride();
+        return;
+    }
     const [providerId, modelId] = selectedOverride.split('/');
     updateRoleMutation.mutate({
       id: role.id,
@@ -177,11 +181,11 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
           disabled={isLoadingModels || updateRoleMutation.isLoading || totalModels === 0}
           className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] text-[var(--color-text)] text-xs rounded focus:outline-none focus:border-[var(--color-primary)] transition-colors"
         >
-          <option value="">-- Dynamic Selection (No Override) --</option>
+          <option value="" className="bg-[var(--color-background)] text-[var(--color-text)]">-- Dynamic Selection (No Override) --</option>
           {Object.entries(groupedModels).map(([datacenterLabel, models]) => (
-            <optgroup label={datacenterLabel} key={datacenterLabel}>
+            <optgroup label={datacenterLabel} key={datacenterLabel} className="bg-[var(--color-background)] text-[var(--color-text)]">
               {models.map((model) => (
-                  <option key={model.id} value={`${model.providerId}/${model.id}`}>
+                  <option key={model.id} value={`${model.providerId}/${model.id}`} className="bg-[var(--color-background)] text-[var(--color-text)]">
                     {escapeQuotes(model.name)} 
                     {model.contextWindow ? ` (${Math.round(model.contextWindow/1000)}k)` : ''}
                     {model.isMultimodal ? ' 👁️' : ''}
