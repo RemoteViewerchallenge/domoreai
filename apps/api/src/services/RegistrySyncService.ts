@@ -138,8 +138,7 @@ export class RegistrySyncService {
                         }
 
                         // Upsert Logic (New or Changed)
-                        // Note: Prisma update will only touch specified fields.
-                        await prisma.model.upsert({
+                        const modelRecord = await prisma.model.upsert({
                             where: { id: stableId },
                             create: {
                                 id: stableId,
@@ -147,19 +146,23 @@ export class RegistrySyncService {
                                 name: rawName,
                                 costPer1k: cost || 0,
                                 providerData: providerData,
-                                aiData: {}, // Empty for new
+                                aiData: {}, 
                                 isActive: true
                             },
                             update: {
                                 isActive: true,
                                 costPer1k: cost || 0,
-                                providerData: providerData, // Update source truth
+                                providerData: providerData, 
                                 lastSeenAt: new Date()
-                                // aiData and capabilities are implicitly preserved by NOT being here
-                            }
+                            },
+                            include: { provider: true }
                         });
 
-                        // [SPECIALIZATION] Populate Specialized Tables
+                        // [NATIVE SURVEY] Proactively identify capabilities if new or changed
+                        const { Surveyor } = await import('./Surveyor.js');
+                        await Surveyor.surveyModel(modelRecord);
+
+                        // [LEGACY SPECIALIZATION] Keep for backward compat with specialized tables
                         await this.populateSpecializedTables(stableId, rawName, m);
 
                     } catch (upsertError) {
