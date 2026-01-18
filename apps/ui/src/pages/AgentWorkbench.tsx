@@ -106,8 +106,14 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     Array.from({ length: 9 }).reduce<Record<string, () => void>>((acc, _, i) => {
       acc[`Select Card ${i + 1}`] = () => {
         // Prevent hotkey if user is typing in an input
-        const activeTag = document.activeElement?.tagName;
-        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) {
+        const activeElement = document.activeElement as HTMLElement;
+        const activeTag = activeElement?.tagName;
+        const isEditable = activeElement?.contentEditable === 'true' || 
+                          activeElement?.isContentEditable ||
+                          activeElement?.closest('.ProseMirror') !== null ||
+                          activeElement?.closest('.monaco-editor') !== null;
+        
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || isEditable) {
             return;
         }
 
