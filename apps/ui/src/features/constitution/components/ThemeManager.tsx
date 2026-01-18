@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Palette, Type, Save, Trash2, Image as ImageIcon, LayoutTemplate 
 } from 'lucide-react';
-import { useThemeContext } from '../../theme/ThemeProvider.js';
-import { ThemeStorage } from '../../theme/ThemeStorage.js';
-import type { Theme } from '../../theme/types.js';
+import { useThemeContext } from '../../../theme/ThemeProvider.js';
+import { ThemeStorage } from '../../../theme/ThemeStorage.js';
+import type { Theme } from '../../../theme/types.js';
 import { TokenIcon } from './TokenIcon.js';
-import { SuperAiButton } from '../ui/SuperAiButton.js'; // AI Injection
+import { SuperAiButton } from '../../../components/ui/SuperAiButton.js'; // AI Injection
 import { toast } from 'sonner';
 
 import type { LucideIcon } from 'lucide-react';
@@ -79,10 +79,10 @@ export const ThemeManager = () => {
     };
   }, [theme, activeTab, savedThemes]);
 
-  const handleAiAction = (response: { theme?: Theme }) => {
+  const handleAiAction = (response: unknown) => {
       // If the AI returns a patched theme, apply it
-      if (response?.theme) {
-          setTheme(response.theme);
+      if (response && typeof response === 'object' && 'theme' in response) {
+          setTheme((response as { theme: Theme }).theme);
           toast.success("AI Applied Theme Updates");
       }
   };

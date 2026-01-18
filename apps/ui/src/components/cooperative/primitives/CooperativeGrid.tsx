@@ -1,15 +1,15 @@
 
 
 // 1. Pure Config (No Data Logic)
-interface NebulaGridProps {
+interface CooperativeGridProps {
   title?: string;
   columns: { key: string; label: string; width?: string }[];
   data?: unknown[]; // Accepts raw data from ANYWHERE
-  onRowClick?: (row: any) => void;
+  onRowClick?: (row: unknown) => void;
   style?: React.CSSProperties; // For Theme Engine overrides
 }
 
-export const NebulaGrid = ({ title, columns = [], data = [], style, onRowClick }: NebulaGridProps) => {
+export const CooperativeGrid = ({ title, columns = [], data = [], style, onRowClick }: CooperativeGridProps) => {
   return (
     <div className="flex flex-col h-full border border-[var(--color-border)] bg-[var(--color-background)] rounded-md overflow-hidden" style={style}>
       {title && (
@@ -26,7 +26,7 @@ export const NebulaGrid = ({ title, columns = [], data = [], style, onRowClick }
              </tr>
            </thead>
            <tbody className="divide-y divide-[var(--color-border)]/50">
-             {data.map((row: any, i) => (
+             {data.map((row: Record<string, unknown>, i) => (
                 <tr 
                   key={i} 
                   onClick={() => onRowClick?.(row)}

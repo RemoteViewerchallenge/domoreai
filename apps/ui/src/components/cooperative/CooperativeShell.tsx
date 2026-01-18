@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { injectCssVariables } from '../../../design-system/cssVariables.js';
-import AgentWorkbench from '../../../pages/AgentWorkbench.js';
-import OrganizationalStructure from '../../../pages/OrganizationalStructure.js';
-import CodeVisualizer from '../../../pages/CodeVisualizer.js';
-import DataCenter from '../../../pages/DataCenter.js';
-import Constitution from '../../../pages/Constitution.js';
-import VoicePlayground from '../../../pages/VoicePlayground.js';
+import { injectCssVariables } from '../../design-system/cssVariables.js';
+import AgentWorkbench from '../../pages/AgentWorkbench.js';
+import OrganizationalStructure from '../../pages/OrganizationalStructure.js';
+import CodeVisualizer from '../../pages/CodeVisualizer.js';
+import DataCenter from '../../pages/DataCenter.js';
+import Constitution from '../../pages/Constitution.js';
+import VoicePlayground from '../../pages/VoicePlayground.js';
+import OrchestrationCanvas from '../../pages/OrchestrationCanvas.js';
 
-export function NebulaShell() {
-  // Inject Nebula Physics on mount
+export function CooperativeShell() {
+  // Inject Cooperative Physics on mount
   useEffect(() => {
     injectCssVariables();
   }, []);
@@ -26,6 +27,7 @@ export function NebulaShell() {
                 <Route path="/datacenter" element={<DataCenter />} />
                 <Route path="/settings" element={<Constitution />} />
                 <Route path="/voice-playground" element={<VoicePlayground />} />
+                <Route path="/orchestration-canvas" element={<OrchestrationCanvas />} />
                 
                 {/* Legacy or helper redirects */}
                 <Route path="/code-visualizer" element={<Navigate to="/visualizer" replace />} />

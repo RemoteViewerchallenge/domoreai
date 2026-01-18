@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useThemeContext } from '../../theme/ThemeProvider.js';
+import { useState } from 'react';
+import { useThemeContext } from '../../../theme/ThemeProvider.js';
 import { Palette, Type, LayoutGrid, X, Save, RefreshCw, Hash } from 'lucide-react';
-import { cn } from '../../lib/utils.js';
+import { cn } from '../../../lib/utils.js';
 import { IconSelector } from './primitives/IconSelector.js';
 
 export const ThemeSidebar = ({ onClose }: { onClose: () => void }) => {
@@ -10,11 +10,11 @@ export const ThemeSidebar = ({ onClose }: { onClose: () => void }) => {
     const [filter, setFilter] = useState('');
 
     // Recursive flattener to get all editable keys
-    const flattenColors = (obj: any, prefix = ''): { key: string, value: string, path: string[] }[] => {
+    const flattenColors = (obj: Record<string, unknown> | object, prefix = ''): { key: string, value: string, path: string[] }[] => {
         if (!obj || typeof obj !== 'object') return [];
         return Object.entries(obj).flatMap(([k, v]) => {
             if (typeof v === 'string') return [{ key: prefix + k, value: v, path: [k] }];
-            if (v && typeof v === 'object') return flattenColors(v, `${prefix}${k}.`).map(i => ({ ...i, path: [k, ...i.path] }));
+            if (v && typeof v === 'object') return flattenColors(v as Record<string, unknown> | object, `${prefix}${k}.`).map(i => ({ ...i, path: [k, ...i.path] }));
             return [];
         });
     };
@@ -134,7 +134,7 @@ export const ThemeSidebar = ({ onClose }: { onClose: () => void }) => {
     );
 };
 
-const Tab = ({ icon: Icon, active, onClick }: any) => (
+const Tab = ({ icon: Icon, active, onClick }: { icon: React.ElementType, active: boolean, onClick: () => void }) => (
     <button onClick={onClick} className={cn("flex-1 py-2 flex justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors", active && "text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--bg-secondary)]")}>
         <Icon size={14} />
     </button>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Model } from '../../../types/role.js';
-import DualRangeSlider from '../../ui/DualRangeSlider.js';
+import DualRangeSlider from '../../../components/ui/DualRangeSlider.js';
 import { Check, Cpu, Eye, Image, Mic, Zap, FileText, Shield, Hammer, FlaskConical, Terminal, type LucideIcon } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 

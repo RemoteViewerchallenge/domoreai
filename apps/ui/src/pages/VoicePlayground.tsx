@@ -6,25 +6,42 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Mic, Play, Pause, Settings, Smartphone, Radio, Zap } from 'lucide-react';
+import { Mic, Play, Pause, Settings, Smartphone, Radio, Zap, Keyboard } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 import { Button } from '../components/ui/button.js';
 import AudioPlayer from '../components/AudioPlayer.js';
+import { VoiceKeyboard } from '../components/VoiceKeyboard.js';
 
 type InputSource = 'microphone' | 'file' | 'android' | 'keyword';
+
+interface VoiceEngine {
+  id: string;
+  name: string;
+  provider: string;
+  type: string;
+}
+
+interface VoiceRole {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export default function VoicePlayground() {
   const [selectedInputSource, setSelectedInputSource] = useState<InputSource>('microphone');
   const [selectedSTTEngine, setSelectedSTTEngine] = useState<string>('');
   const [selectedTTSEngine, setSelectedTTSEngine] = useState<string>('');
+  const [selectedBidirectionalEngine, setSelectedBidirectionalEngine] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [transcribedText, setTranscribedText] = useState<string>('');
   const [synthesizedAudioUrl, setSynthesizedAudioUrl] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [voiceKeyboardOpen, setVoiceKeyboardOpen] = useState(false);
 
   // Queries
   const { data: sttEngines } = trpc.voice.listEngines.useQuery({ type: 'STT' });
   const { data: ttsEngines } = trpc.voice.listEngines.useQuery({ type: 'TTS' });
+  const { data: bidirectionalEngines } = trpc.voice.listEngines.useQuery({ type: 'BIDIRECTIONAL' });
   const { data: roles } = trpc.voice.listRoles.useQuery();
   const { data: activeRole } = trpc.voice.getActiveRole.useQuery();
   const { data: androidDevices } = trpc.voice.getAndroidDevices.useQuery();
@@ -216,53 +233,93 @@ export default function VoicePlayground() {
           )}
         </div>
 
-        {/* Engine Selection */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* STT Engine */}
+        {/* Engine Selection - 3 Boxes */}
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* STT Engine (Input Only) */}
           <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-6">
-            <h3 className="text-lg font-semibold text-zinc-200 mb-4">
-              STT Engine
+            <h3 className="text-lg font-semibold text-zinc-200 mb-2 flex items-center gap-2">
+              <Mic className="w-5 h-5 text-blue-400" />
+              STT (Input)
             </h3>
+            <p className="text-xs text-zinc-500 mb-4">Speech-to-Text only</p>
             
             <select
               value={selectedSTTEngine}
               onChange={(e) => setSelectedSTTEngine(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200 text-sm"
             >
               <option value="">Default</option>
-              {sttEngines?.map((engine: any) => (
+              {sttEngines?.map((engine: VoiceEngine) => (
                 <option key={engine.id} value={engine.id}>
-                  {engine.name} ({engine.provider})
+                  {engine.name}
                 </option>
               ))}
             </select>
             
-            <div className="mt-4 text-xs text-zinc-500">
-              {sttEngines?.length || 0} engines available
+            <div className="mt-3 text-xs text-zinc-500">
+              {sttEngines?.length || 0} engines
             </div>
+            
+            {/* Voice Keyboard Button */}
+            <Button
+              onClick={() => setVoiceKeyboardOpen(true)}
+              className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white"
+              size="sm"
+            >
+              <Keyboard className="w-4 h-4 mr-2" />
+              Voice Keyboard
+            </Button>
           </div>
 
-          {/* TTS Engine */}
+          {/* TTS Engine (Output Only) */}
           <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-6">
-            <h3 className="text-lg font-semibold text-zinc-200 mb-4">
-              TTS Engine
+            <h3 className="text-lg font-semibold text-zinc-200 mb-2 flex items-center gap-2">
+              <Play className="w-5 h-5 text-green-400" />
+              TTS (Output)
             </h3>
+            <p className="text-xs text-zinc-500 mb-4">Text-to-Speech only</p>
             
             <select
               value={selectedTTSEngine}
               onChange={(e) => setSelectedTTSEngine(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200 text-sm"
             >
               <option value="">Default</option>
-              {ttsEngines?.map((engine: any) => (
+              {ttsEngines?.map((engine: VoiceEngine) => (
                 <option key={engine.id} value={engine.id}>
-                  {engine.name} ({engine.provider})
+                  {engine.name}
                 </option>
               ))}
             </select>
             
-            <div className="mt-4 text-xs text-zinc-500">
-              {ttsEngines?.length || 0} engines available
+            <div className="mt-3 text-xs text-zinc-500">
+              {ttsEngines?.length || 0} engines
+            </div>
+          </div>
+
+          {/* Bidirectional Engine (Both) */}
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-6">
+            <h3 className="text-lg font-semibold text-zinc-200 mb-2 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-purple-400" />
+              Bidirectional
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4">Both input & output</p>
+            
+            <select
+              value={selectedBidirectionalEngine}
+              onChange={(e) => setSelectedBidirectionalEngine(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200 text-sm"
+            >
+              <option value="">Default</option>
+              {bidirectionalEngines?.map((engine: VoiceEngine) => (
+                <option key={engine.id} value={engine.id}>
+                  {engine.name}
+                </option>
+              ))}
+            </select>
+            
+            <div className="mt-3 text-xs text-zinc-500">
+              {bidirectionalEngines?.length || 0} engines
             </div>
           </div>
         </div>
@@ -275,7 +332,7 @@ export default function VoicePlayground() {
           </h3>
           
           <div className="grid md:grid-cols-3 gap-3">
-            {roles?.map((role: any) => (
+            {roles?.map((role: VoiceRole) => (
               <button
                 key={role.id}
                 onClick={() => void handleRoleChange(role.id)}
@@ -314,7 +371,7 @@ export default function VoicePlayground() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2 mb-4">
             <Button
-              onClick={handleSynthesize}
+              onClick={() => void handleSynthesize()}
               disabled={!transcribedText.trim() || isProcessing}
               className="bg-blue-500 hover:bg-blue-600 text-white"
             >
@@ -334,6 +391,18 @@ export default function VoicePlayground() {
           )}
         </div>
       </div>
+
+      {/* Voice Keyboard Overlay */}
+      <VoiceKeyboard
+        isOpen={voiceKeyboardOpen}
+        onClose={() => setVoiceKeyboardOpen(false)}
+        onTextSubmit={(text) => {
+          setTranscribedText(text);
+          setVoiceKeyboardOpen(false);
+        }}
+        position={{ x: window.innerWidth / 2, y: window.innerHeight / 2 }}
+        engineId={selectedSTTEngine}
+      />
     </div>
   );
 }

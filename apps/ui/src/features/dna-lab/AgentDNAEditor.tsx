@@ -3,12 +3,12 @@ import {
   Fingerprint, Cpu, Shield, Globe, Wrench, 
   Terminal, Brain, Eye, Lock, Layers,
   CheckCircle2, AlertTriangle, PlayCircle,
-  LucideIcon
+  type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
-import { CompactCategorizer, type CategorizerItem } from './primitives/CompactCategorizer.js';
+import { CompactCategorizer, type CategorizerItem } from './components/CompactCategorizer.js';
 import { trpc } from '../../utils/trpc.js';
-import { NaturalParameterTuner } from './primitives/NaturalParameterTuner.js';
+import { NaturalParameterTuner } from './components/NaturalParameterTuner.js';
 import type { RoleFormState } from '../../types/role.js';
 
 interface AgentDNAEditorProps {

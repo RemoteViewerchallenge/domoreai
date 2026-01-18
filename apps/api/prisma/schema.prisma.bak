@@ -240,21 +240,10 @@ model Role {
 }
 
 model RoleCategory {
-  id          String         @id @default(cuid())
-  name        String         @unique
-  description String?
-  parentId    String?        // For subcategories
-  isSystem    Boolean        @default(false)  // System categories can't be deleted
-  order       Int            @default(0)
-  icon        String?        // Optional icon for UI
-  color       String?        // Optional color for UI
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @default(now()) @updatedAt
-  
-  // Relations
-  roles       Role[]
-  parent      RoleCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  children    RoleCategory[] @relation("CategoryHierarchy")
+  id    String @id @default(cuid())
+  name  String @unique
+  order Int    @default(0)
+  roles Role[]
 }
 
 model Tool {
@@ -369,7 +358,21 @@ model ComponentRole {
   cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
 }
 
-// --- VOICE PLAYGROUND ---
+model google_models_example {
+  id                         String   @id
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @default(now())
+  name                       String?
+  displayName                String?
+  description                String?
+  inputTokenLimit            Int?
+  outputTokenLimit           Int?
+  supportedGenerationMethods Json?
+  temperature                Int?
+  topP                       Float?
+  topK                       Int?
+  maxTemperature             Int?
+}
 
 model VoiceEngine {
   id        String   @id @default(cuid())
@@ -397,19 +400,3 @@ model VoiceRole {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
-
-// --- ORCHESTRATION CANVAS ---
-
-model Orchestration {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  userId      String?  // Optional user ownership
-  cells       Json     // Array of OrchestrationCell objects
-  gridSize    Json     // { rows: number, cols: number }
-  isPublic    Boolean  @default(false)
-  tags        String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-

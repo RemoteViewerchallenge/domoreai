@@ -5,7 +5,7 @@
  * Supports dynamic registration and configuration from database
  */
 
-export type EngineType = 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT';
+export type EngineType = 'STT' | 'TTS' | 'BIDIRECTIONAL' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT';
 
 export interface EngineConfig {
   id: string;

@@ -1,5 +1,5 @@
 import * as LucideIcons from 'lucide-react';
-import { useThemeContext } from '../../theme/ThemeProvider.js';
+import { useThemeContext } from '../../../theme/ThemeProvider.js';
 import type { LucideProps } from 'lucide-react';
 
 interface TokenIconProps extends LucideProps {

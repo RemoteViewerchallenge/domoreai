@@ -18,7 +18,7 @@ export const voiceRouter = createTRPCRouter({
   // Engine Registry endpoints
   listEngines: publicProcedure
     .input(z.object({
-      type: z.enum(['STT', 'TTS', 'KEYWORD_LISTENER', 'REMOTE_INPUT']).optional(),
+      type: z.enum(['STT', 'TTS', 'BIDIRECTIONAL', 'KEYWORD_LISTENER', 'REMOTE_INPUT']).optional(),
     }))
     .query(async ({ input }) => {
       const registry = getVoiceEngineRegistry();
@@ -32,7 +32,7 @@ export const voiceRouter = createTRPCRouter({
   
   getActiveEngine: publicProcedure
     .input(z.object({
-      type: z.enum(['STT', 'TTS', 'KEYWORD_LISTENER', 'REMOTE_INPUT']),
+      type: z.enum(['STT', 'TTS', 'BIDIRECTIONAL', 'KEYWORD_LISTENER', 'REMOTE_INPUT']),
     }))
     .query(async ({ input }) => {
       const registry = getVoiceEngineRegistry();
@@ -43,7 +43,7 @@ export const voiceRouter = createTRPCRouter({
   
   setActiveEngine: publicProcedure
     .input(z.object({
-      type: z.enum(['STT', 'TTS', 'KEYWORD_LISTENER', 'REMOTE_INPUT']),
+      type: z.enum(['STT', 'TTS', 'BIDIRECTIONAL', 'KEYWORD_LISTENER', 'REMOTE_INPUT']),
       engineId: z.string(),
     }))
     .mutation(async ({ input }) => {

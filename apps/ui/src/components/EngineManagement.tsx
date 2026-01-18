@@ -13,7 +13,7 @@ interface EngineFormData {
   name: string;
   type: 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT';
   provider: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export const EngineManagement = () => {
@@ -25,9 +25,9 @@ export const EngineManagement = () => {
     config: {},
   });
 
-  const { data: engines, refetch } = trpc.voice.listEngines.useQuery({});
+  const { data: engines } = trpc.voice.listEngines.useQuery({});
 
-  const handleAddEngine = async () => {
+  const handleAddEngine = () => {
     // This would need to be implemented in the API
     // For now, engines are registered programmatically
     console.log('Add engine:', formData);
@@ -135,7 +135,7 @@ export const EngineManagement = () => {
                 </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value as EngineFormData['type'] })}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-200"
                 >
                   <option value="STT">STT</option>
@@ -149,6 +149,7 @@ export const EngineManagement = () => {
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Provider
                 </label>
+                {/* cSpell:ignore vosk coqui */}
                 <input
                   type="text"
                   value={formData.provider}
@@ -166,8 +167,8 @@ export const EngineManagement = () => {
                   value={JSON.stringify(formData.config, null, 2)}
                   onChange={(e) => {
                     try {
-                      setFormData({ ...formData, config: JSON.parse(e.target.value) });
-                    } catch (err) {
+                      setFormData({ ...formData, config: JSON.parse(e.target.value) as Record<string, unknown> });
+                    } catch {
                       // Invalid JSON, ignore
                     }
                   }}
@@ -179,7 +180,7 @@ export const EngineManagement = () => {
 
             <div className="flex items-center gap-2 mt-6">
               <Button
-                onClick={handleAddEngine}
+                onClick={() => void handleAddEngine()}
                 className="bg-blue-500 hover:bg-blue-600 text-white flex-1"
               >
                 Add Engine
