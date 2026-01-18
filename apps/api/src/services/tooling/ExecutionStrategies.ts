@@ -47,8 +47,48 @@ export class CodeModeStrategy implements IExecutionStrategy {
     return CodeModeStrategy.canHandle(response);
   }
 
+  private detectLanguageViolation(response: string): string | null {
+    const trimmedResponse = response.trim();
+
+    // Check for Python indicators (including def at line start)
+    if (/(^|\s)(def\s+\w+\s*\(|import\s+(os|sys|json|requests|numpy|pandas)|pip\s+install|print\(|requirements\.txt)/m.test(trimmedResponse)) {
+      return "Python code detected.";
+    }
+
+    // Check for manual thought logs (often seen in LLM responses)
+    if (/\b(Thought|Thinking|Plan|Action|Observation|Final Answer):\s*/i.test(trimmedResponse)) {
+      return "Manual thought logs detected.";
+    }
+
+    // Check for non-TypeScript/JavaScript specific keywords in code blocks
+    const codeBlocks = [...trimmedResponse.matchAll(/```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g)]
+      .map(match => match[1].trim());
+
+    for (const block of codeBlocks) {
+      if (/(^|\s)(def\s+\w+\s*\(|print\(|import\s+(os|sys|json|requests|numpy|pandas))/m.test(block)) {
+        return "Python code detected within a code block.";
+      }
+      // Add more language-specific checks if needed
+    }
+
+    return null; // No violation detected
+  }
+
   async execute(response: string, _context: AgentContext): Promise<ExecutionResult> {
     console.log(`[AgentRuntime] ⚡ Executing code via CodeModeStrategy...`);
+    
+    // 🛡️ LANGUAGE GUARDRAILS: Detect and reject non-TypeScript code
+    const languageViolation = this.detectLanguageViolation(response);
+    if (languageViolation) {
+      console.error(`[CodeModeStrategy] 🚫 Language violation detected: ${languageViolation}`);
+      return {
+        output: `CONSTRAINT_VIOLATION: ${languageViolation}\n\n` +
+                `This environment ONLY supports TypeScript/Node.js.\n` +
+                `Forbidden: Python, pip, requirements.txt, manual thought logs.\n` +
+                `Required: Use TypeScript syntax with async/await and system.* tools.`,
+        logs: [`Language violation: ${languageViolation}`]
+      };
+    }
     
     // 1. Extract Code
     const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g;
