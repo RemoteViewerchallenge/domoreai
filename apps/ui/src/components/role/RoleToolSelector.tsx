@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { trpc } from '../../utils/trpc.js';
-import { CompactCategorizer } from '../nebula/primitives/CompactCategorizer.js';
-import type { CategorizerItem } from '../nebula/primitives/CompactCategorizer.js';
+import { CompactCategorizer } from '../../features/dna-lab/components/CompactCategorizer.js';
+import type { CategorizerItem } from '../../features/dna-lab/components/CompactCategorizer.js';
 import { Wrench } from 'lucide-react';
 
 interface RoleToolSelectorProps {

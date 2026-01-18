@@ -88,26 +88,31 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
     // 🟢 GOOD: Robust Default File Creation (No Crashes)
     useEffect(() => {
+        // [PATH MIGRATION] If activeFile is pointing to hidden .nebula or chat folders, move it to sessions.
+        if (activeFile && (activeFile.includes('/.nebula/sessions/') || activeFile.includes('/chat/'))) {
+            const basename = getBasename(activeFile);
+            const migratedPath = `${currentPath}/sessions/${basename}`;
+            console.log(`[VFS] Migrating stale path: ${activeFile} -> ${migratedPath}`);
+            setActiveFile(migratedPath);
+            return;
+        }
+
         if (!activeFile && viewMode === 'editor') {
             const initDefaultFile = async () => {
                 const sessionsDir = `${currentPath}/sessions`;
                 const filePath = `${sessionsDir}/card-${id}.md`;
                 
                 try {
-                    // Try to write; if it fails, try making the directory first
-                    // We assume mkdir is safe to call (vfs router should handle existence checks or return success)
                     await mkdir(sessionsDir); 
                 } catch {
-                    // Ignore if dir exists, proceed to write
+                    // Ignore if dir exists
                 }
 
                 try {
-                   // Create empty file
                    await writeFile(filePath, ''); 
                    setActiveFile(filePath);
                 } catch (e) {
                    console.error("Failed to create default session file", e);
-                   // Fallback to root if folder creation failed entirely
                    setActiveFile(`${currentPath}/card-${id}.md`);
                 }
             };

@@ -1,5 +1,5 @@
 import { trpc } from "../../utils/trpc.js";
-import { NebulaGrid } from "../../components/nebula/primitives/NebulaGrid.js";
+import { CooperativeGrid } from "../../components/cooperative/primitives/CooperativeGrid.js";
 
 export const RoleManagementGrid = () => {
   // 1. Fetch Data (The Soul)
@@ -14,7 +14,7 @@ export const RoleManagementGrid = () => {
 
   // 3. Render the Primitive with the Data
   return (
-    <NebulaGrid 
+    <CooperativeGrid 
       title="System Roles"
       columns={columns}
       data={roles || []} // Inject Data

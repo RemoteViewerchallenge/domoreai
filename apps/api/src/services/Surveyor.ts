@@ -271,6 +271,15 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   // ===== MISTRAL =====
   mistral: [
     {
+      pattern: /embed/i,
+      specs: {
+        contextWindow: 8192,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        costPer1k: 0.1
+      }
+    },
+    {
       pattern: /voxtral/i,
       specs: {
         contextWindow: 32768,
@@ -333,15 +342,6 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         contextWindow: 8192,
         capabilities: ["moderation"],
         costPer1k: 0
-      }
-    },
-    {
-      pattern: /mistral-embed/i,
-      specs: {
-        contextWindow: 8192,
-        capabilities: ["embedding"],
-        primaryTask: "embedding",
-        costPer1k: 0.1
       }
     },
     {
@@ -1150,6 +1150,17 @@ export class Surveyor {
     // Extract provider name from labels like "NVIDIA (Env)" or "Groq (Env)"
     const providerKey = provider.toLowerCase().split(/[\s(]/)[0];
 
+    // 0. GLOBAL PRE-FILTERS (EMBEDDINGS)
+    if (modelName.toLowerCase().includes('embed') || modelName.toLowerCase().includes('embedding')) {
+        return {
+            contextWindow: 8192,
+            capabilities: ["embedding"],
+            primaryTask: "embedding",
+            confidence: "high"
+        };
+    }
+
+    // [ORIGINAL LOGIC CONTINUES]
     // 0. CHECK RAW DATA FIRST (If available)
     // Sometimes the API explicitly gave us the answer, but Ingestion missed it.
     let rawContext: number | undefined;
@@ -1176,21 +1187,12 @@ export class Surveyor {
     }
 
     // 1. Try Specific Provider Rules
-    let rules = PROVIDER_PATTERNS[providerKey];
-
-    // 2. If unknown/OpenRouter, mix in others... (existing logic)
-    if (!rules || (providerKey === 'openrouter')) {
-      let upstreamRules: ProviderPattern[] = [];
-      if (providerKey === 'openrouter') {
-        if (modelName.startsWith('google/') || modelName.includes('gemini') || modelName.includes('gemma')) upstreamRules = PROVIDER_PATTERNS['google'];
-        else if (modelName.startsWith('mistral') || modelName.includes('mistral')) upstreamRules = PROVIDER_PATTERNS['mistral'];
-        else if (modelName.startsWith('meta-llama') || modelName.includes('llama')) upstreamRules = PROVIDER_PATTERNS['groq'];
-        else if (modelName.startsWith('anthropic') || modelName.includes('claude')) upstreamRules = PROVIDER_PATTERNS['anthropic'];
-        else if (modelName.startsWith('openai')) upstreamRules = PROVIDER_PATTERNS['openai'];
-      }
-      const fallbacks = PROVIDER_PATTERNS['openrouter'];
-      rules = [...(upstreamRules || []), ...(rules || []), ...fallbacks];
-    }
+    const specificRules = PROVIDER_PATTERNS[providerKey] || [];
+    
+    // 2. Build prioritized ruleset: Specific -> Global Fallbacks
+    // OpenRouter acts as our "Global" knowledge base for generic model names.
+    const globalFallbacks = PROVIDER_PATTERNS['openrouter'] || [];
+    const rules = [...specificRules, ...globalFallbacks];
 
     // 3. Match Pattern
     let specs: ModelSpecs | null = null;
@@ -1372,17 +1374,19 @@ export class Surveyor {
 
   static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
     const { prisma } = await import('../db.js');
-    const p = prisma as unknown as { unknownModel: UnknownModelDelegate };
+    const p = prisma as any;
     
     // [UNKNOWN MODELS] Process Unchecked / Unknown Models
+    // NOTE: This now only processes models where we haven't successfully identified them yet.
     const unknowns = await p.unknownModel.findMany({
-        include: { model: { include: { provider: true } } }
+        where: { reason: { notIn: ['surveyor_identified', 'skipped', 'surveyor_deferred'] } },
+        include: { model: { include: { provider: true } } },
+        take: 20 
     });
     
     if (unknowns.length > 0) {
-        console.log(`[Surveyor] Found ${unknowns.length} unknown models to survey...`);
+        console.log(`[Surveyor] Found ${unknowns.length} unknowns to re-process...`);
     }
-    
     for (const unknown of unknowns) {
         const m = unknown.model;
         if (!m.isActive) continue;
@@ -1390,57 +1394,37 @@ export class Surveyor {
         // Survey individual model
         const capabilities = await Surveyor.surveyModel(m);
         if (capabilities) {
-             console.log(`[Surveyor] Successfully categorized ${m.name}. Removing from UnknownModel.`);
+             console.log(`[Surveyor] ✅ Identified ${m.name}. Removing from UnknownModel.`);
              await p.unknownModel.delete({ where: { id: unknown.id } });
+        } else {
+             // Mark as tried so we don't spam logs every startup
+             await p.unknownModel.update({ 
+               where: { id: unknown.id }, 
+               data: { reason: 'surveyor_deferred' } 
+             });
         }
     }
 
-    // Find models that explicitly need an upgrade (optimization)
-    // We only fetch models that are missing capabilities OR have the suspicious 4096 default context
-    // AND are not already marked as 'high' confidence (manual/agent overrides)
+    // [NEED HELP] Find models that are totally missing capabilities
+    // High-confidence models are skipped to avoid redundant I/O and log noise.
     const modelsNeedingHelp = await prisma.model.findMany({
       where: { 
           isActive: true,
-          OR: [
-              { capabilities: { is: null } },
-              { capabilities: { contextWindow: 4096 } },
-              // We can't easily check 'isMultimodal' vs 'name' in Prisma query, so we catch those in the loop below
-          ]
+          capabilities: { is: null } 
       },
       include: { provider: true, capabilities: true }
     });
-
-    // If we have nothing obvious, we can skip the heavy logic, 
-    // BUT we still want to catch edge cases (like 'vision' in name but not flagged multimodal)
-    // So we'll keep a lightweight check if the list above is empty.
     
-    const candidates = modelsNeedingHelp;
-    
-    // If we handled all the obvious ones, do a quick sanity check on 'vision' models periodically?
-    // For now, let's stick to the efficient query. Only if that returns items do we log.
-    
-    if (candidates.length > 0) {
-        // console.log(`[Surveyor] 🔍 Auditing ${candidates.length} potentially misconfigured models...`);
+    if (modelsNeedingHelp.length > 0) {
+        console.log(`[Surveyor] 🔍 Found ${modelsNeedingHelp.length} models missing signatures.`);
     }
-
+    
     let surveyed = 0;
     let unknownCount = 0;
 
-    for (const model of candidates) {
-      // CRITERIA:
-      // 1. No capabilities record
-      // 2. OR Context is default 4096 (likely failed ingestion)
-      // 3. OR Capabilities list is empty/minimal
-      // 4. PROTECTION: Never overwrite if source is 'manual' or 'agent'
-      const isResearched = model.capabilities?.source === 'manual' ||
-        model.capabilities?.source === 'agent' ||
-        model.capabilities?.confidence === 'high';
-
-      const needsHelp = (!model.capabilities ||
-        (model.capabilities.contextWindow === 4096) ||
-        (!model.capabilities.isMultimodal && model.name.includes('vision'))) && !isResearched;
-
-      if (!needsHelp) continue;
+    for (const model of modelsNeedingHelp) {
+      // PROTECTION: Skip if already high confidence or manual
+      if (model.capabilities?.confidence === 'high' || model.capabilities?.source === 'manual') continue;
 
       // Call surveyModel for existing models that need help
       const capabilities = await Surveyor.surveyModel(model);
@@ -1448,7 +1432,7 @@ export class Surveyor {
       if (capabilities) {
         surveyed++;
       } else {
-        // [UNKNOWN] If strictly unknown, ensure it is in unknown_model table so we know to re-check later
+        // [UNKNOWN] Mark as unknown so we don't try to survey every turn
         await p.unknownModel.upsert({
              where: { modelId: model.id },
              create: { modelId: model.id, reason: 'surveyor_failed' },
@@ -1457,7 +1441,9 @@ export class Surveyor {
         unknownCount++;
       }
     }
-    console.log(`[Surveyor] 📊 Audit complete: Upgraded/Fixed ${surveyed} models. ${unknownCount} still unknown.`);
+    if (surveyed > 0) {
+        console.log(`[Surveyor] 📊 Audit complete: Identified ${surveyed} models. ${unknownCount} still unknown.`);
+    }
     return { surveyed, unknown: unknownCount };
   }
 }

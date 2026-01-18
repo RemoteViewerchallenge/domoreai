@@ -1,7 +1,6 @@
 import { prisma } from '../db.js';
 import { BaseLLMProvider, LLMModel } from '../utils/BaseLLMProvider.js';
 import { RawModelService } from './RawModelService.js';
-import { flattenRawData } from './dataRefinement.service.js';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
@@ -66,9 +65,6 @@ export class RegistrySyncService {
                 }
                 const models = snapshot.rawData as LLMModel[];
                 console.log(`[RegistrySyncService] Got ${models.length} models from ${providerLabel}.`);
-
-                // Flatten data (Legacy support, maybe optional now?)
-                await this.flattenSnapshot(snapshot.id, providerType, models as RawSnapshotData[]);
 
                 let modelsToSync = models;
 
@@ -138,8 +134,7 @@ export class RegistrySyncService {
                         }
 
                         // Upsert Logic (New or Changed)
-                        // Note: Prisma update will only touch specified fields.
-                        await prisma.model.upsert({
+                        const modelRecord = await prisma.model.upsert({
                             where: { id: stableId },
                             create: {
                                 id: stableId,
@@ -147,19 +142,23 @@ export class RegistrySyncService {
                                 name: rawName,
                                 costPer1k: cost || 0,
                                 providerData: providerData,
-                                aiData: {}, // Empty for new
+                                aiData: {}, 
                                 isActive: true
                             },
                             update: {
                                 isActive: true,
                                 costPer1k: cost || 0,
-                                providerData: providerData, // Update source truth
+                                providerData: providerData, 
                                 lastSeenAt: new Date()
-                                // aiData and capabilities are implicitly preserved by NOT being here
-                            }
+                            },
+                            include: { provider: true }
                         });
 
-                        // [SPECIALIZATION] Populate Specialized Tables
+                        // [NATIVE SURVEY] Proactively identify capabilities if new or changed
+                        const { Surveyor } = await import('./Surveyor.js');
+                        await Surveyor.surveyModel(modelRecord);
+
+                        // [LEGACY SPECIALIZATION] Keep for backward compat with specialized tables
                         await this.populateSpecializedTables(stableId, rawName, m);
 
                     } catch (upsertError) {
@@ -267,15 +266,6 @@ export class RegistrySyncService {
         }
     }
 
-    private static async flattenSnapshot(snapshotId: string, providerType: string, models: RawSnapshotData[]) {
-        try {
-            const tableName = `${providerType}_models`;
-            // console.log(`[RegistrySyncService] 🔨 Flattening data into table: ${tableName}...`);
-            await flattenRawData({ snapshotId, tableName, rawData: models });
-        } catch (error) {
-            console.error(`[RegistrySyncService] ❌ Failed to snapshot/flatten data for ${providerType}:`, error);
-        }
-    }
 
     private static async cleanupGhostRecords(activeIds: string[], syncedProviderIds: string[]) {
         try {

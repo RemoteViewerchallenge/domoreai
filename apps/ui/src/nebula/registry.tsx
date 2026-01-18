@@ -1,7 +1,7 @@
 import React from 'react';
-import { NebulaButton } from "../components/nebula/primitives/NebulaButton.js";
-import { NebulaCard } from "../components/nebula/primitives/NebulaCard.js";
-import { NebulaGrid } from "../components/nebula/primitives/NebulaGrid.js";
+import { CooperativeButton } from "../components/cooperative/primitives/CooperativeButton.js";
+import { CooperativeCard } from "../components/cooperative/primitives/CooperativeCard.js";
+import { CooperativeGrid } from "../components/cooperative/primitives/CooperativeGrid.js";
 import { RoleManagementGrid } from "../features/roles/RoleManagementGrid.js";
 import { Canvas } from "../components/nebula/system/Canvas.js";
 import { PropertyPanel } from "../components/nebula/system/PropertyPanel.js";
@@ -46,8 +46,8 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   // ==============================
   
   "Primitive:Button": {
-    component: NebulaButton,
-    meta: { label: "Nebula Button", category: "atom", icon: "cursor-click" },
+    component: CooperativeButton,
+    meta: { label: "Cooperative Button", category: "atom", icon: "cursor-click" },
     propSchema: {
       label: { type: "string", defaultValue: "Click Me" },
       variant: { type: "select", options: ["primary", "secondary", "ghost"], defaultValue: "primary" },
@@ -56,15 +56,15 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Primitive:Card": {
-    component: NebulaCard,
-    meta: { label: "Nebula Card", category: "atom", icon: "card" },
+    component: CooperativeCard,
+    meta: { label: "Cooperative Card", category: "atom", icon: "card" },
     propSchema: {
       title: { type: "string", defaultValue: "Card Title" }
     }
   },
 
   "Primitive:Grid": {
-    component: NebulaGrid,
+    component: CooperativeGrid,
     meta: { label: "Empty Grid", category: "data", icon: "table" },
     propSchema: { 
         title: { type: "string" }, 
@@ -142,7 +142,7 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
   },
 
   "Button": {
-    component: NebulaButton,
+    component: CooperativeButton,
     meta: { label: "Primitive Button", category: "atom", icon: "cursor-click" },
     propSchema: {
       label: { type: "string", defaultValue: "Button" },
@@ -221,13 +221,13 @@ export const ComponentManifest: Record<string, ComponentDefinition> = {
     }
   },
 
-  "UnifiedNebulaBar": {
-    component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
-    meta: { label: "Nebula Header", category: "layout", icon: "sidebar" },
+  "GlobalContextBar": {
+    component: React.lazy(() => import("./features/navigation/GlobalContextBar.js").then(m => ({ default: m.GlobalContextBar }))),
+    meta: { label: "Context Bar", category: "layout", icon: "sidebar" },
     propSchema: {}
   },
   "UnifiedMenuBar": {
-    component: React.lazy(() => import("./features/navigation/UnifiedNebulaBar.js").then(m => ({ default: m.UnifiedNebulaBar }))),
+    component: React.lazy(() => import("./features/navigation/GlobalContextBar.js").then(m => ({ default: m.GlobalContextBar }))),
     meta: { label: "Menu Bar (Alias)", category: "layout", icon: "sidebar", hidden: true },
     propSchema: {}
   },

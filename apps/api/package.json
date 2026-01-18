@@ -48,6 +48,7 @@
     "express": "^4.19.2",
     "git-mcp-server": "^1.0.0",
     "google-auth-library": "^10.5.0",
+    "groq-sdk": "^0.37.0",
     "https-proxy-agent": "^7.0.6",
     "jsdom": "^27.2.0",
     "memfs": "^4.51.0",
