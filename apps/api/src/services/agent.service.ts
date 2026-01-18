@@ -22,7 +22,7 @@ export const startSessionSchema = z.object({
     providerId: z.string().optional(),
     modelId: z.string().optional(),
     temperature: z.number().min(0).max(2).default(0.7),
-    maxTokens: z.number().int().min(256).max(128000).default(2048),
+    maxTokens: z.number().int().min(256).max(128000).default(1024), // Most roles (JSON/tools) need 1024; planning/writing roles specify higher in metadata
   }),
   userGoal: z.string().min(1, "User goal/prompt is required"),
   cardId: z.string(),
@@ -100,6 +100,7 @@ export class AgentService {
         let tools = rawRole?.tools.map(rt => rt.tool.name) || [];
         let executionMode: string = 'HYBRID_AUTO';
         let silenceConfirmation: boolean = false;
+        let cortexMaxOutputTokens: number | null = null;
 
         if (role && rawRole?.variants?.length) {
           const v = rawRole.variants[0];
@@ -113,6 +114,8 @@ export class AgentService {
           role.needsTools = caps.includes('tools');
 
           if (typeof cortex.executionMode === 'string') executionMode = cortex.executionMode;
+          if (typeof cortex.maxOutputTokens === 'number') cortexMaxOutputTokens = cortex.maxOutputTokens;
+          
           const behavior = (v as unknown as RoleVariantWithBehavior).behaviorConfig || {};
           if (typeof behavior.silenceConfirmation === 'boolean') silenceConfirmation = behavior.silenceConfirmation;
           if (typeof identity.systemPromptDraft === 'string' && identity.systemPromptDraft) role.basePrompt = identity.systemPromptDraft;
@@ -133,12 +136,33 @@ export class AgentService {
            }
         }
 
+        // [ROLE-SPECIFIC] Extract maxTokens with priority: cortexConfig > metadata > modelConfig
+        const roleMetadata = (role?.metadata || {}) as Record<string, unknown>;
+        const metadataMaxTokens = typeof roleMetadata.maxTokens === 'number' ? roleMetadata.maxTokens : null;
+        const effectiveMaxTokens = cortexMaxOutputTokens || metadataMaxTokens || modelConfig.maxTokens;
+
         if (!resolvedModelId) {
           const selector = new LLMSelector();
           const totalEstimatedChars = (role?.basePrompt?.length || 0) + ctx.finalUserGoal.length + 5000;
           const estimatedTokens = Math.ceil(totalEstimatedChars / 3.5);
-          const bestSlug = await selector.resolveModelForRole(role as any || { id: 'default', metadata: {} }, estimatedTokens, []);
-          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, include: { provider: true } });
+          
+          // Pass maxTokens as a requirement so selector chooses a model that can handle it
+          const baseRole = role || { id: 'default', metadata: {} };
+          const existingRequirements = (roleMetadata.requirements as Record<string, unknown>) || {};
+          
+          const roleWithMaxOutput = {
+            ...baseRole,
+            metadata: {
+              ...(baseRole.metadata || {}),
+              requirements: {
+                ...existingRequirements,
+                minOutputTokens: effectiveMaxTokens // Ensure model can handle required output
+              }
+            }
+          } as any;
+          
+          const bestSlug = await selector.resolveModelForRole(roleWithMaxOutput, estimatedTokens, []);
+          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, include: { provider: true, capabilities: true } });
           if (bestModel) {
             resolvedModelId = bestModel.name;
             resolvedProviderId = bestModel.providerId;
@@ -155,7 +179,7 @@ export class AgentService {
           providerId: resolvedProviderId,
           isLocked: false,
           temperature: modelConfig.temperature,
-          maxTokens: modelConfig.maxTokens,
+          maxTokens: effectiveMaxTokens,
           userGoal: ctx.finalUserGoal,
           projectPrompt: ctx.projectPrompt,
         };
