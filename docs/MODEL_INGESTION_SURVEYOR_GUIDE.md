@@ -137,9 +137,11 @@ if (providerData.context_length) {
 ### Surveyor Execution
 
 **Runs automatically:**
-1. **On startup** - Scans unknown models
-2. **After model sync** - Identifies new models
-3. **On demand** - Via API endpoint
+1. **On startup** - Scans *only* models missing `ModelCapabilities`. 
+   - **Laziness:** If a model has a `confidence: 'high'` signature, it is strictly skipped.
+   - **De-duplication:** Unknown models are "deferred" after one failed attempt to prevent startup spam.
+2. **After model sync** - `RegistrySyncService` proactively triggers `surveyModel` for new versions.
+3. **On demand** - Via API endpoint.
 
 **Manual trigger:**
 ```bash
@@ -348,10 +350,10 @@ await prisma.unknownModel.upsert({
 **Before:** Models without clear capabilities were rejected
 
 **After:** 
-- Stored in `UnknownModel` table
-- Available as fallback options
-- Surveyor re-scans them periodically
-- Once identified, moved to proper table
+- Stored in `UnknownModel` table.
+- **Deferral:** Surveyor marks them as `surveyor_deferred` after the first failed attempt to keep startup logs clean.
+- Available as fallback options in `LLMSelector`.
+- Once a new pattern is added to `Surveyor.ts`, they will be identified and moved to the proper table.
 
 ---
 

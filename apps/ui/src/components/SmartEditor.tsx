@@ -38,6 +38,10 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
       },
+      handleDOMEvents: {
+        // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
+        contextmenu: () => false,
+      },
     },
     onCreate: () => {
       setIsInitializing(false);
@@ -83,14 +87,22 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
         }
     };
 
+    // Allow context menu for voice keyboard
+    const handleContextMenu = (_event: MouseEvent) => {
+      // Don't prevent default - let the global voice keyboard handler catch it
+      // TipTap normally prevents context menu, so we need to allow it
+    };
+
     try {
       if (!editor.isDestroyed && editor.view?.dom) {
         const dom = editor.view.dom;
         dom.addEventListener('keydown', handleKeyDown);
         dom.addEventListener('click', handleClick);
+        dom.addEventListener('contextmenu', handleContextMenu);
         return () => {
             dom.removeEventListener('keydown', handleKeyDown);
             dom.removeEventListener('click', handleClick);
+            dom.removeEventListener('contextmenu', handleContextMenu);
         };
       }
     } catch (e) {

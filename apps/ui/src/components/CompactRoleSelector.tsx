@@ -1,8 +1,8 @@
 import React, { useRef } from 'react';
 import { toast } from 'sonner';
 import { trpc } from '../utils/trpc.js';
-import { CompactCategorizer } from './nebula/primitives/CompactCategorizer.js';
-import type { CategorizerItem } from './nebula/primitives/CompactCategorizer.js';
+import { CompactCategorizer } from '../features/dna-lab/components/CompactCategorizer.js';
+import type { CategorizerItem } from '../features/dna-lab/components/CompactCategorizer.js';
 import { Bot, Download, Upload } from 'lucide-react';
 
 interface CompactRoleSelectorProps {
