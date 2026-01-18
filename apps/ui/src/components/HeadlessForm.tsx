@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FormSchema, FieldSchema } from '../schemas/types';
-import { trpc } from '../utils/trpc';
+import type { FormSchema, FieldSchema } from '../schemas/types.js';
+import { trpc } from '../utils/trpc.js';
 
 interface HeadlessFormProps {
   schema: FormSchema;
@@ -20,7 +20,7 @@ export const HeadlessForm: React.FC<HeadlessFormProps> = ({
   initialData = {}
 }) => {
   const [values, setValues] = useState<Record<string, unknown>>(
-    initialData || schema.fields.reduce((acc, field) => {
+    initialData || schema.fields.reduce((acc: Record<string, unknown>, field: FieldSchema) => {
       if (field.defaultValue !== undefined) {
         acc[field.name] = field.defaultValue;
       }
@@ -209,7 +209,7 @@ export const HeadlessForm: React.FC<HeadlessFormProps> = ({
             onChange={(e) => handleChange(field.name, e.target.value)}
           >
             <option value="">Select {field.label}</option>
-            {field.options?.map((option) => (
+            {field.options?.map((option: { label: string; value: string | number }) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -280,7 +280,7 @@ export const HeadlessForm: React.FC<HeadlessFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {schema.fields.map((field) => (
+        {schema.fields.map((field: FieldSchema) => (
           <div key={field.name}>
             <label
               htmlFor={field.name}

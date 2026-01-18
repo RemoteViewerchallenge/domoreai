@@ -8,6 +8,7 @@ import DataCenter from '../../pages/DataCenter.js';
 import Constitution from '../../pages/Constitution.js';
 import VoicePlayground from '../../pages/VoicePlayground.js';
 import OrchestrationCanvas from '../../pages/OrchestrationCanvas.js';
+import BasetoolPage from '../../pages/BasetoolPage.js';
 
 export function CooperativeShell() {
   // Inject Cooperative Physics on mount
@@ -25,6 +26,7 @@ export function CooperativeShell() {
                 <Route path="/org-structure" element={<OrganizationalStructure />} />
                 <Route path="/visualizer" element={<CodeVisualizer />} />
                 <Route path="/datacenter" element={<DataCenter />} />
+                <Route path="/basetool" element={<BasetoolPage />} />
                 <Route path="/settings" element={<Constitution />} />
                 <Route path="/voice-playground" element={<VoicePlayground />} />
                 <Route path="/orchestration-canvas" element={<OrchestrationCanvas />} />
