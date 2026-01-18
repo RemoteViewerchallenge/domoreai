@@ -297,10 +297,9 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             <div className="flex-1 flex overflow-hidden relative select-text">
                 <div 
                     className={cn(
-                        "flex-1 relative overflow-hidden bg-[var(--bg-background)] transition-all duration-300",
-                        showSupplementary ? "w-[75%]" : "w-full"
+                        "flex-1 min-h-0 overflow-hidden relative",
+                        "bg-[var(--color-background)]"
                     )}
-                    onContextMenu={(e) => e.nativeEvent.stopImmediatePropagation()}
                 >
                 {viewMode === 'config' && (
                     <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
