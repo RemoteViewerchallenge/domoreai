@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Hammer, Palette, Rocket, Command, Sparkles, 
-  Settings, Monitor, FolderGit2, X, Users, Database, Mic
+  Settings, Monitor, FolderGit2, X, Users, Database, Mic, Table, Workflow
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { SmartSwitch } from '../../../components/workspace/SmartSwitch.js';
@@ -26,7 +26,9 @@ export const GlobalContextBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
   const isOrg = location.pathname === '/org-structure';
   const isVisualizer = location.pathname === '/visualizer' || location.pathname === '/code-visualizer';
   const isData = location.pathname === '/datacenter';
+  const isBasetool = location.pathname === '/basetool';
   const isVoice = location.pathname === '/voice-playground';
+  const isOrchestrationCanvas = location.pathname === '/orchestration-canvas';
   const isSettings = location.pathname === '/settings';
 
   return (
@@ -81,10 +83,22 @@ export const GlobalContextBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
             tooltip="Data Center (Cmd+4)" 
           />
           <NavButton 
+            icon={Table} 
+            active={isBasetool} 
+            onClick={() => navigate('/basetool')} 
+            tooltip="Basetool UI (Cmd+5)" 
+          />
+          <NavButton 
             icon={Mic} 
             active={isVoice} 
             onClick={() => navigate('/voice-playground')} 
-            tooltip="Voice Playground (Cmd+5)" 
+            tooltip="Voice Playground (Cmd+6)" 
+          />
+          <NavButton 
+            icon={Workflow} 
+            active={isOrchestrationCanvas} 
+            onClick={() => navigate('/orchestration-canvas')} 
+            tooltip="Orchestration Canvas (Cmd+7)" 
           />
           <NavButton 
             icon={Hammer} 

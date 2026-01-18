@@ -31,3 +31,8 @@ export const NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1';
 
 export const DEFAULT_FETCH_TIMEOUT_MS = 2000;
 export const DEFAULT_FALLBACK_MODEL = 'gpt-3.5-turbo';
+
+// LLM Provider Timeouts (Cognitive Recovery Strategy)
+export const LLM_TIMEOUT_STANDARD_MS = 60000;  // 60 seconds for standard operations
+export const LLM_TIMEOUT_COMPLEX_MS = 120000;  // 120 seconds for complex refactoring operations
+export const LLM_MAX_RETRIES = 3;              // Maximum retry attempts

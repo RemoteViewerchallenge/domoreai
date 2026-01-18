@@ -1,30 +1,24 @@
 /**
- * Voice Keyboard Context Menu Component
+ * Voice Keyboard - Invisible Auto-Recording Component
  * 
- * Inline context menu for voice-to-text input
- * Appears on right-click and immediately starts recording
+ * No UI - just starts recording and inserts text directly into the editor
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 interface VoiceKeyboardProps {
   isOpen: boolean;
   onClose: () => void;
   onTextSubmit: (text: string) => void;
   position?: { x: number; y: number };
-  engineId?: string; // Selected STT engine ID (for future use)
 }
 
 export const VoiceKeyboard: React.FC<VoiceKeyboardProps> = ({
   isOpen,
   onClose,
   onTextSubmit,
-  position = { x: 0, y: 0 },
 }) => {
   const [isListening, setIsListening] = useState(false);
-  const [transcribedText, setTranscribedText] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
@@ -37,7 +31,7 @@ export const VoiceKeyboard: React.FC<VoiceKeyboardProps> = ({
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
-        recognition.interimResults = true;
+        recognition.interimResults = false; // Only final results
         recognition.lang = 'en-US';
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,14 +43,10 @@ export const VoiceKeyboard: React.FC<VoiceKeyboardProps> = ({
             .map((result: any) => result.transcript)
             .join('');
           
-          setTranscribedText(transcript);
-          
-          // Auto-submit when final result
-          if (event.results[event.results.length - 1].isFinal) {
-            setTimeout(() => {
-              onTextSubmit(transcript);
-              onClose();
-            }, 100);
+          // Immediately submit when we get final result
+          if (transcript) {
+            onTextSubmit(transcript);
+            onClose();
           }
         };
 
@@ -64,109 +54,51 @@ export const VoiceKeyboard: React.FC<VoiceKeyboardProps> = ({
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           setIsListening(false);
+          onClose();
         };
 
         recognition.onend = () => {
           setIsListening(false);
+          onClose();
         };
 
         recognitionRef.current = recognition;
+      } else {
+        console.warn('Web Speech API not supported');
+        onClose();
       }
     }
   }, [onTextSubmit, onClose]);
 
   // Auto-start recording when opened
   useEffect(() => {
-    if (isOpen && recognitionRef.current) {
-      setTranscribedText('');
+    if (isOpen && recognitionRef.current && !isListening) {
       setIsListening(true);
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+        console.log('[Voice] Started recording...');
+      } catch (_err) {
+        console.error('[Voice] Failed to start');
+        onClose();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isListening, onClose]);
 
-  const handleStop = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-    onClose();
-  }, [isListening, onClose]);
-
-  // Close on Escape
+  // Cleanup on unmount
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        handleStop();
+    return () => {
+      if (recognitionRef.current && isListening) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // Ignore cleanup errors
+        }
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, handleStop]);
+  }, [isListening]);
 
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ duration: 0.15 }}
-        className="fixed z-[9999] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl overflow-hidden"
-        style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          minWidth: '200px',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border-b border-zinc-700">
-          <div className={`${isListening ? 'animate-pulse' : ''}`}>
-            {isListening ? (
-              <Mic className="w-4 h-4 text-red-500" />
-            ) : (
-              <MicOff className="w-4 h-4 text-zinc-500" />
-            )}
-          </div>
-          <span className="text-xs font-semibold text-zinc-300">
-            {isListening ? 'Listening...' : 'Voice Input'}
-          </span>
-        </div>
-
-        {/* Transcription */}
-        <div className="px-3 py-2 min-h-[60px] max-w-[300px]">
-          {transcribedText ? (
-            <p className="text-sm text-zinc-200">{transcribedText}</p>
-          ) : (
-            <p className="text-xs text-zinc-500 italic">
-              {isListening ? 'Speak now...' : 'Click to start'}
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-3 py-2 bg-zinc-800 border-t border-zinc-700 flex justify-between items-center">
-          <span className="text-[10px] text-zinc-500">ESC to cancel</span>
-          <button
-            onClick={handleStop}
-            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-          >
-            Stop
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9998]"
-        onClick={handleStop}
-      />
-    </AnimatePresence>
-  );
+  // No UI - completely invisible
+  return null;
 };
 
 export default VoiceKeyboard;

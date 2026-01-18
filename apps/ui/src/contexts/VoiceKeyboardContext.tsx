@@ -61,22 +61,25 @@ export function VoiceKeyboardProvider({ children }: { children: ReactNode }) {
         targetElement.setSelectionRange(newCursorPos, newCursorPos);
         targetElement.focus();
       }
-      // Handle TipTap editor (ProseMirror)
-      else if (targetElement.classList.contains('ProseMirror') || targetElement.closest('.ProseMirror')) {
-        const proseMirrorElement = targetElement.classList.contains('ProseMirror') 
-          ? targetElement 
-          : targetElement.closest('.ProseMirror') as HTMLElement;
+      // Handle TipTap editor (contenteditable) - use execCommand for proper state sync
+      else if (targetElement.isContentEditable || targetElement.closest('[contenteditable="true"]')) {
+        targetElement.focus();
         
-        if (proseMirrorElement) {
-          // Insert text as HTML at the end
-          const currentHTML = proseMirrorElement.innerHTML;
-          proseMirrorElement.innerHTML = currentHTML + `<p>${text}</p>`;
-          
-          // Trigger input event for TipTap
-          const event = new Event('input', { bubbles: true });
-          proseMirrorElement.dispatchEvent(event);
-          proseMirrorElement.focus();
+        // Use native execCommand which TipTap/ProseMirror hooks into automatically
+        const inserted = document.execCommand('insertText', false, text);
+        
+        // Fallback if execCommand fails (rare in modern browsers)
+        if (!inserted) {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(text));
+          }
         }
+
+        // Trigger input event for TipTap to observe
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
     closeVoiceKeyboard();

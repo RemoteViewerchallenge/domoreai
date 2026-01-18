@@ -1,15 +1,11 @@
-import axios, { AxiosInstance } from 'axios';
 import { TRPCError } from '@trpc/server';
+import { prisma } from '../db.js';
+import { Prisma } from '@prisma/client';
 
 /**
- * Basetool Service - Abstraction layer for Basetool API operations
- * Enables all data operations through Basetool instead of direct database access
+ * Basetool Service - Abstraction layer for database operations
+ * Uses Prisma directly instead of external Basetool API
  */
-
-interface BasetoolConfig {
-  apiUrl: string;
-  apiKey: string;
-}
 
 interface TableSchema {
   name: string;
@@ -36,39 +32,90 @@ interface QueryFilters {
   offset?: number;
 }
 
+// Map Prisma model names to their delegate names
+const MODEL_DELEGATES: Record<string, keyof typeof prisma> = {
+  'ProviderConfig': 'providerConfig',
+  'Workspace': 'workspace',
+  'ModelRegistry': 'modelRegistry',
+  'Model': 'model',
+  'RoleVariant': 'roleVariant',
+  'RoleAssessment': 'roleAssessment',
+  'ModelCapabilities': 'modelCapabilities',
+  'ChatModel': 'chatModel',
+  'EmbeddingModel': 'embeddingModel',
+  'VisionModel': 'visionModel',
+  'AudioModel': 'audioModel',
+  'ImageModel': 'imageModel',
+  'ComplianceModel': 'complianceModel',
+  'RewardModel': 'rewardModel',
+  'UnknownModel': 'unknownModel',
+  'ModelUsage': 'modelUsage',
+  'Role': 'role',
+  'RoleCategory': 'roleCategory',
+  'Tool': 'tool',
+  'RoleTool': 'roleTool',
+  'Job': 'job',
+  'KnowledgeVector': 'knowledgeVector',
+  'FileIndex': 'fileIndex',
+  'WorkOrderCard': 'workOrderCard',
+  'PromptRefinement': 'promptRefinement',
+  'ModelFailure': 'modelFailure',
+  'CardConfig': 'cardConfig',
+  'CustomButton': 'customButton',
+  'ComponentRole': 'componentRole',
+  'VoiceEngine': 'voiceEngine',
+  'VoiceRole': 'voiceRole',
+};
+
 export class BasetoolService {
-  private client: AxiosInstance;
-  private config: BasetoolConfig;
-
-  constructor(config?: BasetoolConfig) {
-    // Use environment variables with fallback to mock mode
-    this.config = config || {
-      apiUrl: process.env.BASETOOL_API_URL || 'http://localhost:3000/api',
-      apiKey: process.env.BASETOOL_API_KEY || 'mock-api-key'
-    };
-
-    this.client = axios.create({
-      baseURL: this.config.apiUrl,
-      headers: {
-        'Authorization': `Bearer ${this.config.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
-    });
-  }
-
   /**
    * Get all table schemas from the database
    */
   async getTableSchemas(): Promise<TableSchema[]> {
     try {
-      const response = await this.client.get<TableSchema[]>('/schemas/tables');
-      return response.data;
+      // Query PostgreSQL information schema for table metadata
+      const tables = await prisma.$queryRaw<Array<{ table_name: string }>>`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+      `;
+
+      const schemas: TableSchema[] = [];
+      
+      for (const table of tables) {
+        const columns = await prisma.$queryRaw<Array<{
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+          column_default: string | null;
+        }>>`
+          SELECT column_name, data_type, is_nullable, column_default
+          FROM information_schema.columns
+          WHERE table_schema = 'public' 
+          AND table_name = ${table.table_name}
+          ORDER BY ordinal_position
+        `;
+
+        schemas.push({
+          name: table.table_name,
+          columns: columns.map(col => ({
+            name: col.column_name,
+            type: col.data_type,
+            nullable: col.is_nullable === 'YES',
+            primaryKey: col.column_name === 'id', // Simple heuristic
+            defaultValue: col.column_default
+          }))
+        });
+      }
+
+      return schemas;
     } catch (error) {
       console.error('Error fetching table schemas:', error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch table schemas from Basetool'
+        message: 'Failed to fetch table schemas from database'
       });
     }
   }
@@ -78,8 +125,36 @@ export class BasetoolService {
    */
   async getTableSchema(tableName: string): Promise<TableSchema> {
     try {
-      const response = await this.client.get<TableSchema>(`/schemas/tables/${tableName}`);
-      return response.data;
+      const columns = await prisma.$queryRaw<Array<{
+        column_name: string;
+        data_type: string;
+        is_nullable: string;
+        column_default: string | null;
+      }>>`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_schema = 'public' 
+        AND table_name = ${tableName}
+        ORDER BY ordinal_position
+      `;
+
+      if (columns.length === 0) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: `Table ${tableName} not found`
+        });
+      }
+
+      return {
+        name: tableName,
+        columns: columns.map(col => ({
+          name: col.column_name,
+          type: col.data_type,
+          nullable: col.is_nullable === 'YES',
+          primaryKey: col.column_name === 'id',
+          defaultValue: col.column_default
+        }))
+      };
     } catch (error) {
       console.error(`Error fetching schema for table ${tableName}:`, error);
       throw new TRPCError({
@@ -97,11 +172,29 @@ export class BasetoolService {
     filters?: QueryFilters
   ): Promise<TableData> {
     try {
-      const response = await this.client.post<TableData>(
-        `/data/${tableName}/query`,
-        filters || {}
-      );
-      return response.data;
+      const delegateName = MODEL_DELEGATES[tableName];
+      
+      if (!delegateName) {
+        // Fallback to raw SQL for unmapped tables
+        const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+          `SELECT * FROM "${tableName}" LIMIT ${filters?.limit || 100} OFFSET ${filters?.offset || 0}`
+        );
+        return { rows, totalCount: rows.length };
+      }
+
+      const delegate = prisma[delegateName] as any;
+      
+      const [rows, totalCount] = await Promise.all([
+        delegate.findMany({
+          where: filters?.where,
+          orderBy: filters?.orderBy,
+          take: filters?.limit || 100,
+          skip: filters?.offset || 0
+        }),
+        delegate.count({ where: filters?.where })
+      ]);
+
+      return { rows, totalCount };
     } catch (error) {
       console.error(`Error fetching data from table ${tableName}:`, error);
       throw new TRPCError({
@@ -119,11 +212,19 @@ export class BasetoolService {
     values: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     try {
-      const response = await this.client.post<Record<string, unknown>>(
-        `/data/${tableName}`,
-        values
-      );
-      return response.data;
+      const delegateName = MODEL_DELEGATES[tableName];
+      
+      if (!delegateName) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Table ${tableName} is not supported for create operations`
+        });
+      }
+
+      const delegate = prisma[delegateName] as any;
+      const result = await delegate.create({ data: values });
+      
+      return result;
     } catch (error) {
       console.error(`Error creating row in table ${tableName}:`, error);
       throw new TRPCError({
@@ -142,11 +243,22 @@ export class BasetoolService {
     values: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     try {
-      const response = await this.client.patch<Record<string, unknown>>(
-        `/data/${tableName}/${rowId}`,
-        values
-      );
-      return response.data;
+      const delegateName = MODEL_DELEGATES[tableName];
+      
+      if (!delegateName) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Table ${tableName} is not supported for update operations`
+        });
+      }
+
+      const delegate = prisma[delegateName] as any;
+      const result = await delegate.update({
+        where: { id: rowId },
+        data: values
+      });
+      
+      return result;
     } catch (error) {
       console.error(`Error updating row in table ${tableName}:`, error);
       throw new TRPCError({
@@ -161,7 +273,17 @@ export class BasetoolService {
    */
   async deleteRow(tableName: string, rowId: string): Promise<void> {
     try {
-      await this.client.delete(`/data/${tableName}/${rowId}`);
+      const delegateName = MODEL_DELEGATES[tableName];
+      
+      if (!delegateName) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Table ${tableName} is not supported for delete operations`
+        });
+      }
+
+      const delegate = prisma[delegateName] as any;
+      await delegate.delete({ where: { id: rowId } });
     } catch (error) {
       console.error(`Error deleting row from table ${tableName}:`, error);
       throw new TRPCError({
@@ -172,7 +294,7 @@ export class BasetoolService {
   }
 
   /**
-   * Execute a custom SQL query
+   * Execute a custom SQL query (READ-ONLY for safety)
    * @param query - SQL query to execute
    * @param params - Optional query parameters for parameterized queries
    */
@@ -181,11 +303,18 @@ export class BasetoolService {
     params?: Record<string, unknown>
   ): Promise<Record<string, unknown>[]> {
     try {
-      const response = await this.client.post<Record<string, unknown>[]>(
-        '/sql/execute',
-        { query, params }
-      );
-      return response.data;
+      // Validate that query is SELECT only (security measure)
+      const trimmedQuery = query.trim().toUpperCase();
+      if (!trimmedQuery.startsWith('SELECT')) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Only SELECT queries are allowed for security reasons'
+        });
+      }
+
+      // Execute raw query
+      const result = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(query);
+      return result;
     } catch (error) {
       console.error('Error executing SQL query:', error);
       throw new TRPCError({
@@ -219,11 +348,23 @@ export class BasetoolService {
     rows: Record<string, unknown>[]
   ): Promise<Record<string, unknown>[]> {
     try {
-      const response = await this.client.post<Record<string, unknown>[]>(
-        `/data/${tableName}/batch`,
-        { rows }
+      const delegateName = MODEL_DELEGATES[tableName];
+      
+      if (!delegateName) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Table ${tableName} is not supported for batch create operations`
+        });
+      }
+
+      const delegate = prisma[delegateName] as any;
+      
+      // Use transaction for batch operations
+      const results = await prisma.$transaction(
+        rows.map(row => delegate.create({ data: row }))
       );
-      return response.data;
+      
+      return results;
     } catch (error) {
       console.error(`Error batch creating rows in table ${tableName}:`, error);
       throw new TRPCError({

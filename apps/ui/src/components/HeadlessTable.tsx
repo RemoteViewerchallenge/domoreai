@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { TableSchema, ColumnSchema } from '../schemas/types';
-import { trpc } from '../utils/trpc';
+import type { TableSchema, ColumnSchema } from '../schemas/types.js';
+import { trpc } from '../utils/trpc.js';
 
 interface HeadlessTableProps {
   schema: TableSchema;
@@ -69,7 +69,7 @@ export const HeadlessTable: React.FC<HeadlessTableProps> = ({
   const handleSort = (columnName: string) => {
     if (!schema.sorting?.enabled) return;
 
-    const column = schema.columns.find((col) => col.name === columnName);
+    const column = schema.columns.find((col: ColumnSchema) => col.name === columnName);
     if (!column?.sortable) return;
 
     if (sortField === columnName) {
@@ -182,7 +182,7 @@ export const HeadlessTable: React.FC<HeadlessTableProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {schema.columns.map((column) => (
+              {schema.columns.map((column: ColumnSchema) => (
                 <th
                   key={column.name}
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -243,13 +243,13 @@ export const HeadlessTable: React.FC<HeadlessTableProps> = ({
                 </td>
               </tr>
             ) : (
-              data?.rows.map((row, idx) => (
+              data?.rows.map((row: Record<string, unknown>, idx: number) => (
                 <tr
                   key={idx}
                   onClick={() => onRowClick?.(row)}
                   className={onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''}
                 >
-                  {schema.columns.map((column) => (
+                  {schema.columns.map((column: ColumnSchema) => (
                     <td key={column.name} className="px-4 py-3 text-sm text-gray-900">
                       {renderCellValue(column, row[column.name])}
                     </td>
