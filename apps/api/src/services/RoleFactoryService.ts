@@ -38,6 +38,11 @@ export interface IdentityConfig {
     style: string; // [FLEXIBLE] Allow legacy styles like 'SOCRATIC'
     thinkingProcess: string; // [FLEXIBLE] Allow legacy processes
     reflectionEnabled: boolean;
+    environmentAnchors?: {
+        runtime: string;
+        codingStandard: string;
+        forbidden: string[];
+    };
 }
 
 
@@ -403,13 +408,35 @@ process.stdout.write(JSON.stringify(__result));
         - Domain: ${intent.domain}
         - Complexity: ${intent.complexity}
 
+        ## 🛡️ ENVIRONMENT ANCHORS (MANDATORY):
+        ALL roles MUST operate within these constraints:
+        - Runtime: Node.js 22+ / TypeScript 5.7
+        - Coding Standard: Functional, Type-Safe, 9-line function rule
+        - Execution Mode: TypeScript ONLY (async/await, system.* tools)
+        
+        ## 🚫 FORBIDDEN:
+        - Python code (def, import os, pip, requirements.txt)
+        - Manual thought logs (Thought:, Action:, Observation:)
+        - Any non-TypeScript/JavaScript syntax
+        
+        ## ✅ REQUIRED:
+        - Use TypeScript syntax exclusively
+        - Leverage async/await for all operations
+        - Call tools via system.* namespace
+        - Follow functional programming patterns
+
         ## JSON Schema:
         {
             "personaName": "String",
-            "systemPromptDraft": "String (Detailed system instructions)",
+            "systemPromptDraft": "String (Detailed system instructions INCLUDING environment anchors)",
             "style": "PROFESSIONAL_CONCISE" | "FRIENDLY_HELPFUL" | "ACADEMIC_FORMAL" | "CREATIVE",
             "thinkingProcess": "SOLO" | "CHAIN_OF_THOUGHT" | "CRITIC_LOOP",
-            "reflectionEnabled": boolean
+            "reflectionEnabled": boolean,
+            "environmentAnchors": {
+                "runtime": "Node.js 22+ / TypeScript 5.7",
+                "codingStandard": "Functional, Type-Safe, 9-line rules",
+                "forbidden": ["python", "pip", "requirements.txt", "manual thought logs"]
+            }
         }
         `;
         // Pass through errors to resilience layer
@@ -419,10 +446,19 @@ process.stdout.write(JSON.stringify(__result));
     private getIdentityFallback(intent: RoleIntent): IdentityConfig {
         return {
             personaName: intent.name,
-            systemPromptDraft: `You are ${intent.name}. ${intent.description}.`,
+            systemPromptDraft: `You are ${intent.name}. ${intent.description}. 
+                
+                ENVIRONMENT: Node.js 22+ / TypeScript 5.7
+                FORBIDDEN: Python, pip, requirements.txt, manual thought logs
+                REQUIRED: Use TypeScript syntax with async/await and system.* tools`,
             style: 'PROFESSIONAL_CONCISE',
             thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
-            reflectionEnabled: intent.complexity === 'HIGH'
+            reflectionEnabled: intent.complexity === 'HIGH',
+            environmentAnchors: {
+                runtime: "Node.js 22+ / TypeScript 5.7",
+                codingStandard: "Functional, Type-Safe, 9-line rules",
+                forbidden: ["python", "pip", "requirements.txt", "manual thought logs"]
+            }
         };
     }
 
