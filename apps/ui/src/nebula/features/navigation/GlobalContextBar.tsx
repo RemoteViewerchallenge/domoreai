@@ -2,19 +2,19 @@ import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Hammer, Palette, Rocket, Command, Sparkles, 
-  Settings, Monitor, FolderGit2, X, Users, Database
+  Settings, Monitor, FolderGit2, X, Users, Database, Mic
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { SmartSwitch } from '../../../components/workspace/SmartSwitch.js';
 
-interface UnifiedNebulaBarProps {
+interface GlobalContextBarProps {
     aiOpen?: boolean;
     setAiOpen?: (open: boolean) => void;
     onToggleTheme?: () => void;
     themeOpen?: boolean;
 }
 
-export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }: UnifiedNebulaBarProps) => {
+export const GlobalContextBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }: GlobalContextBarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams();
@@ -26,6 +26,7 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
   const isOrg = location.pathname === '/org-structure';
   const isVisualizer = location.pathname === '/visualizer' || location.pathname === '/code-visualizer';
   const isData = location.pathname === '/datacenter';
+  const isVoice = location.pathname === '/voice-playground';
   const isSettings = location.pathname === '/settings';
 
   return (
@@ -80,10 +81,16 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
             tooltip="Data Center (Cmd+4)" 
           />
           <NavButton 
+            icon={Mic} 
+            active={isVoice} 
+            onClick={() => navigate('/voice-playground')} 
+            tooltip="Voice Playground (Cmd+5)" 
+          />
+          <NavButton 
             icon={Hammer} 
             active={isBuilder} 
             onClick={() => navigate('/ui-studio/workbench')} 
-            tooltip="Interface Studio" 
+            tooltip="Interface Studio (Nebula)" 
           />
           
           <div className="w-px h-4 bg-[var(--border-color)] mx-1" />
@@ -107,14 +114,14 @@ export const UnifiedNebulaBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
       <div className="flex-1 flex justify-center items-center overflow-hidden gap-4">
          {isBuilder ? (
              <div className="flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-full px-3 py-0.5">
-                 <span className="text-[10px] font-bold text-[var(--color-primary)]">BUILDER MODE</span>
+                 <span className="text-[10px] font-bold text-[var(--color-primary)]">NEBULA BUILDER</span>
                  <span className="text-[9px] text-[var(--text-muted)] hidden sm:block">Drafting: {projectId}</span>
              </div>
          ) : (
             <>
                 <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
                     <Command size={10} />
-                    <span className="text-[10px] font-mono tracking-widest uppercase">{projectId ?? 'NEBULA OS'}</span>
+                    <span className="text-[10px] font-mono tracking-widest uppercase">{projectId ?? 'COOPERATIVE OS'}</span>
                 </div>
                 {isWorkbench && <SmartSwitch />}
             </>

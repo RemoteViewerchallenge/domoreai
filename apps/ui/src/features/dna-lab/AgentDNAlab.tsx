@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { trpc } from '../../utils/trpc.js';
 import type { RoleFormState, Model, Role } from '../../types/role.js';
@@ -6,16 +6,16 @@ import { DEFAULT_ROLE_FORM_DATA } from '../../constants.js';
 import { 
   Save, Trash2, Sparkles,
   Fingerprint, Cpu, Shield, Globe, Wrench, Eye,
-  FileText, Plus, X as CloseIcon, Bot, Zap, Download
+  FileText, Plus, X as CloseIcon, Bot, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CompactCategorizer } from './primitives/CompactCategorizer.js';
-import { ModelFilter } from './primitives/ModelFilter.js';
-import { NaturalParameterTuner } from './primitives/NaturalParameterTuner.js';
-import { RoleToolSelector } from '../role/RoleToolSelector.js';
-import { SuperAiButton } from '../ui/SuperAiButton.js';
-import { PromptPreview } from './primitives/PromptPreview.js';
-import { ToolPromptEditor } from './primitives/ToolPromptEditor.js';
+import { CompactCategorizer } from './components/CompactCategorizer.js';
+import { ModelFilter } from './components/ModelFilter.js';
+import { NaturalParameterTuner } from './components/NaturalParameterTuner.js';
+import { RoleToolSelector } from '../../components/role/RoleToolSelector.js';
+import { SuperAiButton } from '../../components/ui/SuperAiButton.js';
+import { PromptPreview } from './components/PromptPreview.js';
+import { ToolPromptEditor } from './components/ToolPromptEditor.js';
 import { cn } from '../../lib/utils.js';
 
 type LabTab = 'identity' | 'behavior' | 'cortex' | 'tools' | 'tuning' | 'governance' | 'context' | 'preview';
@@ -73,10 +73,13 @@ export const AgentDNAlab: React.FC = () => {
     }
   });
 
-  const handleSelectRole = (id: string) => {
+  const handleSelectRole = useCallback((id: string) => {
     const role = roles?.find(r => r.id === id) as unknown as Role;
     if (role) {
       setSelectedRoleId(id);
+      
+      const dnaBase = (role.dna as unknown as Record<string, unknown>) || {};
+      
       setFormData({
         name: role.name,
         basePrompt: role.basePrompt,
@@ -105,31 +108,31 @@ export const AgentDNAlab: React.FC = () => {
         memoryConfig: role.memoryConfig || { useProjectMemory: false, readOnly: false },
         dna: {
             ...DEFAULT_ROLE_FORM_DATA.dna,
-            ...((role.dna as any) || {}),
+            ...dnaBase,
             identity: {
                 ...DEFAULT_ROLE_FORM_DATA.dna.identity,
-                ...((role.dna as any)?.identity || {})
+                ...(dnaBase.identity || {})
             },
             cortex: {
                 ...DEFAULT_ROLE_FORM_DATA.dna.cortex,
-                ...((role.dna as any)?.cortex || {})
+                ...(dnaBase.cortex || {})
             },
             governance: {
                 ...DEFAULT_ROLE_FORM_DATA.dna.governance,
-                ...(((role.dna as any)?.governance) || {})
+                ...(dnaBase.governance || {})
             },
             context: {
                 ...DEFAULT_ROLE_FORM_DATA.dna.context,
-                ...(((role.dna as any)?.context) || {})
+                ...(dnaBase.context || {})
             },
             behavior: {
                 ...DEFAULT_ROLE_FORM_DATA.dna.behavior,
-                ...((role.dna as any)?.behavior || {})
+                ...(dnaBase.behavior || {})
             }
         }
       });
     }
-  };
+  }, [roles]);
 
   const handleExportDNA = () => {
     if (!selectedRoleId) return;
@@ -155,7 +158,7 @@ export const AgentDNAlab: React.FC = () => {
         newParams.delete('roleId');
         setSearchParams(newParams, { replace: true });
     }
-  }, [roles, searchParams, setSearchParams]);
+  }, [roles, searchParams, setSearchParams, handleSelectRole]);
 
   const handleSave = () => {
     setSaveStatus('saving');
@@ -387,7 +390,7 @@ export const AgentDNAlab: React.FC = () => {
                                         ...formData, 
                                         dna: { 
                                             ...formData.dna, 
-                                            cortex: { ...formData.dna.cortex, executionMode: e.target.value as any } 
+                                            cortex: { ...formData.dna.cortex, executionMode: e.target.value as 'HYBRID_AUTO' | 'JSON_STRICT' | 'CODE_INTERPRETER' } 
                                         } 
                                     })}
                                     className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"

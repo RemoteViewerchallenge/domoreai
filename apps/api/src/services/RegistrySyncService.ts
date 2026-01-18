@@ -1,7 +1,6 @@
 import { prisma } from '../db.js';
 import { BaseLLMProvider, LLMModel } from '../utils/BaseLLMProvider.js';
 import { RawModelService } from './RawModelService.js';
-import { flattenRawData } from './dataRefinement.service.js';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
@@ -66,9 +65,6 @@ export class RegistrySyncService {
                 }
                 const models = snapshot.rawData as LLMModel[];
                 console.log(`[RegistrySyncService] Got ${models.length} models from ${providerLabel}.`);
-
-                // Flatten data (Legacy support, maybe optional now?)
-                await this.flattenSnapshot(snapshot.id, providerType, models as RawSnapshotData[]);
 
                 let modelsToSync = models;
 
@@ -270,15 +266,6 @@ export class RegistrySyncService {
         }
     }
 
-    private static async flattenSnapshot(snapshotId: string, providerType: string, models: RawSnapshotData[]) {
-        try {
-            const tableName = `${providerType}_models`;
-            // console.log(`[RegistrySyncService] 🔨 Flattening data into table: ${tableName}...`);
-            await flattenRawData({ snapshotId, tableName, rawData: models });
-        } catch (error) {
-            console.error(`[RegistrySyncService] ❌ Failed to snapshot/flatten data for ${providerType}:`, error);
-        }
-    }
 
     private static async cleanupGhostRecords(activeIds: string[], syncedProviderIds: string[]) {
         try {

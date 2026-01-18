@@ -1,5 +1,5 @@
 
-export interface NebulaButtonProps {
+export interface CooperativeButtonProps {
   label?: string;
   variant?: "primary" | "secondary" | "ghost";
   actionId?: string;
@@ -7,7 +7,7 @@ export interface NebulaButtonProps {
   children?: React.ReactNode;
 }
 
-export const NebulaButton = ({ label, variant = "primary", onClick, children }: NebulaButtonProps) => {
+export const CooperativeButton = ({ label, variant = "primary", onClick, children }: CooperativeButtonProps) => {
   const baseStyle = "px-4 py-2 rounded font-medium transition-colors";
   const variants = {
     primary: "bg-indigo-600 text-white hover:bg-indigo-500",

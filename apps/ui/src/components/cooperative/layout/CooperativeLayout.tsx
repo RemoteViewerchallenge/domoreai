@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
-import { ThemeSidebar } from '../ThemeSidebar.js';
+import { ThemeSidebar } from '../../../features/constitution/components/ThemeSidebar.js';
 import { cn } from '../../../lib/utils.js';
-import { UnifiedNebulaBar } from '../../../nebula/features/navigation/UnifiedNebulaBar.js';
+import { GlobalContextBar } from '../../../nebula/features/navigation/GlobalContextBar.js';
+import { VoiceKeyboard } from '../../VoiceKeyboard.js';
+import { ContextMenu } from '../../ContextMenu.js';
+import { useVoiceKeyboard } from '../../../contexts/VoiceKeyboardContext.js';
+import { useVoiceInputContextMenu } from '../../../hooks/useVoiceInputContextMenu.js';
 
 const KEY_MAP = {
     TOGGLE_THEME: ['ctrl+e', 'command+e'],
@@ -11,9 +15,22 @@ const KEY_MAP = {
     ESCAPE: ['esc']
 };
 
-export const NebulaLayout = ({ children, header }: { children: React.ReactNode, header?: React.ReactNode }) => {
+export const CooperativeLayout = ({ children, header }: { children: React.ReactNode, header?: React.ReactNode }) => {
     const [showTheme, setShowTheme] = useState(false);
     const [showAi, setShowAi] = useState(false);
+    
+    // Global voice keyboard and context menu
+    const { 
+      isOpen, 
+      isContextMenuOpen, 
+      position, 
+      targetElement,
+      closeContextMenu, 
+      closeVoiceKeyboard, 
+      openVoiceKeyboard,
+      submitText 
+    } = useVoiceKeyboard();
+    useVoiceInputContextMenu(); // Enable right-click on text fields
 
     // Close theme on Escape
     const handlers = {
@@ -21,11 +38,11 @@ export const NebulaLayout = ({ children, header }: { children: React.ReactNode, 
         TOGGLE_AI: (e?: KeyboardEvent) => { 
             e?.preventDefault(); 
             // 🟢 In Headless mode, the header should handle this or we dispatch an event
-            window.dispatchEvent(new CustomEvent('nebula:toggle-ai'));
+            window.dispatchEvent(new CustomEvent('coop:toggle-ai'));
         },
         SAVE: (e?: KeyboardEvent) => {
              e?.preventDefault();
-             window.dispatchEvent(new CustomEvent('nebula:save'));
+             window.dispatchEvent(new CustomEvent('coop:save'));
         },
         ESCAPE: () => { setShowTheme(false); }
     };
@@ -38,7 +55,7 @@ export const NebulaLayout = ({ children, header }: { children: React.ReactNode, 
                 {header !== null && (
                     <div className="flex-none z-50 shadow-md">
                         {header || (
-                            <UnifiedNebulaBar 
+                            <GlobalContextBar 
                                 aiOpen={showAi} 
                                 setAiOpen={setShowAi} 
                                 themeOpen={showTheme} 
@@ -62,6 +79,25 @@ export const NebulaLayout = ({ children, header }: { children: React.ReactNode, 
                         <ThemeSidebar onClose={() => setShowTheme(false)} />
                     </div>
                 </div>
+
+                {/* 4. GLOBAL CONTEXT MENU */}
+                {isContextMenuOpen && targetElement && (
+                  <ContextMenu
+                    x={position.x}
+                    y={position.y}
+                    onClose={closeContextMenu}
+                    targetElement={targetElement}
+                    onVoiceInput={openVoiceKeyboard}
+                  />
+                )}
+
+                {/* 5. GLOBAL VOICE KEYBOARD (Overlay) */}
+                <VoiceKeyboard
+                    isOpen={isOpen}
+                    onClose={closeVoiceKeyboard}
+                    onTextSubmit={submitText}
+                    position={position}
+                />
             </div>
         </GlobalHotKeys>
     );
