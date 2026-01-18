@@ -2,6 +2,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 // @ts-ignore
 import { OpenAI } from 'openai';
 import { BaseLLMProvider, CompletionRequest, LLMModel } from './BaseLLMProvider.js';
+import { LLM_TIMEOUT_COMPLEX_MS, LLM_TIMEOUT_STANDARD_MS, LLM_MAX_RETRIES } from '../config/constants.js';
 // import { UsageCollector } from '../services/UsageCollector.js';
 
 export class OpenAIProvider implements BaseLLMProvider {
@@ -16,7 +17,8 @@ export class OpenAIProvider implements BaseLLMProvider {
     this.client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.baseURL,
-      timeout: 15000, // 15 seconds (Aggressive failover)
+      timeout: LLM_TIMEOUT_COMPLEX_MS, // 120 seconds for Refactor Swarms (Cognitive Recovery)
+      maxRetries: LLM_MAX_RETRIES,     // Volcano-native retry logic
       httpAgent: agent,
     } as any);
   }
@@ -70,12 +72,21 @@ export class OpenAIProvider implements BaseLLMProvider {
 
     console.log(`[OpenAIProvider] Calling API with model: "${request.modelId}"`);
     
+    // Determine timeout based on operation complexity
+    const isComplexOperation = this.isComplexRefactorOperation(request);
+    const timeout = isComplexOperation ? LLM_TIMEOUT_COMPLEX_MS : LLM_TIMEOUT_STANDARD_MS;
+    
+    console.log(`[OpenAIProvider] Using ${timeout/1000}s timeout (Complex: ${isComplexOperation})`);
+    
     try {
       const response = await this.client.chat.completions.create({
         model: request.modelId,
         messages: request.messages as any,
         temperature: request.temperature,
         max_tokens: request.max_tokens,
+      }, {
+        timeout, // Dynamic timeout in options object
+        maxRetries: LLM_MAX_RETRIES, // Ensure retries are applied per-request
       }).asResponse();
 
       // Extract headers
@@ -96,8 +107,15 @@ export class OpenAIProvider implements BaseLLMProvider {
       
       return content;
     } catch (error: any) {
-      // FIX: Handle Google models on OpenRouter rejecting system prompts
+      // Distinguish between timeout and other errors for better debugging
       const errorMessage = error.message || error.error?.message || String(error);
+      
+      if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        console.error(`[OpenAIProvider] ⏱️ Timeout after ${timeout/1000}s for model ${request.modelId}`);
+        console.error(`[OpenAIProvider] Consider increasing timeout or chunking the operation`);
+      }
+      
+      // FIX: Handle Google models on OpenRouter rejecting system prompts
       if (errorMessage.includes("Developer instruction is not enabled")) {
         console.warn(`[OpenAIProvider] Model rejected system prompt. Retrying with merged prompt...`);
         
@@ -109,6 +127,9 @@ export class OpenAIProvider implements BaseLLMProvider {
           messages: mergedMessages as any,
           temperature: request.temperature,
           max_tokens: request.max_tokens,
+        }, {
+          timeout, // Use same timeout for retry
+          maxRetries: LLM_MAX_RETRIES,
         }).asResponse();
         
         const json = await response.json();
@@ -116,6 +137,21 @@ export class OpenAIProvider implements BaseLLMProvider {
       }
       throw error;
     }
+  }
+
+  private isComplexRefactorOperation(request: CompletionRequest): boolean {
+    // Detect complex operations that may require extended timeouts
+    const messageContent = JSON.stringify(request.messages).toLowerCase();
+    const complexKeywords = [
+      'refactor', 'registry', 'structural', 'migrate', 'transform',
+      'nebula', 'architect', 'component manifest', 'large file',
+      'move components', 'reorganize', 'split file'
+    ];
+    
+    // Also check for large message payloads (>10KB suggests complex operation)
+    const isLargePayload = messageContent.length > 10000;
+    
+    return complexKeywords.some(keyword => messageContent.includes(keyword)) || isLargePayload;
   }
 
   private mergeSystemPrompt(messages: any[]): any[] {
