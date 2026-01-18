@@ -10,6 +10,7 @@ import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
 import { uiArchitectTools } from '../../tools/uiArchitectTools.js';
+import { roleArchitectTools } from '../../tools/roleArchitectTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
 
@@ -23,6 +24,13 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
          },
          // Atomized UI Architect Tools
          ...uiArchitectTools.map(t => ({
+             name: t.name,
+             handler: t.handler as (args: unknown) => unknown,
+             description: t.description,
+             input_schema: (t.inputSchema || {}) as Record<string, unknown>
+         })),
+         // Role Architect Tools
+         ...roleArchitectTools.map(t => ({
              name: t.name,
              handler: t.handler as (args: unknown) => unknown,
              description: t.description,

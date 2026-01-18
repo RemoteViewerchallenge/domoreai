@@ -5,6 +5,7 @@ import { ProviderManager } from '../services/ProviderManager.js';
 export interface ModelRequirements {
   minContext?: number;
   maxContext?: number;
+  minOutputTokens?: number; // Minimum output tokens the model must support
   capabilities?: string[];
 }
 
@@ -49,6 +50,7 @@ export class LLMSelector {
     // Support both top-level metadata (RoleCreatorPanel) and nested requirements (AgentService/DNA)
     const minContext = requirements.minContext || (metadata.minContext as number) || 0;
     const maxContext = requirements.maxContext || (metadata.maxContext as number) || 0;
+    const minOutputTokens = requirements.minOutputTokens || (metadata.minOutputTokens as number) || 0;
     const requiredCaps = requirements.capabilities || [];
 
     // 1. Basic Filters
@@ -181,6 +183,29 @@ export class LLMSelector {
         } else {
           console.error("[ModelSelector] 💀 CRITICAL: NO models meet minimum context! Picking largest.");
           candidates.sort((a,b) => (b.capabilities?.contextWindow || 0) - (a.capabilities?.contextWindow || 0));
+        }
+      }
+    }
+
+    // Output Token Filter
+    // [ROLE-SPECIFIC] Ensure model can handle required output length
+    if (minOutputTokens > 0) {
+      console.log(`[LLMSelector] 📤 Filtering for minOutputTokens: ${minOutputTokens}`);
+      const outputCapable = candidates.filter(m => {
+        const maxOutput = m.capabilities?.maxOutput || 0;
+        return maxOutput >= minOutputTokens;
+      });
+      
+      if (outputCapable.length > 0) {
+        candidates = outputCapable;
+        console.log(`[LLMSelector] ✅ Found ${outputCapable.length} model(s) with sufficient output capacity (>= ${minOutputTokens} tokens)`);
+      } else {
+        console.error(`[LLMSelector] 🚨 CRITICAL: NO models support minOutputTokens=${minOutputTokens}. Available models have insufficient maxOutput.`);
+        // Sort by maxOutput descending to at least get the best available
+        candidates.sort((a, b) => (b.capabilities?.maxOutput || 0) - (a.capabilities?.maxOutput || 0));
+        const bestAvailable = candidates[0];
+        if (bestAvailable) {
+          console.warn(`[LLMSelector] ⚠️ Falling back to ${bestAvailable.name} with maxOutput=${bestAvailable.capabilities?.maxOutput || 0}`);
         }
       }
     }

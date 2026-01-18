@@ -82,11 +82,14 @@ export class VolcanoAgent {
         throw new Error(`Provider '${providerId}' not found for agent execution (Model: ${actualModelId}). Available: ${available}`);
     }
     
+    
+    // [ARCHITECTURE] maxTokens is role-specific and passed to LLMSelector
+    // The selector chooses models that can handle the required output length
     return await provider.generateCompletion({
         modelId: actualModelId,
         messages: [{ role: 'user', content: prompt }], // System prompt injected by runtime usually
         temperature: temperature || 0.7,
-        max_tokens: maxTokens || 4096
+        max_tokens: maxTokens || 1024 // Default 1024 for JSON/tools; planning/writing roles specify higher in metadata
     });
   }
 }
