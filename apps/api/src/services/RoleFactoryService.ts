@@ -49,6 +49,7 @@ export interface IdentityConfig {
 export interface CortexConfig {
     executionMode: AgentExecutionMode;
     contextRange: { min: number; max: number };
+    maxOutputTokens?: number; // Role-specific output length requirement (default: 1024 for JSON/tools, higher for planning/writing)
     capabilities: string[];
     tools: string[]; // List of tool names
 }
@@ -485,10 +486,18 @@ process.stdout.write(JSON.stringify(__result));
         ${isHealthProbe ? 'NOTE: For System Health Probes, HYBRID_AUTO is MANDATORY.' : ''}
         ${isAuditor ? 'NOTE: For Capability Auditors, HYBRID_AUTO is MANDATORY.' : ''}
 
+        ## OUTPUT LENGTH REQUIREMENTS:
+        Set maxOutputTokens based on role type:
+        - **1024**: JSON responses, tool calls, coordinators, managers (DEFAULT)
+        - **2048**: Code generation, refactoring, moderate documentation
+        - **4096**: Long-form planning, architectural documents, detailed analysis
+        - **8192**: Comprehensive documentation, multi-file generation, extensive reports
+
         ## JSON Schema:
         {
             "executionMode": "JSON_STRICT" | "CODE_INTERPRETER" | "HYBRID_AUTO",
             "contextRange": { "min": number, "max": number },
+            "maxOutputTokens": number, // Set based on role's output needs (see above)
             "capabilities": string[], // ["vision", "reasoning", "tts", "embedding"]
             "tools": string[] // ["filesystem", "terminal", "browser", "search_codebase"]
         }
@@ -506,6 +515,7 @@ process.stdout.write(JSON.stringify(__result));
         return {
             executionMode: intent.complexity === 'HIGH' ? 'HYBRID_AUTO' : 'JSON_STRICT',
             contextRange: { min: 4096, max: 128000 },
+            maxOutputTokens: intent.complexity === 'HIGH' ? 2048 : 1024, // High complexity roles may need more output
             capabilities: intent.capabilities || [],
             tools: ['filesystem', 'terminal']
         };
