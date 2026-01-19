@@ -532,10 +532,16 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
 `;
 
         // 3. Selection (Protocol Selection Logic)
+        // [FIX] Decouple tier from protocol - only inject ARCHITECT protocol if role-management tools are present
         let protocol = GENERIC_CODE_PROTOCOL;
         
-        if (this.tier === 'Architect') {
-            protocol = SPECIALIZED_ARCHITECT_PROTOCOL;
+        const hasRoleManagementTools = this.availableTools.some(t => 
+          t === 'role_registry_list' || t === 'role_variant_evolve' || t === 'role_config_patch'
+        );
+        
+        if (hasRoleManagementTools) {
+          // Only inject architect protocol if the role actually has role-management tools
+          protocol = SPECIALIZED_ARCHITECT_PROTOCOL;
         } else if (this.executionMode === 'JSON_STRICT') {
             protocol = JSON_STRICT_PROTOCOL;
         } else if (this.executionMode === 'CODE_INTERPRETER') {
