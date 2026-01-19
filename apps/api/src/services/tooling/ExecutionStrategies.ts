@@ -222,19 +222,35 @@ export class JsonRpcStrategy implements IExecutionStrategy {
     let turnLogs: string[] = [];
 
     try {
-      // Extract JSON: prioritize ```json blocks, then fallback to first/last brace search
+      // [HARDENED] Extract JSON: Handle multiple markdown formats from smaller models
       let jsonStr = response.trim();
-      const jsonBlockMatch = jsonStr.match(/```json\s*\n([\s\S]*?)```/);
       
+      // 1. Try ```json blocks first
+      const jsonBlockMatch = jsonStr.match(/```json\s*\n([\s\S]*?)```/);
       if (jsonBlockMatch) {
         jsonStr = jsonBlockMatch[1].trim();
-        console.log(`[JsonRpcStrategy] Extracted JSON from markdown block`);
-      } else {
-        const firstBrace = jsonStr.indexOf("{");
-        const lastBrace = jsonStr.lastIndexOf("}");
-        if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
+        console.log(`[JsonRpcStrategy] Extracted JSON from \`\`\`json block`);
+      } 
+      // 2. Try generic ``` blocks (smaller models often forget the 'json' label)
+      else {
+        const genericBlockMatch = jsonStr.match(/```\s*\n?([\s\S]*?)```/);
+        if (genericBlockMatch) {
+          jsonStr = genericBlockMatch[1].trim();
+          console.log(`[JsonRpcStrategy] Extracted JSON from generic \`\`\` block`);
+        }
+        // 3. Try single backticks (some models wrap JSON in single backticks)
+        else if (jsonStr.startsWith('`') && jsonStr.endsWith('`')) {
+          jsonStr = jsonStr.slice(1, -1).trim();
+          console.log(`[JsonRpcStrategy] Stripped single backticks`);
+        }
+        // 4. Fallback: Extract using brace matching
+        else {
+          const firstBrace = jsonStr.indexOf("{");
+          const lastBrace = jsonStr.lastIndexOf("}");
+          if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
             jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
             console.log(`[JsonRpcStrategy] Extracted JSON using brace matching`);
+          }
         }
       }
       

@@ -193,7 +193,7 @@ export class LLMSelector {
       console.log(`[LLMSelector] 📤 Filtering for minOutputTokens: ${minOutputTokens}`);
       const outputCapable = candidates.filter(m => {
         const maxOutput = m.capabilities?.maxOutput || 0;
-        return maxOutput >= minOutputTokens;
+        return maxOutput >= minOutputTokens && maxOutput > 0; // [SANITY] Never select zero-token models
       });
       
       if (outputCapable.length > 0) {
@@ -201,10 +201,47 @@ export class LLMSelector {
         console.log(`[LLMSelector] ✅ Found ${outputCapable.length} model(s) with sufficient output capacity (>= ${minOutputTokens} tokens)`);
       } else {
         console.error(`[LLMSelector] 🚨 CRITICAL: NO models support minOutputTokens=${minOutputTokens}. Available models have insufficient maxOutput.`);
+        
+        // [SANITY CHECK] Filter out corrupted/zero-token models before fallback
+        const validModels = candidates.filter(m => (m.capabilities?.maxOutput || 0) > 0);
+        
+        if (validModels.length === 0) {
+          throw new Error(`[LLMSelector] 💀 FATAL: All available models have maxOutput=0 (Registry Data Corruption). Cannot proceed.`);
+        }
+        
         // Sort by maxOutput descending to at least get the best available
-        candidates.sort((a, b) => (b.capabilities?.maxOutput || 0) - (a.capabilities?.maxOutput || 0));
-        const bestAvailable = candidates[0];
-        if (bestAvailable) {
+        validModels.sort((a, b) => (b.capabilities?.maxOutput || 0) - (a.capabilities?.maxOutput || 0));
+        const bestAvailable = validModels[0];
+        
+        // [ARCHITECT SAFETY] Never fall back to models < 13B for Architect/high-complexity tasks
+        const isArchitectTask = role.id.includes('architect') || role.id.includes('coordinator') || 
+                                (metadata.requirements as any)?.capabilities?.includes('reasoning');
+        
+        if (isArchitectTask) {
+          const modelName = bestAvailable.name.toLowerCase();
+          const is7BOrSmaller = modelName.includes('7b') || modelName.includes('3b') || modelName.includes('1b');
+          
+          if (is7BOrSmaller) {
+            console.error(`[LLMSelector] 🚫 REJECTED: ${bestAvailable.name} is too small for Architect tasks (lacks instruction-following density)`);
+            
+            // Try to find a larger model
+            const largerModels = validModels.filter(m => {
+              const name = m.name.toLowerCase();
+              return !name.includes('7b') && !name.includes('3b') && !name.includes('1b');
+            });
+            
+            if (largerModels.length > 0) {
+              candidates = [largerModels[0]];
+              console.warn(`[LLMSelector] ⚠️ Falling back to ${largerModels[0].name} with maxOutput=${largerModels[0].capabilities?.maxOutput || 0}`);
+            } else {
+              throw new Error(`[LLMSelector] 💀 FATAL: No models >= 13B available for Architect task. Refusing to use ${bestAvailable.name}.`);
+            }
+          } else {
+            candidates = [bestAvailable];
+            console.warn(`[LLMSelector] ⚠️ Falling back to ${bestAvailable.name} with maxOutput=${bestAvailable.capabilities?.maxOutput || 0}`);
+          }
+        } else {
+          candidates = [bestAvailable];
           console.warn(`[LLMSelector] ⚠️ Falling back to ${bestAvailable.name} with maxOutput=${bestAvailable.capabilities?.maxOutput || 0}`);
         }
       }
