@@ -496,7 +496,7 @@ process.stdout.write(JSON.stringify(__result));
         ## JSON Schema:
         {
             "executionMode": "JSON_STRICT" | "CODE_INTERPRETER" | "HYBRID_AUTO",
-            "contextRange": { "min": number, "max": number },
+            "contextRange": { "min": number, "max": number }, // Standard Min: 4000. Orchestrators: 32000.
             "maxOutputTokens": number, // Set based on role's output needs (see above)
             "capabilities": string[], // ["vision", "reasoning", "tts", "embedding"]
             "tools": string[] // ["filesystem", "terminal", "browser", "search_codebase"]
@@ -514,7 +514,7 @@ process.stdout.write(JSON.stringify(__result));
     private getCortexFallback(intent: RoleIntent): CortexConfig {
         return {
             executionMode: intent.complexity === 'HIGH' ? 'HYBRID_AUTO' : 'JSON_STRICT',
-            contextRange: { min: 4096, max: 128000 },
+            contextRange: { min: 4000, max: 128000 },
             maxOutputTokens: intent.complexity === 'HIGH' ? 2048 : 1024, // High complexity roles may need more output
             capabilities: intent.capabilities || [],
             tools: ['filesystem', 'terminal']
@@ -629,41 +629,37 @@ process.stdout.write(JSON.stringify(__result));
             });
         }
 
-        // Ensure it has an active variant
-        if (role.variants.length === 0) {
-            console.log(`[RoleFactory] 🧬 Creating missing DNA Variant for "Role Architect"...`);
-            await prisma.roleVariant.create({
-                data: {
-                    roleId: role.id,
-                    isActive: true,
-                    identityConfig: {
-                        personaName: 'DNA Synthesizer',
-                        style: 'PROFESSIONAL_CONCISE',
-                        systemPromptDraft: role.basePrompt,
-                        thinkingProcess: 'CHAIN_OF_THOUGHT',
-                        reflectionEnabled: true
-                    } as Prisma.InputJsonValue,
-                    cortexConfig: {
-                        executionMode: 'JSON_STRICT',
-                        contextRange: { min: 8192, max: 128000 },
-                        capabilities: ['reasoning'],
-                        tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch']
-                    } as Prisma.InputJsonValue,
-                    contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] } as Prisma.InputJsonValue,
-                    governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' } as Prisma.InputJsonValue
-                }
-            });
-            // Re-fetch to return with variant
-            return await prisma.role.findUnique({ where: { id: role.id } });
-        }
+        // SMART SEEDING
+        await this.smartSeedVariant(role, {
+            identity: {
+                personaName: 'DNA Synthesizer',
+                style: 'PROFESSIONAL_CONCISE',
+                systemPromptDraft: role.basePrompt,
+                thinkingProcess: 'CHAIN_OF_THOUGHT',
+                reflectionEnabled: true
+            },
+            cortex: {
+                executionMode: 'JSON_STRICT',
+                contextRange: { min: 32000, max: 128000 },
+                maxOutputTokens: 2048,
+                capabilities: ['reasoning'],
+                tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch']
+            },
+            context: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
+            governance: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' }
+        });
 
-        return role;
+        // Ensure other system roles are seeded
+        await this.seedCoordinator();
+        await this.seedLiaison();
+
+        return await prisma.role.findUnique({ where: { id: role.id } });
     }
 
     public async seedCoordinator() {
         const name = "Grand Orchestrator";
-        const slug = "coordinator";
         
+        // Find by name OR slug if available (though slug isn't on Role model in previous snippet, assume name is unique)
         let role = await prisma.role.findFirst({ where: { name } });
         
         if (!role) {
@@ -681,33 +677,24 @@ process.stdout.write(JSON.stringify(__result));
             });
         }
 
-        const activeVariant = await prisma.roleVariant.findFirst({
-            where: { roleId: role.id, isActive: true }
+        await this.smartSeedVariant(role, {
+            identity: {
+                personaName: 'Coordinator',
+                style: 'PROFESSIONAL_CONCISE',
+                systemPromptDraft: COORDINATOR_PROTOCOL_SNIPPET,
+                thinkingProcess: 'CHAIN_OF_THOUGHT',
+                reflectionEnabled: true
+            },
+            cortex: {
+                executionMode: 'JSON_STRICT',
+                contextRange: { min: 32000, max: 128000 },
+                maxOutputTokens: 2048,
+                capabilities: ['reasoning'],
+                tools: ["role_registry_list", "role_variant_evolve", "volcano.execute_task"]
+            },
+            context: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
+            governance: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' }
         });
-
-        if (!activeVariant) {
-            await prisma.roleVariant.create({
-                data: {
-                    roleId: role.id,
-                    isActive: true,
-                    identityConfig: {
-                        personaName: 'Coordinator',
-                        style: 'PROFESSIONAL_CONCISE',
-                        systemPromptDraft: COORDINATOR_PROTOCOL_SNIPPET,
-                        thinkingProcess: 'CHAIN_OF_THOUGHT',
-                        reflectionEnabled: true
-                    } as Prisma.InputJsonValue,
-                    cortexConfig: {
-                        executionMode: 'JSON_STRICT',
-                        contextRange: { min: 8192, max: 128000 },
-                        capabilities: ['reasoning'],
-                        tools: ["role_registry_list", "role_variant_evolve", "volcano.execute_task"]
-                    } as Prisma.InputJsonValue,
-                    contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] } as Prisma.InputJsonValue,
-                    governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' } as Prisma.InputJsonValue
-                }
-            });
-        }
 
         return role;
     }
@@ -732,35 +719,99 @@ process.stdout.write(JSON.stringify(__result));
             });
         }
 
+        await this.smartSeedVariant(role, {
+            identity: {
+                personaName: 'Liaison',
+                style: 'CONCISE',
+                systemPromptDraft: role.basePrompt,
+                thinkingProcess: 'SOLO',
+                reflectionEnabled: false
+            },
+            cortex: {
+                executionMode: 'CODE_INTERPRETER',
+                contextRange: { min: 4000, max: 32000 },
+                maxOutputTokens: 1024,
+                capabilities: ['coding'],
+                tools: ["terminal_execute", "system.context_fetch"]
+            },
+            context: { strategy: ['LOCUS_FOCUS'], permissions: ['ALL'] },
+            governance: { rules: ["Never use sudo"], assessmentStrategy: ['VISUAL_CHECK'], enforcementLevel: 'MEDIUM' }
+        });
+
+        return role;
+    }
+
+    /**
+     * Helper to perform "Smart Seeding" of variants.
+     * PRESERVES user edits to existing variants while upgrading outdated defaults.
+     */
+    private async smartSeedVariant(
+        role: any,
+        defaultConfig: {
+            identity: Record<string, any>,
+            cortex: Record<string, any>,
+            context: Record<string, any>,
+            governance: Record<string, any>
+        }
+    ) {
         const activeVariant = await prisma.roleVariant.findFirst({
             where: { roleId: role.id, isActive: true }
         });
 
         if (!activeVariant) {
-            await prisma.roleVariant.create({
+            console.log(`[RoleFactory] 🧬 Creating missing DNA Variant for "${role.name}"...`);
+            return await prisma.roleVariant.create({
                 data: {
                     roleId: role.id,
                     isActive: true,
-                    identityConfig: {
-                        personaName: 'Liaison',
-                        style: 'CONCISE',
-                        systemPromptDraft: role.basePrompt,
-                        thinkingProcess: 'SOLO',
-                        reflectionEnabled: false
-                    } as Prisma.InputJsonValue,
-                    cortexConfig: {
-                        executionMode: 'CODE_INTERPRETER',
-                        contextRange: { min: 4096, max: 32000 },
-                        capabilities: ['coding'],
-                        tools: ["terminal_execute", "system.context_fetch"]
-                    } as Prisma.InputJsonValue,
-                    contextConfig: { strategy: ['LOCUS_FOCUS'], permissions: ['ALL'] } as Prisma.InputJsonValue,
-                    governanceConfig: { rules: ["Never use sudo"], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'HIGH' } as Prisma.InputJsonValue
+                    identityConfig: defaultConfig.identity,
+                    cortexConfig: defaultConfig.cortex,
+                    contextConfig: defaultConfig.context,
+                    governanceConfig: defaultConfig.governance,
                 }
             });
         }
 
-        return role;
+        // SMART UPDATE LOGIC
+        // Check for outdated defaults and upgrade without touching custom values
+        const currentCortex = (activeVariant.cortexConfig as any) || {};
+        let needsUpdate = false;
+        const newCortex = { ...currentCortex };
+
+        // 1. Min Context Upgrade (8192 | 4096 -> 32000 | 4000)
+        const currentMin = currentCortex.contextRange?.min;
+        const defaultMin = (defaultConfig.cortex as any).contextRange?.min;
+
+        // Known outdated defaults
+        const OUTDATED_DEFAULTS = [8192, 4096];
+
+        if (OUTDATED_DEFAULTS.includes(currentMin)) {
+             if (defaultMin && defaultMin !== currentMin) {
+                 console.log(`[RoleFactory] 🆙 Upgrading outdated minContext ${currentMin} -> ${defaultMin} for "${role.name}"`);
+                 if (!newCortex.contextRange) newCortex.contextRange = {};
+                 newCortex.contextRange.min = defaultMin;
+                 needsUpdate = true;
+             }
+        }
+
+        // 2. Max Output Tokens Upgrade (if missing or default 0/null/outdated)
+        // If Role Factory logic changed (e.g. adding maxOutputTokens), backfill it safely.
+        const defaultMaxOutput = (defaultConfig.cortex as any).maxOutputTokens;
+        if (defaultMaxOutput && !currentCortex.maxOutputTokens) {
+            console.log(`[RoleFactory] 🆙 Backfilling missing maxOutputTokens (${defaultMaxOutput}) for "${role.name}"`);
+            newCortex.maxOutputTokens = defaultMaxOutput;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            await prisma.roleVariant.update({
+                where: { id: activeVariant.id },
+                data: { cortexConfig: newCortex }
+            });
+            console.log(`[RoleFactory] ✅ Smart-updated "${role.name}" variant.`);
+        }
+
+        return activeVariant;
     }
 
 }
