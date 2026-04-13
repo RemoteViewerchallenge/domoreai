@@ -27,6 +27,7 @@ export const GridCell = ({ children, borderColor, bgColor }: any) => {
 
 GridCell.craft = {
   displayName: 'Cell',
+  isCanvas: true,
   rules: {
     canDrag: () => false,
   }
@@ -39,11 +40,13 @@ export const GridLayout = () => {
   const { actions } = useEditor();
   const vars = useAllInheritedVars(id);
 
-  const cols = Math.max(1, Number(vars['grid.columns']) || 1);
-  const rows = Math.max(1, Number(vars['grid.rows']) || 1);
+  // Defaults updated to 2x2 for better visibility
+  const cols = Math.max(1, typeof vars['grid.columns'] === 'number' ? vars['grid.columns'] : 2);
+  const rows = Math.max(1, typeof vars['grid.rows'] === 'number' ? vars['grid.rows'] : 2);
   const totalCells = cols * rows;
 
-  const borderColor = String(vars['color.border'] || '#ffffff');
+  // Border fallback updated to #444444 for dark backgrounds
+  const borderColor = String(vars['color.border'] || '#444444');
   const bgColor = String(vars['color.background'] || '#121212');
 
   return (
@@ -58,7 +61,9 @@ export const GridLayout = () => {
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
         background: borderColor,
-        gap: '1px',
+        // Gap updated to 2px
+        gap: '2px',
+        padding: '0px',
         border: `1px solid ${borderColor}`,
         boxSizing: 'border-box',
         overflow: 'hidden',

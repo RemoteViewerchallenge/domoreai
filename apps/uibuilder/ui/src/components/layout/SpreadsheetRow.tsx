@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    SpreadsheetRow.tsx — Variable editor optimized for Sidebar.
-   2-column grid layout to pack info tightly.
+   Includes inheritance toggle (+/x) for each variable.
    ═══════════════════════════════════════════════════════════════ */
 
 import React, { useCallback } from 'react';
@@ -13,7 +13,7 @@ interface VarCellProps {
 
 const VarCell = React.memo(({ def, nodeId }: VarCellProps) => {
   const { value, isLocal } = useInheritedVar(def.key, nodeId);
-  const { setOverride, hasOverride } = useVarStore();
+  const { setOverride, removeOverride, hasOverride } = useVarStore();
   const isOwned = hasOverride(nodeId, def.key);
 
   const handleChange = useCallback(
@@ -28,6 +28,14 @@ const VarCell = React.memo(({ def, nodeId }: VarCellProps) => {
     },
     [isOwned, setOverride, nodeId, def.key, def.type],
   );
+
+  const toggleOverride = useCallback(() => {
+    if (isOwned) {
+      removeOverride(nodeId, def.key);
+    } else {
+      setOverride(nodeId, def.key, value);
+    }
+  }, [isOwned, nodeId, def.key, value, setOverride, removeOverride]);
 
   const strVal = String(value);
 
@@ -47,6 +55,28 @@ const VarCell = React.memo(({ def, nodeId }: VarCellProps) => {
         <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
           {def.key.split('.').pop()}
         </span>
+        
+        {/* Toggle Button for Inheritance */}
+        <button
+          onClick={toggleOverride}
+          style={{
+            width: 16,
+            height: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: isOwned ? 'rgba(255,255,255,0.1)' : 'transparent',
+            border: 'none',
+            color: isOwned ? '#ef4444' : '#3b82f6',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontFamily: 'monospace',
+            padding: 0,
+            borderRadius: 2
+          }}
+        >
+          {isOwned ? '×' : '+'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
