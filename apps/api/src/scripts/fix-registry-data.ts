@@ -1,5 +1,5 @@
 
-import { prisma } from '../db';
+import { prisma } from '../db.js';
 
 async function main() {
     console.log("🚑 Starting Registry Healer...");

@@ -1,7 +1,7 @@
 
-import { RoleFactoryService } from '../services/RoleFactoryService';
-import { ProviderManager } from '../services/ProviderManager';
-import { prisma } from '../db';
+import { RoleFactoryService } from '../services/RoleFactoryService.js';
+import { ProviderManager } from '../services/ProviderManager.js';
+import { prisma } from '../db.js';
 
 async function main() {
     console.log("--- Role Persistence Verification ---");

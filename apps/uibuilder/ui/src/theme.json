@@ -1,0 +1,29 @@
+{
+  "colors": {
+    "background": "#09090b",
+    "surface": "#18181b",
+    "primary": "#06b6d4",
+    "text": "#ffffff",
+    "textMuted": "#71717a",
+    "border": "#27272a",
+    "error": "#ef4444",
+    "success": "#22c55e"
+  },
+  "typography": {
+    "fontFamily": "Inter, system-ui, sans-serif",
+    "fontMono": "JetBrains Mono, monospace",
+    "sizeSm": "11px",
+    "sizeBase": "13px",
+    "sizeLg": "16px"
+  },
+  "shape": {
+    "radius": "6px",
+    "radiusFull": "9999px"
+  },
+  "density": {
+    "paddingSm": "8px",
+    "paddingBase": "16px",
+    "paddingLg": "24px",
+    "headerHeight": "56px"
+  }
+}
