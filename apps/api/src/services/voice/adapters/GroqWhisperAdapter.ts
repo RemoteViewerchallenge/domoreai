@@ -61,7 +61,7 @@ export class GroqWhisperAdapter implements STTEngine {
 
     try {
       // Convert buffer to File object
-      const audioFile = new File([audioBuffer], 'audio.webm', {
+      const audioFile = new File([new Uint8Array(audioBuffer)], 'audio.webm', {
         type: 'audio/webm',
       });
 
@@ -83,19 +83,22 @@ export class GroqWhisperAdapter implements STTEngine {
 
   /**
    * Transcribe audio with streaming support
-   * Note: Groq doesn't support streaming for Whisper, so this returns the full result
+   * Note: Groq doesn't support streaming for Whisper, so this provides a generator that emits the full result
    */
-  async transcribeStream(
-    audioBuffer: Buffer,
-    onChunk: (text: string) => void,
-    options?: {
-      language?: string;
-      prompt?: string;
+  async *transcribeStream(audioStream: ReadableStream<any>): AsyncGenerator<string> {
+    // Collecting stream data to Buffer
+    const reader = audioStream.getReader();
+    const chunks: Uint8Array[] = [];
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
     }
-  ): Promise<void> {
-    // Groq Whisper doesn't support streaming, so we just return the full result
-    const text = await this.transcribe(audioBuffer, options);
-    onChunk(text);
+    
+    const audioBuffer = Buffer.concat(chunks);
+    const text = await this.transcribe(audioBuffer);
+    yield text;
   }
 
   /**
