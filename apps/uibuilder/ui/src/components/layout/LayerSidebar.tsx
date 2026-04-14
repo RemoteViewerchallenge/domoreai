@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEditor } from '@craftjs/core';
 import {
   GROUP_ORDER,
@@ -11,6 +11,8 @@ const TreeItem = ({ id, depth = 0, onEdit }: { id: string; depth: number, onEdit
     node: query.node(id).get()
   }));
 
+  // Skip rendering 'Cell' nodes in the layers tree to reduce clutter,
+  // but they are still editable when selected on canvas.
   if (node.data.displayName === 'Cell') {
     const children = node.data.nodes || [];
     return (
@@ -71,6 +73,19 @@ export const LayerSidebar = ({ onClose }: { onClose: () => void }) => {
   const [view, setView] = useState<'layers' | 'edit'>('layers');
   const [editNodeId, setEditNodeId] = useState<string | null>(null);
 
+  // Sync with editor selection
+  const { selectedId } = useEditor((state) => {
+    const [id] = state.events.selected;
+    return { selectedId: id };
+  });
+
+  useEffect(() => {
+    if (selectedId) {
+      setEditNodeId(selectedId);
+      setView('edit');
+    }
+  }, [selectedId]);
+
   const handleEdit = (id: string) => {
     setEditNodeId(id);
     setView('edit');
@@ -78,13 +93,11 @@ export const LayerSidebar = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div style={{
-      width: 300,
-      height: '100vh',
+      width: '100%',
+      height: '100%',
       background: '#0c0c0e',
-      borderRight: '1px solid #27272a',
       display: 'flex',
       flexDirection: 'column',
-      zIndex: 1000
     }}>
       <div style={{
         padding: '16px',
@@ -111,21 +124,25 @@ export const LayerSidebar = ({ onClose }: { onClose: () => void }) => {
           </div>
         ) : (
           <div style={{ padding: '16px 0' }}>
-             <div style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 16, fontSize: 10, opacity: 0.5, textAlign: 'center' }}>
-               Editing Node: {editNodeId}
-             </div>
-            {GROUP_ORDER.map((group) => {
-              const defs = getVarsForGroup(group);
-              if (defs.length === 0) return null;
-              return (
-                <SpreadsheetRow
-                  key={group}
-                  group={group}
-                  defs={defs}
-                  nodeId={editNodeId!}
-                />
-              );
-            })}
+             {editNodeId && (
+               <>
+                <div style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 16, fontSize: 10, opacity: 0.5, textAlign: 'center' }}>
+                  Editing Node: {editNodeId}
+                </div>
+                {GROUP_ORDER.map((group) => {
+                  const defs = getVarsForGroup(group);
+                  if (defs.length === 0) return null;
+                  return (
+                    <SpreadsheetRow
+                      key={group}
+                      group={group}
+                      defs={defs}
+                      nodeId={editNodeId}
+                    />
+                  );
+                })}
+               </>
+             )}
           </div>
         )}
       </div>

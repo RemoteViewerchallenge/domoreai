@@ -26,22 +26,40 @@ export default function App() {
   return (
     <VarStoreProvider>
       <Editor resolver={resolver}>
-        <div style={{ display: 'flex', width: '100vw', height: '100vh', background: '#09090b', overflow: 'hidden' }}>
-          {sidebarOpen && (
-            <LayerSidebar
-              onClose={() => setSidebarOpen(false)}
-            />
-          )}
+        <div style={{ 
+          display: 'flex', 
+          width: '100vw', 
+          height: '100vh', 
+          background: '#0a0a0c', 
+          overflow: 'hidden' 
+        }}>
+          {/* Sidebar container */}
+          <div style={{ 
+            width: sidebarOpen ? 300 : 0, 
+            transition: 'width 0.3s ease',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+             <div style={{ width: 300, height: '100%' }}>
+               <LayerSidebar onClose={() => setSidebarOpen(false)} />
+             </div>
+          </div>
           
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {/* Main Container */}
+          <div style={{ 
+            flex: 1, 
+            height: '100%',
+            position: 'relative', 
+            overflow: 'hidden',
+            display: 'flex'
+          }}>
             <ContextMenu onShowLayers={() => setSidebarOpen(true)}>
-              <Frame>
-                <Element
-                  id="ROOT"
-                  is={Canvas}
-                  canvas
-                />
-              </Frame>
+              {/* Ensure Frame fills the context menu div */}
+              <div style={{ width: '100%', height: '100%', display: 'flex' }}>
+                <Frame>
+                  <Element id="ROOT" is={Canvas} canvas />
+                </Frame>
+              </div>
             </ContextMenu>
           </div>
         </div>
