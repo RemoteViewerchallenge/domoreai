@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    vars.ts — Bare bones variable definition for inheritance engine.
    Focus: Grid layout, borders, and backgrounds only.
+   Updated defaults to 2x2 for better visibility.
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEditor } from '@craftjs/core';
@@ -19,9 +20,9 @@ export interface VarDef {
 // ── Catalog ───────────────────────────────────────────────────────
 
 export const VAR_CATALOG: VarDef[] = [
-  { key: 'grid.columns',      group: 'layout', type: 'number',  defaultValue: 1 },
-  { key: 'grid.rows',         group: 'layout', type: 'number',  defaultValue: 1 },
-  { key: 'color.border',      group: 'color',  type: 'hex',     defaultValue: '#ffffff' },
+  { key: 'grid.columns',      group: 'layout', type: 'number',  defaultValue: 2 },
+  { key: 'grid.rows',         group: 'layout', type: 'number',  defaultValue: 2 },
+  { key: 'color.border',      group: 'color',  type: 'hex',     defaultValue: '#444444' },
   { key: 'color.background',  group: 'color',  type: 'hex',     defaultValue: '#121212' },
 ];
 
@@ -34,7 +35,6 @@ export const getVarsForGroup = (group: string) =>
 
 export function useAllInheritedVars(nodeId: string): Record<string, string | number> {
   const { query } = useEditor();
-
   const result: Record<string, any> = {};
 
   // 1. Fill with defaults
@@ -46,7 +46,8 @@ export function useAllInheritedVars(nodeId: string): Record<string, string | num
     if (!id) return;
     try {
       const node = query.node(id).get();
-      overridesStack.unshift(node.data.props.customOverrides || {});
+      const nodeOverrides = node.data.props.customOverrides || {};
+      overridesStack.unshift(nodeOverrides);
       walk(node.data.parent);
     } catch { /* end of tree */ }
   };
@@ -61,7 +62,7 @@ export function useAllInheritedVars(nodeId: string): Record<string, string | num
 export function useInheritedVar(key: string, nodeId: string) {
   const vars = useAllInheritedVars(nodeId);
   const { isLocal } = useEditor((state) => ({
-    isLocal: !!state.nodes[nodeId]?.data.props?.customOverrides?.[key]
+    isLocal: !!state.nodes[nodeId]?.data?.props?.customOverrides?.[key]
   }));
 
   return { value: vars[key], isLocal };
@@ -92,16 +93,12 @@ export function useVarStore() {
     } catch { return false; }
   };
 
-  // Minimal mock for ContextMenu compatibility
-  const moveOverrideToParent = (nodeId: string, key: string) => {}; 
-  const moveOverrideToRoot = (nodeId: string, key: string) => {};
-
   return { 
     setOverride, 
     removeOverride, 
-    hasOverride, 
-    moveOverrideToParent, 
-    moveOverrideToRoot,
+    hasOverride,
+    moveOverrideToParent: () => {}, 
+    moveOverrideToRoot: () => {},
     overrides: {} 
   };
 }

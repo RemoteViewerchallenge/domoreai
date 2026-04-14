@@ -11,7 +11,7 @@ import { GridLayout } from '../components/layout/GridLayout';
 interface MenuState {
   mouseX: number;
   mouseY: number;
-  nodeId: string | null;
+  nodeId: string;
 }
 
 export const ContextMenu = ({ children, onShowLayers }: { children: ReactNode; onShowLayers?: () => void }) => {
@@ -23,68 +23,86 @@ export const ContextMenu = ({ children, onShowLayers }: { children: ReactNode; o
     e.preventDefault();
     e.stopPropagation();
 
-    let nodeId: string | null = null;
+    let targetNodeId = 'ROOT';
     let el = e.target as HTMLElement | null;
 
-    while (el && el !== containerRef.current) {
+    // Search for a node ID up the DOM tree
+    while (el) {
       if (el.dataset.craftNodeId) {
-        nodeId = el.dataset.craftNodeId;
+        targetNodeId = el.dataset.craftNodeId;
         break;
       }
+      if (el === containerRef.current) break;
       el = el.parentElement;
     }
 
-    setMenu({ mouseX: e.clientX, mouseY: e.clientY, nodeId });
+    setMenu({ 
+      mouseX: e.clientX, 
+      mouseY: e.clientY, 
+      nodeId: targetNodeId 
+    });
   }, []);
 
   const close = useCallback(() => setMenu(null), []);
 
   const addLayout = useCallback((parentId: string) => {
-    const tree = query.parseReactElement(<GridLayout />).toNodeTree();
-    actions.addNodeTree(tree, parentId);
+    // FIX Prompt 0: Add ONLY the parent GridLayout node.
+    // Rely on GridLayout defining its own internal cells/elements.
+    const node = query.createNode(React.createElement(GridLayout as any));
+    actions.add(node, parentId);
     close();
   }, [actions, query, close]);
 
   const deleteNode = useCallback((nodeId: string) => {
-    if (nodeId !== 'ROOT') actions.delete(nodeId);
+    if (nodeId !== 'ROOT') {
+      actions.delete(nodeId);
+    }
     close();
   }, [actions, close]);
 
   const renderMenuItems = () => {
-    if (!menu || !menu.nodeId) return null;
+    if (!menu) return null;
     const { nodeId } = menu;
 
-    let displayName = 'Unknown';
+    let displayName = 'Layer';
     let isCanvas = false;
+    
     try {
       const node = query.node(nodeId).get();
-      displayName = node.data.displayName || node.data.name || 'Unknown';
+      displayName = node.data.displayName || node.data.name || 'Layer';
       isCanvas = node.data.isCanvas;
-    } catch { }
+    } catch {
+      if (nodeId === 'ROOT') {
+        displayName = 'Canvas';
+        isCanvas = true;
+      }
+    }
 
     const items: React.ReactNode[] = [];
 
     items.push(
       <MenuItem key="layers" onClick={() => { onShowLayers?.(); close(); }} sx={menuItemSx}>
-        Show Layers Sidebar
+        Open Layers Tree
       </MenuItem>
     );
 
     if (nodeId !== 'ROOT') {
       items.push(
-        <MenuItem key="delete" onClick={() => deleteNode(nodeId)} sx={{ ...menuItemSx, color: '#ef4444' }}>
+        <MenuItem key="delete" onClick={() => deleteNode(nodeId)} sx={{ ...menuItemSx, color: '#f87171' }}>
           Delete {displayName}
         </MenuItem>
       );
     }
 
-    items.push(<Divider key="d1" sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />);
+    items.push(<Divider key="d1" sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />);
 
-    // Add layout is allowed if it's a Canvas or a Cell
-    if (nodeId === 'ROOT' || isCanvas || displayName.toLowerCase().includes('cell')) {
+    // Logic: Always allow adding layout into ROOT, or into any Canvas/Cell/Layout
+    const canAddLayout = nodeId === 'ROOT' || isCanvas || displayName.toLowerCase().includes('cell') || displayName.toLowerCase().includes('layout');
+    
+    if (canAddLayout) {
       items.push(
         <MenuItem key="add-layout" onClick={() => addLayout(nodeId)} sx={menuItemSx}>
-          Add Layout Here
+          Add Layout into {displayName}
         </MenuItem>
       );
     }
@@ -96,7 +114,14 @@ export const ContextMenu = ({ children, onShowLayers }: { children: ReactNode; o
     <div
       ref={containerRef}
       onContextMenu={handleContextMenu}
-      style={{ width: '100%', height: '100%' }}
+      style={{ 
+        width: '100%', 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        cursor: 'default'
+      }}
     >
       {children}
       <Menu
@@ -104,16 +129,17 @@ export const ContextMenu = ({ children, onShowLayers }: { children: ReactNode; o
         onClose={close}
         anchorReference="anchorPosition"
         anchorPosition={menu ? { top: menu.mouseY, left: menu.mouseX } : undefined}
+        transitionDuration={0}
         slotProps={{
           paper: {
             sx: {
-              bgcolor: '#09090b',
+              bgcolor: '#0e0e10',
               color: '#fff',
               border: '1px solid #27272a',
-              borderRadius: 1,
+              borderRadius: '6px',
               minWidth: 180,
-              py: 0.5,
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.9)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
+              backgroundImage: 'none'
             },
           },
         }}
@@ -127,9 +153,9 @@ export const ContextMenu = ({ children, onShowLayers }: { children: ReactNode; o
 const menuItemSx = {
   fontFamily: 'monospace',
   fontSize: 11,
-  color: '#fff',
-  py: 0.8,
+  color: '#d1d1d6',
+  py: 1,
   px: 2,
   minHeight: 32,
-  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+  '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: '#fff' },
 } as const;

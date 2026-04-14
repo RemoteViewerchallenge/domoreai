@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    SpreadsheetRow.tsx — Variable editor optimized for Sidebar.
-   Includes inheritance toggle (+/x) for each variable.
+   Robust inputs with local state to prevent jumping during typing.
    ═══════════════════════════════════════════════════════════════ */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useEditor } from '@craftjs/core';
 import { useVarStore, useInheritedVar, type VarDef } from '../../core/vars';
 
 interface VarCellProps {
@@ -12,22 +13,34 @@ interface VarCellProps {
 }
 
 const VarCell = React.memo(({ def, nodeId }: VarCellProps) => {
-  const { value, isLocal } = useInheritedVar(def.key, nodeId);
-  const { setOverride, removeOverride, hasOverride } = useVarStore();
-  const isOwned = hasOverride(nodeId, def.key);
+  const { value } = useInheritedVar(def.key, nodeId);
+  const { setOverride, removeOverride } = useVarStore();
+  const { isOwned } = useEditor((state) => ({
+    isOwned: !!state.nodes[nodeId]?.data?.props?.customOverrides?.[def.key]
+  }));
 
-  const handleChange = useCallback(
-    (newVal: string) => {
-      if (!isOwned) return;
-      let parsed: string | number = newVal;
-      if (def.type === 'number') {
-        const n = Number(newVal);
-        if (!isNaN(n)) parsed = n;
+  // Local state for the input to allow free typing before committing
+  const [localVal, setLocalVal] = useState(String(value));
+
+  // Keep local state in sync when external value changes
+  useEffect(() => {
+    setLocalVal(String(value));
+  }, [value]);
+
+  const commit = useCallback((raw: string) => {
+    if (!isOwned) return;
+    if (def.type === 'number') {
+      const n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= 1) {
+        setOverride(nodeId, def.key, n);
+      } else {
+        // Revert to current value if invalid
+        setLocalVal(String(value));
       }
-      setOverride(nodeId, def.key, parsed);
-    },
-    [isOwned, setOverride, nodeId, def.key, def.type],
-  );
+    } else {
+      setOverride(nodeId, def.key, raw);
+    }
+  }, [isOwned, def.type, def.key, nodeId, value, setOverride]);
 
   const toggleOverride = useCallback(() => {
     if (isOwned) {
@@ -40,74 +53,92 @@ const VarCell = React.memo(({ def, nodeId }: VarCellProps) => {
   const strVal = String(value);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        padding: '6px 8px',
-        border: '1px solid rgba(255,255,255,0.03)',
-        background: isOwned ? 'rgba(255,255,255,0.02)' : 'transparent',
-        borderRadius: 4
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
+    <div style={{
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 4,
+      padding: '8px',
+      border: `1px solid ${isOwned ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.05)'}`,
+      background: isOwned ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.01)',
+      borderRadius: 4, 
+      minWidth: 0
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+        <span style={{ 
+          fontSize: 9, 
+          color: isOwned ? '#fff' : 'rgba(255,255,255,0.4)', 
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
           {def.key.split('.').pop()}
         </span>
-        
-        {/* Toggle Button for Inheritance */}
-        <button
-          onClick={toggleOverride}
-          style={{
-            width: 16,
-            height: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: isOwned ? 'rgba(255,255,255,0.1)' : 'transparent',
-            border: 'none',
-            color: isOwned ? '#ef4444' : '#3b82f6',
-            cursor: 'pointer',
-            fontSize: 12,
-            fontFamily: 'monospace',
-            padding: 0,
-            borderRadius: 2
-          }}
-        >
+        <button onClick={toggleOverride} style={{
+          width: 14, height: 14, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: 'none', 
+          border: 'none',
+          color: isOwned ? '#ef4444' : '#3b82f6',
+          cursor: 'pointer', 
+          fontSize: 13, 
+          fontFamily: 'monospace', 
+          padding: 0, 
+          lineHeight: 1
+        }}>
           {isOwned ? '×' : '+'}
         </button>
       </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
         {def.type === 'hex' && (
-          <label style={{ cursor: isOwned ? 'pointer' : 'default', width: 14, height: 14, borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, background: strVal }}>
-             <input
-              type="color"
-              value={strVal}
-              onChange={(e) => isOwned && handleChange(e.target.value)}
+          <label style={{ 
+            width: 12, height: 12, 
+            borderRadius: 2, 
+            border: '1px solid rgba(255,255,255,0.15)', 
+            flexShrink: 0, 
+            background: strVal, 
+            cursor: isOwned ? 'pointer' : 'default' 
+          }}>
+            <input 
+              type="color" 
+              value={strVal} 
               disabled={!isOwned}
-              style={{ opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+              onChange={(e) => { setLocalVal(e.target.value); commit(e.target.value); }}
+              style={{ opacity: 0, width: '100%', height: '100%', padding: 0, border: 'none' }} 
             />
           </label>
         )}
         
         <input
           type={def.type === 'number' ? 'number' : 'text'}
-          value={strVal}
-          onChange={(e) => isOwned && handleChange(e.target.value)}
+          value={localVal}
           disabled={!isOwned}
-          placeholder={String(def.defaultValue)}
+          min={def.type === 'number' ? 1 : undefined}
+          step={def.type === 'number' ? 1 : undefined}
+          onChange={(e) => { 
+            setLocalVal(e.target.value); 
+            if (def.type !== 'number') commit(e.target.value); 
+          }}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => { 
+            if (e.key === 'Enter') commit((e.target as HTMLInputElement).value); 
+          }}
           style={{
-            background: isOwned ? 'rgba(255,255,255,0.05)' : 'transparent',
-            border: isOwned ? '1px solid rgba(255,255,255,0.1)' : 'none',
+            background: 'transparent', 
+            border: 'none', 
             outline: 'none',
-            color: isLocal ? '#fff' : 'rgba(255,255,255,0.4)',
-            fontFamily: 'monospace',
+            color: isOwned ? '#fff' : 'rgba(255,255,255,0.25)',
+            fontFamily: 'monospace', 
             fontSize: 11,
-            flex: 1,
-            padding: '2px 4px',
-            borderRadius: 2
+            width: '100%', 
+            minWidth: 0, 
+            boxSizing: 'border-box',
+            padding: '1px 2px'
           }}
         />
       </div>

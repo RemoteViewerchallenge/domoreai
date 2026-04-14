@@ -6,8 +6,8 @@ export const Canvas = ({ children }: any) => {
   const { actions } = useEditor();
   const vars = useAllInheritedVars(id);
 
-  const borderColor = String(vars['color.border'] || '#ffffff');
-  const bgColor = String(vars['color.background'] || '#121212');
+  const borderColor = String(vars['color.border'] || '#444444');
+  const bgColor = String(vars['color.background'] || '#000000');
 
   return (
     <div
@@ -15,18 +15,28 @@ export const Canvas = ({ children }: any) => {
       data-craft-node-id={id}
       onClick={(e) => { e.stopPropagation(); actions.selectNode(id); }}
       style={{
-        width: '100vw',
-        height: '100vh',
+        // Use 100% to adapt to the flex container (sidebar pushes this)
+        width: '100%',
+        height: '100%',
         background: bgColor,
-        padding: '0',
+        padding: '20px', // Add some breathing room so it feels like a workspace
         margin: '0',
         border: `1px solid ${borderColor}`,
         boxSizing: 'border-box',
         position: 'relative',
         overflow: 'hidden',
+        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      {children}
+      {/* Internal "Stage" wrapper to help maintain visual centering if needed */}
+      <div style={{ 
+        width: '100%', 
+        height: '100%', 
+        position: 'relative',
+        border: `1px dashed rgba(255,255,255,0.05)`
+      }}>
+        {children}
+      </div>
     </div>
   );
 };
