@@ -46,7 +46,9 @@ export class McpOrchestrator implements IMcpOrchestrator {
   async getToolsForSandbox(): Promise<SandboxTool[]> {
     const promises = Array.from(this.activeServers.entries()).map(async ([serverName, server]) => {
       try {
+        console.log(`[Orchestrator] Requesting tools from ${serverName}...`);
         const { tools } = await server.client.listTools();
+        console.log(`[Orchestrator] Received ${tools.length} tools from ${serverName}`);
         return tools.map((tool) => this.formatToolForSandbox(serverName, server, tool));
       } catch (error) {
         console.warn(`[Orchestrator] Failed to fetch tools from ${serverName}:`, error);
@@ -59,7 +61,7 @@ export class McpOrchestrator implements IMcpOrchestrator {
 
     // Inject Internal Tools
     return [
-      ...mcpTools, 
+      ...mcpTools,
       searchCodebaseTool
     ];
   }
@@ -131,24 +133,29 @@ export class McpOrchestrator implements IMcpOrchestrator {
 
       // 4. Connect
       await client.connect(transport);
-      
-      this.activeServers.set(serverName, { 
-        client, 
-        transport, 
-        lastUsed: Date.now() 
+
+      this.activeServers.set(serverName, {
+        client,
+        transport,
+        lastUsed: Date.now()
       });
-      
+
       console.log(`[Orchestrator] Connected to ${serverName}`);
 
-      // Document the server
-      // We run this in background so it doesn't block startup
-      void import('../services/ToolDocumenter.js').then(({ ToolDocumenter }) => {
-        void ToolDocumenter.documentServer(serverName, client).catch(err => {
-          console.error(`[Orchestrator] Failed to document ${serverName}:`, err);
-        });
-      });
-    } catch (error) {
-      console.error(`[Orchestrator] Failed to start server ${serverName}:`, error);
+      // Document the server (Background) - skip in tests
+      if (process.env.NODE_ENV !== 'test') {
+        void (async () => {
+          try {
+            const { ToolDocumenter } = await import('../services/ToolDocumenter.js');
+            await ToolDocumenter.documentServer(serverName, client);
+          } catch (err) {
+            console.warn(`[Orchestrator] Warning: Could not document ${serverName}:`, err);
+          }
+        })();
+      }
+
+    } catch (error: any) {
+      console.error(`[Orchestrator] Failed to start server ${serverName}:`, error?.message || error);
       throw error;
     }
   }
@@ -167,6 +174,18 @@ export class McpOrchestrator implements IMcpOrchestrator {
         }
       }
     }
+  }
+
+  async shutdownAll() {
+    for (const [name, server] of this.activeServers.entries()) {
+      console.log(`[Orchestrator] Shutting down server: ${name}`);
+      try {
+        await server.client.close();
+      } catch (e) {
+        console.error(`[Orchestrator] Error closing client ${name}:`, e);
+      }
+    }
+    this.activeServers.clear();
   }
 }
 

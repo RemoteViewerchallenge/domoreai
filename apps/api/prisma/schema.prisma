@@ -9,14 +9,20 @@ datasource db {
 }
 
 model ProviderConfig {
-  id        String   @id
-  label     String
-  type      String
-  baseURL   String?
-  isEnabled Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Model     Model[]
+  id             String   @id
+  label          String
+  type           String
+  baseURL        String?
+  isEnabled      Boolean  @default(true)
+  hasCreditCard  Boolean  @default(false)
+  isFreeOnly     Boolean  @default(true)
+  monthlyBudget  Float    @default(0)
+  currentSpend   Float    @default(0)
+  pricingUrl     String?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  Model          Model[]
 }
 
 model Workspace {
@@ -124,6 +130,12 @@ model ModelCapabilities {
   confidence              String?
   source                  String?
   specs                   Json?    @default("{}")
+  modalities              String[] @default([])
+  isFreeTier              Boolean  @default(false)
+  successCount            Int      @default(0)
+  failureCount            Int      @default(0)
+  avgLatencyMs            Float    @default(0)
+  utilityScore            Float    @default(0)
   model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")
