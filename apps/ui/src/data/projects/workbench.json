@@ -27,7 +27,7 @@
         {
           "id": "grid-canvas",
           "type": "NebulaCanvas",
-          "props": { "className": "flex-1" }
+          "props": { "className": "flex-1", "flex": 1 }
         }
       ]
     }

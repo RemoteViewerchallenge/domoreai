@@ -5,9 +5,16 @@ export interface CardData {
   id: string;
   roleId: string;
   column: number;
+  screenspaceId: number;
   title?: string;
   type?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface Screenspace {
+  id: number;
+  name: string;
+  cardIds: string[];
 }
 
 export interface WorkspaceState {
@@ -35,6 +42,15 @@ export interface WorkspaceState {
     injectedState: boolean;
   };
   setAiContext: (context: Partial<WorkspaceState['aiContext']>) => void;
+
+  // [NEW] Screenspaces
+  activeScreenspaceId: number;
+  screenspaces: Screenspace[];
+  switchScreenspace: (id: number) => void;
+
+  // [NEW] Zero-Trust Control Plane
+  showControlPlane: boolean;
+  toggleControlPlane: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -46,13 +62,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
       setSidebarOpen: (open) => set({ showSidebar: open }),
       
+      showControlPlane: false,
+      toggleControlPlane: () => set((state) => ({ showControlPlane: !state.showControlPlane })),
       cards: [
-        { id: '1', roleId: '', column: 0 },
-        { id: '2', roleId: '', column: 0 },
-        { id: '3', roleId: '', column: 1 },
-        { id: '4', roleId: '', column: 1 },
-        { id: '5', roleId: '', column: 2 },
-        { id: '6', roleId: '', column: 2 },
+        { id: '1', roleId: '', column: 0, screenspaceId: 1 },
+        { id: '2', roleId: '', column: 0, screenspaceId: 1 },
+        { id: '3', roleId: '', column: 1, screenspaceId: 1 },
+        { id: '4', roleId: '', column: 1, screenspaceId: 1 },
+        { id: '5', roleId: '', column: 2, screenspaceId: 1 },
+        { id: '6', roleId: '', column: 2, screenspaceId: 1 },
+        // Refactor screenspace
+        { id: 'r1', roleId: '', column: 0, screenspaceId: 2 },
+        { id: 'r2', roleId: '', column: 1, screenspaceId: 2 },
+        { id: 'r3', roleId: '', column: 2, screenspaceId: 2 },
+        // Logs screenspace
+        { id: 'l1', roleId: '', column: 0, screenspaceId: 3 },
+        { id: 'l2', roleId: '', column: 1, screenspaceId: 3 },
+        { id: 'l3', roleId: '', column: 2, screenspaceId: 3 },
       ],
       setCards: (cards) => set({ cards }),
       addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
@@ -70,10 +96,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         injectedState: false
       },
       setAiContext: (ctx) => set((state) => ({ aiContext: { ...state.aiContext, ...ctx } })),
+
+      activeScreenspaceId: 1,
+      screenspaces: [
+        { id: 1, name: 'Main', cardIds: [] },
+        { id: 2, name: 'Refactor', cardIds: [] },
+        { id: 3, name: 'Logs', cardIds: [] },
+      ],
+      switchScreenspace: (id) => set({ activeScreenspaceId: id }),
     }),
     {
       name: 'workspace-storage', // unique name
-      partialize: (state) => ({ columns: state.columns, cards: state.cards }), // Persist cards!
+      partialize: (state) => ({ columns: state.columns, cards: state.cards, activeScreenspaceId: state.activeScreenspaceId }), // Persist cards!
     }
   )
 );

@@ -1,178 +1,200 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ExecutionStrategies } from '../../src/services/ExecutionStrategies.js';
-import { ActionHandler } from '../../src/services/ActionHandler.js';
+import { JsonRpcStrategy, CodeModeStrategy } from '../../src/services/tooling/ExecutionStrategies.js';
 import { McpOrchestrator } from '../../src/orchestrator/McpOrchestrator.js';
+import { IRegistryClient } from '../../src/interfaces/IRegistryClient.js';
+import { CodeModeUtcpClient } from "@utcp/code-mode";
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-describe('Tooling & MCP Integration', () => {
-  // Increase timeout for MCP tests
-  vi.setConfig({ testTimeout: 15000 });
+// Mock CodeModeUtcpClient
+const mockClient = {
+  callTool: vi.fn(),
+  callToolChain: vi.fn(),
+} as unknown as CodeModeUtcpClient;
 
-  describe('1. DETERMINISTIC OUTPUT PARSING (JSON vs TypeScript)', () => {
-    it('Test A: should extract JSON from conversational text without SyntaxError', () => {
-      const sloppyOutput = `
-        I will help you with that.
-        \`\`\`json
-        {
-          "tool": "webScraper",
-          "args": { "url": "https://example.com" }
-        }
-        \`\`\`
-        Done.
-      `;
-      const blocks = ExecutionStrategies.extractToolCalls(sloppyOutput);
-      const jsonBlock = blocks.find(b => b.type === 'json');
-      expect(jsonBlock).toBeDefined();
+// Mock IRegistryClient
+const mockRegistry: IRegistryClient = {
+  listServers: vi.fn(),
+  getServerConfig: vi.fn(),
+};
 
-      const parsed = JSON.parse(jsonBlock!.content);
-      expect(parsed.tool).toBe('webScraper');
+describe('Tooling and MCP Integration', () => {
+  
+  describe('DETERMINISTIC OUTPUT PARSING', () => {
+    const jsonStrategy = new JsonRpcStrategy(mockClient);
+    const codeStrategy = new CodeModeStrategy(mockClient);
+
+    it('should extract JSON perfectly from conversational text (Test A)', async () => {
+      const sloppyInput = `Certainly! I will call the webScraper tool for you.
+\`\`\`json
+{
+  "tool": "webScraper",
+  "args": { "url": "https://example.com" }
+}
+\`\`\`
+I hope this helps!`;
+
+      vi.spyOn(mockClient, 'callTool' as any).mockResolvedValue('Scraped content');
+
+      const result = await jsonStrategy.execute(sloppyInput, {} as any);
+      
+      expect(mockClient.callTool).toHaveBeenCalledWith('webScraper', { url: "https://example.com" }, expect.anything());
+      expect(result.output).toBe('Scraped content');
     });
 
-    it('Test B: should identify typescript block and strip markdown tags', () => {
-      const tsOutput = `
-        Let me run some code:
-        \`\`\`typescript
-        const x = 10;
-        console.log(x);
-        \`\`\`
-      `;
-      const blocks = ExecutionStrategies.extractToolCalls(tsOutput);
-      const tsBlock = blocks.find(b => b.type === 'typescript');
-      expect(tsBlock).toBeDefined();
-      expect(tsBlock!.content).toContain('const x = 10;');
-      expect(tsBlock!.content).not.toContain('\`\`\`typescript');
+    it('should extract JSON from raw text without backticks using brace matching', async () => {
+      const rawInput = `I will call the tool now: { "tool": "webScraper", "args": { "url": "https://example.com" } } please wait.`;
+      
+      vi.spyOn(mockClient, 'callTool' as any).mockResolvedValue('Scraped content');
+
+      const result = await jsonStrategy.execute(rawInput, {} as any);
+      
+      expect(mockClient.callTool).toHaveBeenCalledWith('webScraper', { url: "https://example.com" }, expect.anything());
+      expect(result.output).toBe('Scraped content');
+    });
+
+    it('should correctly identify and extract typescript strategy (Test B)', async () => {
+      const tsInput = `Here is the typescript code:
+\`\`\`typescript
+const result = await system.webScraper({ url: "https://example.com" });
+console.log(result);
+\`\`\``;
+
+      vi.spyOn(mockClient, 'callToolChain' as any).mockResolvedValue({ result: 'Success', logs: ['Log 1'] });
+
+      const result = await codeStrategy.execute(tsInput, {} as any);
+      
+      expect(mockClient.callToolChain).toHaveBeenCalledWith(
+        'const result = await system.webScraper({ url: "https://example.com" });\nconsole.log(result);',
+        expect.anything()
+      );
+      expect(result.output).toBe('Success');
     });
   });
 
-  describe('2. NATIVE TOOL EXECUTION ISOLATION', () => {
-    it('should execute a mocked tool call via ActionHandler', async () => {
-      const handler = new ActionHandler();
-      // We need to implement executeAction in ActionHandler or mock it
-      // For this test, we expect ActionHandler to have a way to handle native tool calls
-      const toolCall = { tool: "webScraper", args: { url: "https://example.com" } };
+  describe('NATIVE TOOL EXECUTION ISOLATION', () => {
+    const jsonStrategy = new JsonRpcStrategy(mockClient);
 
-      // Mocking the internal native tool registry if needed, 
-      // but the task says "Mock the actual HTTP fetch to prevent network dependence"
-      vi.mock('../../src/tools/webScraper.js', () => ({
-        webScraperTool: {
-          handler: vi.fn().mockResolvedValue('<html>Scraped Content</html>')
-        }
-      }));
+    it('should execute a parsed tool call object directly', async () => {
+      // Mocked parsed tool call object in a string as if it was extracted or passed directly
+      const toolCall = JSON.stringify({ tool: "webScraper", args: { url: "https://example.com" } });
+      
+      vi.spyOn(mockClient, 'callTool' as any).mockResolvedValue('Mocked Result');
 
-      const result = await handler.executeNativeTool(toolCall.tool, toolCall.args);
-      expect(result).toBe('<html>Scraped Content</html>');
+      const result = await jsonStrategy.execute(toolCall, {} as any);
+      
+      expect(mockClient.callTool).toHaveBeenCalledWith('webScraper', { url: "https://example.com" }, expect.anything());
+      expect(result.output).toBe('Mocked Result');
     });
   });
 
-  describe('3. MCP SERVER LIFECYCLE (No-AI)', () => {
-    let dummyMcpPath: string;
+  describe('MCP SERVER LIFECYCLE (No-AI)', () => {
     let orchestrator: McpOrchestrator;
+    const dummyServerPath = path.join(__dirname, 'dummy-mcp-server.js');
 
-    beforeEach(() => {
-      dummyMcpPath = path.join(__dirname, 'dummy-mcp.cjs');
-      const dummyContent = `
-        const fs = require('fs');
-        process.stdin.resume();
-        process.stdin.on('data', (data) => {
-          const content = data.toString();
-          const lines = content.split('\\n');
-          for (const line of lines) {
-            if (!line || !line.trim()) continue;
-            try {
-              const request = JSON.parse(line);
-              if (request.method === 'initialize') {
-                const response = JSON.stringify({
-                  jsonrpc: "2.0",
-                  id: request.id,
-                  result: {
-                    protocolVersion: "2024-11-05",
-                    capabilities: { tools: {} },
-                    serverInfo: { name: "dummy", version: "1.0.0" }
-                  }
-                }) + "\\n";
-                process.stdout.write(response);
-              } else if (request.method === 'tools/list') {
-               const response = JSON.stringify({
-                  jsonrpc: "2.0",
-                  id: request.id,
-                  result: {
-                    tools: [{
-                      name: "echo",
-                      description: "Echo message",
-                      inputSchema: { type: "object", properties: { message: { type: "string" } } }
-                    }]
-                  }
-                }) + "\\n";
-                process.stdout.write(response);
-              } else if (request.method === 'tools/call') {
-                const response = JSON.stringify({
-                  jsonrpc: "2.0",
-                  id: request.id,
-                  result: { content: [{ type: "text", text: request.params.arguments.message }] }
-                }) + "\\n";
-                process.stdout.write(response);
-              }
-            } catch (e) {}
-          }
-        });
-      `;
-      fs.writeFileSync(dummyMcpPath, dummyContent);
+    beforeEach(async () => {
+      // Create a dummy MCP server script
+      const serverCode = `
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-      const mockRegistry = {
-        getServerConfig: vi.fn().mockResolvedValue({
-          command: 'node',
-          args: [dummyMcpPath],
-          env: {}
-        })
-      };
-      orchestrator = new McpOrchestrator(mockRegistry as any);
+const server = new Server({ name: "dummy-server", version: "1.0.0" }, { capabilities: { tools: {} } });
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [{ name: "echo", description: "Echoes input", inputSchema: { type: "object", properties: { message: { type: "string" } } } }]
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.name === "echo") {
+    return { content: [{ type: "text", text: \`Echo: \${request.params.arguments.message}\` }] };
+  }
+  return { content: [{ type: "text", text: "Tool not found" }], isError: true };
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+`;
+      await fs.writeFile(dummyServerPath, serverCode);
+      
+      orchestrator = new McpOrchestrator(mockRegistry);
     });
 
-    afterEach(() => {
-      if (fs.existsSync(dummyMcpPath)) fs.unlinkSync(dummyMcpPath);
-      // Clean up orchestrator
-      (orchestrator as any).shutdownAll?.();
+    afterEach(async () => {
+      // Attempt to shut down servers if the method exists
+      if ((orchestrator as any).shutdownAll) {
+        await (orchestrator as any).shutdownAll();
+      }
+      await fs.unlink(dummyServerPath).catch(() => {});
     });
 
-    it('Test A (Startup): should register server as connected', async () => {
-      await orchestrator.prepareEnvironment(['dummy-server']);
-      const activeServers = (orchestrator as any).activeServers;
-      expect(activeServers.has('dummy-server')).toBe(true);
-    });
+    it('should register and connect to the dummy MCP server (Test A)', async () => {
+      vi.spyOn(mockRegistry, 'getServerConfig').mockResolvedValue({
+        command: 'node',
+        args: [dummyServerPath],
+        env: {}
+      });
 
-    it('Test B (Discovery): should return expected JSON schema', async () => {
-      await orchestrator.prepareEnvironment(['dummy-server']);
+      await orchestrator.prepareEnvironment(['dummy']);
+      
+      // We check if it's "connected" by seeing if we can list tools
       const tools = await orchestrator.getToolsForSandbox();
-      const echoTool = tools.find(t => t.name === 'dummy_server_echo');
+      expect(tools.length).toBeGreaterThan(0);
+      expect(tools.some(t => t.name.startsWith('dummy_'))).toBe(true);
+    });
+
+    it('should return the expected JSON schema from list_tools (Test B)', async () => {
+      vi.spyOn(mockRegistry, 'getServerConfig').mockResolvedValue({
+        command: 'node',
+        args: [dummyServerPath],
+        env: {}
+      });
+
+      await orchestrator.prepareEnvironment(['dummy']);
+      const tools = await orchestrator.getToolsForSandbox();
+      
+      const echoTool = tools.find(t => t.name === 'dummy_echo');
       expect(echoTool).toBeDefined();
-      expect(echoTool?.inputSchema.properties.message).toBeDefined();
+      expect(echoTool?.inputSchema).toMatchObject({
+        type: "object",
+        properties: { message: { type: "string" } }
+      });
     });
 
-    it('Test C (Execution): should return correct result from mocked tool', async () => {
-      await orchestrator.prepareEnvironment(['dummy-server']);
+    it('should return correct results from call_tool (Test C)', async () => {
+       vi.spyOn(mockRegistry, 'getServerConfig').mockResolvedValue({
+        command: 'node',
+        args: [dummyServerPath],
+        env: {}
+      });
+
+      await orchestrator.prepareEnvironment(['dummy']);
       const tools = await orchestrator.getToolsForSandbox();
-      const echoTool = tools.find(t => t.name === 'dummy_server_echo');
-      const result = await echoTool?.handler({ message: 'Hello MCP' });
-      expect(result).toBe('Hello MCP');
+      const echoTool = tools.find(t => t.name === 'dummy_echo');
+      expect(echoTool).toBeDefined();
+      
+      const result = await echoTool!.handler!({ message: 'Hello' });
+      expect(result).toBe('Echo: Hello');
     });
 
-    it('Test D (Teardown): should terminate child process cleanly', async () => {
-      await orchestrator.prepareEnvironment(['dummy-server']);
-      const activeServers = (orchestrator as any).activeServers;
-      const server = activeServers.get('dummy-server');
-      const transport = server.transport;
+    it('should terminate the child process cleanly (Test D)', async () => {
+      vi.spyOn(mockRegistry, 'getServerConfig').mockResolvedValue({
+        command: 'node',
+        args: [dummyServerPath],
+        env: {}
+      });
 
-      // Spy on transport.close or similar
-      const closeSpy = vi.spyOn(transport, 'close');
-
-      await (orchestrator as any).shutdownAll?.() || server.client.close();
-
-      expect(activeServers.has('dummy-server')).toBe(false);
-      // Stdio transport should be closed
+      await orchestrator.prepareEnvironment(['dummy']);
+      
+      await orchestrator.shutdownAll();
+      
+      // After shutdown, the active servers should be empty
+      const tools = await orchestrator.getToolsForSandbox();
+      // Should only contain searchCodebaseTool which is injected internally
+      expect(tools.filter(t => t.name.startsWith('dummy_')).length).toBe(0);
     });
   });
 });

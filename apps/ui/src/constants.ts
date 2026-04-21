@@ -36,11 +36,12 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
     identity: {
       personaName: '',
       style: 'PROFESSIONAL_CONCISE',
+      thinkingProcess: 'SOLO',
+      reflectionEnabled: false,
       systemPromptDraft: ''
     },
     cortex: {
-      orchestration: 'SOLO',
-      reflectionEnabled: false,
+      executionMode: 'HYBRID_AUTO',
       capabilities: [], // Non-exclusive checkboxes
       preferences: {
         reasoning: false,
@@ -49,19 +50,26 @@ export const DEFAULT_ROLE_FORM_DATA: RoleFormState = {
         uncensored: false,
         imageGen: false,
       },
-      contextRange: { min: 4096, max: 8192 }
+      contextRange: { min: 4096, max: 128000 }
     },
     governance: {
       rules: [],
       assessmentStrategy: ['LINT_ONLY'], // Non-exclusive checkboxes - default to LINT_ONLY
-      enforcementLevel: 'WARN_ONLY'
+      enforcementLevel: 'LOW',
+      attachedFiles: []
     },
     context: {
       strategy: ['EXPLORATORY'], // Non-exclusive checkboxes - default to EXPLORATORY
-      permissions: ['ALL']
+      permissions: ['ALL'],
+      attachedFiles: []
     },
     tools: {
       customTools: []
+    },
+    behavior: {
+      silenceConfirmation: false
     }
   }
+
+
 };

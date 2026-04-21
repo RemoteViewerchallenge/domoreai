@@ -1,5 +1,7 @@
 import { ToolDefinition } from '../protocols/LocalProtocol.js';
 import { createFsTools } from '../../tools/filesystem.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { browserTools } from '../../tools/browser.js';
 import { webScraperTool } from '../../tools/webScraper.js';
 // import { complexityTool } from '../../tools/complexityTool.js';
@@ -7,7 +9,8 @@ import { terminalTools } from '../../tools/terminal.js';
 import { getComponentRegistrySpec } from '../../tools/componentScanner.js';
 import { listFilesTree, searchCodebase } from '@repo/mcp-server-vfs';
 import { vfsSessionService } from '../vfsSession.service.js';
-import { nebulaTool } from '../../tools/nebulaTool.js';
+import { uiArchitectTools } from '../../tools/uiArchitectTools.js';
+import { roleArchitectTools } from '../../tools/roleArchitectTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
 
@@ -19,12 +22,20 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
              description: themeEditorTool.description,
              input_schema: themeEditorTool.inputSchema as Record<string, unknown>
          },
-         {
-             name: nebulaTool.name,
-             handler: nebulaTool.handler as (args: unknown) => unknown,
-             description: nebulaTool.description,
-             input_schema: nebulaTool.input_schema as Record<string, unknown>
-         },
+         // Atomized UI Architect Tools
+         ...uiArchitectTools.map(t => ({
+             name: t.name,
+             handler: t.handler as (args: unknown) => unknown,
+             description: t.description,
+             input_schema: (t.inputSchema || {}) as Record<string, unknown>
+         })),
+         // Role Architect Tools
+         ...roleArchitectTools.map(t => ({
+             name: t.name,
+             handler: t.handler as (args: unknown) => unknown,
+             description: t.description,
+             input_schema: (t.inputSchema || {}) as Record<string, unknown>
+         })),
          {
            name: typescriptInterpreterTool.name,
            handler: typescriptInterpreterTool.handler as (args: unknown) => unknown,
@@ -136,6 +147,41 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                 type: 'object',
                 properties: {},
                 required: []
+            }
+        },
+        {
+            name: 'system.context_fetch',
+            handler: async (args: unknown) => {
+                const { cardId, filePath, lines = 100 } = args as { cardId?: string; filePath?: string; lines?: number };
+                if (cardId) {
+                    const logPath = path.join(process.cwd(), 'chats', `${cardId}.md`);
+                    try {
+                        const content = await fs.readFile(logPath, 'utf-8');
+                        const logLines = content.split('\n');
+                        return logLines.slice(-lines).join('\n');
+                    } catch {
+                        return "No logs found for this card.";
+                    }
+                }
+                if (filePath) {
+                    try {
+                        const content = await fs.readFile(path.join(rootPath, filePath), 'utf-8');
+                        const fileLines = content.split('\n');
+                        return fileLines.slice(-lines).join('\n');
+                    } catch {
+                        return `Could not read file ${filePath}`;
+                    }
+                }
+                return "Please provide a cardId or filePath.";
+            },
+            description: 'Fetch the last N lines of context (terminal logs or file content) for a specific card or file.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    cardId: { type: 'string', description: 'The ID of the card to fetch logs from' },
+                    filePath: { type: 'string', description: 'Optional: Direct path to a file to tail' },
+                    lines: { type: 'number', description: 'Number of lines to fetch (default 100)' }
+                }
             }
         }
      ];

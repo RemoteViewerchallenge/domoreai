@@ -1,10 +1,14 @@
-import { ToolDefinition } from '../protocols/LocalProtocol.js';
+import fs from 'fs/promises';
+import path from 'path';
 
-export async function loadToolDocs(tools: string[], nativeTools: ToolDefinition[]): Promise<string> {
-    const docs: string[] = [];
-    const fs = await import('fs/promises');
-    const path = await import('path');
+export interface ToolDocs {
+    signatures: string;
+    fullDocs: string;
+}
 
+export async function loadToolDocs(
+    tools: string[]
+): Promise<ToolDocs> {
     // Resolve path to .domoreai/tools
     let rootDir = process.cwd();
     if (rootDir.endsWith('apps/api')) {
@@ -12,34 +16,41 @@ export async function loadToolDocs(tools: string[], nativeTools: ToolDefinition[
     }
     const toolsDir = path.join(rootDir, '.domoreai/tools');
 
-    for (const tool of tools) {
-        // 1. Native Tools
-        const nativeTool = nativeTools.find(t => t.name === tool);
-        if (nativeTool) {
-            docs.push(`### Tool: \`system.${nativeTool.name}\``);
-            docs.push(`**Description:** ${nativeTool.description}`);
-            docs.push('**Signature:**');
-            docs.push('```typescript');
-            // Simplified signature generation
-            const schema = nativeTool.input_schema as { properties?: Record<string, { type: string }> } | undefined;
-            const props = schema?.properties || {};
-            const args = Object.entries(props).map(([k, v]) => `${k}: ${v.type}`).join(', ');
-            docs.push(`await system.${nativeTool.name}({ ${args} })`);
-            docs.push('```');
-            docs.push('---');
-            continue;
+    const signatureParts: string[] = [];
+    const exampleParts: string[] = [];
+
+    // Load requested toolsets
+    for (const toolRequest of tools) {
+        let content = "";
+        try {
+            content = await fs.readFile(path.join(toolsDir, `${toolRequest}_examples.md`), 'utf-8');
+        } catch {
+            try {
+                content = await fs.readFile(path.join(toolsDir, `${toolRequest}.md`), 'utf-8');
+            } catch {
+                continue;
+            }
         }
 
-        // 2. MCP Tools (Server Names)
-        // We assume the tool string IS the server name for MCP tools in this context
-        // (AgentRuntime init receives server names)
-        try {
-            const content = await fs.readFile(path.join(toolsDir, `${tool}_examples.md`), 'utf-8');
-            docs.push(content);
-        } catch {
-            // Ignore if no doc found
+        if (content) {
+            // Split by SIGNATURES header if exists
+            const sigMatch = content.match(/## 🛠️ TOOL SIGNATURES\n([\s\S]*?)(?=\n---|\n### Usage|\n##|$)/);
+            if (sigMatch) {
+                signatureParts.push(sigMatch[1].trim());
+                
+                // The rest is examples
+                const examples = content.replace(sigMatch[0], "").trim();
+                if (examples) exampleParts.push(examples);
+            } else {
+                // If no signatures header, treat entire thing as full docs, signatures empty or extracted simply
+                // For MCP servers we might not have the header yet
+                exampleParts.push(content);
+            }
         }
     }
 
-    return docs.join('\n\n');
+    return {
+        signatures: signatureParts.join('\n\n'),
+        fullDocs: exampleParts.join('\n\n---\n\n')
+    };
 }

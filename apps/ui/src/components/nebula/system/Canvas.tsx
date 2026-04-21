@@ -138,7 +138,10 @@ const RecursiveRenderer = ({ nodeId, tree, onDrop }: { nodeId: string, tree: Neb
 
   const ActualComponent = Component || (({ children }: { children: React.ReactNode }) => <div>{children}</div>);
 
-  const sanitizedProps = Object.entries(node.props || {}).reduce((acc: any, [key, value]) => {
+  const sanitizedProps = Object.entries(node.props || {}).reduce((acc: Record<string, unknown>, [key, value]) => {
+    // 🟢 Safety: Never spread 'ref' or 'key' from data into components
+    if (key === 'ref' || key === 'key') return acc;
+
     if (key.startsWith('on') && typeof value === 'string') {
       acc[key] = () => console.log(`[Nebula] Action Triggered (${key}): ${value}`);
     } else {

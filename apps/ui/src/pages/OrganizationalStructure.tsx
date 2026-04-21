@@ -10,7 +10,7 @@ import { VisualInspectorPanel } from '../features/creator-studio/InspectorPanel.
 import { Layers, Server, Layout, Database, Filter, Settings, Network, Users } from 'lucide-react';
 
 // Imported Components
-import { AgentDNAlab } from '../components/nebula/AgentDNAlab.js';
+import { AgentDNAlab } from '../features/dna-lab/AgentDNAlab.js';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 
 const nodeTypes = {

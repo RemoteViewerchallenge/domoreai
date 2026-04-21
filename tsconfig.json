@@ -22,7 +22,6 @@
     { "path": "./apps/voice-input" },
     { "path": "./packages/agents" },
     { "path": "./packages/api-contract" },
-    { "path": "./packages/coc" },
     { "path": "./packages/common" },
     { "path": "./packages/mcp-server-vfs" },
     { "path": "./packages/nebula" }
