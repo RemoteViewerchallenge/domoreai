@@ -1,3 +1,9 @@
+import axios from 'axios';
+import { prisma } from '../db.js';
+import { AgentRuntime } from './AgentRuntime.js';
+import { createVolcanoAgent } from './VolcanoAgent.js';
+import { ModelSelector } from '../orchestrator/ModelSelector.js';
+
 // import { saveModelKnowledge } from './ModelKnowledgeBase.js';
 
 /**
@@ -673,5 +679,208 @@ export class Surveyor {
     }
     console.log(`[Surveyor] 📊 Audit complete: Upgraded/Fixed ${surveyed} models. ${unknown} still unknown.`);
     return { surveyed, unknown };
+  }
+
+  /**
+   * WATERFALL DISCOVERY (Self-Healing)
+   * 1. Deterministic Pass: Standard /v1/models parsing.
+   * 2. Double-Check: Detect anomalies if 0 models found.
+   * 3. Agentic JSON Diagnostics: Agent writes repair script for raw JSON.
+   * 4. Agentic Web Escalation: Final fallback via web browsing.
+   */
+  static async discoverFreeModels(providerId: string): Promise<string[]> {
+    const provider = await prisma.providerConfig.findUnique({
+      where: { id: providerId }
+    });
+
+    if (!provider || !provider.baseURL) {
+      console.error(`[Surveyor] Provider ${providerId} not found or has no baseURL`);
+      return [];
+    }
+
+    console.log(`[Surveyor] 🌊 Starting Self-Healing Waterfall Discovery for ${providerId}`);
+
+    // STEP 1: THE DETERMINISTIC PASS
+    let rawJsonResponse: any = null;
+    try {
+      const apiKey = process.env[`${providerId.toUpperCase()}_API_KEY`] || '';
+      const response = await axios.get(`${provider.baseURL}/models`, {
+        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+      });
+      rawJsonResponse = response.data;
+
+      const models = rawJsonResponse?.data || rawJsonResponse || [];
+      const freeModels: string[] = [];
+
+      if (Array.isArray(models)) {
+        for (const m of models) {
+          const id = m.id || m.name;
+          if (!id) continue;
+
+          const isExplicitFree = id.toLowerCase().endsWith(':free');
+          const pricing = m.pricing || m.cost || {};
+          const isPricingFree = (pricing.prompt !== undefined && Number(pricing.prompt) === 0) ||
+            (pricing.input !== undefined && Number(pricing.input) === 0);
+
+          if (isExplicitFree || isPricingFree) {
+            console.log(`[Surveyor] ✅ Found free model via API (Step 1): ${id}`);
+            freeModels.push(id);
+            await this.saveFreeModel(providerId, id);
+          }
+        }
+      }
+
+      // STEP 2: THE "DOUBLE-CHECK" VALIDATION
+      if (freeModels.length > 0) {
+        console.log(`[Surveyor] 🎯 Discovery complete for ${providerId} (Step 1). Found ${freeModels.length} models.`);
+        return freeModels;
+      }
+      console.warn(`[Surveyor] ⚠️ ANOMALY DETECTED for ${providerId}: Deterministic pass found 0 free models. Proceeding to Step 3.`);
+    } catch (error: any) {
+      console.warn(`[Surveyor] ⚠️ Step 1 (Deterministic) failed for ${providerId}: ${error.message}`);
+    }
+
+    // STEP 3: AGENTIC JSON DIAGNOSTICS (Self-Healing)
+    if (rawJsonResponse) {
+      console.log(`[Surveyor] 🧠 Starting Agentic JSON Diagnostics for ${providerId}`);
+      try {
+        const selector = new ModelSelector();
+        const bestModelSlug = await selector.resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
+        const bestModel = await prisma.model.findUnique({ where: { id: bestModelSlug } });
+
+        if (bestModel) {
+          const runtime = await AgentRuntime.create(undefined, []);
+          const agent = await createVolcanoAgent({
+            roleId: 'researcher',
+            modelId: bestModel.name,
+            providerId: bestModel.providerId,
+            userGoal: `Heal parsing logic for ${providerId}`,
+            isLocked: false,
+            temperature: 0,
+            maxTokens: 2048
+          });
+
+          // Truncate to first 5 models to save context
+          const sampleJson = Array.isArray(rawJsonResponse?.data) ? rawJsonResponse.data.slice(0, 5) :
+            (Array.isArray(rawJsonResponse) ? rawJsonResponse.slice(0, 5) : rawJsonResponse);
+
+          const prompt = `
+You are a data-parsing expert. Our standard parser failed to find free models in this API response. 
+Analyze this JSON schema: ${JSON.stringify(sampleJson, null, 2)}
+
+Question: How does this specific provider indicate a model is free? 
+Task: Write a TypeScript function named 'extractFreeModels' that takes a JSON array (the 'data' or root) and returns an array of model ID strings for completely free models.
+Requirements:
+1. Return ONLY the executable TypeScript code for the function.
+2. Ensure the code is robust and handles missing fields.
+`;
+
+          const agentResponse = await runtime.generateWithContext(agent, "You are a senior dev.", prompt) as string;
+          const codeMatch = agentResponse.match(/```typescript([\s\S]*?)```/) ||
+            agentResponse.match(/```javascript([\s\S]*?)```/) ||
+            [null, agentResponse];
+          const script = codeMatch[1].trim();
+
+          console.log(`[Surveyor] 🛡️ Executing Agent-generated repair script for ${providerId}...`);
+
+          try {
+            // Safe Execution Wrapper
+            const fn = new Function('data', `${script}; return extractFreeModels(data);`);
+            const repairedModels = fn(rawJsonResponse?.data || rawJsonResponse);
+
+            if (Array.isArray(repairedModels) && repairedModels.length > 0) {
+              console.log(`[Surveyor] ✨ Self-Healing Success! Extracted ${repairedModels.length} models.`);
+              for (const id of repairedModels) {
+                await this.saveFreeModel(providerId, id);
+              }
+              return repairedModels;
+            }
+          } catch (e) {
+            console.error("[Surveyor] ❌ Repair script crashed:", e);
+          }
+        }
+      } catch (error) {
+        console.error(`[Surveyor] ❌ Step 3 (Diagnostics) failed:`, error);
+      }
+    }
+
+    // STEP 4: AGENTIC WEB ESCALATION (The Final Fallback)
+    console.log(`[Surveyor] 🌐 Escalating to WEB SCAPE for ${providerId}`);
+    try {
+      const selector = new ModelSelector();
+      const bestModelSlug = await selector.resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
+      const bestModel = await prisma.model.findUnique({ where: { id: bestModelSlug } });
+
+      if (!bestModel) throw new Error("No model available for research");
+
+      const runtime = await AgentRuntime.create(undefined, ['browse', 'research.web_scrape']);
+      const agent = await createVolcanoAgent({
+        roleId: 'researcher',
+        modelId: bestModel.name,
+        providerId: bestModel.providerId,
+        userGoal: `Discover free models for ${providerId} via web`,
+        isLocked: false,
+        temperature: 0.1,
+        maxTokens: 2048
+      });
+
+      const prompt = `
+The API does not contain pricing data for ${providerId}. 
+Use the 'browse' or 'research.web_scrape' tool to navigate to ${(provider as any).pricingUrl || provider.baseURL} or search the web for '${provider.label || providerId} free API models'. 
+Read the documentation and extract the exact model IDs that are available on the free tier. 
+
+Return a strictly formatted JSON array of strings containing only the model IDs.
+Example: ["model-x-free", "model-y-free"]
+`;
+
+      const response = await runtime.generateWithContext(agent, "You are a researcher.", prompt) as string;
+      const jsonMatch = response.match(/\[\s*".*"\s*\]/s) || response.match(/\[.*\]/s);
+      if (jsonMatch) {
+        const discovered = JSON.parse(jsonMatch[0]) as string[];
+        if (Array.isArray(discovered)) {
+          for (const id of discovered) {
+            console.log(`[Surveyor] ✅ Agent verified free model: ${id}`);
+            await this.saveFreeModel(providerId, id);
+          }
+          return discovered;
+        }
+      }
+    } catch (error) {
+      console.error(`[Surveyor] ❌ Step 4 (Web) failed:`, error);
+    }
+
+    return [];
+  }
+
+  private static async saveFreeModel(providerId: string, modelName: string) {
+    let model = await prisma.model.findUnique({
+      where: { providerId_name: { providerId, name: modelName } }
+    });
+
+    if (!model) {
+      model = await prisma.model.create({
+        data: {
+          providerId,
+          name: modelName,
+          isActive: true,
+          providerData: { source: 'surveyor_discovery' }
+        }
+      });
+    }
+
+    await prisma.modelCapabilities.upsert({
+      where: { modelId: model.id },
+      create: {
+        modelId: model.id,
+        isFreeTier: true,
+        source: 'surveyor_discovery',
+        confidence: 'high'
+      } as any,
+      update: {
+        isFreeTier: true,
+        source: 'surveyor_discovery',
+        updatedAt: new Date()
+      } as any
+    });
   }
 }

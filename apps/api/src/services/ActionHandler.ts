@@ -49,8 +49,21 @@ export class ActionHandler {
       const { stdout, stderr } = await execAsync(command, { cwd: root });
       return stdout || stderr;
     } catch (e: any) {
-      // Gracefully return error message as output
       return `Execution Error: ${e.message}`;
     }
+  }
+
+  async executeNativeTool(toolName: string, args: any) {
+    console.log(`[ActionHandler] 🛠️ Executing native tool: ${toolName}`);
+    // In a real implementation, this would look up the tool in NativeToolsRegistry
+    // and call its handler. For now, we provide a hook that can be mocked or extended.
+
+    // Example logic for webScraper if it were integrated here:
+    if (toolName === 'webScraper') {
+      const { webScraperTool } = await import('../tools/webScraper.js');
+      return await webScraperTool.handler(args);
+    }
+
+    throw new Error(`Native tool ${toolName} not implemented in ActionHandler`);
   }
 }
