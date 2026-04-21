@@ -10,9 +10,9 @@ datasource db {
 
 model ProviderConfig {
   id                 String   @id
-  label              String
+  name               String
   type               String
-  baseURL            String?
+  baseUrl            String?
   apiKeyEnvVar       String?  // [NEW]
   pricingUrl         String?  // [NEW]
   isCreditCardLinked Boolean  @default(false) // [NEW]

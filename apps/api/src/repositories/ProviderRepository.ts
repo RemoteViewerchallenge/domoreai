@@ -3,9 +3,9 @@ import { prisma } from "../db.js";
 import { type ProviderConfig, Prisma } from "@prisma/client";
 
 export class ProviderRepository implements IProviderRepository {
-  async findProviderConfigByLabel(label: string): Promise<ProviderConfig | null> {
+  async findProviderConfigByName(name: string): Promise<ProviderConfig | null> {
     return prisma.providerConfig.findFirst({
-      where: { label }
+      where: { name }
     });
   }
 

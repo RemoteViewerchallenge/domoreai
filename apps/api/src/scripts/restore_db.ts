@@ -20,20 +20,20 @@ async function main() {
             await prisma.providerConfig.upsert({
                 where: { id: config.id },
                 update: {
-                    label: config.label,
+                    name: config.name || config.label, // keep fallback just in case reading old JSON
                     type: config.type,
                     // apiKey: config.apiKey, // Removed from schema
-                    baseURL: config.baseURL,
+                    baseUrl: config.baseUrl || config.baseURL,
                     isEnabled: config.isEnabled,
                     // requestsPerMinute: config.requestsPerMinute, // Removed from schema? checking...
                     // The error logs didn't mention requestsPerMinute for ProviderConfig, but let's be safe.
                 },
                 create: {
                     id: config.id,
-                    label: config.label,
+                    name: config.name || config.label,
                     type: config.type,
                     // apiKey: config.apiKey, // Removed from schema
-                    baseURL: config.baseURL,
+                    baseUrl: config.baseUrl || config.baseURL,
                     isEnabled: config.isEnabled,
                     createdAt: new Date(config.createdAt),
                     updatedAt: new Date(config.updatedAt),

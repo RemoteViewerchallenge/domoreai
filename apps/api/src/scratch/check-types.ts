@@ -5,8 +5,9 @@ type UpdateInput = Prisma.ProviderConfigUpdateInput;
 
 const check: CreateInput = {
     id: 'test',
-    label: 'test',
+    name: 'test',
     type: 'test',
+    baseUrl: 'test',
     apiKeyEnvVar: 'test',
     status: 'ACTIVE',
     lastError: 'test'

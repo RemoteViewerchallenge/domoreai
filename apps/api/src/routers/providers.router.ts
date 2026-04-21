@@ -16,7 +16,7 @@ export const providerRouter = createTRPCRouter({
       id: z.string().optional(),
       name: z.string().optional(),
       providerType: z.string().optional(),
-      baseURL: z.string().optional(),
+      baseUrl: z.string().optional(),
       apiKey: z.string().optional(),
       apiKeyEnvVar: z.string().optional(),
       pricingUrl: z.string().optional(),
@@ -27,9 +27,9 @@ export const providerRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       return providerService.upsertProviderConfig({
         id: input.id,
-        label: input.name,
+        name: input.name,
         type: input.providerType,
-        baseURL: input.baseURL,
+        baseUrl: input.baseUrl,
         apiKey: input.apiKey,
         apiKeyEnvVar: input.apiKeyEnvVar,
         pricingUrl: input.pricingUrl,
