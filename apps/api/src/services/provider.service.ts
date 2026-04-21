@@ -8,12 +8,18 @@ export class ProviderService {
     return prisma.providerConfig.findMany();
   }
 
+  async getProvider(id: string) {
+    return prisma.providerConfig.findUnique({
+      where: { id }
+    });
+  }
+
   // [NEW] Manage Providers via UI
   async upsertProviderConfig(input: { 
     id?: string, 
-    label: string, 
-    type: string, 
-    baseURL: string, 
+    label?: string, 
+    type?: string, 
+    baseURL?: string, 
     apiKey?: string,
     apiKeyEnvVar?: string,
     pricingUrl?: string,
@@ -21,32 +27,47 @@ export class ProviderService {
     enforceFreeOnly?: boolean,
     monthlyBudget?: number
   }) {
-    const data = {
-      label: input.label,
-      type: input.type,
-      baseURL: input.baseURL,
-      apiKeyEnvVar: input.apiKeyEnvVar,
-      pricingUrl: input.pricingUrl,
-      isCreditCardLinked: input.isCreditCardLinked ?? false,
-      enforceFreeOnly: input.enforceFreeOnly ?? true,
-      monthlyBudget: input.monthlyBudget,
-      isEnabled: true,
-    };
-
     if (input.id) {
+      // PARTIAL UPDATE
+      const existing = await prisma.providerConfig.findUnique({ where: { id: input.id } });
+      if (!existing) throw new Error('Provider not found');
+
+      const data: any = {
+        updatedAt: new Date()
+      };
+
+      if (input.label !== undefined) data.label = input.label;
+      if (input.type !== undefined) data.type = input.type;
+      if (input.baseURL !== undefined) data.baseURL = input.baseURL;
+      if (input.apiKeyEnvVar !== undefined) data.apiKeyEnvVar = input.apiKeyEnvVar;
+      if (input.pricingUrl !== undefined) data.pricingUrl = input.pricingUrl;
+      if (input.isCreditCardLinked !== undefined) data.isCreditCardLinked = input.isCreditCardLinked;
+      if (input.enforceFreeOnly !== undefined) data.enforceFreeOnly = input.enforceFreeOnly;
+      if (input.monthlyBudget !== undefined) data.monthlyBudget = input.monthlyBudget;
+
       return prisma.providerConfig.update({
         where: { id: input.id },
-        data: {
-          ...data,
-          updatedAt: new Date()
-        }
+        data
       });
     } else {
+      // CREATE
+      if (!input.label || !input.type || !input.baseURL) {
+        throw new Error('Label, type, and baseURL are required for new providers');
+      }
+
       return prisma.providerConfig.create({
         data: {
           id: uuidv4(),
-          ...data
-        }
+          label: input.label,
+          type: input.type,
+          baseURL: input.baseURL,
+          apiKeyEnvVar: input.apiKeyEnvVar,
+          pricingUrl: input.pricingUrl,
+          isCreditCardLinked: input.isCreditCardLinked ?? false,
+          enforceFreeOnly: input.enforceFreeOnly ?? true,
+          monthlyBudget: input.monthlyBudget,
+          isEnabled: true,
+        } as any
       });
     }
   }
@@ -123,6 +144,7 @@ export class ProviderService {
 
   // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
   async fetchAndNormalizeModels(providerId: string) {
+    const { Surveyor } = await import('./Surveyor.js');
     const providerConfig = await prisma.providerConfig.findUnique({
       where: { id: providerId }
     });
@@ -139,8 +161,10 @@ export class ProviderService {
     // NEW: Validate API key exists for providers that require it
     const requiresApiKey = !['ollama'].includes(providerConfig.type);
     if (requiresApiKey && !apiKey) {
-      console.warn(`[Ingestion] Skipping ${providerConfig.label} (${providerConfig.type}): No API key found`);
-      return { count: 0, skipped: true, reason: 'Missing API key' };
+      const errorMsg = 'Missing API key. Please check your environment variables.';
+      console.warn(`[Ingestion] Skipping ${providerConfig.label} (${providerConfig.type}): ${errorMsg}`);
+      await Surveyor.updateProviderStatus(providerId, 'ERROR', `[Config] ${errorMsg}`);
+      return { count: 0, skipped: true, reason: errorMsg };
     }
 
     const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
@@ -150,8 +174,27 @@ export class ProviderService {
     });
 
     console.log(`[Ingestion] Fetching models for ${providerConfig.label} (${providerConfig.type})...`);
-    const rawModelList = await providerInstance.getModels();
-    console.log(`[Ingestion] Found ${rawModelList.length} models.`);
+    let rawModelList: any[] = [];
+    
+    try {
+      rawModelList = await providerInstance.getModels();
+      console.log(`[Ingestion] Found ${rawModelList.length} models.`);
+      
+      // [NEW] Clear error state on success
+      await Surveyor.updateProviderStatus(providerId, 'ACTIVE', null);
+    } catch (error) {
+      const errorMsg = Surveyor.formatError(error);
+      console.error(`[Ingestion] Failed to fetch models for ${providerConfig.label}: ${errorMsg}`);
+      
+      // [NEW] Set error state in DB
+      await Surveyor.updateProviderStatus(providerId, 'ERROR', errorMsg);
+      
+      return { count: 0, skipped: true, reason: errorMsg };
+    }
+
+    // [NEW] Sanitize the list to remove deprecated/utility junk
+    rawModelList = Surveyor.sanitizeModelList(rawModelList);
+    console.log(`[Ingestion] After sanitization: ${rawModelList.length} models.`);
 
     const isLikelyFree = (id: string) => {
       const lower = id.toLowerCase();
