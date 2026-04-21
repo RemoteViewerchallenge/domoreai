@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { ProviderFactory, LLMModel } from '../utils/ProviderFactory.js';
+import { broadcastEvent } from './websocket.singleton.js';
 
 export class ProviderService {
   async listProviders() {
@@ -10,6 +11,7 @@ export class ProviderService {
 
   // [NEW] Manage Providers via UI
   async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
+    let result;
     const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined;
 
     // Note: apiKey is removed from DB schema, but we keep the logic structure 
@@ -30,7 +32,7 @@ export class ProviderService {
     };
 
     if (input.id) {
-      return prisma.providerConfig.update({
+      result = await prisma.providerConfig.update({
         where: { id: input.id },
         data: {
           ...data,
@@ -38,13 +40,22 @@ export class ProviderService {
         }
       });
     } else {
-      return prisma.providerConfig.create({
+      result = await prisma.providerConfig.create({
         data: {
           id: uuidv4(),
           ...data
         }
       });
     }
+
+    // BROADCAST UPDATE
+    broadcastEvent('system:capability_update', {
+      resource: 'provider',
+      action: 'update',
+      id: input.id || 'new'
+    });
+
+    return result;
   }
 
   async addProvider(input: { name: string, providerType: string, baseURL: string, apiKey?: string }) {
@@ -57,9 +68,18 @@ export class ProviderService {
   }
 
   async deleteProvider(id: string) {
-    return prisma.providerConfig.delete({
+    const result = await prisma.providerConfig.delete({
       where: { id }
     });
+
+    // BROADCAST DELETE
+    broadcastEvent('system:capability_update', {
+      resource: 'provider',
+      action: 'delete',
+      id
+    });
+
+    return result;
   }
 
   async listAllAvailableModels() {
@@ -206,18 +226,44 @@ export class ProviderService {
       const contextWindow = (model.specs?.contextWindow as number) || (model.context_window as number) || 4096;
       const maxOutput = (model.specs?.maxOutput as number) || (model.max_tokens as number) || 2048;
 
-      const hasVision = modelSlug.toLowerCase().includes('vision') ||
-        modelSlug.toLowerCase().includes('vl') ||
-        !!model.specs?.hasVision;
+      // --- NAME-BASED LOGIC (Refined) ---
+      const lowerSlug = modelSlug.toLowerCase();
 
-      const hasReasoning = modelSlug.toLowerCase().includes('reasoning') ||
-        modelSlug.toLowerCase().includes('o1') || modelSlug.toLowerCase().includes('o3');
+      // Embedding: Explicit Check (Visual Embs like Dino/Clip are embeddings, not VQA)
+      const hasEmbedding = lowerSlug.includes('embed') ||
+        lowerSlug.includes('bge-') ||
+        lowerSlug.includes('rerank') ||
+        lowerSlug.includes('dino') ||
+        lowerSlug.includes('clip') ||
+        lowerSlug.includes('cosmos'); // NVIDIA Cosmos (often foundation/embed)
 
-      const hasEmbedding = modelSlug.toLowerCase().includes('embedding') || modelSlug.toLowerCase().includes('embed');
-      const hasImageGen = modelSlug.toLowerCase().includes('dall-e') || modelSlug.toLowerCase().includes('stable-diffusion');
-      const hasModeration = modelSlug.toLowerCase().includes('moderation');
-      const hasOCR = modelSlug.toLowerCase().includes('ocr') || (hasVision && !!model.specs?.hasOCR);
-      const hasTTS = modelSlug.toLowerCase().includes('tts') || modelSlug.toLowerCase().includes('whisper');
+      // TTS / Audio: Explicit Check
+      const hasTTS = lowerSlug.includes('tts') || lowerSlug.includes('whisper') || lowerSlug.includes('speech');
+      const hasAudioInput = lowerSlug.includes('whisper') || lowerSlug.includes('audio');
+
+      // Vision (VQA/Multimodal Chat): Explicit Check
+      // Exclude pure embeddings (dino/clip) from "hasVision" to preventing generic chat mixup unless they are also instruct/chat
+      const isVisualEmbedding = lowerSlug.includes('dino') || lowerSlug.includes('clip');
+
+      const hasVision = (lowerSlug.includes('vision') ||
+        lowerSlug.includes('vl') ||
+        lowerSlug.includes('pixtral') ||
+        lowerSlug.includes('omni') ||
+        lowerSlug.includes('paligemma') || // Google Paligemma
+        lowerSlug.includes('cambrian') ||
+        !!model.specs?.hasVision) && !isVisualEmbedding;
+
+      // Image Gen: Explicit Check
+      const hasImageGen = lowerSlug.includes('dall-e') || lowerSlug.includes('stable-diffusion') || lowerSlug.includes('flux') || lowerSlug.includes('midjourney');
+
+      // Reasoning: Explicit Check
+      const hasReasoning = lowerSlug.includes('reasoning') || lowerSlug.includes('thinking') || lowerSlug.includes('o1') || lowerSlug.includes('o3') || lowerSlug.includes('r1');
+
+      // Coding: Explicit Check
+      const hasCoding = lowerSlug.includes('code') || lowerSlug.includes('coder') || lowerSlug.includes('sql');
+
+      // Uncensored / Roleplay
+      const isUncensored = lowerSlug.includes('uncensored') || lowerSlug.includes('dolphin') || lowerSlug.includes('abliterated');
 
       await (prisma.modelCapabilities as any).upsert({
         where: { modelId: dbModel.id },
@@ -230,12 +276,16 @@ export class ProviderService {
           hasTTS,
           hasImageGen,
           hasEmbedding,
-          hasOCR,
-          hasModeration,
-          hasReward: false,
+          hasOCR: lowerSlug.includes('ocr'),
+          hasModeration: lowerSlug.includes('moderation') || lowerSlug.includes('guard'),
+          hasReward: lowerSlug.includes('reward'),
           supportsFunctionCalling: !!model.specs?.supportsFunctionCalling,
           supportsJsonMode: !!model.specs?.supportsJsonMode,
-          isMultimodal: hasVision || !!model.specs?.hasAudioInput,
+          isMultimodal: hasVision || hasAudioInput || hasTTS,
+          specs: {
+            uncensored: isUncensored,
+            coding: hasCoding
+          },
           updatedAt: new Date(),
         },
         create: {
@@ -248,12 +298,16 @@ export class ProviderService {
           hasTTS,
           hasImageGen,
           hasEmbedding,
-          hasOCR,
-          hasModeration,
-          hasReward: false,
+          hasOCR: lowerSlug.includes('ocr'),
+          hasModeration: lowerSlug.includes('moderation') || lowerSlug.includes('guard'),
+          hasReward: lowerSlug.includes('reward'),
           supportsFunctionCalling: !!model.specs?.supportsFunctionCalling,
           supportsJsonMode: !!model.specs?.supportsJsonMode,
-          isMultimodal: hasVision || !!model.specs?.hasAudioInput,
+          isMultimodal: hasVision || hasAudioInput || hasTTS,
+          specs: {
+            uncensored: isUncensored,
+            coding: hasCoding
+          },
         }
       });
     });

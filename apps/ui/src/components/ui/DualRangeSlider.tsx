@@ -60,14 +60,18 @@ export const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
   return (
     <div className="w-full py-2 font-mono relative">
       {label && (
-        <div className="flex justify-between mb-1">
+        <div className="flex justify-between mb-1 items-end">
           <span className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase">{label}</span>
-          <span className="text-[10px] text-blue-400">
-            {minValue} - {maxValue} {unit}
-          </span>
+          <div className="flex gap-2">
+            <span className="text-[9px] text-[var(--text-muted)] font-mono">{min}</span>
+            <span className="text-[10px] text-blue-400 font-bold">
+              {minValue} - {maxValue} {unit}
+            </span>
+            <span className="text-[9px] text-[var(--text-muted)] font-mono">{max}</span>
+          </div>
         </div>
       )}
-      
+
       <div className="relative w-full h-4 flex items-center">
         {/* Track Background */}
         <div className="absolute w-full h-1 bg-gray-800 rounded-full"></div>

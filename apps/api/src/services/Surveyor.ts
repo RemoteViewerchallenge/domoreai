@@ -75,21 +75,12 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
     },
     {
       pattern: /gemini.1\.?5.flash/i,
-      specs: {
-        contextWindow: 1000000,
-        maxOutput: 8192,
-        capabilities: ["text", "vision", "audio_in", "tool_use"],
-        costPer1k: 0.075
-      }
+      specs: { contextWindow: 1000000, maxOutput: 8192, capabilities: ["text", "vision", "audio_in", "tool_use"], costPer1k: 0.075 }
     },
     {
-      pattern: /gemini.1\.?5.pro/i,
-      specs: {
-        contextWindow: 2000000,
-        maxOutput: 8192,
-        capabilities: ["text", "vision", "audio_in", "video_in", "tool_use"],
-        costPer1k: 1.25
-      }
+      // Catch gemini-1.5-pro AND gemini-pro-1.5
+      pattern: /gemini.*1\.?5.*pro|gemini.*pro.*1\.?5/i,
+      specs: { contextWindow: 2000000, maxOutput: 8192, capabilities: ["text", "vision", "audio_in", "video_in", "tool_use"], costPer1k: 1.25 }
     },
     {
       pattern: /gemma.3/i,
@@ -210,30 +201,23 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   anthropic: [
     {
       pattern: /claude-3\.?5-sonnet/i,
-      specs: {
-        contextWindow: 200000,
-        maxOutput: 8192,
-        capabilities: ["text", "vision", "tool_use"],
-        costPer1k: 3.00
-      }
+      specs: { contextWindow: 200000, maxOutput: 8192, capabilities: ["text", "vision", "tool_use"], costPer1k: 3.00 }
+    },
+    {
+      pattern: /claude-3\.?5-haiku/i,
+      specs: { contextWindow: 200000, maxOutput: 8192, capabilities: ["text", "vision", "tool_use"], costPer1k: 1.00 }
     },
     {
       pattern: /claude-3-opus/i,
-      specs: {
-        contextWindow: 200000,
-        maxOutput: 4096,
-        capabilities: ["text", "vision", "tool_use"],
-        costPer1k: 15.00
-      }
+      specs: { contextWindow: 200000, maxOutput: 4096, capabilities: ["text", "vision", "tool_use"], costPer1k: 15.00 }
+    },
+    {
+      pattern: /claude-3-sonnet/i, // Claude 3 Legacy
+      specs: { contextWindow: 200000, maxOutput: 4096, capabilities: ["text", "vision", "tool_use"], costPer1k: 3.00 }
     },
     {
       pattern: /claude-3-haiku/i,
-      specs: {
-        contextWindow: 200000,
-        maxOutput: 4096,
-        capabilities: ["text", "vision", "tool_use"],
-        costPer1k: 0.25
-      }
+      specs: { contextWindow: 200000, maxOutput: 4096, capabilities: ["text", "vision", "tool_use"], costPer1k: 0.25 }
     }
   ],
 
@@ -408,6 +392,47 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         capabilities: ["text", "vision", "ocr"],
         costPer1k: 0
       }
+    },
+    // NVIDIA NEW ADDITIONS
+    {
+      pattern: /cosmos/i,
+      specs: {
+        contextWindow: 4096,
+        capabilities: ["embedding", "vision_embed"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /(dino|clip|embed|rerank)/i,
+      specs: {
+        contextWindow: 4096,
+        capabilities: ["embedding"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /(vila|fuyu|pixtral|paligemma|cambrian)/i,
+      specs: {
+        contextWindow: 32768,
+        capabilities: ["text", "vision"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /(flux|stable-diffusion|midjourney)/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["image_gen"],
+        costPer1k: 0
+      }
+    },
+    {
+      pattern: /(parakeet|canary|speech|tts|whisper)/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["text_to_speech", "audio_in"],
+        costPer1k: 0
+      }
     }
   ],
 
@@ -453,19 +478,47 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
   ollama: [
     {
       pattern: /embed/i,
-      specs: {
-        contextWindow: 2048,
-        capabilities: ["embedding"],
-        costPer1k: 0
-      }
+      specs: { contextWindow: 2048, capabilities: ["embedding"], costPer1k: 0 }
     },
     {
-      pattern: /vision/i,
-      specs: {
-        contextWindow: 128000,
-        capabilities: ["text", "vision"],
-        costPer1k: 0
-      }
+      pattern: /(llava|vision|minicpm)/i,
+      specs: { contextWindow: 128000, capabilities: ["text", "vision"], costPer1k: 0 }
+    },
+    {
+      pattern: /whisper/i,
+      specs: { contextWindow: 0, capabilities: ["audio_in"], costPer1k: 0 }
+    },
+    {
+      pattern: /llama-?3\.?1/i, // Llama 3.1 is 128k
+      specs: { contextWindow: 128000, capabilities: ["text", "tool_use"], costPer1k: 0 }
+    },
+    {
+      pattern: /llama-?3\.?2/i, // Llama 3.2 (Vision for 11b/90b, Text for 1b/3b) - Assume Text fallback
+      specs: { contextWindow: 128000, capabilities: ["text", "tool_use"], costPer1k: 0 }
+    },
+    {
+      pattern: /llama-?3/i, // Base Llama 3 is 8k
+      specs: { contextWindow: 8192, capabilities: ["text"], costPer1k: 0 }
+    },
+    {
+      pattern: /gemma.?2/i,
+      specs: { contextWindow: 8192, capabilities: ["text"], costPer1k: 0 }
+    },
+    {
+      pattern: /codellama/i,
+      specs: { contextWindow: 16384, capabilities: ["text", "code"], costPer1k: 0 }
+    },
+    {
+      pattern: /mistral/i,
+      specs: { contextWindow: 32768, capabilities: ["text"], costPer1k: 0 }
+    },
+    {
+      pattern: /phi-?3\.?5/i,
+      specs: { contextWindow: 128000, capabilities: ["text", "reasoning"], costPer1k: 0 }
+    },
+    {
+      pattern: /phi-?3/i,
+      specs: { contextWindow: 128000, capabilities: ["text"], costPer1k: 0 }
     }
   ],
 };
@@ -558,8 +611,16 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "weather"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('math') || lower.includes('physics')) {
         specs = { contextWindow: 4096, capabilities: ["text", "specialized_science"], confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('embed')) {
+      } else if (lower.includes('embed') || lower.includes('bge') || lower.includes('rerank')) {
         specs = { contextWindow: 2048, capabilities: ["embedding"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('tts') || lower.includes('speech')) {
+        specs = { contextWindow: 0, capabilities: ["text_to_speech", "audio_in"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('whisper')) {
+        specs = { contextWindow: 0, capabilities: ["audio_in"], confidence: 'high', source: 'surveyor_heuristic' };
+      } else if (lower.includes('dino') || lower.includes('clip')) {
+        specs = { contextWindow: 0, capabilities: ["embedding", "vision_embed"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('flux') || lower.includes('midjourney')) {
+        specs = { contextWindow: 0, capabilities: ["image_gen"], confidence: 'high', source: 'surveyor_heuristic' };
       }
     }
 
@@ -577,10 +638,20 @@ export class Surveyor {
 
     // 6. Name Inference Last Resort
     if (!specs) {
-      const contextMatch = modelName.match(/(\d+)k/i);
-      if (contextMatch) {
+      // Try to find explicit context size in name (e.g. "8k", "32k", "128k", "8192", "32768")
+      const kMatch = modelName.match(/(\d+)k/i);
+      const exactMatch = modelName.match(/(8192|32768|128000|16384|4096)/);
+
+      if (kMatch) {
         specs = {
-          contextWindow: parseInt(contextMatch[1]) * 1024,
+          contextWindow: parseInt(kMatch[1]) * 1024,
+          capabilities: ["text"],
+          confidence: 'medium',
+          source: 'name_inference'
+        };
+      } else if (exactMatch) {
+        specs = {
+          contextWindow: parseInt(exactMatch[1]),
           capabilities: ["text"],
           confidence: 'medium',
           source: 'name_inference'

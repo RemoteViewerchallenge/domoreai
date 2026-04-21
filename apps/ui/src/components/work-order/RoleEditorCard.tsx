@@ -94,7 +94,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
         modelId: string | null;
     }>({
         temperature: 0.7,
-        maxTokens: 2048,
+        maxTokens: 1024,
         modelId: null
     });
 
@@ -118,7 +118,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
 
             setLegacyParams({
                 temperature: currentRole.defaultTemperature || 0.7,
-                maxTokens: currentRole.defaultMaxTokens || 2048,
+                maxTokens: currentRole.defaultMaxTokens || 1024,
                 modelId: currentRole.hardcodedModelId || null
             });
         }
@@ -255,6 +255,37 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
         toast.success('Role backup downloaded');
     };
 
+    const handleImportJson = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const backup = JSON.parse(text);
+                const roleData = backup.roles?.[0];
+
+                if (!roleData) {
+                    toast.error('Invalid backup file format');
+                    return;
+                }
+
+                // Load DNA and legacy params
+                if (roleData.dna) setDna(roleData.dna);
+                if (roleData.legacyParams) setLegacyParams(roleData.legacyParams);
+                setHasUnsavedChanges(true);
+                toast.success('Role configuration imported');
+            } catch (err) {
+                console.error(err);
+                toast.error('Failed to parse backup file');
+            }
+        };
+        input.click();
+    };
+
     return (
         <div className="flex flex-col h-full w-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-sans relative overflow-hidden">
 
@@ -310,29 +341,43 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={handleBackupJson}
-                                    className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-full shadow-lg transition-all text-[10px] font-bold uppercase tracking-wider group active:scale-95"
-                                >
-                                    <Download size={12} className="group-hover:scale-110 transition-transform" />
-                                    Backup
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={handleCancel}
                                     disabled={!hasUnsavedChanges}
-                                    className="px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-500 transition-colors"
+                                    className="px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => void handleApplyChanges()}
-                                    disabled={!hasUnsavedChanges}
-                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-blue-900/20 transition-all text-[10px] font-bold uppercase tracking-wider group active:scale-95"
-                                >
-                                    <Zap size={12} className={hasUnsavedChanges ? "group-hover:animate-pulse" : ""} />
-                                    Save
-                                </button>
+                                <div className="relative group">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleApplyChanges()}
+                                        disabled={!hasUnsavedChanges}
+                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-blue-900/20 transition-all text-[10px] font-bold uppercase tracking-wider active:scale-95 disabled:bg-transparent disabled:border-2 disabled:border-zinc-700 disabled:text-zinc-600 disabled:shadow-none"
+                                    >
+                                        <Zap size={12} className={hasUnsavedChanges ? "group-hover:animate-pulse" : ""} />
+                                        Save
+                                        <ChevronDown size={10} className="ml-1" />
+                                    </button>
+                                    {/* Dropdown Menu */}
+                                    <div className="absolute right-0 top-full mt-1 w-40 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                        <button
+                                            type="button"
+                                            onClick={handleImportJson}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-emerald-400 hover:bg-zinc-800 transition-colors rounded-t-lg"
+                                        >
+                                            <Download size={12} className="rotate-180" />
+                                            Import JSON
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleBackupJson}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-zinc-400 hover:bg-zinc-800 transition-colors rounded-b-lg"
+                                        >
+                                            <Download size={12} />
+                                            Backup JSON
+                                        </button>
+                                    </div>
+                                </div>
                                 {onClose && (
                                     <>
                                         <div className="h-4 w-px bg-zinc-800 mx-1" />
@@ -389,7 +434,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                         onChange={(cfg) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
                                     />
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Output Entropy (Max Tokens)</label>
+                                        <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Response Length</label>
                                         <input
                                             type="range"
                                             min="256" max="32000" step="256"
@@ -397,7 +442,17 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                             onChange={e => setLegacyParams(p => ({ ...p, maxTokens: parseInt(e.target.value) }))}
                                             className="w-full accent-cyan-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
                                         />
-                                        <div className="text-[10px] font-mono text-right text-cyan-400">{legacyParams.maxTokens} tokens</div>
+                                        <div className="flex justify-between items-center">
+                                            <div className="text-[10px] text-cyan-400">
+                                                {legacyParams.maxTokens < 512 ? '~1 paragraph' :
+                                                    legacyParams.maxTokens < 1024 ? '~2-3 paragraphs' :
+                                                        legacyParams.maxTokens < 2048 ? '~1 page' :
+                                                            legacyParams.maxTokens < 4096 ? '~2-3 pages' :
+                                                                legacyParams.maxTokens < 8192 ? '~5-6 pages' :
+                                                                    '~10+ pages'}
+                                            </div>
+                                            <div className="text-[9px] font-mono text-zinc-600">{legacyParams.maxTokens} tokens</div>
+                                        </div>
                                     </div>
                                 </section>
                             </div>

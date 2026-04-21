@@ -50,6 +50,47 @@ export class ModelSelector {
       take: 100 // Grab more candidates since we might filter many out
     });
 
+    // [CRITICAL FIX] Filter out non-text-generation models FIRST
+    // Exclude: embedding, TTS, whisper, image-gen, moderation models
+    candidates = candidates.filter(m => {
+      const caps = m.capabilities;
+      if (!caps) return true; // Keep if no capabilities data (will be filtered later)
+
+      // Exclude if it's ONLY an embedding model
+      if (caps.hasEmbedding && !caps.hasVision && !caps.supportsFunctionCalling) {
+        console.log(`[ModelSelector] ⛔ Excluding embedding model: ${m.name}`);
+        return false;
+      }
+
+      // Exclude if it's ONLY a TTS model
+      if (caps.hasTTS && !caps.supportsFunctionCalling) {
+        console.log(`[ModelSelector] ⛔ Excluding TTS model: ${m.name}`);
+        return false;
+      }
+
+      // Exclude if it's ONLY an image generation model
+      if (caps.hasImageGen && !caps.supportsFunctionCalling) {
+        console.log(`[ModelSelector] ⛔ Excluding image-gen model: ${m.name}`);
+        return false;
+      }
+
+      // Exclude if it's a moderation model
+      if (caps.hasModeration) {
+        console.log(`[ModelSelector] ⛔ Excluding moderation model: ${m.name}`);
+        return false;
+      }
+
+      // Exclude if context window is 0 or null (not a text model)
+      if (!caps.contextWindow || caps.contextWindow === 0) {
+        console.log(`[ModelSelector] ⛔ Excluding zero-context model: ${m.name}`);
+        return false;
+      }
+
+      return true; // Keep this model
+    });
+
+    console.log(`[ModelSelector] 📊 After filtering non-text models: ${candidates.length} candidates remaining`);
+
     // [RUNTIME CHECK] Filter out offline providers AND Deprioritize Google if requested
     const validCandidates: typeof candidates = [];
     const googleCandidates: typeof candidates = [];

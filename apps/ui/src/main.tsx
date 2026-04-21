@@ -19,7 +19,7 @@ try {
   console.error('[main.tsx] Failed to inject theme scopes:', e);
 }
 
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({

@@ -2,6 +2,7 @@ import { prisma } from '../db.js';
 import { RegistryClient } from './mcp-registry-client.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { broadcastEvent } from './websocket.singleton.js';
 
 interface McpToolSchema {
   type?: string;
@@ -45,11 +46,11 @@ export class McpToolSyncService {
         // Set a timeout for connection to avoid hanging the boot process
         const connectPromise = client.connect(transport);
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000));
-        
+
         await Promise.race([connectPromise, timeoutPromise]);
 
         const { tools } = await client.listTools();
-        
+
         for (const tool of tools) {
           const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');
           const tsDefinition = this.generateToolInterface(tool.name, tool.description || '', tool.inputSchema as unknown as McpToolSchema);
@@ -82,71 +83,79 @@ export class McpToolSyncService {
         stats.errors++;
       } finally {
         if (client) {
-            try { 
-              // Give it a tiny moment for any trailing data to flush before killing the process
-              await new Promise(resolve => setTimeout(resolve, 100));
-              await client.close(); 
-            } catch {}
+          try {
+            // Give it a tiny moment for any trailing data to flush before killing the process
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await client.close();
+          } catch { }
         }
       }
     }
+
+    // BROADCAST COMPLETION
+    broadcastEvent('system:capability_update', {
+      resource: 'tools',
+      action: 'sync_complete',
+      stats: stats
+    });
+
     return stats;
   }
 
   private static simpleSchemaToTs(schema: McpToolSchema, indentLevel = 0): string {
     const indent = '  '.repeat(indentLevel);
-    
+
     if (!schema) return 'any';
-    
+
     if (schema.type === 'string') {
-       if (schema.enum) {
-           return (schema.enum as string[]).map((e: string) => `'${e}'`).join(' | ');
-       }
-       return 'string';
+      if (schema.enum) {
+        return (schema.enum as string[]).map((e: string) => `'${e}'`).join(' | ');
+      }
+      return 'string';
     }
-    
+
     if (schema.type === 'number' || schema.type === 'integer') return 'number';
     if (schema.type === 'boolean') return 'boolean';
-    
+
     if (schema.type === 'array') {
-        const itemType = this.simpleSchemaToTs(schema.items as McpToolSchema, indentLevel);
-        return `Array<${itemType}>`;
+      const itemType = this.simpleSchemaToTs(schema.items as McpToolSchema, indentLevel);
+      return `Array<${itemType}>`;
     }
-    
+
     if (schema.type === 'object' || schema.properties) {
-        if (!schema.properties) return '{}';
-        
-        const lines: string[] = [];
-        lines.push('{');
-        
-        for (const [key, prop] of Object.entries(schema.properties)) {
-            const propSchema = prop as McpToolSchema;
-            const isRequired = schema.required?.includes(key) ?? false;
-            const q = isRequired ? '' : '?';
-            const tsType = this.simpleSchemaToTs(propSchema, indentLevel + 1);
-            
-            if (propSchema.description) {
-                lines.push(`${indent}  // ${propSchema.description}`);
-            }
-            lines.push(`${indent}  ${key}${q}: ${tsType};`);
+      if (!schema.properties) return '{}';
+
+      const lines: string[] = [];
+      lines.push('{');
+
+      for (const [key, prop] of Object.entries(schema.properties)) {
+        const propSchema = prop as McpToolSchema;
+        const isRequired = schema.required?.includes(key) ?? false;
+        const q = isRequired ? '' : '?';
+        const tsType = this.simpleSchemaToTs(propSchema, indentLevel + 1);
+
+        if (propSchema.description) {
+          lines.push(`${indent}  // ${propSchema.description}`);
         }
-        
-        lines.push(`${indent}}`);
-        return lines.join('\n');
+        lines.push(`${indent}  ${key}${q}: ${tsType};`);
+      }
+
+      lines.push(`${indent}}`);
+      return lines.join('\n');
     }
-    
+
     return 'any';
   }
 
   private static generateToolInterface(toolName: string, description: string, inputSchema: McpToolSchema): string {
-      const pascalName = toolName
-          .split('_')
-          .map(p => p.charAt(0).toUpperCase() + p.slice(1))
-          .join('') + 'Tool';
+    const pascalName = toolName
+      .split('_')
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('') + 'Tool';
 
-      const argsType = this.simpleSchemaToTs(inputSchema, 1);
-      
-      return `
+    const argsType = this.simpleSchemaToTs(inputSchema, 1);
+
+    return `
 type ${pascalName} = {
   // ${description.replace(/\n/g, '\n  // ')}
   ${toolName}: (args: ${argsType}) => Promise<any>;

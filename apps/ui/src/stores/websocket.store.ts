@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import useIngestStore from './ingest.store';
+import { queryClient } from '../main.js';
 import type { TerminalMessage } from '@repo/common/agent';
 
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
@@ -66,17 +67,37 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
             return;
           }
 
+          const typedData = data as Record<string, any>;
+
+          // [NEW] Handle Capability Updates (Hot Reload)
+          if (typedData.type === 'system:capability_update') {
+            const update = typedData as { resource: string; action: string; id?: string };
+            console.log('[HotReload] Capability update detected:', update.resource);
+
+            if (update.resource === 'provider') {
+              // Refresh provider list and available models
+              queryClient.invalidateQueries({ queryKey: [['providers', 'list']] });
+              queryClient.invalidateQueries({ queryKey: [['providers', 'listAllAvailableModels']] });
+            }
+            if (update.resource === 'tools') {
+              // Refresh tools list
+              queryClient.invalidateQueries({ queryKey: [['tool', 'list']] });
+            }
+            return;
+          }
+
           // Handle ingest progress events emitted by the server
-          if (data && typeof data.type === 'string' && data.type.startsWith('ingest')) {
+          if (typedData && typeof typedData.type === 'string' && typedData.type.startsWith('ingest')) {
+            const dataTyped = typedData as { type: string; path?: string; filePath?: string; file?: string };
             const ingest = useIngestStore.getState();
-            switch (data.type) {
+            switch (dataTyped.type) {
               case 'ingest.start':
                 // Mark ingest active for this path
-                ingest.increment(data.path || undefined);
+                ingest.increment(dataTyped.path || undefined);
                 break;
               case 'ingest.file.start':
                 // update current path display
-                useIngestStore.setState({ currentPath: data.filePath || data.file || null });
+                useIngestStore.setState({ currentPath: dataTyped.filePath || dataTyped.file || null });
                 break;
               case 'ingest.file.complete':
                 // increment processed count

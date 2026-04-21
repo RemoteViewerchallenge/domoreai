@@ -8,7 +8,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
-import { shutdownDb } from './db.js'; 
+import { shutdownDb } from './db.js';
 // import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
@@ -76,7 +76,7 @@ async function startServer() {
 
   // Initialize Provider Manager
   await ProviderManager.initialize();
-  
+
   // ==============================================================================
   // RUN THE ANTI-CORRUPTION PIPELINE
   // ==============================================================================
@@ -88,41 +88,43 @@ async function startServer() {
   // ==============================================================================
   // RUN THE ANTI-CORRUPTION PIPELINE (Non-Blocking Optimized)
   // ==============================================================================
-  
+
   const backgroundSync = async () => {
-     try {
-        console.log('🔄 Running Unified Model Ingestion (Background)...');
-        // 1. PHASE 1: OFFLINE IMPORT
-        const { UnifiedIngestionService } = await import('./services/UnifiedIngestionService.js');
-        await UnifiedIngestionService.ingestAllModels();
-        
-        // 2. PHASE 2: ONLINE SYNC
-        console.log('🌍 Syncing Live Providers (NVIDIA, Cerebras, etc.)...');
-        await ProviderManager.syncModelsToRegistry();
-    
-        // 3. PHASE 3: CAPABILITY SCAN
-        console.log('🕵️ Running Model Surveyor (Targeting Unknowns)...');
-        const { Surveyor } = await import('./services/Surveyor.js');
-        const stats = await Surveyor.surveyAll();
-        if (stats.surveyed > 0) {
-            console.log(`[Surveyor] Scan Complete: ${stats.surveyed} newly identified.`);
-        }
-     } catch (err) {
-        console.error('❌ Background Sync Failed:', err);
-     }
+    try {
+      console.log('🔄 Running Unified Model Ingestion (Background)...');
+      // 1. PHASE 1: OFFLINE IMPORT
+      const { UnifiedIngestionService } = await import('./services/UnifiedIngestionService.js');
+      await UnifiedIngestionService.ingestAllModels();
+
+      // 2. PHASE 2: ONLINE SYNC
+      console.log('🌍 Syncing Live Providers (NVIDIA, Cerebras, etc.)...');
+      await ProviderManager.syncModelsToRegistry();
+
+      // 3. PHASE 3: CAPABILITY SCAN
+      // DISABLED: Surveyor overwrites manually corrected data
+      // Only run this manually via systemHealth.surveyModels endpoint
+      // console.log('🕵️ Running Model Surveyor (Targeting Unknowns)...');
+      // const { Surveyor } = await import('./services/Surveyor.js');
+      // const stats = await Surveyor.surveyAll();
+      // if (stats.surveyed > 0) {
+      //     console.log(`[Surveyor] Scan Complete: ${stats.surveyed} newly identified.`);
+      // }
+    } catch (err) {
+      console.error('❌ Background Sync Failed:', err);
+    }
   };
 
   try {
-     const { prisma } = await import('./db.js');
-     const modelCount = await prisma.model.count();
-     
-     if (modelCount === 0) {
-         console.log('⚠️ Database empty. Waiting for initial sync...');
-         await backgroundSync();
-     } else {
-         console.log(`✅ Database warm (${modelCount} models). Starting server immediately.`);
-         void backgroundSync(); // Fire and forget
-     }
+    const { prisma } = await import('./db.js');
+    const modelCount = await prisma.model.count();
+
+    if (modelCount === 0) {
+      console.log('⚠️ Database empty. Waiting for initial sync...');
+      await backgroundSync();
+    } else {
+      console.log(`✅ Database warm (${modelCount} models). Starting server immediately.`);
+      void backgroundSync(); // Fire and forget
+    }
 
   } catch (err) {
     console.error('❌ Model Ingestion/Sync Failed:', err);
@@ -144,67 +146,67 @@ async function startServer() {
   server.listen(port, () => {
     (async () => {
       console.log(`API server listening at ${API_HOST}:${port}`);
-    
-    // Display free model inventory
-    try {
-      const { prisma } = await import('./db.js');
-      const allModels = await prisma.model.findMany({
-        select: {
-          id: true,
-          name: true,
-          providerId: true,
-          costPer1k: true
-        }
-      });
-      
-      const freeModels = allModels.filter(m => m.costPer1k === 0);
-      const freeByProvider = freeModels.reduce((acc, m) => {
-        const provider = m.providerId;
-        acc[provider] = (acc[provider] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      console.log(`
+
+      // Display free model inventory
+      try {
+        const { prisma } = await import('./db.js');
+        const allModels = await prisma.model.findMany({
+          select: {
+            id: true,
+            name: true,
+            providerId: true,
+            costPer1k: true
+          }
+        });
+
+        const freeModels = allModels.filter(m => m.costPer1k === 0);
+        const freeByProvider = freeModels.reduce((acc, m) => {
+          const provider = m.providerId;
+          acc[provider] = (acc[provider] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        console.log(`
 ┌────────────────────────────────────────┐
 │  🚀 C.O.R.E. API Started              │
 ├────────────────────────────────────────┤
 │  Total Models: ${String(allModels.length).padEnd(23)}│
 │  ✅ Free Models: ${String(freeModels.length).padEnd(21)}│
-${Object.entries(freeByProvider).map(([provider, count]) => 
-  `│     - ${provider}: ${String(count).padEnd(26 - provider.length)}│`
-).join('\n')}
+${Object.entries(freeByProvider).map(([provider, count]) =>
+          `│     - ${provider}: ${String(count).padEnd(26 - provider.length)}│`
+        ).join('\n')}
 │                                        │
 │  💰 Zero-Burn Mode: ACTIVE            │
 └────────────────────────────────────────┘
       `);
-    } catch (err) {
-      console.warn('Could not fetch model inventory:', err);
-    }
+      } catch (err) {
+        console.warn('Could not fetch model inventory:', err);
+      }
 
-    // Start background services
-    console.log('\n🔧 Starting background services...');
-    
-    // Start automatic backup service
-    try {
-      await backupService.start();
-    } catch (err) {
-      console.warn('⚠️ Backup service failed to start:', err);
-    }
+      // Start background services
+      console.log('\n🔧 Starting background services...');
 
-    // [NEW] Trigger Background MCP Tool Sync
-    // This ensures the UI reflects any new MCP servers added to RegistryClient
-    void import('./services/McpToolSyncService.js').then(({ McpToolSyncService }) => {
-      void McpToolSyncService.syncAllTools()
-        .then(stats => console.log(`[McpSync] Startup sync complete. Tools: ${stats.tools}`))
-        .catch(err => console.error('[McpSync] Startup sync failed:', err));
-    });
+      // Start automatic backup service
+      try {
+        await backupService.start();
+      } catch (err) {
+        console.warn('⚠️ Backup service failed to start:', err);
+      }
 
-    // Start persistent model doctor
-    // try {
-    //   await persistentModelDoctor.start();
-    // } catch (err) {
-    //   console.warn('⚠️ Persistent model doctor failed to start:', err);
-    // }
+      // [NEW] Trigger Background MCP Tool Sync
+      // This ensures the UI reflects any new MCP servers added to RegistryClient
+      void import('./services/McpToolSyncService.js').then(({ McpToolSyncService }) => {
+        void McpToolSyncService.syncAllTools()
+          .then(stats => console.log(`[McpSync] Startup sync complete. Tools: ${stats.tools}`))
+          .catch(err => console.error('[McpSync] Startup sync failed:', err));
+      });
+
+      // Start persistent model doctor
+      // try {
+      //   await persistentModelDoctor.start();
+      // } catch (err) {
+      //   console.warn('⚠️ Persistent model doctor failed to start:', err);
+      // }
     })();
   });
 
@@ -216,17 +218,17 @@ ${Object.entries(freeByProvider).map(([provider, count]) =>
     isShuttingDown = true;
 
     console.log(`\n${signal} received. Shutting down gracefully...`);
-    
+
     // Stop background services first
     backupService.stop();
     // persistentModelDoctor.stop();
-    
+
     server.close(() => {
       (async () => {
-        console.log('HTTP server closed.');      
-      wsService.close(); // Assuming WebSocketService has a .close() method
-      await shutdownDb();
-      console.log('Database connection closed.');
+        console.log('HTTP server closed.');
+        wsService.close(); // Assuming WebSocketService has a .close() method
+        await shutdownDb();
+        console.log('Database connection closed.');
         process.exit(0);
       })();
     });

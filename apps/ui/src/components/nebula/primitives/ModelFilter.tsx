@@ -4,7 +4,7 @@ import DualRangeSlider from '../../ui/DualRangeSlider.js';
 import { Check, Cpu, Eye, Image, Mic, Zap, FileText, Shield, Hammer, FlaskConical, Terminal } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
-export type FilterMode = 'CHAT' | 'VISION' | 'AUDIO' | 'EMBEDDING' | 'REASONING' | 'IMAGE_GEN' | 'COMPLIANCE' | 'JUDGE' | 'RESEARCH';
+export type FilterMode = 'CHAT' | 'VISION' | 'AUDIO' | 'EMBEDDING' | 'REASONING' | 'IMAGE_GEN' | 'COMPLIANCE' | 'JUDGE' | 'RESEARCH' | 'UNKNOWN';
 
 export interface FilterCriteria {
     minContext: number;
@@ -55,15 +55,20 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                 caps.isMedical || caps.isWeather || caps.isScience || caps.hasReward || caps.hasModeration || caps.isLibrarian
             );
 
+            // Unused variables commented out to satisfy linter
+            // const strictlySpecialized = ...
+            // isDomainSpecific is used below? No, I removed the usage in switch.
+
             switch (criteria.mode) {
                 case 'CHAT':
-                    if (isDomainSpecific) {
-                        isMatch = false;
-                    } else if (strictlySpecialized) {
-                        isMatch = !!(caps.hasReasoning || caps.hasCoding || caps.isMultimodal);
-                    } else {
-                        isMatch = true;
-                    }
+                    // Strict Chat: LLMs only (Text).
+                    // If it has specialized caps like Embedding/ImageGen/Audio ONLY, exclude it.
+                    // If it is Multimodal (Text+Vision), ALLOW it.
+                    if (caps.hasEmbedding && !caps.isMultimodal) isMatch = false; // Pure embedding
+                    else if (caps.hasImageGen && !caps.isMultimodal) isMatch = false; // Pure Image Gen
+                    else if (caps.hasTTS && !caps.isMultimodal) isMatch = false; // Pure Audio (Whisper)
+                    else if (isDomainSpecific) isMatch = false; // Exclude specialized domain models from generic chat
+                    else isMatch = true;
                     break;
                 case 'VISION':
                     isMatch = !!caps.hasVision || !!caps.isMultimodal;
@@ -89,6 +94,10 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                 case 'RESEARCH':
                     isMatch = !!caps.isMedical || !!caps.isWeather || !!caps.isScience;
                     break;
+                case 'UNKNOWN':
+                    // Show models with very low confidence or missing basic caps
+                    isMatch = !caps.hasVision && !caps.hasReasoning && !caps.hasEmbedding && !caps.hasTTS && !caps.hasImageGen;
+                    break;
             }
 
             if (!isMatch) return;
@@ -102,7 +111,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
             const withinRange = context >= criteria.minContext && context <= criteria.maxContext;
 
             if (isGeneralModel && !withinRange) return;
-            if (!isGeneralModel && context > 0 && !withinRange) return;
+            // if (!isGeneralModel && context > 0 && !withinRange) return; // Allow specialized to ignore context
 
             // Calculate score
             let score = 100;
@@ -131,6 +140,8 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
         onChange({ ...criteria, mode, hardCodedModelId: null });
     };
 
+    const showContextControls = ['CHAT', 'VISION', 'REASONING', 'RESEARCH'].includes(criteria.mode);
+
     return (
         <div className={cn("flex flex-col gap-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-4", className)}>
 
@@ -147,20 +158,26 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     <ModeToggle label="Judge" active={criteria.mode === 'JUDGE'} onClick={() => setMode('JUDGE')} icon={Hammer} />
                     <ModeToggle label="Study" active={criteria.mode === 'RESEARCH'} onClick={() => setMode('RESEARCH')} icon={FlaskConical} />
                     <ModeToggle label="Image" active={criteria.mode === 'IMAGE_GEN'} onClick={() => setMode('IMAGE_GEN')} icon={Image} />
+                    <ModeToggle label="Unknown" active={criteria.mode === 'UNKNOWN'} onClick={() => setMode('UNKNOWN')} icon={Zap} />
                 </div>
             </div>
 
             {/* B. Preferences & Context */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Context Range</label>
+                    <div className="flex justify-between items-center h-4">
+                        {showContextControls && <label className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Context Range</label>}
                     </div>
-                    <DualRangeSlider
-                        min={2048} max={128000} step={1024}
-                        value={[criteria.minContext, criteria.maxContext]}
-                        onChange={([min, max]: [number, number]) => onChange({ ...criteria, minContext: min, maxContext: max })}
-                    />
+                    {showContextControls ? (
+                        <DualRangeSlider
+                            label="Context Window"
+                            min={2048} max={128000} step={1024}
+                            value={[criteria.minContext, criteria.maxContext]}
+                            onChange={([min, max]: [number, number]) => onChange({ ...criteria, minContext: min, maxContext: max })}
+                        />
+                    ) : (
+                        <div className="h-4 text-[10px] text-[var(--text-muted)] italic">Context irrelevant for {criteria.mode.toLowerCase()}</div>
+                    )}
                 </div>
                 <div className="flex gap-2 items-end">
                     <CapToggle label="Thinking" active={!!criteria.preferences.reasoning}
