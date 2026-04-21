@@ -19,6 +19,8 @@ model ProviderConfig {
   enforceFreeOnly    Boolean  @default(true)  // [NEW]
   monthlyBudget      Float?   // [NEW]
   isEnabled          Boolean  @default(true)
+  status             String   @default("ACTIVE")
+  lastError          String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   Model              Model[]

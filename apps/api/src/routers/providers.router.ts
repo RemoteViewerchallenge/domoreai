@@ -14,9 +14,9 @@ export const providerRouter = createTRPCRouter({
   upsert: publicProcedure
     .input(z.object({
       id: z.string().optional(),
-      name: z.string(),
-      providerType: z.string(),
-      baseURL: z.string(),
+      name: z.string().optional(),
+      providerType: z.string().optional(),
+      baseURL: z.string().optional(),
       apiKey: z.string().optional(),
       apiKeyEnvVar: z.string().optional(),
       pricingUrl: z.string().optional(),
@@ -44,10 +44,19 @@ export const providerRouter = createTRPCRouter({
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ input }) => {
       // 1. Fetch models
-      await providerService.fetchAndNormalizeModels(input.providerId);
+      const syncResult = await providerService.fetchAndNormalizeModels(input.providerId);
+      
       // 2. Run Surveyor to identify capabilities and populate specialized tables
       const { Surveyor } = await import('../services/Surveyor.js');
-      return await Surveyor.surveyAll(); // In a real system, we'd filter Surveyor to just this providerId
+      const surveyResult = await Surveyor.surveyAll(); 
+
+      // 3. Return combined result with updated provider state
+      const provider = await providerService.getProvider(input.providerId);
+      return {
+        ...syncResult,
+        ...surveyResult,
+        provider
+      };
     }),
 
   listAllAvailableModels: publicProcedure.query(async () => {
@@ -63,7 +72,12 @@ export const providerRouter = createTRPCRouter({
   fetchAndNormalizeModels: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ input }) => {
-      return providerService.fetchAndNormalizeModels(input.providerId);
+      const syncResult = await providerService.fetchAndNormalizeModels(input.providerId);
+      const provider = await providerService.getProvider(input.providerId);
+      return {
+        ...syncResult,
+        provider
+      };
     }),
 
   // Legacy/Debug endpoints
