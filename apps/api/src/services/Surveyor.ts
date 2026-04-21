@@ -1167,7 +1167,7 @@ export class Surveyor {
         status,
         lastError,
         updatedAt: new Date()
-      } as any
+      }
     });
   }
 
@@ -1337,10 +1337,10 @@ export class Surveyor {
     const { prisma } = await import('../db.js');
 
     // 0. Inspect the model using the general `inspect` method
-    const specs = Surveyor.inspect(model.provider.label, model.name, model.providerData as Record<string, unknown>);
+    const specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
 
     if (!specs) {
-      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.label}/${model.name}`);
+      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.name}/${model.name}`);
       return null;
     }
 
@@ -1361,7 +1361,7 @@ export class Surveyor {
         hasImageGen: specs.capabilities.includes('image_gen'),
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
-        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        isLocal: model.provider.name.toLowerCase() === 'ollama',
         modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },
@@ -1378,7 +1378,7 @@ export class Surveyor {
         hasImageGen: specs.capabilities.includes('image_gen'),
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
-        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        isLocal: model.provider.name.toLowerCase() === 'ollama',
         modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },

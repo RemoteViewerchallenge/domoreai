@@ -16,7 +16,7 @@ async function clean() {
     let totalDeleted = 0;
 
     for (const provider of providers) {
-        console.log(`\n🔍 Checking ${provider.label} (${provider.type})...`);
+        console.log(`\n🔍 Checking ${provider.name} (${provider.type})...`);
         
         const models = await prisma.model.findMany({
             where: { providerId: provider.id }
@@ -42,7 +42,7 @@ async function clean() {
             }
         }
         
-        console.log(`   ✅ Finished ${provider.label}. Pruned ${deletedCount} models.`);
+        console.log(`   ✅ Finished ${provider.name}. Pruned ${deletedCount} models.`);
         totalDeleted += deletedCount;
     }
 

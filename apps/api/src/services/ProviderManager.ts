@@ -12,7 +12,7 @@ export class ProviderManager implements IProviderManager {
   private providers: Map<string, BaseLLMProvider> = new Map();
   /*private*/ unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
   // NEW: Store metadata for logging and filtering
-  /*private*/ providerMetadata: Map<string, { label: string; type: string }> = new Map();
+  /*private*/ providerMetadata: Map<string, { name: string; type: string }> = new Map();
 
   private repository: IProviderRepository;
 
@@ -73,43 +73,43 @@ export class ProviderManager implements IProviderManager {
           } else if (envVar && process.env[envVar]?.trim()) {
             // Use environment variable directly
             apiKey = process.env[envVar]?.trim() || '';
-            console.log(`[ProviderManager] Using ${envVar} from environment for ${config.label}`);
+            console.log(`[ProviderManager] Using ${envVar} from environment for ${config.name}`);
           } else {
             // NEW: Fallback via convention for any other provider ID
             const conventionKey = `${config.id.toUpperCase()}_API_KEY`;
             if (process.env[conventionKey]) {
               apiKey = process.env[conventionKey] || '';
-              console.log(`[ProviderManager] Using ${conventionKey} from environment for ${config.label}`);
+              console.log(`[ProviderManager] Using ${conventionKey} from environment for ${config.name}`);
             } else {
-              console.warn(`[ProviderManager] ⚠️ No API Key found for ${config.label}. Please set ${conventionKey} in .env`);
+              console.warn(`[ProviderManager] ⚠️ No API Key found for ${config.name}. Please set ${conventionKey} in .env`);
             }
           }
 
           // Fix for Ollama: If baseURL is missing in DB, default to local.
           // This prevents "Ollama requires a baseURL" initialization errors.
-          let baseURL = config.baseURL || undefined;
+          let baseURL = config.baseUrl || undefined;
           if (config.type === 'ollama' && !baseURL) {
             baseURL = process.env.OLLAMA_HOST || OLLAMA_DEFAULT_HOST;
           }
 
           if (config.type !== 'ollama' && !apiKey) {
-            console.warn(`[ProviderManager] ⚠️ Skipping ${config.label} - No API Key found. Please set ${envMappings[config.type] || (config.type.toUpperCase() + '_API_KEY')} in .env`);
+            console.warn(`[ProviderManager] ⚠️ Skipping ${config.name} - No API Key found. Please set ${envMappings[config.type] || (config.type.toUpperCase() + '_API_KEY')} in .env`);
             continue;
           }
 
           const provider = ProviderFactory.createProvider(config.type, {
             id: config.id,
             apiKey,
-            baseURL,
+            baseURL, // Keep as baseURL here because the Factory expects baseURL for its config
           });
           this.providers.set(config.id, provider);
 
           // STORE METADATA HERE
-          this.providerMetadata.set(config.id, { label: config.label, type: config.type });
+          this.providerMetadata.set(config.id, { name: config.name, type: config.type });
 
-          console.log(`[ProviderManager] ✅ Online: ${config.label} (${config.type})`);
+          console.log(`[ProviderManager] ✅ Online: ${config.name} (${config.type})`);
         } catch (error) {
-          console.error(`[ProviderManager] ❌ Failed to init ${config.label}:`, error);
+          console.error(`[ProviderManager] ❌ Failed to init ${config.name}:`, error);
         }
       }
 
@@ -135,7 +135,7 @@ export class ProviderManager implements IProviderManager {
       const key = process.env[map.env];
       if (key) {
         // Check if already exists to avoid duplicates
-        const existing = await this.repository.findProviderConfigByLabel(map.label);
+        const existing = await this.repository.findProviderConfigByName(map.label);
 
         if (!existing) {
           console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
@@ -146,10 +146,10 @@ export class ProviderManager implements IProviderManager {
           const now = new Date();
           await this.repository.createProviderConfig({
             id: stableId,
-            label: map.label,
+            name: map.label,
             type: map.type,
             // apiKey: encrypt(key), // REMOVED: Keys are now in env only
-            baseURL: map.url || '',
+            baseUrl: map.url || '',
             isEnabled: true,
             createdAt: now,
             updatedAt: now
@@ -223,10 +223,10 @@ export class ProviderManager implements IProviderManager {
           const now = new Date();
           await this.repository.createProviderConfig({
             id: providerId,
-            label: 'Ollama (Local)',
+            name: 'Ollama (Local)',
             type: 'ollama',
             // apiKey: encrypt(''), // REMOVED
-            baseURL: ollamaHost,
+            baseUrl: ollamaHost,
             isEnabled: true,
             createdAt: now,
             updatedAt: now

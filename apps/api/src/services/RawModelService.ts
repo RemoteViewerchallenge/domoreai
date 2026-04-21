@@ -17,7 +17,7 @@ export class RawModelService {
     if (!config) throw new Error(`Provider Config ${providerConfigId} not found`);
 
     // 2. Prepare URL with provider-aware defaults and normalization
-    let url = config.baseURL;
+    let url = config.baseUrl;
     if (!url) {
         if (config.type === 'openai') url = 'https://api.openai.com/v1';
         else if (config.type === 'openrouter') url = 'https://openrouter.ai/api/v1';

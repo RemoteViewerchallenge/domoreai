@@ -40,7 +40,7 @@ export const orchestratorRouter = createTRPCRouter({
         capabilities: true,
         provider: {
           select: {
-            label: true,
+            name: true,
             type: true
           }
         }
@@ -52,7 +52,7 @@ export const orchestratorRouter = createTRPCRouter({
       const caps = m.capabilities || {} as any;
       return {
         ...m,
-        providerLabel: m.provider?.label,
+        providerLabel: m.provider?.name,
         specs: {
           ...caps,
           hasCoding: caps.specs?.coding || false,
