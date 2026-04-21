@@ -89,10 +89,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     // 🟢 GOOD: Robust Default File Creation (No Crashes)
     useEffect(() => {
         // [PATH MIGRATION] If activeFile is pointing to hidden .nebula or chat folders, move it to sessions.
-        if (activeFile && (activeFile.includes('/.nebula/sessions/') || activeFile.includes('/chat/'))) {
+        if (activeFile && (activeFile.includes('/.nebula/sessions/') || activeFile.includes('/chat/') || activeFile.includes('/chats/'))) {
             const basename = getBasename(activeFile);
             const migratedPath = `${currentPath}/sessions/${basename}`;
             console.log(`[VFS] Migrating stale path: ${activeFile} -> ${migratedPath}`);
+            setActiveFile(migratedPath);
+            return;
+        }
+
+        // [PATH FIX] Ensure card-id prefix for session files
+        if (activeFile && activeFile.includes('/sessions/') && !getBasename(activeFile).startsWith('card-')) {
+            const migratedPath = `${currentPath}/sessions/card-${id}.md`;
+            console.log(`[VFS] Fixing malformed session path: ${activeFile} -> ${migratedPath}`);
             setActiveFile(migratedPath);
             return;
         }
@@ -109,11 +117,15 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 }
 
                 try {
+                   // Only write if we are sure we want a fresh start
                    await writeFile(filePath, ''); 
                    setActiveFile(filePath);
                 } catch (e) {
                    console.error("Failed to create default session file", e);
-                   setActiveFile(`${currentPath}/card-${id}.md`);
+                   // Absolute fallback
+                   const fallbackPath = `${currentPath}/card-${id}.md`;
+                   void writeFile(fallbackPath, '').catch(() => {});
+                   setActiveFile(fallbackPath);
                 }
             };
             
@@ -121,7 +133,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
     }, [activeFile, viewMode, id, currentPath, writeFile, mkdir]);
 
-    // Auto-switch view logic
+    // Auto-switch view logic & Error Handling for Missing Files
     useEffect(() => {
         if (activeFile) {
             if (activeFile.startsWith('http')) {
@@ -131,10 +143,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                  setBrowserUrl(`file://${activeFile}`);
                  setViewMode('browser');
             } else {
-                void readFile(activeFile).then(setContent).catch(() => setContent(''));
+                void readFile(activeFile)
+                    .then(setContent)
+                    .catch(async (err: any) => {
+                        // If file is missing (ENOENT), and it's a session file, create it!
+                        if (err.message?.includes('ENOENT') && activeFile.includes('/sessions/')) {
+                            console.warn(`[VFS] File missing, auto-creating: ${activeFile}`);
+                            await writeFile(activeFile, '');
+                            setContent('');
+                        } else {
+                            setContent('');
+                        }
+                    });
             }
         }
-    }, [activeFile, readFile]);
+    }, [activeFile, readFile, writeFile]);
 
     const handleSave = useCallback(async (val: string | undefined) => {
         if (val === undefined) return;
@@ -200,6 +223,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             toast.success("Done", { id: 'agent-run' });
             if (session.logs) {
                 setTerminalLogs(p => [...p, ...session.logs.map((l: string) => ({ message: l, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage))]);
+            }
+            // Auto-refresh content after agent run
+            if (activeFile) {
+                void refresh().then(() => readFile(activeFile)).then(setContent).catch(() => {});
             }
             setViewMode('terminal');
         } catch (err) {

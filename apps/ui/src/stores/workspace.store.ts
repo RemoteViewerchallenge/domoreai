@@ -47,6 +47,10 @@ export interface WorkspaceState {
   activeScreenspaceId: number;
   screenspaces: Screenspace[];
   switchScreenspace: (id: number) => void;
+
+  // [NEW] Zero-Trust Control Plane
+  showControlPlane: boolean;
+  toggleControlPlane: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -58,6 +62,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
       setSidebarOpen: (open) => set({ showSidebar: open }),
       
+      showControlPlane: false,
+      toggleControlPlane: () => set((state) => ({ showControlPlane: !state.showControlPlane })),
       cards: [
         { id: '1', roleId: '', column: 0, screenspaceId: 1 },
         { id: '2', roleId: '', column: 0, screenspaceId: 1 },

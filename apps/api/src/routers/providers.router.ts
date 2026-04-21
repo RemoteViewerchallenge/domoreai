@@ -10,7 +10,7 @@ export const providerRouter = createTRPCRouter({
     return providerService.listProviders();
   }),
 
-  // [UPDATED] Changed 'add' to 'upsert' to support editing
+  // [UPDATED] Expanded to support new financial/metadata fields
   upsert: publicProcedure
     .input(z.object({
       id: z.string().optional(),
@@ -18,6 +18,11 @@ export const providerRouter = createTRPCRouter({
       providerType: z.string(),
       baseURL: z.string(),
       apiKey: z.string().optional(),
+      apiKeyEnvVar: z.string().optional(),
+      pricingUrl: z.string().optional(),
+      isCreditCardLinked: z.boolean().optional(),
+      enforceFreeOnly: z.boolean().optional(),
+      monthlyBudget: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       return providerService.upsertProviderConfig({
@@ -26,7 +31,23 @@ export const providerRouter = createTRPCRouter({
         type: input.providerType,
         baseURL: input.baseURL,
         apiKey: input.apiKey,
+        apiKeyEnvVar: input.apiKeyEnvVar,
+        pricingUrl: input.pricingUrl,
+        isCreditCardLinked: input.isCreditCardLinked,
+        enforceFreeOnly: input.enforceFreeOnly,
+        monthlyBudget: input.monthlyBudget,
       });
+    }),
+
+  // [NEW] Trigger the Surveyor for a specific provider
+  scout: publicProcedure
+    .input(z.object({ providerId: z.string() }))
+    .mutation(async ({ input }) => {
+      // 1. Fetch models
+      await providerService.fetchAndNormalizeModels(input.providerId);
+      // 2. Run Surveyor to identify capabilities and populate specialized tables
+      const { Surveyor } = await import('../services/Surveyor.js');
+      return await Surveyor.surveyAll(); // In a real system, we'd filter Surveyor to just this providerId
     }),
 
   listAllAvailableModels: publicProcedure.query(async () => {

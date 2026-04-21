@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
-interface TuningConfig {
+export interface TuningConfig {
   temperature: number;
   topP: number;
   frequencyPenalty: number;
