@@ -1141,6 +1141,73 @@ interface UnknownModelDelegate {
 
 export class Surveyor {
   /**
+   * [NEW] Extract and format provider errors for UI display
+   */
+  static formatError(error: any): string {
+    const status = error.response?.status || error.status || '500';
+    const rawMessage = error.response?.data?.error?.message || error.message || 'Unknown provider error';
+    
+    // Normalize some common provider error structures
+    let message = rawMessage;
+    if (typeof rawMessage === 'object') message = JSON.stringify(rawMessage);
+
+    return `[${status}] ${message}`;
+  }
+
+  /**
+   * [NEW] Update provider health state in database
+   */
+  static async updateProviderStatus(providerId: string, status: 'ACTIVE' | 'ERROR', lastError: string | null = null) {
+    const { prisma } = await import('../db.js');
+    console.log(`[Surveyor] Updating status for ${providerId} to ${status}`);
+    
+    return prisma.providerConfig.update({
+      where: { id: providerId },
+      data: {
+        status,
+        lastError,
+        updatedAt: new Date()
+      }
+    });
+  }
+
+  /**
+   * Filter out deprecated date-stamped models and utility junk.
+   * If 'mistral-small-latest' exists, we reject 'mistral-small-2312', 'mistral-small-2402'.
+   */
+  static sanitizeModelList(models: any[]): any[] {
+    const canonicalModels = new Set<string>();
+    
+    // Pass 1: Identify all canonical or latest models
+    for (const m of models) {
+      const id = m.id.toLowerCase();
+      if (id.endsWith('-latest')) {
+        canonicalModels.add(id.replace('-latest', ''));
+      } else if (!id.match(/-\d{4}$/)) {
+        // If it doesn't end in a date stamp, it might be a canonical version
+        canonicalModels.add(id);
+      }
+    }
+
+    return models.filter(m => {
+      const id = m.id.toLowerCase();
+      
+      // Check for date stamps (e.g. -2402, -2312)
+      const dateMatch = id.match(/(.*)-(\d{4})$/);
+      if (dateMatch) {
+        const prefix = dateMatch[1];
+        // If we have 'prefix' or 'prefix-latest', then 'prefix-YYMM' is deprecated junk
+        if (canonicalModels.has(prefix)) {
+          console.log(`[Surveyor] 🗑️ Filtering deprecated model: ${m.id} (preferring canonical/latest)`);
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }
+
+  /**
    * Inspect a model and return its specs if we can identify it via patterns
    */
   /**
@@ -1223,8 +1290,8 @@ export class Surveyor {
         specs = { contextWindow: 32768, capabilities: ["text", "reasoning"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('reward')) {
         specs = { contextWindow: 4096, capabilities: ["text", "reward_model"], confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('moderation')) {
-        specs = { contextWindow: 4096, capabilities: ["text", "moderation"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('moderation') || lower.includes('guard') || lower.includes('shield')) {
+        specs = { contextWindow: 4096, capabilities: ["moderation"], primaryTask: "moderation", confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('med') || lower.includes('clinical') || lower.includes('bio') || lower.includes('healthcare')) {
         specs = { contextWindow: 4096, capabilities: ["text", "medical"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('weather') || lower.includes('climate')) {
@@ -1233,6 +1300,8 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "specialized_science"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('embed')) {
         specs = { contextWindow: 2048, capabilities: ["embedding"], primaryTask: "embedding", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('tts') || lower.includes('whisper')) {
+        specs = { contextWindow: 0, capabilities: ["audio"], primaryTask: "tts", confidence: 'medium', source: 'surveyor_heuristic' };
       }
     }
 
@@ -1268,10 +1337,10 @@ export class Surveyor {
     const { prisma } = await import('../db.js');
 
     // 0. Inspect the model using the general `inspect` method
-    const specs = Surveyor.inspect(model.provider.label, model.name, model.providerData as Record<string, unknown>);
+    const specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
 
     if (!specs) {
-      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.label}/${model.name}`);
+      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.name}/${model.name}`);
       return null;
     }
 
@@ -1292,7 +1361,8 @@ export class Surveyor {
         hasImageGen: specs.capabilities.includes('image_gen'),
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
-        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        isLocal: model.provider.name.toLowerCase() === 'ollama',
+        modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },
       create: {
@@ -1308,7 +1378,8 @@ export class Surveyor {
         hasImageGen: specs.capabilities.includes('image_gen'),
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
-        isLocal: model.provider.label.toLowerCase() === 'ollama',
+        isLocal: model.provider.name.toLowerCase() === 'ollama',
+        modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },
     });

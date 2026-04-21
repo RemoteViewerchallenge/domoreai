@@ -182,6 +182,24 @@ export class McpOrchestrator implements IMcpOrchestrator {
       }
     }
   }
+
+  /**
+   * Shuts down all active MCP servers.
+   */
+  async shutdownAll() {
+    console.log(`[Orchestrator] Shutting down all MCP servers...`);
+    const shutdownPromises = Array.from(this.activeServers.entries()).map(async ([name, server]) => {
+      try {
+        console.log(`[Orchestrator] Closing server: ${name}`);
+        await server.client.close();
+      } catch (e) {
+        console.error(`[Orchestrator] Error closing client ${name}:`, e);
+      }
+    });
+
+    await Promise.all(shutdownPromises);
+    this.activeServers.clear();
+  }
 }
 
 export const mcpOrchestrator = new McpOrchestrator();

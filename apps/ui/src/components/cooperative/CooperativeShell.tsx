@@ -9,6 +9,7 @@ import Constitution from '../../pages/Constitution.js';
 import VoicePlayground from '../../pages/VoicePlayground.js';
 import OrchestrationCanvas from '../../pages/OrchestrationCanvas.js';
 import BasetoolPage from '../../pages/BasetoolPage.js';
+import ControlPlane from '../../pages/ControlPlane.js';
 
 export function CooperativeShell() {
   // Inject Cooperative Physics on mount
@@ -30,6 +31,7 @@ export function CooperativeShell() {
                 <Route path="/settings" element={<Constitution />} />
                 <Route path="/voice-playground" element={<VoicePlayground />} />
                 <Route path="/orchestration-canvas" element={<OrchestrationCanvas />} />
+                <Route path="/control-plane" element={<ControlPlane />} />
                 
                 {/* Legacy or helper redirects */}
                 <Route path="/code-visualizer" element={<Navigate to="/visualizer" replace />} />
