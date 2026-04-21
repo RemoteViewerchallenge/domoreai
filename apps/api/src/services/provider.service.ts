@@ -9,24 +9,28 @@ export class ProviderService {
   }
 
   // [NEW] Manage Providers via UI
-  async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
-    // const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined; // REMOVED
-
-    // Note: apiKey is removed from DB schema, but we keep the logic structure 
-    // in case we restore it or for consistency with how it was called.
-    // If apiKey column is gone, we cannot save it.
-    // We will assume environment variables handle the key, but we still accept label/type/baseURL.
-
-    // If 'apiKey' really is gone from ProviderConfig, we skip saving it.
-    // If we want to support storing keys, we need the column back.
-    // Given the migration "Move Keys to Env", we assume DB does NOT store keys.
-
+  async upsertProviderConfig(input: { 
+    id?: string, 
+    label: string, 
+    type: string, 
+    baseURL: string, 
+    apiKey?: string,
+    apiKeyEnvVar?: string,
+    pricingUrl?: string,
+    isCreditCardLinked?: boolean,
+    enforceFreeOnly?: boolean,
+    monthlyBudget?: number
+  }) {
     const data = {
       label: input.label,
       type: input.type,
       baseURL: input.baseURL,
+      apiKeyEnvVar: input.apiKeyEnvVar,
+      pricingUrl: input.pricingUrl,
+      isCreditCardLinked: input.isCreditCardLinked ?? false,
+      enforceFreeOnly: input.enforceFreeOnly ?? true,
+      monthlyBudget: input.monthlyBudget,
       isEnabled: true,
-      // apiKey: encryptedKey, // Omitted
     };
 
     if (input.id) {

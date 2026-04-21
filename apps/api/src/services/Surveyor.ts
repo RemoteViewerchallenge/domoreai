@@ -1293,6 +1293,7 @@ export class Surveyor {
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
         isLocal: model.provider.label.toLowerCase() === 'ollama',
+        modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },
       create: {
@@ -1309,6 +1310,7 @@ export class Surveyor {
         isMultimodal: specs.capabilities.includes('vision') || specs.capabilities.includes('image_gen') || specs.capabilities.includes('audio') || specs.capabilities.includes('video'),
         primaryTask: specs.primaryTask || (specs.capabilities.includes('embedding') ? 'embedding' : 'chat'),
         isLocal: model.provider.label.toLowerCase() === 'ollama',
+        modalityTags: specs.capabilities,
         specs: specs as unknown as Record<string, unknown>,
       },
     });

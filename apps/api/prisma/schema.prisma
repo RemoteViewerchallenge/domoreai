@@ -9,14 +9,19 @@ datasource db {
 }
 
 model ProviderConfig {
-  id        String   @id
-  label     String
-  type      String
-  baseURL   String?
-  isEnabled Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Model     Model[]
+  id                 String   @id
+  label              String
+  type               String
+  baseURL            String?
+  apiKeyEnvVar       String?  // [NEW]
+  pricingUrl         String?  // [NEW]
+  isCreditCardLinked Boolean  @default(false) // [NEW]
+  enforceFreeOnly    Boolean  @default(true)  // [NEW]
+  monthlyBudget      Float?   // [NEW]
+  isEnabled          Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  Model              Model[]
 }
 
 model Workspace {
@@ -138,6 +143,12 @@ model ModelCapabilities {
   specs                   Json?    @default("{}")
   primaryTask             String?  // [NEW] e.g. "chat", "embedding", "tts", "image_gen"
   isLocal                 Boolean? @default(false) // [NEW] True for Ollama/local models (fallback only)
+  utilityScore            Float?   @default(0)     // [NEW] MAB preference score
+  latencyAvg              Float?   @default(0)     // [NEW] Latency in ms
+  successRate             Float?   @default(0)     // [NEW] Success percentage
+  successCount            Int?     @default(0)     // [NEW]
+  failureCount            Int?     @default(0)     // [NEW]
+  modalityTags            String[] @default([])    // [NEW] ["text", "vision", etc]
   model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")

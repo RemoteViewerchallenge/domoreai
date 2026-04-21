@@ -8,8 +8,8 @@ import {
     Bot, Zap, Wand2, Loader2, Download
 } from 'lucide-react';
 import CompactRoleSelector from '../CompactRoleSelector.js';
-import { ModelFilter } from '../nebula/primitives/ModelFilter.js';
-import { NaturalParameterTuner } from '../nebula/primitives/NaturalParameterTuner.js';
+import { ModelFilter, type FilterCriteria } from '../../features/dna-lab/components/ModelFilter.js';
+import { NaturalParameterTuner, type TuningConfig } from '../../features/dna-lab/components/NaturalParameterTuner.js';
 import { RoleToolSelector } from '../role/RoleToolSelector.js';
 import type { Model, RoleDNA, Role } from '../../types/role.js';
 import { DEFAULT_ROLE_FORM_DATA } from '../../constants.js';
@@ -412,7 +412,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                             frequencyPenalty: 0.0,
                                             presencePenalty: 0.0
                                         }}
-                                        onChange={(cfg) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
+                                        onChange={(cfg: TuningConfig) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
                                     />
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Output Entropy (Max Tokens)</label>
@@ -574,7 +574,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
                                         },
                                         hardCodedModelId: legacyParams.modelId
                                     }}
-                                    onChange={(crit) => {
+                                    onChange={(crit: FilterCriteria) => {
                                         const newCaps: string[] = [];
                                         if (crit.mode === 'VISION') newCaps.push('vision');
                                         if (crit.mode === 'EMBEDDING') newCaps.push('embedding');
