@@ -5,6 +5,7 @@ import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react
 import { cn } from '@/lib/utils.js';
 import { trpc } from '../../utils/trpc.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { z } from 'zod';
 
 // Lazy load the role selector
 import CompactRoleSelector from '../CompactRoleSelector.js';
@@ -22,6 +23,7 @@ type SuperAiButtonProps = {
   onGenerate?: (prompt: string, options?: { roleId?: string }) => void;
   defaultPrompt?: string;
   defaultRoleId?: string;
+  label?: string;
 };
 
 
@@ -35,11 +37,12 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   side = 'right', // CHANGE DEFAULT TO RIGHT (expands into the screen)
   onGenerate,
   defaultPrompt = '',
-  defaultRoleId
+  defaultRoleId,
+  label
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || 'liaison-v1');
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -122,9 +125,17 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   }, [contextId, defaultRoleId]);
 
   const handleRoleSelect = (roleId: string) => {
-    setSelectedRoleId(roleId);
+    // Resilience Check: Add a Zod check to the role selection to prevent "String Handoff" errors.
+    const result = z.string().min(1).safeParse(roleId);
+    if (!result.success) {
+      console.error('❌ Invalid role selection:', roleId);
+      return;
+    }
+
+    const cleanRoleId = result.data;
+    setSelectedRoleId(cleanRoleId);
     if (typeof contextId === 'string') {
-        localStorage.setItem(`super-ai-role-${contextId}`, roleId);
+        localStorage.setItem(`super-ai-role-${contextId}`, cleanRoleId);
     }
     setState('active'); // Return to prompt view after selection
   };
@@ -181,7 +192,8 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         onClick={handleLeftClick}
         onContextMenu={handleRightClick}
         className={cn(
-          "h-7 w-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Square & Smaller (h-7 w-7 matches SwappableCard)
+          "h-7 flex items-center justify-center rounded-sm transition-all border relative z-[51]", // Removed forced w-7 to allow label expansion
+          !label && "w-7",
           "shadow-sm hover:shadow-md active:scale-95 group",
           state !== 'idle'
             ? "bg-[var(--color-background-secondary)] border-[var(--color-primary)] text-[var(--color-primary)]" 
@@ -195,7 +207,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         {state === 'menu' || state === 'role_select' || state === 'config' ? (
              <X size={14} />
           ) : (
-             <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
+             <div className="flex items-center gap-1.5 px-1.5">
+                <Sparkles size={14} className={cn(isContextLimited && "opacity-50")} />
+                {label && <span className="text-[10px] font-black uppercase tracking-widest pt-0.5">{label}</span>}
+             </div>
           )}
       </button>
 

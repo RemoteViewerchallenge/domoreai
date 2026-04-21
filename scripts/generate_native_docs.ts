@@ -10,14 +10,19 @@ async function main() {
 
       console.log('Generating documentation for native tools...');
       
-      // 1. Get Native Tools from AgentRuntime
-      const runtime = new AgentRuntime();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nativeToolsDefs = (runtime as any).getNativeTools();
+      const { createFsTools } = await import('../apps/api/src/tools/filesystem.js');
+      const { getNativeTools } = await import('../apps/api/src/services/tools/NativeToolsRegistry.js');
+      const { metaTools } = await import('../apps/api/src/tools/meta.js');
+
+      const rootPath = process.cwd();
+      const fsTools = createFsTools(rootPath);
+      const nativeToolsDefs = getNativeTools(rootPath, fsTools);
+      const metaToolsDefs = metaTools as any[];
+
+      const allNativeTools = [...nativeToolsDefs, ...metaToolsDefs];
 
       // Convert ToolDefinition to Tool interface expected by ToolDocumenter
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tools = nativeToolsDefs.map((t: any) => ({
+      const tools = allNativeTools.map((t: any) => ({
         name: t.name,
         description: t.description,
         inputSchema: t.input_schema

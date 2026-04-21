@@ -8,8 +8,8 @@ import {
     Bot, Zap, Wand2, Loader2, Download
 } from 'lucide-react';
 import CompactRoleSelector from '../CompactRoleSelector.js';
-import { ModelFilter } from '../nebula/primitives/ModelFilter.js';
-import { NaturalParameterTuner } from '../nebula/primitives/NaturalParameterTuner.js';
+import { ModelFilter, type FilterCriteria } from '../../features/dna-lab/components/ModelFilter.js';
+import { NaturalParameterTuner, type TuningConfig } from '../../features/dna-lab/components/NaturalParameterTuner.js';
 import { RoleToolSelector } from '../role/RoleToolSelector.js';
 import type { Model, RoleDNA, Role } from '../../types/role.js';
 import { DEFAULT_ROLE_FORM_DATA } from '../../constants.js';
@@ -25,7 +25,9 @@ interface VariantConfig {
     governanceConfig?: unknown;
     contextConfig?: unknown;
     toolsConfig?: unknown;
+    behaviorConfig?: unknown;
 }
+
 
 interface ExtendedRole extends Role {
     variants?: VariantConfig[];
@@ -35,6 +37,9 @@ interface ExtendedRole extends Role {
 interface RoleEditorCardProps {
     id: string; // Card ID
     initialRoleId?: string;
+    initialModelId?: string | null;
+    initialTemperature?: number;
+    initialMaxTokens?: number;
     onUpdateConfig?: (config: { roleId: string; modelId: string | null; temperature: number; maxTokens: number; }) => void;
     onClose?: () => void;
 }
@@ -72,7 +77,14 @@ const DNATab: React.FC<DNATabProps> = ({ active, onClick, icon: Icon, color }) =
     );
 };
 
-export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, onUpdateConfig, onClose }) => {
+export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ 
+    initialRoleId, 
+    initialModelId,
+    initialTemperature,
+    initialMaxTokens,
+    onUpdateConfig, 
+    onClose 
+}) => {
     const [activeTab, setActiveTab] = useState<DNAModule>('identity');
     const [roleId, setRoleId] = useState<string>(initialRoleId || '');
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -93,9 +105,9 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
         maxTokens: number;
         modelId: string | null;
     }>({
-        temperature: 0.7,
-        maxTokens: 2048,
-        modelId: null
+        temperature: initialTemperature ?? 0.7,
+        maxTokens: initialMaxTokens ?? 2048,
+        modelId: initialModelId ?? null
     });
 
     const currentRole = roles?.find(r => r.id === roleId) as ExtendedRole | undefined;
@@ -106,21 +118,24 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
             // If the role has a variant with DNA, use it
             const variant = currentRole.variants?.[0];
             if (variant) {
+                const cortexConfig = variant.cortexConfig as typeof dna.cortex;
                 setDna({
                     identity: (variant.identityConfig as typeof dna.identity) || DEFAULT_ROLE_FORM_DATA.dna.identity,
-                    cortex: (variant.cortexConfig as typeof dna.cortex) || DEFAULT_ROLE_FORM_DATA.dna.cortex,
+                    cortex: cortexConfig || DEFAULT_ROLE_FORM_DATA.dna.cortex,
                     governance: (variant.governanceConfig as typeof dna.governance) || DEFAULT_ROLE_FORM_DATA.dna.governance,
                     context: (variant.contextConfig as typeof dna.context) || DEFAULT_ROLE_FORM_DATA.dna.context,
-                    tools: (variant.toolsConfig as typeof dna.tools) || { customTools: currentRole.tools || [] }
+                    tools: { customTools: (cortexConfig?.tools as string[]) || currentRole.tools || [] },
+                    behavior: (variant.behaviorConfig as typeof dna.behavior) || DEFAULT_ROLE_FORM_DATA.dna.behavior
                 });
+
                 setHasUnsavedChanges(false);
             }
-
-            setLegacyParams({
-                temperature: currentRole.defaultTemperature || 0.7,
-                maxTokens: currentRole.defaultMaxTokens || 2048,
-                modelId: currentRole.hardcodedModelId || null
-            });
+            const metadata = (currentRole.metadata as Record<string, unknown>) || {};
+            setLegacyParams(p => ({
+                temperature: initialTemperature ?? (metadata.defaultTemperature as number) ?? p.temperature ?? 0.7,
+                maxTokens: initialMaxTokens ?? (metadata.defaultMaxTokens as number) ?? p.maxTokens ?? 2048,
+                modelId: initialModelId ?? p.modelId // Keep existing if not provided by prop
+            }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentRole]);
@@ -148,23 +163,35 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                 });
             }
 
-            // 2. Persist DNA modules to backend
-            const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools'> = ['identity', 'cortex', 'governance', 'context', 'tools'];
-            for (const mod of modules) {
-                await updateVariantMutation.mutateAsync({
-                    roleId,
-                    configType: mod,
-                    data: dna[mod] as Record<string, unknown>
-                });
-            }
+             // 2. Persist DNA modules to backend
+             const modules: Array<'identity' | 'cortex' | 'governance' | 'context' | 'tools' | 'behavior'> = ['identity', 'cortex', 'governance', 'context', 'tools', 'behavior'];
 
-            toast.success("Lifeform Stabilized", { id: loadingToastId });
-            setHasUnsavedChanges(false);
-            void utils.role.list.invalidate();
-        } catch (e) {
-            console.error(e);
-            toast.error("DNA Corruption Detected", { id: loadingToastId });
-        }
+             for (const mod of modules) {
+                 await updateVariantMutation.mutateAsync({
+                     roleId,
+                     configType: mod,
+                     data: dna[mod] as Record<string, unknown>
+                 });
+             }
+
+             // 3. Persist Tuning (Legacy Params) to Role Metadata
+             // [USER REQUEST] Only user can set hardcoded model; we remove persistence of hardcodedModelId to Role here.
+             await updateVariantMutation.mutateAsync({
+                 roleId,
+                 configType: 'tuning',
+                 data: {
+                     defaultTemperature: legacyParams.temperature,
+                     defaultMaxTokens: legacyParams.maxTokens,
+                     // hardcodedModelId is NOT saved to the role context
+                 }
+             });
+             
+             toast.success("Lifeform Stabilized", { id: loadingToastId });
+             void utils.role.list.invalidate();
+         } catch (e) {
+             console.error(e);
+             toast.error("DNA Corruption Detected", { id: loadingToastId });
+         }
     };
 
     const handleAIGenerate = async () => {
@@ -292,7 +319,6 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                     className="group flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 hover:text-white transition-colors px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 shadow-inner"
                                 >
                                     <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                                    <Fingerprint size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
                                     <span className="truncate max-w-[100px]">{currentRole?.name || 'GENERIC_ENTITY'}</span>
                                     {hasUnsavedChanges && <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />}
                                     <ChevronDown size={10} className="text-zinc-600" />
@@ -386,7 +412,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                             frequencyPenalty: 0.0,
                                             presencePenalty: 0.0
                                         }}
-                                        onChange={(cfg) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
+                                        onChange={(cfg: TuningConfig) => setLegacyParams(prev => ({ ...prev, temperature: cfg.temperature }))}
                                     />
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Output Entropy (Max Tokens)</label>
@@ -434,14 +460,17 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                             <label className="text-[9px] font-bold uppercase text-zinc-500">Communication Style</label>
                                             <select
                                                 value={dna.identity.style}
-                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, style: e.target.value as typeof dna.identity.style } }))}
+                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, style: e.target.value } }))}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
                                             >
                                                 <option value="PROFESSIONAL_CONCISE">Professional & Concise</option>
                                                 <option value="SOCRATIC">Socratic (Questioning)</option>
+                                                <option value="FRIENDLY_HELPFUL">Friendly & Helpful</option>
+                                                <option value="ACADEMIC_FORMAL">Academic & Formal</option>
+                                                <option value="CREATIVE">Creative (Unconventional)</option>
                                                 <option value="AGGRESSIVE_AUDITOR">Aggressive Auditor</option>
-                                                <option value="CREATIVE_EXPLORER">Creative Explorer</option>
                                             </select>
+
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -449,25 +478,37 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                             <label className="text-[9px] font-bold uppercase text-zinc-500">Thinking Process</label>
                                             <select
                                                 value={dna.identity.thinkingProcess}
-                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value as any } }))}
+                                                onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, thinkingProcess: e.target.value } }))}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-blue-600 text-zinc-300"
                                             >
                                                 <option value="SOLO">Solo (Single-Shot)</option>
                                                 <option value="CHAIN_OF_THOUGHT">Chain of Thought</option>
+                                                <option value="CRITIC_LOOP">Critic Loop (Self-Correcting)</option>
                                                 <option value="MULTI_STEP_PLANNING">Multi-Step Planning</option>
                                             </select>
+
                                         </div>
-                                        <div className="flex items-center gap-4 pt-5">
+                                        <div className="flex flex-col gap-2 pt-5">
                                             <label className="flex items-center gap-2 cursor-pointer group">
                                                 <input
                                                     type="checkbox"
                                                     checked={dna.identity.reflectionEnabled}
                                                     onChange={e => updateDna(prev => ({ ...prev, identity: { ...prev.identity, reflectionEnabled: e.target.checked } }))}
-                                                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-blue-600 focus:ring-blue-600 focus:ring-offset-zinc-900"
+                                                    className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-blue-600 focus:ring-1 focus:ring-blue-600 focus:ring-offset-0"
                                                 />
-                                                <span className="text-[10px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Self-Reflection</span>
+                                                <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Self-Reflection</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={dna.behavior?.silenceConfirmation || false}
+                                                    onChange={e => updateDna(prev => ({ ...prev, behavior: { ...prev.behavior, silenceConfirmation: e.target.checked } }))}
+                                                    className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-1 focus:ring-purple-600 focus:ring-offset-0"
+                                                />
+                                                <span className="text-[9px] font-bold uppercase text-zinc-400 group-hover:text-zinc-200 transition-colors">Silence Confirmation</span>
                                             </label>
                                         </div>
+
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-bold uppercase text-zinc-500 flex items-center justify-between">
@@ -492,8 +533,25 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                         <Cpu size={12} /> Cognitive Module
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
-                                        {/* Capabilities are handled individually or via ModelFilter */}
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold uppercase text-zinc-500">Execution Strategy</label>
+                                            <select
+                                                value={dna.cortex.executionMode || 'HYBRID_AUTO'}
+                                                onChange={e => updateDna(prev => ({ ...prev, cortex: { ...prev.cortex, executionMode: e.target.value as any } }))}
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-purple-600 text-zinc-300"
+                                            >
+                                                <option value="HYBRID_AUTO">Hybrid (Auto-Switch)</option>
+                                                <option value="JSON_STRICT">Strict JSON-RPC</option>
+                                                <option value="CODE_INTERPRETER">TypeScript Interpreter</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center gap-4 pt-5">
+                                             <label className="text-[8px] text-zinc-500 leading-tight">
+                                                 Hybrid: AI picks Mode. JSON: High speed, specific. Code: High logic, piping.
+                                             </label>
+                                        </div>
                                     </div>
+
                                 </section>
 
                                 <ModelFilter
@@ -509,14 +567,14 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                                         dna.cortex.capabilities?.includes('moderation') ? 'COMPLIANCE' :
                                                             dna.cortex.capabilities?.includes('reward_model') ? 'JUDGE' :
                                                                 (dna.cortex.capabilities?.includes('medical') || dna.cortex.capabilities?.includes('weather') || dna.cortex.capabilities?.includes('specialized_science')) ? 'RESEARCH' :
-                                                                    (dna.cortex.capabilities?.includes('reasoning') || dna.cortex.capabilities?.includes('coding')) ? 'REASONING' : 'CHAT') as any,
+                                                                    (dna.cortex.capabilities?.includes('reasoning') || dna.cortex.capabilities?.includes('coding')) ? 'REASONING' : 'CHAT'),
                                         preferences: {
                                             reasoning: dna.cortex.preferences?.reasoning || false,
                                             uncensored: dna.cortex.preferences?.uncensored || false,
                                         },
                                         hardCodedModelId: legacyParams.modelId
                                     }}
-                                    onChange={(crit) => {
+                                    onChange={(crit: FilterCriteria) => {
                                         const newCaps: string[] = [];
                                         if (crit.mode === 'VISION') newCaps.push('vision');
                                         if (crit.mode === 'EMBEDDING') newCaps.push('embedding');
@@ -587,12 +645,14 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                         <label className="text-[9px] font-bold uppercase text-zinc-500">Enforcement Level</label>
                                         <select
                                             value={dna.governance.enforcementLevel}
-                                            onChange={e => updateDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as typeof dna.governance.enforcementLevel } }))}
+                                            onChange={e => updateDna(prev => ({ ...prev, governance: { ...prev.governance, enforcementLevel: e.target.value as any } }))}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs outline-none focus:border-red-600 text-zinc-300"
                                         >
-                                            <option value="BLOCK_ON_FAIL">Block on Fail</option>
-                                            <option value="WARN_ONLY">Warn Only</option>
+                                            <option value="LOW">Low (Warn Only)</option>
+                                            <option value="MEDIUM">Medium (Supervised)</option>
+                                            <option value="HIGH">High (Strict / Block)</option>
                                         </select>
+
                                     </div>
                                 </section>
                             </div>
@@ -611,27 +671,28 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({ initialRoleId, o
                                                 { value: 'EXPLORATORY', label: 'Exploratory (Find Files)' },
                                                 { value: 'VECTOR_SEARCH', label: 'Vector Search (RAG)' },
                                                 { value: 'LOCUS_FOCUS', label: 'Locus (Active File)' }
-                                            ].map(strat => (
-                                                <label key={strat.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
+                                            ].map(strategy => (
+                                                <label key={strategy.value} className="flex items-center gap-2 cursor-pointer group p-2 rounded hover:bg-zinc-800/50 transition-colors">
                                                     <input
                                                         type="checkbox"
-                                                        checked={dna.context.strategy.includes(strat.value)}
+                                                        checked={dna.context.strategy.includes(strategy.value)}
                                                         onChange={e => {
                                                             setDna(prev => ({
                                                                 ...prev,
                                                                 context: {
                                                                     ...prev.context,
                                                                     strategy: e.target.checked
-                                                                        ? [...prev.context.strategy, strat.value]
-                                                                        : prev.context.strategy.filter(s => s !== strat.value)
+                                                                        ? [...prev.context.strategy, strategy.value]
+                                                                        : prev.context.strategy.filter(s => s !== strategy.value)
                                                                 }
                                                             }));
                                                         }}
                                                         className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-emerald-600 focus:ring-1 focus:ring-emerald-600 focus:ring-offset-0"
                                                     />
-                                                    <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors capitalize">{strat.label}</span>
+                                                    <span className="text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors capitalize">{strategy.label}</span>
                                                 </label>
                                             ))}
+
                                         </div>
                                     </div>
                                 </section>

@@ -29,11 +29,12 @@ export class PrismaAgentConfigRepository implements IAgentConfigRepository {
   }
 
   async createModel(modelDef: ModelDef): Promise<Model> {
+    const name = modelDef.name || modelDef.id;
     return prisma.model.create({
       data: {
-        // modelId: modelDef.id,
+        id: `${modelDef.providerId}:${name}`,
         provider: { connect: { id: modelDef.providerId } },
-        name: modelDef.name || modelDef.id,
+        name,
         costPer1k: modelDef.costPer1k ?? 0,
         // isFree: modelDef.isFree ?? false,
         providerData: (modelDef.providerData ?? {}) as Prisma.InputJsonValue,

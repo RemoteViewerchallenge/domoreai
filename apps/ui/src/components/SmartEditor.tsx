@@ -2,11 +2,18 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import MonacoEditor from './MonacoEditor.js'; 
-import { Bot, Loader2, Play, Copy, Save } from 'lucide-react';
+import { Bot, Loader2, Play, Copy, Save, RefreshCw } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { toast } from 'sonner';
+import { trpc } from '../utils/trpc.js';
 
-type AiResponse = string | { content?: string; text?: string; code?: string };
+type AiResponse = string | { 
+  content?: string; 
+  text?: string; 
+  code?: string; 
+  result?: string; 
+  logs?: string[] 
+};
 
 interface SmartEditorProps {
   fileName: string;
@@ -19,6 +26,8 @@ interface SmartEditorProps {
 
 const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void }) => {
   const [isInitializing, setIsInitializing] = React.useState(true);
+  const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
+  const utils = trpc.useContext();
   
   const editor = useEditor({
     extensions: [
@@ -28,6 +37,10 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
+      },
+      handleDOMEvents: {
+        // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
+        contextmenu: () => false,
       },
     },
     onCreate: () => {
@@ -96,17 +109,66 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       contextId={fileName}
       extraActions={
           <div className="flex items-center gap-1">
+             {/* [NEW] Show Logs Toggle */}
+             <button 
+                type="button" 
+                onClick={() => setShowLogs(!showLogs)} 
+                title="Toggle Agent Thoughts/Logs" 
+                className={`transition-colors ${showLogs ? 'text-purple-400' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+             >
+                <Bot size={12}/>
+             </button>
              <button type="button" onClick={() => { if(editor) { const text = editor.getHTML(); void navigator.clipboard.writeText(text).then(() => toast.success('Copied')); } }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+              <button 
+                type="button" 
+                onClick={() => { void utils.role.list.invalidate(); toast.success('Roles refreshed'); }} 
+                title="Refresh Role Roster" 
+                className="hover:text-[var(--text-primary)] transition-colors"
+              >
+                <RefreshCw size={10}/>
+              </button>
              <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
           </div>
       }
       onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
       onAiResponse={(res) => {
         const payload = res as AiResponse;
-        const text = typeof payload === 'string' ? payload : payload.content || payload.text;
-        if(editor && text) {
-          editor.commands.setContent(text);
-          onChange(text);
+        
+        let targetContent = "";
+        if (typeof payload === 'string') {
+            targetContent = payload;
+        } else {
+            targetContent = payload.result || payload.content || payload.text || "";
+        }
+        
+        // [LOGIC] Append logs if enabled
+        if (showLogs && typeof payload !== 'string' && payload.logs && payload.logs.length > 0) {
+            // Check if logs are objects (some are from AgentRuntime logging objects?)
+            // AgentRuntime logs are string[]
+            
+            const logHtml = payload.logs.map(log => {
+                // Formatting for "Thought Process"
+                if (log.startsWith('[Thought Process]')) {
+                    return `<div class="mb-2 text-purple-300 font-bold border-l-2 border-purple-500 pl-2 py-1 bg-purple-500/10 rounded-r">${log}</div>`;
+                }
+                return `<div class="text-zinc-500 pl-2 border-l border-zinc-800">${log}</div>`;
+            }).join('');
+            
+            targetContent = `<section class="mb-8 p-4 bg-black/40 rounded border border-zinc-800 text-xs font-mono overflow-x-auto max-h-96">
+                <h4 class="text-zinc-500 uppercase tracking-widest font-bold mb-2 sticky top-0 bg-zinc-950/90 py-1">Agent Logs</h4>
+                ${logHtml}
+            </section>` + targetContent;
+        }
+
+        if(editor && targetContent) {
+          editor.commands.setContent(targetContent);
+          onChange(targetContent);
+          
+          // Auto-refresh roles if we see a success message
+          if (targetContent.includes('✅ Role Variant Created Successfully') || targetContent.includes('biologically spawned')) {
+              void utils.role.list.invalidate();
+              toast.success("New role detected! Roster updated.");
+          }
         }
       }}
     >

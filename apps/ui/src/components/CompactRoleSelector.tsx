@@ -1,8 +1,8 @@
 import React, { useRef } from 'react';
 import { toast } from 'sonner';
 import { trpc } from '../utils/trpc.js';
-import { CompactCategorizer } from './nebula/primitives/CompactCategorizer.js';
-import type { CategorizerItem } from './nebula/primitives/CompactCategorizer.js';
+import { CompactCategorizer } from '../features/dna-lab/components/CompactCategorizer.js';
+import type { CategorizerItem } from '../features/dna-lab/components/CompactCategorizer.js';
 import { Bot, Download, Upload } from 'lucide-react';
 
 interface CompactRoleSelectorProps {
@@ -16,13 +16,17 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 1. Fetch Data
-    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery();
-    const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery();
+    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery(undefined, {
+        refetchInterval: 60000, 
+    });
+    const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery(undefined, {
+        refetchInterval: 30000, // Categories change less often
+    });
 
     const utils = trpc.useContext();
     const deleteMutation = trpc.role.delete.useMutation({
         onSuccess: () => {
-            utils.role.list.invalidate();
+            void utils.role.list.invalidate();
         },
         onError: (err) => {
             alert(`Failed to delete role: ${err.message}`);
@@ -120,14 +124,28 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
     }
 
     // 2. Transform to Primitive Format
-    const items: CategorizerItem[] = (roles || []).map((r: any) => ({
-        id: r.id,
-        label: r.name,
-        categoryId: r.category?.name || r.categoryString || 'Uncategorized',
-        icon: <Bot size={12} className={selectedRoleId === r.id ? 'text-[var(--color-primary)]' : 'text-[var(--text-muted)]'} />
-    }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items: CategorizerItem[] = (roles || []).map((r: any) => {
+        let cat = r.category?.name || r.categoryString;
+        // Normalize 'Uncategorized' to undefined so it falls into the uncategorized bucket
+        if (cat === 'Uncategorized' || !cat) {
+            cat = undefined;
+        }
+        
+        return {
+            id: r.id,
+            label: r.name,
+            categoryId: cat,
+            icon: <Bot size={12} className={selectedRoleId === r.id ? 'text-[var(--color-primary)]' : 'text-[var(--text-muted)]'} />
+        };
+    });
 
-    const categoryNames = (categories || []).map(c => c.name);
+    // 3. Dynamic Category Merging (Ensure no role is left behind because its category isn't in the DB list)
+    const dbCategoryNames = (categories || []).map(c => c.name);
+    const usedCategoryNames = Array.from(new Set(items.map(i => i.categoryId).filter(Boolean) as string[]));
+    
+    // Merge and deduplicate, preferring DB order (at the start)
+    const allCategories = Array.from(new Set([...dbCategoryNames, ...usedCategoryNames]));
 
     return (
         <div className="flex flex-col h-full">
@@ -137,7 +155,7 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={handleBackupAll}
+                        onClick={() => void handleBackupAll()}
                         className="flex items-center gap-1.5 bg-zinc-700 hover:bg-zinc-600 text-white px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95"
                     >
                         <Download size={10} />
@@ -159,7 +177,7 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
                 ref={fileInputRef}
                 type="file"
                 accept=".json"
-                onChange={handleFileUpload}
+                onChange={(e) => void handleFileUpload(e)}
                 style={{ display: 'none' }}
             />
 
@@ -168,8 +186,10 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
                 <CompactCategorizer
                     title="Agent Roster"
                     items={items}
-                    categories={categoryNames}
+                    categories={allCategories}
                     selectedId={selectedRoleId}
+                    accordion
+                    defaultExpanded={false}
                     onSelect={onSelect}
                     onDelete={handleDelete}
                     onEdit={onEdit}

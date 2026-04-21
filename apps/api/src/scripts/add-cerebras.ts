@@ -13,12 +13,12 @@ async function addCerebrasProvider() {
     if (existing) {
         console.log(`Cerebras provider already exists: ${existing.id}`);
         // Update URL if needed
-        if (existing.baseURL !== 'https://api.cerebras.ai/v1') {
+        if (existing.baseUrl !== 'https://api.cerebras.ai/v1') {
              await prisma.providerConfig.update({
                  where: { id: existing.id },
-                 data: { baseURL: 'https://api.cerebras.ai/v1' }
+                 data: { baseUrl: 'https://api.cerebras.ai/v1' }
              });
-             console.log("Updated baseURL for existing provider.");
+             console.log("Updated baseUrl for existing provider.");
         }
         return;
     }
@@ -27,9 +27,9 @@ async function addCerebrasProvider() {
     const provider = await prisma.providerConfig.create({
         data: {
             id: 'cerebras', // Fixed ID for convenience
-            label: 'Cerebras',
+            name: 'Cerebras',
             type: 'cerebras',
-            baseURL: 'https://api.cerebras.ai/v1',
+            baseUrl: 'https://api.cerebras.ai/v1',
             isEnabled: true
         }
     });

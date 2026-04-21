@@ -50,7 +50,33 @@ interface BuilderState {
   // Keyboard Mappings
   keyMap: Record<BuilderAction, KeyBinding>;
   updateKeyBinding: (action: BuilderAction, newKeys: string[]) => void;
+
+  // Project Loading
+  loadProject: (project: any) => void;
 }
+
+const flattenTree = (node: any, nodes: Record<string, any> = {}): string => {
+    const id = node.id || `node-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // If it's a string, it's just text content? No, Nebula expects nodes.
+    // But sometimes children can be strings in React. 
+    // Nebula renderer handles string or NebulaNode in children.
+    
+    const children = Array.isArray(node.children) ? node.children : [];
+    const childrenIds = children.map((child: any) => {
+        if (typeof child === 'string') return child; // Keep strings as-is if they are text
+        if (child.id && nodes[child.id]) return child.id; // Already processed
+        return flattenTree(child, nodes);
+    });
+
+    nodes[id] = {
+        ...node,
+        id,
+        children: childrenIds
+    };
+
+    return id;
+};
 
 export const useBuilderStore = create<BuilderState>((set) => ({
   isDirty: false,
@@ -72,6 +98,21 @@ export const useBuilderStore = create<BuilderState>((set) => ({
 
   interactionMode: 'select',
   setInteractionMode: (mode) => set({ interactionMode: mode }),
+
+  loadProject: (project) => {
+    if (!project) return;
+    
+    let normalized: NebulaTree;
+    if (project.rootId && project.nodes) {
+        normalized = project as NebulaTree;
+    } else {
+        const nodes: Record<string, any> = {};
+        const rootId = flattenTree(project, nodes);
+        normalized = { rootId, nodes } as NebulaTree;
+    }
+    
+    set({ currentTree: normalized, isDirty: false });
+  },
   
   // Default "VS Code" style bindings
   keyMap: {

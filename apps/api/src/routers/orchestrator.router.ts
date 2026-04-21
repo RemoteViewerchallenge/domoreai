@@ -40,7 +40,7 @@ export const orchestratorRouter = createTRPCRouter({
         capabilities: true,
         provider: {
           select: {
-            label: true,
+            name: true,
             type: true
           }
         }
@@ -52,7 +52,7 @@ export const orchestratorRouter = createTRPCRouter({
       const caps = m.capabilities || {} as any;
       return {
         ...m,
-        providerLabel: m.provider?.label,
+        providerLabel: m.provider?.name,
         specs: {
           ...caps,
           hasCoding: caps.specs?.coding || false,
@@ -79,6 +79,13 @@ export const orchestratorRouter = createTRPCRouter({
         where: { name: input.toolName }
       });
       return { content: tool?.instruction || '' };
+    }),
+
+  getBulkToolDocs: publicProcedure
+    .input(z.object({ toolNames: z.array(z.string()) }))
+    .query(async ({ input }) => {
+      const { loadToolDocs } = await import('../services/tools/ToolDocumentationLoader.js');
+      return loadToolDocs(input.toolNames);
     }),
 
   updateToolExamples: protectedProcedure

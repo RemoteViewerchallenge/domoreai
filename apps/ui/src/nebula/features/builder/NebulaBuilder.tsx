@@ -5,7 +5,7 @@ import { Canvas as BuilderCanvas } from '../../../components/nebula/system/Canva
 import { PropertyPanel } from '../../../components/nebula/system/PropertyPanel.js';
 import { BuilderToolbar } from '../../features/navigation/toolbars/BuilderToolbar.js';
 import type { NebulaTree } from '@repo/nebula'; 
-import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box } from 'lucide-react';
+import { X, FolderOpen, Code, RefreshCw, Layers, FileCode, Plus, Search, Bot, Box, Zap } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { useVFS } from '../../../hooks/useVFS.js';
 import { SuperAiButton } from '../../../components/ui/SuperAiButton.js';
@@ -13,93 +13,39 @@ import { toast } from 'sonner';
 import { FileExplorer } from '../../../components/FileExplorer.js';
 import { trpc } from '../../../utils/trpc.js';
 
+// --- UTILS ---
+const flattenTree = (node: any, nodes: Record<string, any> = {}): string => {
+    const id = node.id || `node-${Math.random().toString(36).substring(2, 9)}`;
+    const children = Array.isArray(node.children) ? node.children : [];
+    const childrenIds = children.map((child: any) => {
+        if (typeof child === 'string') return child;
+        return flattenTree(child, nodes);
+    });
+
+    nodes[id] = { ...node, id, children: childrenIds };
+    return id;
+};
+
+const normalizeProject = (project: any): NebulaTree => {
+    if (project.rootId && project.nodes) return project as NebulaTree;
+    const nodes: Record<string, any> = {};
+    const rootId = flattenTree(project, nodes);
+    return { rootId, nodes } as NebulaTree;
+};
+
 // --- TYPES ---
 interface NebulaBuilderProps {
   initialTree: NebulaTree; 
   onSave: (newTree: NebulaTree) => void;
 }
 
-interface FileSelectorModalProps {
-    onSelect: (content: string, path: string) => void;
-    onClose: () => void;
-}
-
-// --- SUB-COMPONENT: FILE SELECTOR MODAL ---
-const FileSelectorModal = ({ 
-    onSelect, 
-    onClose 
-}: FileSelectorModalProps) => {
-    // Navigate VFS from root
-    const { files, navigateTo, currentPath, readFile, isLoading, refresh, listDir, error } = useVFS('', '/');
-
-    const handleFileSelect = async (path: string) => {
-        console.log('[NebulaBuilder] Selected file:', path);
-        const fileName = path.split('/').pop() || '';
-        if (!/\.(tsx|jsx|ts|js)$/.test(fileName)) {
-            toast.error("Invalid File Type", { description: "Please select a React/TS files." });
-            return;
-        }
-
-        try {
-            const content = await readFile(path);
-            onSelect(content, path);
-        } catch (err) {
-            console.error(err);
-            toast.error("Read Error", { description: "Failed to read the selected file." });
-        }
-    };
-
-    return (
-        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-150">
-            <div className="w-[600px] h-[500px] bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl flex flex-col overflow-hidden">
-                <div className="h-10 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <FolderOpen size={12} className="text-indigo-500"/> 
-                        Import Component
-                    </span>
-                    <button onClick={onClose}><X size={14} className="text-zinc-500 hover:text-zinc-200" /></button>
-                </div>
-                
-                <div className="flex-1 overflow-hidden relative">
-                    {error && (
-                        <div className="absolute inset-0 z-10 bg-red-950/20 backdrop-blur-[2px] flex items-center justify-center p-8">
-                            <div className="bg-zinc-900 border border-red-500/50 p-4 rounded-lg shadow-xl max-w-sm text-center">
-                                <span className="text-red-400 text-xs font-bold uppercase mb-2 block">VFS Error</span>
-                                <p className="text-[10px] text-zinc-400 mb-4">{error}</p>
-                                <button onClick={() => { void refresh(); }} className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-[10px] rounded uppercase font-bold transition-all">Retry</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-full text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
-                             <RefreshCw size={14} className="animate-spin mr-2" />
-                             Loading VFS...
-                        </div>
-                    ) : (
-                        <FileExplorer 
-                            files={files}
-                            onSelect={(path) => { void handleFileSelect(path); }}
-                            onNavigate={(path) => navigateTo(path)}
-                            currentPath={currentPath}
-                            onRefresh={() => { void refresh(); }}
-                            onLoadChildren={listDir}
-                            className="border-0"
-                        />
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
 // --- MAIN COMPONENT ---
 export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   const [tree, setTree] = useState<NebulaTree>(initialTree);
-  const [sidebarTab, setSidebarTab] = useState<'library' | 'assistant'>('library');
+  const [sidebarTab, setSidebarTab] = useState<'library' | 'assistant' | 'files'>('library');
   const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCodeModal, setShowCodeModal] = useState<'import' | 'export' | null>(null);
+  const [showCodeModal, setShowCodeModal] = useState<boolean>(false);
   const [codeBuffer, setCodeBuffer] = useState('');
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   
@@ -107,7 +53,16 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   const [aiPrompt, setAiPrompt] = useState('');
 
   const { setIsDirty, saveTriggered, viewport } = useBuilderStore();
-  const { writeFile } = useVFS('', '/');
+  const vfs = useVFS('', '/'); // Start at root (which now defaults to /home/guy/mono in backend)
+
+  // TRPC Mutations
+  const parseJsxMutation = trpc.nebula.parseJsx.useMutation();
+  const generateCodeMutation = trpc.nebula.generateCode.useMutation();
+  const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
+    onSuccess: (data) => {
+        handleAiSuccess(data);
+    }
+  });
 
   // --- ACTIONS ---
 
@@ -129,29 +84,43 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
   };
 
   // VFS Import
-  const handleVfsSelect = async (content: string, path: string) => {
+  const handleVfsSelect = async (path: string) => {
+    const fileName = path.split('/').pop() || '';
+    if (!/\.(tsx|jsx|ts|js|json)$/.test(fileName)) {
+        toast.error("Invalid File Type", { description: "Please select a React/TS or JSON file." });
+        return;
+    }
+
     try {
-        const newTree = await trpc.nebula.parseJsx.mutate({ code: content });
+        const content = await vfs.readFile(path);
+        let newTree: NebulaTree;
+
+        if (fileName.endsWith('.json')) {
+            const project = JSON.parse(content);
+            newTree = normalizeProject(project);
+        } else {
+            newTree = await parseJsxMutation.mutateAsync({ code: content });
+        }
+
         setTree(newTree);
         setCurrentFile(path.split('/').pop() || path);
-        setShowCodeModal(null);
         setIsDirty(true);
-        toast("Component Imported", { description: `Successfully parsed ${path} into Nebula Tree.` });
+        toast("File Imported", { description: `Successfully loaded ${path} into Nebula Tree.` });
     } catch (err) {
-        toast.error("Parse Error", { description: (err as Error).message });
+        toast.error("Open Error", { description: (err as Error).message });
     }
   };
 
   // Export
   const getExportedCode = useCallback(async () => {
-    const result = await trpc.nebula.generateCode.mutate({ tree });
+    const result = await generateCodeMutation.mutateAsync({ tree });
     return result.code;
-  }, [tree]);
+  }, [tree, generateCodeMutation]);
 
   const handleSaveJson = async () => {
     try {
       const json = JSON.stringify(tree, null, 2);
-      await writeFile('nebula-project.json', json);
+      await vfs.writeFile('nebula-project.json', json);
       toast.success("JSON Exported", { description: "Saved as nebula-project.json to VFS Root." });
     } catch (err) {
       toast.error("Export Failed", { description: (err as Error).message });
@@ -160,17 +129,14 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
 
   // AI Context Getter
   const getAiContext = useCallback(() => {
-     // Return the raw JSON tree representation
-     // The AI understands structure from the tree itself
      return {
          tree: tree,
-         activeViewport: viewport
+         activeViewport: viewport,
+         currentFile: currentFile
      };
-  }, [tree, viewport]);
+  }, [tree, viewport, currentFile]);
 
-  const handleAiSuccess = (response: { tree?: NebulaTree }) => {
-      // Future: If the AI returns a JSON patch, apply it here.
-      // For now, we assume the AI performs a backend action or returns a suggestion.
+  const handleAiSuccess = (response: any) => {
       console.log("AI Response:", response);
       if (response?.tree) {
           setTree(response.tree);
@@ -184,12 +150,12 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
       if (def.meta.hidden) return false;
       const matchesSearch = _key.toLowerCase().includes(searchQuery.toLowerCase()) || def.meta.label.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
-      if (activeCategory === 'all') return def.meta.category !== 'system';
+      if (activeCategory === 'all') return def.meta.category !== 'system' && def.meta.category !== 'logic';
       return def.meta.category === activeCategory;
     }), [activeCategory, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 select-none overflow-hidden font-sans">
+    <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 overflow-hidden font-sans">
       
       {/* 1. TOP BAR */}
       <div className="h-10 border-b border-zinc-800 flex items-center px-4 bg-zinc-950/50 backdrop-blur shrink-0 justify-between">
@@ -204,23 +170,24 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
         </div>
          <div className="flex items-center gap-2 h-full">
             <button 
-              onClick={handleSaveJson}
+              onClick={() => { void handleSaveJson(); }}
               className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-amber-400 transition-colors border border-transparent hover:border-zinc-700"
             >
                <Layers size={12} /> Save JSON
             </button>
             <button 
-              onClick={() => setShowCodeModal('import')}
-              className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-emerald-400 transition-colors border border-transparent hover:border-zinc-700"
-            >
-               <FolderOpen size={12} /> Import TSX
-            </button>
-            <button 
-              onClick={async () => { const code = await getExportedCode(); setCodeBuffer(code); setShowCodeModal('export'); }}
+              onClick={() => { void (async () => { const code = await getExportedCode(); setCodeBuffer(code); setShowCodeModal(true); })(); }}
               className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-zinc-800 rounded-sm text-[10px] uppercase font-bold text-zinc-500 hover:text-indigo-400 transition-colors border border-transparent hover:border-zinc-700"
             >
                <Code size={12} /> View Code
             </button>
+            <div className="h-4 w-px bg-zinc-800 mx-2" />
+            <SuperAiButton 
+                contextGetter={getAiContext}
+                onSuccess={handleAiSuccess}
+                defaultRoleId="nebula-architect"
+                className="z-50 scale-90"
+            />
          </div>
       </div>
 
@@ -251,7 +218,18 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
                         : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/30"
                 )}
               >
-                  <Bot size={14} /> AI Architect
+                  <Bot size={14} /> AI
+              </button>
+              <button 
+                onClick={() => setSidebarTab('files')}
+                className={cn(
+                    "flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors border-b-2",
+                    sidebarTab === 'files' 
+                        ? "text-zinc-100 border-amber-500 bg-zinc-800/50" 
+                        : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/30"
+                )}
+              >
+                  <FolderOpen size={14} /> Files
               </button>
            </div>
 
@@ -317,54 +295,94 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
            {/* B. AI ASSISTANT TAB */}
            {sidebarTab === 'assistant' && (
                <div className="flex flex-col h-full bg-zinc-900/50">
-                   <div className="flex-1 p-4 overflow-y-auto">
+                   <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                       {/* Context Stats Panel */}
                        <div className="p-4 rounded border border-purple-500/20 bg-purple-500/5 mb-4">
                            <h4 className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                               <Bot size={14}/> Active Context
+                               <Bot size={14}/> Intelligence Context
                            </h4>
                            <div className="text-[10px] text-zinc-400 space-y-1 font-mono">
                                <div className="flex justify-between">
-                                   <span>Tree Nodes:</span>
-                                   <span className="text-zinc-200">{(JSON.stringify(tree).length / 1024).toFixed(1)} KB</span>
+                                   <span>Tree Complexity:</span>
+                                   <span className="text-zinc-200">{Object.keys(tree.nodes).length} Nodes</span>
                                </div>
                                <div className="flex justify-between">
-                                   <span>Viewport:</span>
-                                   <span className="text-zinc-200 uppercase">{viewport}</span>
-                               </div>
-                               <div className="flex justify-between">
-                                   <span>Mode:</span>
-                                   <span className="text-zinc-200">Builder</span>
+                                   <span>Active File:</span>
+                                   <span className="text-zinc-200 truncate max-w-[120px]">{currentFile || 'nebula-project.json'}</span>
                                </div>
                            </div>
                        </div>
                        
-                       <div className="text-xs text-zinc-500 leading-relaxed text-center mt-8">
-                           "I can generate layouts, refactor components, or analyze your current tree. Select a specialized Role below."
-                       </div>
-                   </div>
-
-                   {/* Prompt Area */}
-                   <div className="p-4 border-t border-zinc-800 bg-zinc-950">
-                       <div className="relative">
+                       {/* Expanded Prompt Area */}
+                       <div className="space-y-2">
+                           <label className="text-[10px] font-bold text-zinc-500 uppercase">Evolution Prompt</label>
                            <textarea
-                               className="w-full h-32 bg-zinc-900 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 focus:border-purple-500 focus:outline-none resize-none custom-scrollbar mb-2"
-                               placeholder="Describe your UI needs (e.g., 'Add a 3-column grid with cards')..."
+                               className="w-full h-64 bg-zinc-950 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none resize-none custom-scrollbar transition-all"
+                               placeholder="Describe high-level layout changes, e.g., 'Convert the main content into a 3-column dashboard with a dark glassmorphism theme and real-time data widgets'..."
                                value={aiPrompt}
                                onChange={e => setAiPrompt(e.target.value)}
                            />
-                           
-                           <div className="flex justify-between items-center">
-                               <span className="text-[10px] text-zinc-600 uppercase font-bold">Model: Nebula-70B</span>
-                               <SuperAiButton 
-                                    contextGetter={getAiContext}
-                                    onSuccess={handleAiSuccess}
-                                    defaultPrompt={aiPrompt}
-                                    // Use 'Config' style button but act as submit
-                                    className="z-50"
-                                    defaultRoleId="nebula-architect"
-                               />
-                           </div>
                        </div>
+                   </div>
+
+                   {/* Action Orchestrator */}
+                   <div className="p-4 border-t border-zinc-800 bg-zinc-950 space-y-3">
+                       {/* 1. Hardcoded Nebula Architect Button (The "Power" Action) */}
+                       <button
+                           onClick={() => {
+                               if (!aiPrompt.trim()) return;
+                               // Directly dispatch using the architect role
+                               dispatchMutation.mutate({
+                                   prompt: aiPrompt,
+                                   contextId: JSON.stringify(getAiContext()),
+                                   roleId: 'nebula-architect'
+                               });
+                           }}
+                           disabled={!aiPrompt.trim() || dispatchMutation.isLoading}
+                           className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-[11px] font-bold py-3 rounded flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/10 uppercase tracking-tighter"
+                       >
+                           {dispatchMutation.isLoading ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                           Run Nebula Architect
+                       </button>
+
+                       {/* 2. SuperAiButton (The Versatile Contextual Tool) */}
+                       <div className="flex items-center justify-between px-1">
+                           <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Advanced Orchestration</span>
+                           <SuperAiButton 
+                               contextGetter={getAiContext}
+                               onSuccess={handleAiSuccess}
+                               defaultPrompt={aiPrompt}
+                               defaultRoleId="nebula-architect" // Pre-set to fix selection issue
+                               side="left" // Expand inward
+                           />
+                       </div>
+                   </div>
+               </div>
+           )}
+
+           {/* C. FILES TAB (Rule 3 Fix) */}
+           {sidebarTab === 'files' && (
+               <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
+                   <div className="p-2 border-b border-zinc-800 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                        <span>Project Files</span>
+                        <button onClick={() => { void vfs.refresh(); }} className="hover:text-zinc-200 transition-colors"><RefreshCw size={10} /></button>
+                   </div>
+                   <div className="flex-1 overflow-hidden">
+                        {vfs.isLoading ? (
+                            <div className="flex items-center justify-center h-full text-[10px] text-zinc-600 uppercase font-bold">
+                                <RefreshCw size={12} className="animate-spin mr-2" /> Loading...
+                            </div>
+                        ) : (
+                            <FileExplorer 
+                                files={vfs.files}
+                                onSelect={(path) => { void handleVfsSelect(path); }}
+                                onNavigate={(path) => vfs.navigateTo(path)}
+                                currentPath={vfs.currentPath}
+                                onRefresh={() => { void vfs.refresh(); }}
+                                onLoadChildren={vfs.listDir}
+                                className="border-0"
+                            />
+                        )}
                    </div>
                </div>
            )}
@@ -377,7 +395,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
               <div 
                 className={cn(
                   "transition-all duration-500 shadow-2xl bg-zinc-900 border border-zinc-800 ring-4 ring-zinc-950 rounded-sm origin-top",
-                  viewport === 'mobile' ? 'w-[390px]' : viewport === 'tablet' ? 'w-[768px]' : 'w-full max-w-5xl'
+                  viewport === 'mobile' ? 'w-[390px]' : viewport === 'tablet' ? 'w-[768px]' : 'w-full h-full'
                 )}
                 style={{ minHeight: '800px' }}
               >
@@ -399,15 +417,8 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
 
       </div>
 
-      {/* MODALS */}
-      {showCodeModal === 'import' && (
-          <FileSelectorModal 
-            onSelect={handleVfsSelect} 
-            onClose={() => setShowCodeModal(null)} 
-          />
-      )}
-
-      {showCodeModal === 'export' && (
+      {/* EXPORT MODAL */}
+      {showCodeModal && (
         <div className="absolute inset-0 z-[100] bg-black/80 flex items-center justify-center p-12 backdrop-blur-sm animate-in fade-in duration-200">
            <div className="bg-zinc-900 border border-zinc-700 w-full max-w-5xl h-[85vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-xl overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
@@ -415,7 +426,7 @@ export const NebulaBuilder = ({ initialTree, onSave }: NebulaBuilderProps) => {
                     <Code size={14} className="text-indigo-500" />
                     Nebula Engine: Generated Code
                  </h3>
-                 <button onClick={() => setShowCodeModal(null)} className="text-zinc-500 hover:text-white p-2 transition-colors"><X size={18}/></button>
+                 <button onClick={() => setShowCodeModal(false)} className="text-zinc-500 hover:text-white p-2 transition-colors"><X size={18}/></button>
               </div>
               <div className="flex-1 relative bg-zinc-950">
                  <textarea 

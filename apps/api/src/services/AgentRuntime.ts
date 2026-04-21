@@ -2,7 +2,7 @@ import { CodeModeUtcpClient } from "@utcp/code-mode";
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
 import { mcpOrchestrator } from "../orchestrator/McpOrchestrator.js";
-import { metaTools } from "../tools/meta.js";
+import { roleArchitectTools } from "../tools/roleArchitectTools.js";
 import { tokenService } from "./TokenService.js";
 import {
   LocalCommunicationProtocol,
@@ -11,7 +11,7 @@ import {
 } from "./protocols/LocalProtocol.js";
 import { getNativeTools } from "./tools/NativeToolsRegistry.js";
 import { loadToolDocs } from "./tools/ToolDocumentationLoader.js";
-import { ExecutionStrategies } from "./ExecutionStrategies.js";
+import { IExecutionStrategy, CodeModeStrategy, JsonRpcStrategy } from "./tooling/ExecutionStrategies.js";
 // import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js";
 
 // Register the protocol globally (idempotent)
@@ -30,114 +30,167 @@ export class AgentRuntime {
   private fsTools: ReturnType<typeof createFsTools>;
   private rootPath: string;
   private contextManager = tokenService;
-  private toolDocs: string = "";
+  private toolDocsFull: string = "";
+  private toolDocsSignatures: string = "";
   // [NEW] Track tier
-  private tier: string = 'Worker';
+  private tier: string = 'Worker'; 
+  private executionMode: string = 'HYBRID_AUTO';
+  private silenceConfirmation: boolean = false;
+  private traceId: string = '';
+  private roleId?: string;
+  private baggage: Record<string, string> = {};
+  private injectedServers: Set<string> = new Set();
+  private availableTools: string[] = [];
 
-  constructor(rootPath: string = process.cwd(), tier: string = 'Worker') {
+
+  constructor(rootPath: string = process.cwd(), tier: string = 'Worker', executionMode: string = 'HYBRID_AUTO', silenceConfirmation: boolean = false) {
     this.rootPath = rootPath;
     this.fsTools = createFsTools(rootPath);
     // use the shared contextManager singleton
     this.contextManager = tokenService;
     this.tier = tier;
+    this.executionMode = executionMode;
+    this.silenceConfirmation = silenceConfirmation;
+    this.traceId = `trace-${Math.random().toString(36).substring(7)}`;
+    this.roleId = undefined; // Will be set in runAgentLoop if needed
   }
+
+
 
   static async create(
     rootPath?: string,
     tools: string[] = [],
-    tier: string = 'Worker'
+    tier: string = 'Worker',
+    executionMode: string = 'HYBRID_AUTO',
+    silenceConfirmation: boolean = false
   ): Promise<AgentRuntime> {
-    const runtime = new AgentRuntime(rootPath, tier);
+    const runtime = new AgentRuntime(rootPath, tier, executionMode, silenceConfirmation);
+
     await runtime.init(tools);
     return runtime;
   }
+
 
   // ... init method ...
   // I'll keep init method mostly same but handle GitAwareInjection if needed or rely on executeTask
 
   private async init(requestedTools: string[], _roleId?: string) {
-    // ... existing init code ...
-    try {
-      this.client = await CodeModeUtcpClient.create();
-    } catch (error) {
-      console.warn("[AgentRuntime] Failed to create UTCP client:", error);
-      return;
-    }
-
-    if (requestedTools.length === 0 && this.tier !== 'Worker') { // Workers might need implicit tools
-      console.log("[AgentRuntime] No tools requested - running in simple chat mode");
-      return;
-    }
-
-    const localProtocol = new LocalCommunicationProtocol();
-    (this.client as unknown as IClientWithProtocolRegistry)._registeredCommProtocols.set("local", localProtocol);
-
-    // ... existing tool loading logic ...
-    const nativeToolNames = [
-      "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
-      "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula"
-    ];
-
-    const { prisma } = await import("../db.js");
-    const dbTools = await prisma.tool.findMany({
-      where: { name: { in: requestedTools } },
-      select: { name: true, serverId: true }
-    });
-
-    const serverNames = Array.from(new Set(
-      dbTools
-        .filter(t => t.serverId && !nativeToolNames.includes(t.name))
-        .map(t => t.serverId!)
-    ));
-
-    let mcpTools: ToolDefinition[] = [];
-    if (serverNames.length > 0) {
+      // ... existing init code ...
       try {
-        await mcpOrchestrator.prepareEnvironment(serverNames);
-        const tools = await mcpOrchestrator.getToolsForSandbox();
-        mcpTools = tools as unknown as ToolDefinition[];
-      } catch (e) { console.warn("MCP Error", e); }
-    }
+        this.client = await CodeModeUtcpClient.create();
+      } catch (error) {
+        console.warn("[AgentRuntime] Failed to create UTCP client:", error);
+        return;
+      }
+  
+      if (requestedTools.length === 0 && this.tier !== 'Worker') { // Workers might need implicit tools
+        console.log("[AgentRuntime] No tools requested - running in simple chat mode");
+        return;
+      }
+      
+      const localProtocol = new LocalCommunicationProtocol();
+      (this.client as unknown as IClientWithProtocolRegistry)._registeredCommProtocols.set("local", localProtocol);
+      
+      // ... existing tool loading logic ...
+      const nativeToolNames = [
+        "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
+        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", 
+        "ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate",
+        "role_registry_list", "role_variant_evolve", "role_config_patch"
+      ];
+      
+      const { prisma } = await import("../db.js");
+      const dbTools = await prisma.tool.findMany({
+        where: { name: { in: requestedTools } },
+        select: { name: true, serverId: true }
+      });
 
-    const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
-    const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
-    // ... meta tools logic ...
-    if (requestedTools.includes("meta")) {
-      // ...
-      const wrappedMeta = (metaTools as unknown as ToolDefinition[]).map(t => ({ ...t, handler: t.handler })); // Simplified for replacement
-      toolsToRegister.push(...wrappedMeta);
-    }
+      const serverNames = Array.from(new Set(
+        dbTools
+          .filter(t => t.serverId && !nativeToolNames.includes(t.name))
+          .map(t => t.serverId!)
+      ));
+      
+      let mcpTools: ToolDefinition[] = [];
+      if (serverNames.length > 0) {
+           try {
+             await mcpOrchestrator.prepareEnvironment(serverNames);
+             const tools = await mcpOrchestrator.getToolsForSandbox();
+             mcpTools = tools as unknown as ToolDefinition[];
+           } catch (e) { console.warn("MCP Error", e); }
+      }
+      
+      const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
+      const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
+      // ... meta tools logic ...
+      if (requestedTools.includes("role_architect") || requestedTools.includes("meta")) {
+          // Flatten role architect tools into the registry
+          const wrappedTools = (roleArchitectTools as unknown as ToolDefinition[]).map(t => ({...t, handler: t.handler }));
+          toolsToRegister.push(...wrappedTools);
+      }
+      
+      // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
+      if (this.tier === 'Worker') {
+            // We need jobId and vfsToken. 
+            // Ideally passed in constructor or executeTask. 
+            // Since init is async, we might not have them yet. 
+            // But strict requirement says "Inject... into Worker runtime".
+            // I'll inject the definition here if I can, OR handle it dynamically in executeTask.
+            // But UTCP requires registration.
+            // I'll register it as a dynamic tool or placeholder.
+            // Actually, `CreateGitAwareWorkerTools` returns a ToolDefinition.
+            // I'll mock jobId/vfsToken for registration or allow dynamic context?
+            // UTCP tools are registered once.
+            // Maybe I should add it to `executeTask` to register purely for that run?
+            // `executeTask` in snippet calls `this.tools.execute_script.execute`.
+            // Snippet `AgentRuntime` didn't use UTCP in the simplified version.
+            // Existing `AgentRuntime` USES UTCP.
+            
+            // I will ADD `execute_task_logic` to the registered tools here with a placeholder handler
+            // that gets replaced or uses context?
+            // Actually, I'll allow `executeTask` to pass the `jobId` via context or similar.
+            // For now, let's assume `jobId` comes from environment or args in execution.
+      }
 
-    // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
-    if (this.tier === 'Worker') {
-      // We need jobId and vfsToken. 
-      // Ideally passed in constructor or executeTask.
-      // Since init is async, we might not have them yet. 
-      // But strict requirement says "Inject... into Worker runtime".
-      // I'll inject the definition here if I can, OR handle it dynamically in executeTask.
-      // But UTCP requires registration.
-      // I'll register it as a dynamic tool or placeholder.
-      // Actually, `CreateGitAwareWorkerTools` returns a ToolDefinition.
-      // I'll mock jobId/vfsToken for registration or allow dynamic context?
-      // UTCP tools are registered once.
-      // Maybe I should add it to `executeTask` to register purely for that run?
-      // `executeTask` in snippet calls `this.tools.execute_script.execute`.
-      // Snippet `AgentRuntime` didn't use UTCP in the simplified version.
-      // Existing `AgentRuntime` USES UTCP.
+      
+      // Add lookup_tool_docs tool
+      toolsToRegister.push({
+          name: "lookup_tool_docs",
+          description: "Fetch detailed usage examples and full documentation for specific tools. Use this if the initial documentation only contains signatures.",
+          inputSchema: {
+              type: "object",
+              properties: {
+                  toolNames: { type: "array", items: { type: "string" }, description: "List of tools to get full documentation for" }
+              },
+              required: ["toolNames"]
+          },
+          handler: async (args: any) => {
+              const docs = await loadToolDocs(args.toolNames);
+              return [{ type: 'text', text: docs.fullDocs }];
+          }
+      } as unknown as ToolDefinition);
 
-      // I will ADD `execute_task_logic` to the registered tools here with a placeholder handler
-      // that gets replaced or uses context?
-      // Actually, I'll allow `executeTask` to pass the `jobId` via context or similar.
-      // For now, let's assume `jobId` comes from environment or args in execution.
-    }
+      // [NEW] Expand monolithic tool names for documentation loading
+      const expandedDocsTools = [...requestedTools];
+      if (requestedTools.includes("nebula")) {
+          expandedDocsTools.push("ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate");
+      }
+      if (requestedTools.includes("meta") || requestedTools.includes("role_architect")) {
+          expandedDocsTools.push("role_registry_list", "role_variant_evolve", "role_config_patch");
+      }
 
-    await this.client.registerManual({
-      name: "system",
-      call_template_type: "local",
-      tools: toolsToRegister,
-    });
-    // ... load docs ...
-    this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
+      
+      this.availableTools = toolsToRegister.map(t => t.name);
+
+      await this.client.registerManual({
+        name: "system",
+        call_template_type: "local",
+        tools: toolsToRegister,
+      });
+      // ... load docs ...
+      const docs = await loadToolDocs(expandedDocsTools);
+      this.toolDocsFull = docs.fullDocs;
+      this.toolDocsSignatures = docs.signatures;
   }
 
   // ... runAgentLoop ...
@@ -151,19 +204,29 @@ export class AgentRuntime {
   async runAgentLoop(
     userGoal: string,
     initialResponse: string,
-    regenerateCallback: (retryPrompt: string) => Promise<string>
+    regenerateCallback: (retryPrompt: string) => Promise<string>,
+    maxTurns: number = 5
   ): Promise<{ result: string; logs: string[] }> {
-    const MAX_TURNS = 5; // Allow up to 5 back-and-forth turns
     let turn = 0;
     let currentResponse = initialResponse;
     const allLogs: string[] = [];
 
     // We maintain a "conversation history" effectively by appending new context
     let contextAccumulator = `Original Goal: ${userGoal}\n\n`;
+    
+    // [PHASE 1] Instrumentation
+    this.baggage = { ...this.baggage, screenspaceId: process.env.ACTIVE_SCREENSPACE_ID || '1' };
 
-    while (turn < MAX_TURNS) {
+    while (turn < maxTurns) {
       turn++;
-      console.log(`[AgentRuntime] 🔄 Turn ${turn}/${MAX_TURNS}`);
+      console.log(`[AgentRuntime] 🔄 Turn ${turn}/${maxTurns}`);
+
+      // [PHASE 2] Hot-Reloading DNA every 5 turns (or exactly at 5, or every 5)
+      // Since MAX_TURNS is 5, let's do it if turn === 3 or something to show it works, 
+      // but user said "every 5 turns".
+      if (turn % 5 === 0 && this.roleId) {
+          await this.checkDnaUpdates();
+      }
 
       // Convert response to string if it's an object (some providers return objects)
       const responseStr =
@@ -171,127 +234,111 @@ export class AgentRuntime {
           ? currentResponse
           : JSON.stringify(currentResponse);
 
-      // 1. Extract Code using deterministic ExecutionStrategies
-      const parsedBlocks = ExecutionStrategies.extractToolCalls(responseStr);
-      const blocks = parsedBlocks.map(b => b.content);
+      // [LOGGING] Capture the full thought process + code for the UI
+      allLogs.push(`[Thought Process]:\n${responseStr}`);
 
-      // Fallback: If no blocks but looks like code
-      let codeToExecute = blocks.join("\n\n");
-      if (
-        !codeToExecute &&
-        /^(?:import|const|let|var|function|class|await|system\.|nebula\.)/m.test(
-          responseStr.trim()
-        )
-      ) {
-        codeToExecute = responseStr;
+
+      // 1. Router Logic (JSON-RPC has priority over Code Mode)
+      let strategy: IExecutionStrategy | null = null;
+      if (JsonRpcStrategy.canHandle(responseStr)) {
+        strategy = new JsonRpcStrategy(this.client);
+      } else if (CodeModeStrategy.canHandle(responseStr)) {
+        strategy = new CodeModeStrategy(this.client);
       }
 
-      // 2. Sanitize "Thinking" lines (LOCATE/DEFINE/EXECUTE)
-      if (codeToExecute) {
-        codeToExecute = codeToExecute
-          .split("\n")
-          .filter((l) => !/^\s*(\d+\.\s+)?(LOCATE|DEFINE|EXECUTE):/.test(l))
-          .join("\n");
+      // [JIT TOOL INJECTION] Check for REQUEST_TOOL signal in model's response BEFORE execution
+      if (responseStr.includes("REQUEST_TOOL:")) {
+        const match = responseStr.match(/REQUEST_TOOL:([a-zA-Z0-9_-]+)/);
+        if (match) {
+          const requestedTool = match[1];
+          const logMsg = `[AgentRuntime] 🧰 JIT Tool Request Detected in Response: ${requestedTool}`;
+          console.log(logMsg);
+          allLogs.push(logMsg);
+          try {
+            await this.injectTools(requestedTool);
+          } catch (injectError: any) {
+            const errLog = `[AgentRuntime] Failed to hot-load tool '${requestedTool}': ${injectError.message}`;
+            console.warn(errLog);
+            allLogs.push(errLog);
+          }
+        }
       }
 
-      // 🛑 STOP CONDITION: If no code to execute, assume we are done
-      if (!codeToExecute || codeToExecute.trim().length === 0) {
-        console.log(
-          "[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown."
-        );
-        return { result: responseStr, logs: allLogs };
-      }
-
-      // 3. Execute Code
-      console.log("[AgentRuntime] ⚡ Executing code...");
+      // 2. Execution or Fallback
       let turnResult = "";
       let turnLogs: string[] = [];
 
-      try {
-        // Check if we should use the specialized TypeScript interpreter for Nebula Code Mode
-        const useSpecializedInterpreter =
-          codeToExecute.includes("nebula.") || codeToExecute.includes("ast.");
-
-        if (useSpecializedInterpreter) {
-          console.log(
-            "[AgentRuntime] Using specialized Nebula Code Mode interpreter..."
-          );
-          const { typescriptInterpreterTool } = await import(
-            "../tools/typescriptInterpreter.js"
-          );
-          const interpreterResponse = await (
-            typescriptInterpreterTool.handler as (args: {
-              code: string;
-            }) => Promise<{ text: string; meta?: { nebula_actions?: unknown[] } }[]>
-          )({ code: codeToExecute });
-
-          // The interpreter tool returns an array of message objects
-          const firstMessage = interpreterResponse[0];
-          const responseText = firstMessage?.text || "";
-          const actions = firstMessage?.meta?.nebula_actions || [];
-
-          // Check if execution failed
-          if (
-            responseText.includes("❌ Execution Error:") ||
-            responseText.includes("ERROR:")
-          ) {
-            throw new Error(responseText);
-          }
-
-          const toolResults: unknown[] = [];
-          // If we have actions, we need to execute them via the nebula tool
-          if (actions.length > 0) {
-            console.log(
-              `[AgentRuntime] Executing ${actions.length} captured Nebula actions...`
-            );
-            for (const action of actions) {
-              const toolOutput = (await this.client.callTool(
-                "system.nebula",
-                action as Record<string, unknown>
-              )) as unknown;
-              toolResults.push(toolOutput);
-            }
-          }
-
-          // Parse result and logs from the response text
-          const outputMatch = responseText.match(
-            /Output:\n([\s\S]*?)(?:\nWarnings\/Errors:|$)/
-          );
-          const parsedResult = outputMatch
-            ? outputMatch[1].trim()
-            : responseText;
-
-          // Return both the text output and the captured tool results
-          const combinedResult = [
-            { type: "text", content: parsedResult },
-            ...toolResults,
-          ];
-
-          turnResult = JSON.stringify(combinedResult);
-          turnLogs = [responseText];
-        } else {
-          // Standard Sandbox Execution
-          const sandboxResponse = (await this.client.callToolChain(
-            codeToExecute
-          )) as { result: string; logs: string[] };
-          turnResult =
-            sandboxResponse?.result ||
-            "Command executed successfully with no output.";
-          turnLogs = sandboxResponse?.logs || [];
+      if (strategy) {
+        console.log(`[AgentRuntime] 🔀 Routing to ${strategy.name} (Trace: ${this.traceId})`);
+        try {
+          const result = await strategy.execute(responseStr, {
+            roleId: this.roleId,
+            sessionId: undefined,
+            traceId: this.traceId,
+            baggage: this.baggage
+          } as any);
+          turnResult = result.output;
+          turnLogs = result.logs;
+        } catch (execError: any) {
+          turnResult = `[EXECUTION_ERROR]: ${execError.message}`;
+          turnLogs = [execError.stack || execError.message];
         }
 
-        allLogs.push(...turnLogs);
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        turnResult = `Error: ${errorMessage}`;
-        allLogs.push(turnResult);
+        // [JIT TOOL INJECTION] Also check for REQUEST_TOOL signal in output (from a tool call)
+        if (turnResult.includes("REQUEST_TOOL:")) {
+          const match = turnResult.match(/REQUEST_TOOL:([a-zA-Z0-9_-]+)/);
+          if (match) {
+            const requestedTool = match[1];
+            const logMsg = `[AgentRuntime] 🧰 JIT Tool Request Detected in Output: ${requestedTool}`;
+            console.log(logMsg);
+            allLogs.push(logMsg);
+            try {
+              await this.injectTools(requestedTool);
+              const safeNamespace = requestedTool.replace(/-/g, '_');
+              turnResult = `[SYSTEM]: Tools from '${requestedTool}' have been hot-loaded and are now available in the '${safeNamespace}' namespace. Please retry your action.`;
+            } catch (injectError: any) {
+              turnResult = `[SYSTEM_ERROR]: Failed to hot-load tool '${requestedTool}': ${injectError.message}`;
+              allLogs.push(turnResult);
+            }
+          }
+        }
+      } else {
+        // No strategy matched -> Assume conversational text
+        console.log("[AgentRuntime] ℹ️ Response contains no executable code. Returning text/markdown.");
+        return { result: responseStr, logs: allLogs };
       }
+
+      allLogs.push(...turnLogs);
 
       // 4. FEEDBACK LOOP (The Critical Fix)
       // Instead of returning, we feed the output back to the model
-      const observationPrompt = `
+      
+      // Check if this was a successful role creation
+      const isRoleCreationSuccess = turnResult.includes('✅ Role Variant Created Successfully') || 
+                                     turnResult.includes('biologically spawned');
+      
+      const hasErrors = turnLogs.some(log => log.toLowerCase().includes("error") || log.toLowerCase().includes("failed")) || 
+                        turnResult.toLowerCase().includes("error") || 
+                        turnResult.toLowerCase().includes("failed");
+
+      const observationPrompt = isRoleCreationSuccess 
+        ? `
 [SYSTEM_OBSERVATION]
-The code executed.
+✅ SUCCESS! The role was created successfully.
+
+Output:
+${turnResult}
+
+Instructions:
+Respond with a brief confirmation message to the user. DO NOT create another role. DO NOT output more JSON.
+Example: "I've successfully created the [Role Name] role. It's now available in your roster."
+`
+        : `
+[SYSTEM_OBSERVATION]
+The action was executed.
+${hasErrors ? '🚨 ERRORS DETECTED: A technical failure occurred. You must now generate a "Fix Strategy" to repair the system.' : ''}
+${(hasErrors && !isRoleCreationSuccess) ? `\n[AVAILABLE_TOOLS]: ${this.availableTools.join(', ')}\n[CONSTRAINT]: You MUST NOT use tools outside this list. If you need a missing tool, check if you can hot-load it.` : ''}
+
 Output:
 ${turnResult}
 
@@ -299,12 +346,13 @@ Logs:
 ${turnLogs.join("\n")}
 
 Instructions:
-1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks).
-2. If you need more information or need to take another step, generate the NEXT code block.
+${hasErrors ? 
+  "1. Analyze the error logs above identify the root cause (e.g. TypeError = missing tool).\n2. Output a FIX STRATEGY.\n3. Execute any necessary tool calls from the [AVAILABLE_TOOLS] list to apply the fix." : 
+  "1. If this output answers the user's goal fully, reply with the FINAL ANSWER in text (no code blocks or JSON).\n2. If you need more information or need to take another step, generate the NEXT code block or JSON tool call."}
 `;
 
       // Append observation to context
-      contextAccumulator += `\nAssistant's Code:\n${codeToExecute}\n\nSystem Output:\n${turnResult}\n`;
+      contextAccumulator += `\nAssistant's Action:\n${responseStr}\n\nSystem Output:\n${turnResult}\n`;
 
       console.log(`[AgentRuntime] 🔙 Feeding result back to model...`);
       currentResponse = await regenerateCallback(
@@ -332,146 +380,208 @@ Instructions:
     const roleContext = roleId
       ? await this.contextManager.getContext(roleId)
       : { tone: "", style: "", memory: {} };
-
+    
     // Fetch Conversation History
     let historyStr = "";
     if (sessionId) {
-      const history = await this.contextManager.getHistory(sessionId);
-      if (history.length > 0) {
-        historyStr = "## Conversation History:\n" +
-          history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n\n");
-      }
-      // Record the NEW user prompt immediately? 
-      // Or record it after success? 
-      // Let's record it now so it's in history for next time if we crash? 
-      // But if we record it now, and then "generate", the model might see it?
-      // No, we are constructing the prompt NOW by fetching history first.
-      // So the CURRENT prompt is NOT in history yet. That's correct.
+        const history = await this.contextManager.getHistory(sessionId);
+        if (history.length > 0) {
+            historyStr = "## Conversation History:\n" + 
+                history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n\n");
+        }
+        // Record the NEW user prompt immediately? 
+        // Or record it after success? 
+        // Let's record it now so it's in history for next time if we crash? 
+        // But if we record it now, and then "generate", the model might see it?
+        // No, we are constructing the prompt NOW by fetching history first.
+        // So the CURRENT prompt is NOT in history yet. That's correct.
     }
 
     const memoryStr = Object.entries(roleContext.memory || {})
       .map(([k, v]) => `${k}: ${v}`)
       .join("\n");
 
-    let enhancedSystemPrompt = `${baseSystemPrompt || ""}\n\n${roleContext.tone || ""
-      }\n\n${memoryStr}\n\n${historyStr}`.trim();
+    let enhancedSystemPrompt = `${baseSystemPrompt || ""}\n\n${
+      roleContext.tone || ""
+    }\n\n${memoryStr}\n\n${historyStr}`.trim();
 
     // Inject Tool Documentation
-    if (this.toolDocs) {
-      if (enhancedSystemPrompt.includes("{{tool_definitions}}")) {
-        enhancedSystemPrompt = enhancedSystemPrompt.replace(
-          "{{tool_definitions}}",
-          this.toolDocs
-        );
-      } else {
-        // Auto-append Protocol + Docs if tag is missing
-        const CODE_MODE_PROTOCOL = `
-🧠 System Instruction: Nebula Code Mode v2.0
-Role: You are the Nebula Engine Pilot. You do not write code to describe a UI; you write code to construct it using the live nebula runtime instance.
+    if (this.toolDocsSignatures || this.toolDocsFull) {
+        // 1. Calculate Budget (Simplified estimation)
+        const baseLength = enhancedSystemPrompt.length + prompt.length;
+        
+        // 2. Protocols (Hardcoded strings for now as per requirement, but logic is cleaned up)
+        const UI_ARCHITECT_PROTOCOL = `
+🧠 System Instruction: UI Architect Code Mode
+Role: You are the UI Architect. You do not write code to describe a UI; you write code to construct it using the atomic UI tools.
 
-The Prime Directive: NEVER write code without first verifying the current state.
+The Prime Directive: NEVER write code without first verifying the current state using 'system.ui_architect_tree_inspect'.
 
 Your Runtime Environment:
-- Global Object: nebula (Instance of NebulaOps)
-- Global Helper: ast (Instance of AstTransformer)
-- Context: tree (Read-only access to current NebulaTree state)
+- system.ui_architect_tree_inspect: Read current tree.
+- system.ui_architect_node_mutate: Update/Move/Delete nodes.
+- system.ui_factory_layout_generate: Add nodes or ingest JSX.
 
 ## 🛠️ TOOL USAGE PROTOCOL
-You are operating in **CODE MODE**. Your primary objective is to fulfill the user's request by calling available tools. 
+You are operating in **CODE MODE**. 
 
 ### 🚨 CRITICAL RULES:
-1. **NO CONVERSATIONAL FILLER.** Do not say "Sure, I can help with that." 
-2. **USE CODE BLOCKS.** You MUST wrap your logic in a \` \` \`typescript block.
-3. **USE THE NEBULA OBJECT.** Call nebula methods directly: \`const id = nebula.addNode(...)\`.
-4. **CAPTURE RETURNS.** The addNode function returns an ID. YOU MUST CAPTURE IT.
-   - ✅ Good: \`const cardId = nebula.addNode(...)\`
-   - ❌ Bad: \`nebula.addNode(...)\` (ID is lost, cannot add children).
-5. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
-6. **NEVER HALLUCINATE IDs.** Do not update node_123 unless you created it or confirmed it exists in the tree.
+1. **NO CONVERSATIONAL FILLER.**
+2. **USE CODE BLOCKS.**
+3. **CAPTURE RETURNS.** Some tools return IDs. YOU MUST CAPTURE THEM.
+4. **ATOMIC OPERATIONS.** Group related changes into a single execution block.
+5. **NEVER HALLUCINATE IDs.** Verify existence before mutation.
 
-### Phase 1: The "Thinking" Protocol (Mandatory)
-Before writing code, you must output a plan:
-- LOCATE: Which node ID am I attaching to? (Check existence).
-- DEFINE: What specific tokens (Tailwind) and Layouts (flex/grid) will I use?
-- EXECUTE: Write the script.
-
-### Component Registry (Use these as "type" for addNode)
-- **Box**: Layout container (div). Default.
-- **Text**: Props: { content: string, type: 'h1'|'h2'|'h3'|'p' }.
-- **Button**: Props: { children: string, variant: 'default'|'outline'|'ghost' }.
-- **Input / Textarea**: Form inputs.
-- **Badge**: Tiny pill label.
-- **Label**: Form labels.
-- **Slider**: Range input.
-- **Icon**: Props: { name: string } (Lucide names like 'User', 'Settings').
-- **Card**: Composite (CardHeader, CardTitle, CardDescription, CardContent, CardFooter).
-- **Tabs**: Composite (TabsList, TabsTrigger [prop value], TabsContent [prop value]).
-- **AiButton / SuperAiButton**: AI trigger buttons.
-- **Image**: Props: { src: string, alt: string }.
-
-### Phase 2: API Reference (Cheat Sheet)
+### API Reference (Cheat Sheet)
 \`\`\`typescript
-// 1. ADDING NODES (Recursive)
-const parentId = "root"; // Or some captured ID
-const btnId = nebula.addNode(parentId, {
-  type: "Button",
-  props: { children: "Click Me", variant: "default" },
-  style: { background: "bg-primary", padding: "p-4" },
-  layout: { mode: "flex" }
-});
+// 1. INSPECT
+const tree = await system.ui_architect_tree_inspect({});
 
-// cspell:disable-next-line
-// 2. BUILDING COCHLEATED STRUCTURES (Cards)
-const cardId = nebula.addNode("root", { type: "Card", style: { width: "w-80" } });
-const headerId = nebula.addNode(cardId, { type: "CardHeader" });
-nebula.addNode(headerId, { type: "CardTitle", props: { children: "User Profile" } });
-const contentId = nebula.addNode(cardId, { type: "CardContent" });
-nebula.addNode(contentId, { type: "Text", props: { children: "Managing your account settings level here." } });
+// 2. ADDING NODES
+const btnId = await system.ui_factory_layout_generate({ 
+    action: "addNode", 
+    parentId: "root", 
+    node: { type: "Button", props: { children: "Click Me" } } 
+});
 
 // 3. UPDATING NODES
-nebula.updateNode(btnId, { style: { background: "bg-red-500" } });
-
-// 3. MOVING NODES
-nebula.moveNode(btnId, "new-parent-id", 0); // Index 0
-
-// 4. INGESTION (Raw Code -> Nodes)
-const rawJSX = \`<div className="p-4">...</div>\`;
-const fragment = ast.parse(rawJSX);
-nebula.addNode(parentId, fragment);
-\`\`\`
-
-### Example Pattern: The "Iterator" (Building Lists)
-\`\`\`typescript
-const listId = nebula.addNode(parentId, { type: 'Box', layout: { mode: 'flex', direction: 'column' }});
-const items = ['Pricing', 'Features', 'About'];
-
-items.forEach(item => {
-  nebula.addNode(listId, { 
-    type: 'Button', 
-    props: { children: item, variant: 'ghost' },
-    style: { width: 'w-full', align: 'start' }
-  });
+await system.ui_architect_node_mutate({ 
+    action: "updateNode", 
+    nodeId: btnId, 
+    update: { style: { background: "bg-red-500" } } 
 });
 \`\`\`
-
-### Available Tools:
-\${this.toolDocs}
 `;
-        enhancedSystemPrompt += CODE_MODE_PROTOCOL;
-      }
+
+        const GENERIC_CODE_PROTOCOL = `
+🧠 System Instruction: TypeScript Tooling Mode
+Role: You are a specialized agent operating in a TypeScript Runtime Environment.
+
+### 🛠️ HYBRID PROTOCOL: DYNAMIC SWITCHING
+You have access to two execution modes. Choose the right one for the task.
+
+### 1. CODE MODE (High Complexity)
+**Trigger:** Complex logic, piping data between tools, loops, or file manipulation.
+**Format:** Wrap TypeScript logic in a markdown block.
+\`\`\`typescript
+const data = await system.read_file({ path: "..." });
+console.log(data);
+\`\`\`
+
+### 2. JSON MODE (Low Latency / Atomic)
+**Trigger:** Single, simple tool calls (e.g., looking up a quick fact or checking time).
+**Format:** Output a raw JSON block (NO markdown backticks).
+{ "tool": "system.time", "args": {} }
+
+### Heuristic:
+- IF you need to process the output of Tool A before calling Tool B -> **USE CODE MODE**.
+- IF you just need to call Tool A and show the user the result -> **USE JSON MODE**.
+
+### 🚨 CRITICAL RULES:
+1. **NO CONVERSATIONAL FILLER.** Do not say "Here is the code." Just output the code or JSON.
+2. **ASYNC/AWAIT.** Always use \`await\` for tool calls in Code Mode.
+3. **CONSOLE LOGGING.** In Code Mode, use \`console.log\` to print results so you can see them in the next turn.
+
+### Runtime Environment:
+- **system**: The global object containing all your tools.
+- **console**: Standard console for logging.
+`;
+
+        const JSON_STRICT_PROTOCOL = `
+🧠 System Instruction: JSON-RPC Mode
+Role: You are an atomic agent operating via structured JSON-RPC.
+
+### 🛠️ TOOL CALL PROTOCOL
+When you need to execute an action/tool:
+1. **JSON ONLY.** Output a raw JSON object.
+2. **NO MARKDOWN.** Do NOT wrap the tool call in backticks.
+3. **NO FILLER.** Do not say "I am calling the tool..." - just output the JSON.
+4. **ONE AT A TIME.** Generate exactly one tool call per turn.
+
+### Format:
+{ "tool": "system.tool_name", "args": { "param": "value" } }
+`;
+
+        const CODE_STRICT_PROTOCOL = `
+🧠 System Instruction: TypeScript Engine Mode
+Role: You are a high-performance TypeScript engine.
+
+### 🚨 CRITICAL RULES:
+1. **CODE ONLY.** Every action must be wrapped in a \` \` \`typescript block.
+2. **FULL LOGIC.** You can pipe data, use loops, and handle complex logic.
+3. **LOG OUTPUTS.** Use \`console.log\` to see the results of your tool calls.
+4. **NO JSON.** Do NOT use raw JSON blocks.
+
+### Format:
+\`\`\`typescript
+const result = await system.tool_name({ ... });
+console.log(result);
+\`\`\`
+`;
+
+        const SPECIALIZED_ARCHITECT_PROTOCOL = `
+🧠 System Instruction: Meta-Evolution Protocol
+Role: You are an Architect specializing in the creation and evolution of AI roles.
+
+### 🛠️ ARCHITECT GOALS:
+1. Discover existing roles using 'system.role_registry_list'.
+2. Evolve new capabilities using 'system.role_variant_evolve'.
+3. Fine-tune behavior using 'system.role_config_patch'.
+
+Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
+`;
+
+        // 3. Selection (Protocol Selection Logic)
+        // [FIX] Decouple tier from protocol - only inject ARCHITECT protocol if role-management tools are present
+        let protocol = GENERIC_CODE_PROTOCOL;
+        
+        const hasRoleManagementTools = this.availableTools.some(t => 
+          t === 'role_registry_list' || t === 'role_variant_evolve' || t === 'role_config_patch'
+        );
+        
+        if (hasRoleManagementTools) {
+          // Only inject architect protocol if the role actually has role-management tools
+          protocol = SPECIALIZED_ARCHITECT_PROTOCOL;
+        } else if (this.executionMode === 'JSON_STRICT') {
+            protocol = JSON_STRICT_PROTOCOL;
+        } else if (this.executionMode === 'CODE_INTERPRETER') {
+            protocol = CODE_STRICT_PROTOCOL;
+        } else if (this.tier === 'Nebula' || this.toolDocsSignatures.includes("ui_architect_")) {
+            protocol = UI_ARCHITECT_PROTOCOL;
+        }
+
+        if (this.silenceConfirmation) {
+            protocol += `\n\n### 🚨 AUTONOMOUS BEHAVIOR:
+1. **NO CONVERSATION.** Do not explain yourself, confirm tasks, or say "Finished."
+2. **TOOL OUTPUT ONLY.** Only output tool calls or raw data results.
+3. **TASK COMPLETE.** When the user's intent is logically fulfilled by previous tool outputs, stop responding.
+`;
+        }
+
+        // 4. Just-in-Time Documentation Truncation
+        const toolHeader = "\n\n### Available Tools:\n";
+        
+        if (baseLength < 8000) {
+            // High budget: Full documentation
+            enhancedSystemPrompt += protocol + toolHeader + this.toolDocsFull;
+        } else {
+            // Low budget: Signatures only + lookup tool
+            enhancedSystemPrompt += protocol + toolHeader + this.toolDocsSignatures + 
+                "\n\nNOTE: Use 'system.lookup_tool_docs' for full examples if you are unsure how to use a tool.";
+        }
     }
 
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
-
+    
     // Delegate to the provided agent/provider
     const result = await agent.generate(finalPrompt);
 
     // Record History (if session active)
     if (sessionId && typeof result === 'string') {
-      const userMsg = prompt; // Original user prompt
-      const assistantMsg = result;
-      await this.contextManager.addMessage(sessionId, 'user', userMsg);
-      await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
+        const userMsg = prompt; // Original user prompt
+        const assistantMsg = result;
+        await this.contextManager.addMessage(sessionId, 'user', userMsg);
+        await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
     }
 
     return result;
@@ -483,13 +593,13 @@ items.forEach(item => {
    */
   async executeTask(jobId: string, vfsToken: string, taskContext: string) {
     if (this.tier !== 'Worker') throw new Error("Only Workers execute tasks.");
-
+    
     // const gitTool = CreateGitAwareWorkerTools(jobId, vfsToken);
-
+    
     await this.client.registerManual({
-      name: "volcano", // Separate namespace for dynamic tools
-      call_template_type: "local",
-      tools: [] // [gitTool]
+        name: "volcano", // Separate namespace for dynamic tools
+        call_template_type: "local",
+        tools: [] // [gitTool]
     });
 
     const SYSTEM_PROMPT = `
@@ -507,9 +617,41 @@ items.forEach(item => {
     `;
 
     const result = await this.client.callToolChain(
-      `${SYSTEM_PROMPT}\n\nTASK: ${taskContext}\n\nExecute the task using volcano.execute_task_logic.`
+        `${SYSTEM_PROMPT}\n\nTASK: ${taskContext}\n\nExecute the task using volcano.execute_task_logic.`
     );
-
+    
     return result;
+  }
+
+  public async injectTools(serverName: string) {
+      if (this.injectedServers.has(serverName)) {
+          console.log(`[AgentRuntime] Server '${serverName}' already hot-loaded. Skipping.`);
+          return;
+      }
+
+      const newTools = await mcpOrchestrator.attachToolToSession(serverName);
+      const safeNamespace = serverName.replace(/-/g, '_');
+      
+      await this.client.registerManual({
+          name: safeNamespace,
+          call_template_type: "local",
+          tools: newTools as any,
+      });
+      this.injectedServers.add(serverName);
+      console.log(`[AgentRuntime] Successfully injected ${newTools.length} tools into namespace '${safeNamespace}' from ${serverName}`);
+  }
+
+  public async checkDnaUpdates() {
+      if (!this.roleId) return;
+      const { prisma } = await import("../db.js");
+      const variant = await prisma.roleVariant.findFirst({
+          where: { roleId: this.roleId, isActive: true }
+      });
+      if (variant) {
+          console.log(`[AgentRuntime] 🧬 Polling DNA for ${this.roleId}...`);
+          const cortex = (variant.cortexConfig as any) || {};
+          if (cortex.executionMode) this.executionMode = cortex.executionMode;
+          // Could update basePrompt here if we pass it through system prompt enhancer
+      }
   }
 }

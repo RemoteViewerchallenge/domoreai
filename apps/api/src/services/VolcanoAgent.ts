@@ -60,21 +60,36 @@ export class VolcanoAgent {
     }
 
     if (!providerId) {
-        console.warn(`[VolcanoAgent] ⚠️ No providerId explicit or inferable for model '${actualModelId}'. Defaulting to 'openai' (generic).`);
-        providerId = 'openai'; 
+        // Find if we have any active providers
+        const activeProviders = ProviderManager.getProviderIds();
+        console.warn(`[VolcanoAgent] ⚠️ No providerId explicit or inferable for model '${actualModelId}'. Available: ${activeProviders.join(', ')}`);
+        
+        // If we have ONLY ONE provider, maybe use it? No, better to be explicit or fail.
+        // For now, if 'openai' exists, keep it as fallback but better warning.
+        if (activeProviders.includes('openai')) {
+            providerId = 'openai';
+        } else if (activeProviders.length > 0) {
+            // Pick the first available one as an absolute last resort emergency? 
+            // Better to fail so we can fix the root cause (AgentService resolution).
+            throw new Error(`Execution failed: Could not infer provider for model '${actualModelId}' and no default 'openai' provider is active.`);
+        }
     }
     
     // Get Provider
     const provider = ProviderManager.getProvider(providerId);
     if (!provider) {
-        throw new Error(`Provider '${providerId}' not found for agent execution (Model: ${actualModelId}). Available providers: ${Array.from((ProviderManager as any).instance.providers.keys()).join(', ')}`);
+        const available = ProviderManager.getProviderIds().join(', ');
+        throw new Error(`Provider '${providerId}' not found for agent execution (Model: ${actualModelId}). Available: ${available}`);
     }
     
+    
+    // [ARCHITECTURE] maxTokens is role-specific and passed to LLMSelector
+    // The selector chooses models that can handle the required output length
     return await provider.generateCompletion({
         modelId: actualModelId,
         messages: [{ role: 'user', content: prompt }], // System prompt injected by runtime usually
         temperature: temperature || 0.7,
-        max_tokens: maxTokens || 4096
+        max_tokens: maxTokens || 1024 // Default 1024 for JSON/tools; planning/writing roles specify higher in metadata
     });
   }
 }

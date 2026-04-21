@@ -7,14 +7,13 @@ export class RegistryClient implements IRegistryClient {
       { name: 'git', description: 'System: Git history and operations' },
       { name: 'postgres', description: 'System: Database inspection' },
       { name: 'playwright', description: 'System: UI verification' },
-      // { name: 'language-server', description: 'System: LSP Intelligence' },
-      // { name: 'context7', description: 'Grounding: Documentation fetching' },
-      // { name: 'docker', description: 'Execution: Sandboxed environment' },
+      // Additional servers commented out - enable as needed
       // { name: 'memory', description: 'Memory: Knowledge Graph' },
-      // { name: 'planning', description: 'Strategy: Software Planning Tool' },
-      // { name: 'deep-research', description: 'Research: Deep Web & Academic Search' },
       // { name: 'commander', description: 'System: Process & Fuzzy Search' },
-      // { name: 'linear', description: 'Project Management: Linear Issues' }
+      // { name: 'docker', description: 'Execution: Sandboxed environment' },
+      // { name: 'context7', description: 'Grounding: Documentation fetching' },
+      // { name: 'planning', description: 'Strategy: Software Planning Tool' },
+      // { name: 'deep-research', description: 'Research: Deep Web & Academic Search' }
     ]);
   }
 

@@ -18,8 +18,23 @@ export const RoleParamsForm: React.FC<RoleParamsFormProps> = ({
     <div className={`p-4 space-y-6 ${className}`}>
         {/* Context Window */}
         <div>
-            <div className="flex justify-between items-baseline mb-2">
+            <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">Context Window</label>
+                <div className="flex items-center gap-2">
+                     <input 
+                        type="number" 
+                        value={formData.minContext} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, minContext: parseInt(e.target.value) || 0 }))}
+                        className="w-20 bg-[var(--color-background-secondary)]/30 border border-[var(--color-border)] rounded px-2 py-1 text-xs font-mono text-[var(--color-primary)] outline-none focus:border-[var(--color-primary)]"
+                     />
+                     <span className="text-[10px] text-[var(--color-text-muted)] italic">to</span>
+                     <input 
+                        type="number" 
+                        value={formData.maxContext} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, maxContext: parseInt(e.target.value) || 0 }))}
+                        className="w-20 bg-[var(--color-background-secondary)]/30 border border-[var(--color-border)] rounded px-2 py-1 text-xs font-mono text-[var(--color-primary)] outline-none focus:border-[var(--color-primary)]"
+                     />
+                </div>
             </div>
             <DualRangeSlider 
                 min={0} 
@@ -30,10 +45,6 @@ export const RoleParamsForm: React.FC<RoleParamsFormProps> = ({
                 label=""
                 unit=" tokens"
             />
-            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
-                <span>{formData.minContext.toLocaleString()} (Min)</span>
-                <span>{formData.maxContext.toLocaleString()} (Max)</span>
-            </div>
         </div>
 
         {/* Capabilities - Grid */}
