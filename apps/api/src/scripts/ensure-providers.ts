@@ -7,15 +7,15 @@ async function addProviders() {
     const providers = [
         { 
             id: 'cerebras', 
-            label: 'Cerebras', 
+            name: 'Cerebras', 
             type: 'cerebras', 
-            baseURL: 'https://api.cerebras.ai/v1' 
+            baseUrl: 'https://api.cerebras.ai/v1' 
         },
         { 
             id: 'nvidia', 
-            label: 'NVIDIA', 
+            name: 'NVIDIA', 
             type: 'nvidia', 
-            baseURL: 'https://integrate.api.nvidia.com/v1' 
+            baseUrl: 'https://integrate.api.nvidia.com/v1' 
         }
     ];
 
@@ -25,18 +25,18 @@ async function addProviders() {
         });
 
         if (existing) {
-            console.log(`✅ ${p.label} provider already exists.`);
+            console.log(`✅ ${p.name} provider already exists.`);
         } else {
             await prisma.providerConfig.create({
                 data: {
                     id: p.id,
-                    label: p.label,
+                    name: p.name,
                     type: p.type,
-                    baseURL: p.baseURL,
+                    baseUrl: p.baseUrl,
                     isEnabled: true
                 }
             });
-            console.log(`✅ Added ${p.label} Provider.`);
+            console.log(`✅ Added ${p.name} Provider.`);
         }
     }
 }

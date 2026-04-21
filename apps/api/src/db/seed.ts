@@ -11,7 +11,7 @@ async function main() {
     update: {},
     create: {
       id: 'openai',
-      label: 'OpenAI',
+      name: 'OpenAI',
       type: 'chat',
         // apiKey: process.env.OPENAI_API_KEY || 'sk-placeholder',
       isEnabled: true,

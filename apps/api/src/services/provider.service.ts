@@ -8,50 +8,75 @@ export class ProviderService {
     return prisma.providerConfig.findMany();
   }
 
+  async getProvider(id: string) {
+    return prisma.providerConfig.findUnique({
+      where: { id }
+    });
+  }
+
   // [NEW] Manage Providers via UI
-  async upsertProviderConfig(input: { id?: string, label: string, type: string, baseURL: string, apiKey?: string }) {
-    // const encryptedKey = input.apiKey ? encrypt(input.apiKey) : undefined; // REMOVED
-
-    // Note: apiKey is removed from DB schema, but we keep the logic structure 
-    // in case we restore it or for consistency with how it was called.
-    // If apiKey column is gone, we cannot save it.
-    // We will assume environment variables handle the key, but we still accept label/type/baseURL.
-
-    // If 'apiKey' really is gone from ProviderConfig, we skip saving it.
-    // If we want to support storing keys, we need the column back.
-    // Given the migration "Move Keys to Env", we assume DB does NOT store keys.
-
-    const data = {
-      label: input.label,
-      type: input.type,
-      baseURL: input.baseURL,
-      isEnabled: true,
-      // apiKey: encryptedKey, // Omitted
-    };
-
+  async upsertProviderConfig(input: { 
+    id?: string, 
+    name?: string, 
+    type?: string, 
+    baseUrl?: string, 
+    apiKey?: string,
+    apiKeyEnvVar?: string,
+    pricingUrl?: string,
+    isCreditCardLinked?: boolean,
+    enforceFreeOnly?: boolean,
+    monthlyBudget?: number
+  }) {
     if (input.id) {
+      // PARTIAL UPDATE
+      const existing = await prisma.providerConfig.findUnique({ where: { id: input.id } });
+      if (!existing) throw new Error('Provider not found');
+
+      const data: any = {
+        updatedAt: new Date()
+      };
+
+      if (input.name !== undefined) data.name = input.name;
+      if (input.type !== undefined) data.type = input.type;
+      if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl;
+      if (input.apiKeyEnvVar !== undefined) data.apiKeyEnvVar = input.apiKeyEnvVar;
+      if (input.pricingUrl !== undefined) data.pricingUrl = input.pricingUrl;
+      if (input.isCreditCardLinked !== undefined) data.isCreditCardLinked = input.isCreditCardLinked;
+      if (input.enforceFreeOnly !== undefined) data.enforceFreeOnly = input.enforceFreeOnly;
+      if (input.monthlyBudget !== undefined) data.monthlyBudget = input.monthlyBudget;
+
       return prisma.providerConfig.update({
         where: { id: input.id },
-        data: {
-          ...data,
-          updatedAt: new Date()
-        }
+        data
       });
     } else {
+      // CREATE
+      if (!input.name || !input.type || !input.baseUrl) {
+        throw new Error('Name, type, and baseUrl are required for new providers');
+      }
+
       return prisma.providerConfig.create({
         data: {
           id: uuidv4(),
-          ...data
+          name: input.name,
+          type: input.type,
+          baseUrl: input.baseUrl,
+          apiKeyEnvVar: input.apiKeyEnvVar,
+          pricingUrl: input.pricingUrl,
+          isCreditCardLinked: input.isCreditCardLinked ?? false,
+          enforceFreeOnly: input.enforceFreeOnly ?? true,
+          monthlyBudget: input.monthlyBudget,
+          isEnabled: true,
         }
       });
     }
   }
 
-  async addProvider(input: { name: string, providerType: string, baseURL: string, apiKey?: string }) {
+  async addProvider(input: { name: string, providerType: string, baseUrl: string, apiKey?: string }) {
     return this.upsertProviderConfig({
-      label: input.name,
+      name: input.name,
       type: input.providerType,
-      baseURL: input.baseURL,
+      baseUrl: input.baseUrl,
       apiKey: input.apiKey,
     });
   }
@@ -94,7 +119,7 @@ export class ProviderService {
         id: model.id, // CUID
         name: model.name, // Display Name
         providerId: model.providerId,
-        providerLabel: model.provider.label,
+        providerLabel: model.provider.name,
         contextWindow: model.capabilities?.contextWindow || 0,
         // Frontend expects these flattened or in specs
         specs: {
@@ -119,6 +144,7 @@ export class ProviderService {
 
   // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
   async fetchAndNormalizeModels(providerId: string) {
+    const { Surveyor } = await import('./Surveyor.js');
     const providerConfig = await prisma.providerConfig.findUnique({
       where: { id: providerId }
     });
@@ -135,19 +161,40 @@ export class ProviderService {
     // NEW: Validate API key exists for providers that require it
     const requiresApiKey = !['ollama'].includes(providerConfig.type);
     if (requiresApiKey && !apiKey) {
-      console.warn(`[Ingestion] Skipping ${providerConfig.label} (${providerConfig.type}): No API key found`);
-      return { count: 0, skipped: true, reason: 'Missing API key' };
+      const errorMsg = 'Missing API key. Please check your environment variables.';
+      console.warn(`[Ingestion] Skipping ${providerConfig.name} (${providerConfig.type}): ${errorMsg}`);
+      await Surveyor.updateProviderStatus(providerId, 'ERROR', `[Config] ${errorMsg}`);
+      return { count: 0, skipped: true, reason: errorMsg };
     }
 
     const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
       id: providerConfig.id,
       apiKey,
-      baseURL: providerConfig.baseURL || undefined,
+      baseURL: providerConfig.baseUrl || undefined,
     });
 
-    console.log(`[Ingestion] Fetching models for ${providerConfig.label} (${providerConfig.type})...`);
-    const rawModelList = await providerInstance.getModels();
-    console.log(`[Ingestion] Found ${rawModelList.length} models.`);
+    console.log(`[Ingestion] Fetching models for ${providerConfig.name} (${providerConfig.type})...`);
+    let rawModelList: any[] = [];
+    
+    try {
+      rawModelList = await providerInstance.getModels();
+      console.log(`[Ingestion] Found ${rawModelList.length} models.`);
+      
+      // [NEW] Clear error state on success
+      await Surveyor.updateProviderStatus(providerId, 'ACTIVE', null);
+    } catch (error) {
+      const errorMsg = Surveyor.formatError(error);
+      console.error(`[Ingestion] Failed to fetch models for ${providerConfig.name}: ${errorMsg}`);
+      
+      // [NEW] Set error state in DB
+      await Surveyor.updateProviderStatus(providerId, 'ERROR', errorMsg);
+      
+      return { count: 0, skipped: true, reason: errorMsg };
+    }
+
+    // [NEW] Sanitize the list to remove deprecated/utility junk
+    rawModelList = Surveyor.sanitizeModelList(rawModelList);
+    console.log(`[Ingestion] After sanitization: ${rawModelList.length} models.`);
 
     const isLikelyFree = (id: string) => {
       const lower = id.toLowerCase();
@@ -277,7 +324,7 @@ export class ProviderService {
         const res = await this.fetchAndNormalizeModels(p.id);
         results.push({ id: p.id, ...res });
       } catch (e) {
-        console.error(`[ProviderService] Individual sync failed for ${p.label}:`, e);
+        console.error(`[ProviderService] Individual sync failed for ${p.name}:`, e);
       }
     }
 

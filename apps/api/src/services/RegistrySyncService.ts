@@ -9,7 +9,7 @@ interface RawSnapshotData extends LLMModel {
 }
 
 interface ProviderMetadata {
-    label: string;
+    name: string;
     type: string;
 }
 
@@ -51,7 +51,7 @@ export class RegistrySyncService {
             try {
                 // 1. Get readable name for logs
                 const meta = providerMetadata.get(providerId);
-                const providerLabel = meta?.label || providerId;
+                const providerLabel = meta?.name || providerId;
                 const providerType = meta?.type || 'unknown';
 
                 // --- UNIFIED FETCH LOGIC ---
@@ -168,7 +168,7 @@ export class RegistrySyncService {
 
             } catch (error) {
                 const meta = providerMetadata.get(providerId);
-                const providerLabel = meta?.label || providerId;
+                const providerLabel = meta?.name || providerId;
                 console.error(`[Registry Sync] Batch Sync Failed for provider ${providerLabel}:`, error);
             }
         }

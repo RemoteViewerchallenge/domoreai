@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Hammer, Palette, Rocket, Command, Sparkles, 
-  Settings, Monitor, FolderGit2, X, Users, Database, Mic, Table, Workflow
+  Settings, Monitor, FolderGit2, X, Users, Database, Mic, Table, Workflow, Activity
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { SmartSwitch } from '../../../components/workspace/SmartSwitch.js';
+import { useWorkspaceStore } from '../../../stores/workspace.store.js';
 
 interface GlobalContextBarProps {
     aiOpen?: boolean;
@@ -54,6 +55,16 @@ export const GlobalContextBar = ({ aiOpen, setAiOpen, onToggleTheme, themeOpen }
                  </div>
               )}
           </div>
+
+          <div className="w-px h-4 bg-[var(--border-color)] mx-1" />
+
+          {/* Provider Health (MAB) Toggle */}
+          <NavButton 
+            icon={Activity} 
+            active={useWorkspaceStore(s => s.showControlPlane)} 
+            onClick={useWorkspaceStore(s => s.toggleControlPlane)} 
+            tooltip="Toggle Provider Health Sidebar" 
+          />
 
           <div className="w-px h-4 bg-[var(--border-color)] mx-1" />
 

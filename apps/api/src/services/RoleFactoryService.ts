@@ -83,19 +83,19 @@ export class RoleFactoryService {
      */
     private async executeJsonMode<T>(modelId: string, prompt: string, schemaName: string): Promise<T> {
         const { provider, apiModelId } = await this.resolveProvider(modelId);
-        
+
         console.log(`[RoleFactory] 🤖 ${schemaName} Architect is thinking (JSON Mode)...`);
 
         try {
             const response = await provider.generateCompletion({
                 modelId: apiModelId,
                 messages: [
-                    { 
-                        role: 'system', 
+                    {
+                        role: 'system',
                         content: `You are the ${schemaName} Architect. 
 Return ONLY a valid JSON object. 
 No markdown code blocks unless requested. 
-Ensure the output is parseable by JSON.parse().` 
+Ensure the output is parseable by JSON.parse().`
                     },
                     { role: 'user', content: prompt }
                 ],
@@ -130,7 +130,7 @@ Ensure the output is parseable by JSON.parse().`
         const timeout = typeof timeoutInput === 'number' ? timeoutInput : (Number(timeoutInput) || 30000);
         // Robust extraction: try to find a block or at least the roleBuilder call
         let cleanCode = code;
-        
+
         // 1. Try to extract triple-backtick block
         const blockMatch = code.match(/```(?:typescript|ts|javascript|js)?\n([\s\S]*?)```/);
         if (blockMatch) {
@@ -195,7 +195,7 @@ process.stdout.write(JSON.stringify(__result));
         // Helper to ensure we have a working brain
         const ensureBrain = async () => {
             if (currentModelId && currentProvider) return { modelId: currentModelId, provider: currentProvider };
-            
+
             try {
                 const brain = await this.getArchitectBrain(excludedModelIds);
                 currentModelId = brain.modelId;
@@ -209,7 +209,7 @@ process.stdout.write(JSON.stringify(__result));
 
         // Resilience Wrapper: Tries current model, if fails -> records exclusion -> picks new model -> retries
         const executeWithResilience = async <T>(
-            stageName: string, 
+            stageName: string,
             operation: (modelId: string) => Promise<T>,
             fallbackGenerator: () => T
         ): Promise<T> => {
@@ -360,7 +360,7 @@ process.stdout.write(JSON.stringify(__result));
                         const models = await provider.getModels();
                         // Filter out excluded ones
                         const available = models.filter(m => !excludedModelIds.includes(m.id));
-                        
+
                         if (available.length > 0) {
                             return { provider, modelId: available[0].id };
                         }
@@ -503,11 +503,11 @@ process.stdout.write(JSON.stringify(__result));
         }
         `;
         const config = await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
-        
+
         if (isHealthProbe || isAuditor) {
             config.executionMode = 'HYBRID_AUTO';
         }
-        
+
         return config;
     }
 
@@ -607,7 +607,7 @@ process.stdout.write(JSON.stringify(__result));
      */
     async ensureArchitectRole() {
         const name = "Role Architect";
-        let role = await prisma.role.findUnique({ 
+        let role = await prisma.role.findUnique({
             where: { name },
             include: { variants: { where: { isActive: true }, take: 1 } }
         });
@@ -658,10 +658,10 @@ process.stdout.write(JSON.stringify(__result));
 
     public async seedCoordinator() {
         const name = "Grand Orchestrator";
-        
+
         // Find by name OR slug if available (though slug isn't on Role model in previous snippet, assume name is unique)
         let role = await prisma.role.findFirst({ where: { name } });
-        
+
         if (!role) {
             console.log(`[RoleFactory] 👑 Seeding "Grand Orchestrator"...`);
             let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
@@ -701,9 +701,9 @@ process.stdout.write(JSON.stringify(__result));
 
     public async seedLiaison() {
         const name = "Terminal Liaison";
-        
+
         let role = await prisma.role.findFirst({ where: { name } });
-        
+
         if (!role) {
             console.log(`[RoleFactory] 🤝 Seeding "Terminal Liaison"...`);
             let cat = await prisma.roleCategory.findUnique({ where: { name: 'System' } });
@@ -786,12 +786,12 @@ process.stdout.write(JSON.stringify(__result));
         const OUTDATED_DEFAULTS = [8192, 4096];
 
         if (OUTDATED_DEFAULTS.includes(currentMin)) {
-             if (defaultMin && defaultMin !== currentMin) {
-                 console.log(`[RoleFactory] 🆙 Upgrading outdated minContext ${currentMin} -> ${defaultMin} for "${role.name}"`);
-                 if (!newCortex.contextRange) newCortex.contextRange = {};
-                 newCortex.contextRange.min = defaultMin;
-                 needsUpdate = true;
-             }
+            if (defaultMin && defaultMin !== currentMin) {
+                console.log(`[RoleFactory] 🆙 Upgrading outdated minContext ${currentMin} -> ${defaultMin} for "${role.name}"`);
+                if (!newCortex.contextRange) newCortex.contextRange = {};
+                newCortex.contextRange.min = defaultMin;
+                needsUpdate = true;
+            }
         }
 
         // 2. Max Output Tokens Upgrade (if missing or default 0/null/outdated)

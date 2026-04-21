@@ -161,7 +161,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     const selected = candidates[0];
     const isFree = (selected.costPer1k === 0);
 
-    console.log(`✅ Selected model: ${selected.provider.label}/${selected.name} (free: ${isFree})`);
+    console.log(`✅ Selected model: ${selected.provider.name}/${selected.name} (free: ${isFree})`);
 
     // Use external ID from providerData, fallback to name, never usage internal CUID
     const providerDataObj = selected.providerData as Prisma.JsonObject;

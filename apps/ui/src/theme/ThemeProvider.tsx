@@ -7,15 +7,38 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const THEME_STORAGE_KEY = 'core-theme-current';
 
+// ============================================================
+// THE FIX: Map camelCase theme.colors keys → kebab-case CSS vars
+// 
+// Problem: theme.colors has { textMuted, background, surface }
+// but pages use var(--color-text-muted), var(--color-background-secondary)
+// ThemeProvider was setting --color-textMuted (wrong) not --color-text-muted (right)
+//
+// This map bridges the gap so BOTH the theme system AND CSS variables
+// use consistent names. Add any new color keys here as you add them to types.ts
+// ============================================================
+const COLOR_KEY_MAP: Record<string, string> = {
+  // Theme key          → CSS variable suffix
+  primary:              'primary',
+  secondary:            'secondary',
+  accent:               'accent',
+  background:           'background',
+  surface:              'background-secondary',   // surface → --color-background-secondary
+  text:                 'text',
+  textMuted:            'text-muted',             // textMuted → --color-text-muted
+  border:               'border',
+  success:              'success',
+  warning:              'warning',
+  error:                'error',
+  info:                 'info',
+};
+
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Load current active theme from localStorage
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        
-        // Robust Deep Merge Migration
         return {
           ...defaultTheme,
           ...parsed,
@@ -36,7 +59,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ...(parsed.ai || {})
           }
         };
-
       } catch {
         return defaultTheme;
       }
@@ -47,12 +69,25 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Apply CSS variables whenever theme changes
   useEffect(() => {
     const root = document.documentElement;
-    
-    // 1. Inject Colors
+
+    // 1. Inject Colors — using the key map so CSS var names are always correct
     Object.entries(theme.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--color-${key}`, value);
+      const cssKey = COLOR_KEY_MAP[key] ?? key.replace(/([A-Z])/g, '-$1').toLowerCase();
+      root.style.setProperty(`--color-${cssKey}`, value);
     });
-    
+
+    // Also expose surface as --color-background-secondary explicitly
+    // (in case older pages reference it directly)
+    if (theme.colors.surface) {
+      root.style.setProperty('--color-background-secondary', theme.colors.surface);
+    }
+
+    // Also expose textMuted as --color-text-secondary for pages that use that name
+    if (theme.colors.textMuted) {
+      root.style.setProperty('--color-text-secondary', theme.colors.textMuted);
+      root.style.setProperty('--color-text-muted', theme.colors.textMuted);
+    }
+
     // 2. Inject Gradients
     if (theme.gradients.enabled) {
       root.style.setProperty('--bg-primary', theme.gradients.primary);
@@ -75,7 +110,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       root.style.setProperty(`--font-${key}`, family);
     });
 
-    // 5. Inject Font URLs (if not already present)
+    // 5. Inject Font URLs
     theme.assets.fonts.urls.forEach(url => {
       if (!document.querySelector(`link[href="${url}"]`)) {
         const link = document.createElement('link');
@@ -86,7 +121,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     // 6. Inject AI Intent Colors
-    if (theme.ai && theme.ai.intents) {
+    if (theme.ai?.intents) {
       Object.entries(theme.ai.intents).forEach(([key, color]) => {
         root.style.setProperty(`--ai-intent-${key}`, color);
       });
@@ -94,40 +129,46 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // 7. Context UI tokens
     root.style.setProperty('--ai-ui-toolbarBg', 'var(--bg-secondary)');
-    root.style.setProperty('--ai-ui-toolbarBorder', 'var(--border-color)');
-    
-    // Save current active theme to localStorage
+    root.style.setProperty('--ai-ui-toolbarBorder', 'var(--color-border)');
+
+    // Save current active theme
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
   }, [theme]);
 
   const setTheme = React.useCallback((partial: Partial<Theme>) => {
     setThemeState((prev: Theme) => {
-      // Create a fresh copy
       const next: Theme = { ...prev };
 
-      // Helper for deep merging specific known branches
       if (partial.colors) next.colors = { ...prev.colors, ...partial.colors };
       if (partial.gradients) next.gradients = { ...prev.gradients, ...partial.gradients };
       if (partial.visual) next.visual = { ...prev.visual, ...partial.visual };
       if (partial.ai) next.ai = { ...prev.ai, ...partial.ai };
-      
+
       if (partial.assets) {
-         next.assets = {
-           ...prev.assets,
-           ...partial.assets,
-           fonts: partial.assets.fonts ? { ...prev.assets.fonts, ...partial.assets.fonts } : prev.assets.fonts,
-           icons: partial.assets.icons ? { ...prev.assets.icons, ...partial.assets.icons } : prev.assets.icons,
-         };
-         // Even deeper for mappings/tokenMap
-         if (partial.assets.fonts?.mappings) {
-             next.assets.fonts.mappings = { ...prev.assets.fonts.mappings, ...partial.assets.fonts.mappings };
-         }
-         if (partial.assets.icons?.tokenMap) {
-             next.assets.icons.tokenMap = { ...prev.assets.icons.tokenMap, ...partial.assets.icons.tokenMap };
-         }
+        next.assets = {
+          ...prev.assets,
+          ...partial.assets,
+          fonts: partial.assets.fonts
+            ? { ...prev.assets.fonts, ...partial.assets.fonts }
+            : prev.assets.fonts,
+          icons: partial.assets.icons
+            ? { ...prev.assets.icons, ...partial.assets.icons }
+            : prev.assets.icons,
+        };
+        if (partial.assets.fonts?.mappings) {
+          next.assets.fonts.mappings = {
+            ...prev.assets.fonts.mappings,
+            ...partial.assets.fonts.mappings,
+          };
+        }
+        if (partial.assets.icons?.tokenMap) {
+          next.assets.icons.tokenMap = {
+            ...prev.assets.icons.tokenMap,
+            ...partial.assets.icons.tokenMap,
+          };
+        }
       }
 
-      // Handle properties not in the deep merge list (like mode, id, name, timestamp)
       if (partial.mode) next.mode = partial.mode;
       if (partial.id) next.id = partial.id;
       if (partial.name) next.name = partial.name;
