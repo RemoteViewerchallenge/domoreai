@@ -105,6 +105,7 @@ body {
   background: var(--accent)
 }
 
+<<<<<<< HEAD
 .frame-tab-input {
   background: transparent;
   border: none;
@@ -154,6 +155,8 @@ body {
   color: var(--accent)
 }
 
+=======
+>>>>>>> ai-context
 .tb-actions {
   margin-left: auto;
   display: flex;
@@ -226,7 +229,10 @@ body {
   border-bottom: 1px solid var(--border)
 }
 
+<<<<<<< HEAD
 /* Full-width container add button */
+=======
+>>>>>>> ai-context
 .tool-btn-full {
   width: 100%;
   padding: 8px;
@@ -246,6 +252,7 @@ body {
   color: #fff
 }
 
+<<<<<<< HEAD
 /* Accordion (kept for any legacy use but left panel now uses tabs) */
 .left-accordion {
   border-bottom: 1px solid var(--border);
@@ -278,6 +285,8 @@ body {
   overflow-y: auto
 }
 
+=======
+>>>>>>> ai-context
 /* LEFT PANEL TABS */
 #left-tabs {
   display: flex;
@@ -318,7 +327,10 @@ body {
   display: flex
 }
 
+<<<<<<< HEAD
 /* TOPBAR SEPARATOR */
+=======
+>>>>>>> ai-context
 .tb-sep {
   width: 1px;
   height: 18px;
@@ -327,7 +339,10 @@ body {
   margin: 0 2px
 }
 
+<<<<<<< HEAD
 /* SEC LABELS (reused in left panel) */
+=======
+>>>>>>> ai-context
 .sec-label {
   color: var(--text3);
   font-size: 8px;
@@ -335,7 +350,11 @@ body {
   text-transform: uppercase
 }
 
+<<<<<<< HEAD
 /* Sidebar Tree Styling */
+=======
+/* Sidebar Tree */
+>>>>>>> ai-context
 .tree-item {
   display: flex;
   align-items: center;
@@ -358,6 +377,7 @@ body {
   color: #fff;
 }
 
+<<<<<<< HEAD
 .tree-indent-wrap {
   display: flex;
   align-items: center;
@@ -371,6 +391,23 @@ body {
   width: 12px;
   text-align: center;
   opacity: 0.5;
+=======
+.tree-arrow {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.tree-arrow:hover {
+  opacity: 1;
+  color: var(--accent2);
+>>>>>>> ai-context
 }
 
 .tree-icon {
@@ -408,6 +445,7 @@ body {
   transform: translateX(-1px);
 }
 
+<<<<<<< HEAD
 .col-line::after {
   content: '';
   position: absolute;
@@ -417,6 +455,8 @@ body {
   bottom: 0;
 }
 
+=======
+>>>>>>> ai-context
 .row-line {
   left: 0;
   right: 0;
@@ -425,6 +465,7 @@ body {
   transform: translateY(-1px);
 }
 
+<<<<<<< HEAD
 .row-line::after {
   content: '';
   position: absolute;
@@ -434,6 +475,8 @@ body {
   right: 0;
 }
 
+=======
+>>>>>>> ai-context
 /* COMP LIBRARY */
 .comp-item {
   display: flex;
@@ -483,8 +526,11 @@ body {
   z-index: 9000
 }
 
+<<<<<<< HEAD
 /* Removed Frame Styles Section */
 
+=======
+>>>>>>> ai-context
 /* BLOCKS */
 .block-el {
   position: absolute;
@@ -590,7 +636,11 @@ body {
   border-color: var(--accent) !important
 }
 
+<<<<<<< HEAD
 /* TABLE grid overlay and dividers */
+=======
+/* TABLE grid */
+>>>>>>> ai-context
 .grid-container {
   position: absolute;
   top: 0;
@@ -603,6 +653,7 @@ body {
   box-sizing: border-box
 }
 
+<<<<<<< HEAD
 .col-divider,
 .row-divider {
   position: absolute;
@@ -632,6 +683,8 @@ body {
   background: rgba(124, 107, 255, .5)
 }
 
+=======
+>>>>>>> ai-context
 /* RIGHT PANEL */
 #right-panel {
   width: var(--right-w);
@@ -663,10 +716,13 @@ body {
   transition: all .1s
 }
 
+<<<<<<< HEAD
 .right-tab:hover {
   color: var(--text2)
 }
 
+=======
+>>>>>>> ai-context
 .right-tab.active {
   color: var(--accent2);
   border-bottom-color: var(--accent)
@@ -711,6 +767,7 @@ body {
   flex-shrink: 0
 }
 
+<<<<<<< HEAD
 .r-input {
   flex: 1;
   background: var(--surface2);
@@ -727,6 +784,9 @@ body {
   border-color: var(--accent)
 }
 
+=======
+.r-input,
+>>>>>>> ai-context
 .r-select {
   flex: 1;
   background: var(--surface2);
@@ -739,17 +799,27 @@ body {
   outline: none
 }
 
+<<<<<<< HEAD
+=======
+.r-input:focus,
+>>>>>>> ai-context
 .r-select:focus {
   border-color: var(--accent)
 }
 
+<<<<<<< HEAD
 /* Variable dropdown selects in right panel (bg, border, text, font, size) */
+=======
+>>>>>>> ai-context
 select.r-select option {
   background: var(--surface2);
   color: var(--text)
 }
 
+<<<<<<< HEAD
 /* Container preset size buttons (small 2-col grid) */
+=======
+>>>>>>> ai-context
 .preset-grid-sm {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -774,12 +844,15 @@ select.r-select option {
   color: var(--accent)
 }
 
+<<<<<<< HEAD
 .preset-btn-sm.active {
   border-color: var(--accent);
   background: rgba(124, 107, 255, .1);
   color: var(--accent2)
 }
 
+=======
+>>>>>>> ai-context
 .align-btn {
   width: 26px;
   height: 26px;
@@ -795,11 +868,14 @@ select.r-select option {
   transition: all .1s
 }
 
+<<<<<<< HEAD
 .align-btn:hover {
   border-color: var(--accent);
   color: var(--accent)
 }
 
+=======
+>>>>>>> ai-context
 .align-btn.active {
   border-color: var(--accent);
   background: rgba(124, 107, 255, .15);
@@ -825,10 +901,13 @@ select.r-select option {
   border-color: var(--accent)
 }
 
+<<<<<<< HEAD
 .ai-notes::placeholder {
   color: var(--text3)
 }
 
+=======
+>>>>>>> ai-context
 .role-hint {
   font-size: 9px;
   color: var(--text3);
@@ -875,6 +954,7 @@ select.r-select option {
   color: var(--accent2)
 }
 
+<<<<<<< HEAD
 .grid-section {
   background: var(--surface2);
   border-radius: 5px;
@@ -888,6 +968,8 @@ select.r-select option {
   margin-top: 6px
 }
 
+=======
+>>>>>>> ai-context
 /* VARS TAB */
 .var-group {
   padding: 8px 10px;
@@ -1005,6 +1087,7 @@ select.r-select option {
   color: var(--red)
 }
 
+<<<<<<< HEAD
 .var-font-select {
   flex: 1;
   background: var(--surface2);
@@ -1017,6 +1100,8 @@ select.r-select option {
   outline: none
 }
 
+=======
+>>>>>>> ai-context
 /* CONTEXT MENU */
 #ctx-menu {
   position: fixed;
@@ -1093,6 +1178,7 @@ select.r-select option {
   display: none
 }
 
+<<<<<<< HEAD
 /* MODAL */
 .modal-overlay {
   position: fixed;
@@ -1201,6 +1287,11 @@ select.r-select option {
 .preset-size {
   font-size: 8px;
   color: var(--text3)
+=======
+.flip-left .ctx-submenu {
+  left: auto !important;
+  right: 100% !important;
+>>>>>>> ai-context
 }
 
 /* TOAST */
@@ -1239,7 +1330,10 @@ select.r-select option {
   border-radius: 2px
 }
 
+<<<<<<< HEAD
 /* Text content textarea in right panel */
+=======
+>>>>>>> ai-context
 #p-text {
   width: 100%;
   background: var(--surface2);
@@ -1256,6 +1350,7 @@ select.r-select option {
 
 #p-text:focus {
   border-color: var(--accent)
+<<<<<<< HEAD
 }
 
 /* Checkbox styling */
@@ -1284,4 +1379,6 @@ input[type="checkbox"] {
 .flip-left .ctx-submenu {
   left: auto !important;
   right: 100% !important;
+=======
+>>>>>>> ai-context
 }

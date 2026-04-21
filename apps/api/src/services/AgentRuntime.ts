@@ -11,6 +11,7 @@ import {
 } from "./protocols/LocalProtocol.js";
 import { getNativeTools } from "./tools/NativeToolsRegistry.js";
 import { loadToolDocs } from "./tools/ToolDocumentationLoader.js";
+import { ExecutionStrategies } from "./ExecutionStrategies.js";
 // import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js";
 
 // Register the protocol globally (idempotent)
@@ -31,7 +32,7 @@ export class AgentRuntime {
   private contextManager = tokenService;
   private toolDocs: string = "";
   // [NEW] Track tier
-  private tier: string = 'Worker'; 
+  private tier: string = 'Worker';
 
   constructor(rootPath: string = process.cwd(), tier: string = 'Worker') {
     this.rootPath = rootPath;
@@ -55,88 +56,88 @@ export class AgentRuntime {
   // I'll keep init method mostly same but handle GitAwareInjection if needed or rely on executeTask
 
   private async init(requestedTools: string[], _roleId?: string) {
-      // ... existing init code ...
+    // ... existing init code ...
+    try {
+      this.client = await CodeModeUtcpClient.create();
+    } catch (error) {
+      console.warn("[AgentRuntime] Failed to create UTCP client:", error);
+      return;
+    }
+
+    if (requestedTools.length === 0 && this.tier !== 'Worker') { // Workers might need implicit tools
+      console.log("[AgentRuntime] No tools requested - running in simple chat mode");
+      return;
+    }
+
+    const localProtocol = new LocalCommunicationProtocol();
+    (this.client as unknown as IClientWithProtocolRegistry)._registeredCommProtocols.set("local", localProtocol);
+
+    // ... existing tool loading logic ...
+    const nativeToolNames = [
+      "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
+      "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula"
+    ];
+
+    const { prisma } = await import("../db.js");
+    const dbTools = await prisma.tool.findMany({
+      where: { name: { in: requestedTools } },
+      select: { name: true, serverId: true }
+    });
+
+    const serverNames = Array.from(new Set(
+      dbTools
+        .filter(t => t.serverId && !nativeToolNames.includes(t.name))
+        .map(t => t.serverId!)
+    ));
+
+    let mcpTools: ToolDefinition[] = [];
+    if (serverNames.length > 0) {
       try {
-        this.client = await CodeModeUtcpClient.create();
-      } catch (error) {
-        console.warn("[AgentRuntime] Failed to create UTCP client:", error);
-        return;
-      }
-  
-      if (requestedTools.length === 0 && this.tier !== 'Worker') { // Workers might need implicit tools
-        console.log("[AgentRuntime] No tools requested - running in simple chat mode");
-        return;
-      }
-      
-      const localProtocol = new LocalCommunicationProtocol();
-      (this.client as unknown as IClientWithProtocolRegistry)._registeredCommProtocols.set("local", localProtocol);
-      
-      // ... existing tool loading logic ...
-      const nativeToolNames = [
-        "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
-        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", "nebula"
-      ];
-      
-      const { prisma } = await import("../db.js");
-      const dbTools = await prisma.tool.findMany({
-        where: { name: { in: requestedTools } },
-        select: { name: true, serverId: true }
-      });
+        await mcpOrchestrator.prepareEnvironment(serverNames);
+        const tools = await mcpOrchestrator.getToolsForSandbox();
+        mcpTools = tools as unknown as ToolDefinition[];
+      } catch (e) { console.warn("MCP Error", e); }
+    }
 
-      const serverNames = Array.from(new Set(
-        dbTools
-          .filter(t => t.serverId && !nativeToolNames.includes(t.name))
-          .map(t => t.serverId!)
-      ));
-      
-      let mcpTools: ToolDefinition[] = [];
-      if (serverNames.length > 0) {
-           try {
-             await mcpOrchestrator.prepareEnvironment(serverNames);
-             const tools = await mcpOrchestrator.getToolsForSandbox();
-             mcpTools = tools as unknown as ToolDefinition[];
-           } catch (e) { console.warn("MCP Error", e); }
-      }
-      
-      const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
-      const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
-      // ... meta tools logic ...
-      if (requestedTools.includes("meta")) {
-          // ...
-          const wrappedMeta = (metaTools as unknown as ToolDefinition[]).map(t => ({...t, handler: t.handler })); // Simplified for replacement
-          toolsToRegister.push(...wrappedMeta);
-      }
-      
-      // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
-      if (this.tier === 'Worker') {
-            // We need jobId and vfsToken. 
-            // Ideally passed in constructor or executeTask.
-            // Since init is async, we might not have them yet. 
-            // But strict requirement says "Inject... into Worker runtime".
-            // I'll inject the definition here if I can, OR handle it dynamically in executeTask.
-            // But UTCP requires registration.
-            // I'll register it as a dynamic tool or placeholder.
-            // Actually, `CreateGitAwareWorkerTools` returns a ToolDefinition.
-            // I'll mock jobId/vfsToken for registration or allow dynamic context?
-            // UTCP tools are registered once.
-            // Maybe I should add it to `executeTask` to register purely for that run?
-            // `executeTask` in snippet calls `this.tools.execute_script.execute`.
-            // Snippet `AgentRuntime` didn't use UTCP in the simplified version.
-            // Existing `AgentRuntime` USES UTCP.
-            
-            // I will ADD `execute_task_logic` to the registered tools here with a placeholder handler
-            // that gets replaced or uses context?
-            // Actually, I'll allow `executeTask` to pass the `jobId` via context or similar.
-            // For now, let's assume `jobId` comes from environment or args in execution.
-      }
+    const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
+    const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
+    // ... meta tools logic ...
+    if (requestedTools.includes("meta")) {
+      // ...
+      const wrappedMeta = (metaTools as unknown as ToolDefinition[]).map(t => ({ ...t, handler: t.handler })); // Simplified for replacement
+      toolsToRegister.push(...wrappedMeta);
+    }
 
-      await this.client.registerManual({
-        name: "system",
-        call_template_type: "local",
-        tools: toolsToRegister,
-      });
-      // ... load docs ...
-      this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
+    // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
+    if (this.tier === 'Worker') {
+      // We need jobId and vfsToken. 
+      // Ideally passed in constructor or executeTask.
+      // Since init is async, we might not have them yet. 
+      // But strict requirement says "Inject... into Worker runtime".
+      // I'll inject the definition here if I can, OR handle it dynamically in executeTask.
+      // But UTCP requires registration.
+      // I'll register it as a dynamic tool or placeholder.
+      // Actually, `CreateGitAwareWorkerTools` returns a ToolDefinition.
+      // I'll mock jobId/vfsToken for registration or allow dynamic context?
+      // UTCP tools are registered once.
+      // Maybe I should add it to `executeTask` to register purely for that run?
+      // `executeTask` in snippet calls `this.tools.execute_script.execute`.
+      // Snippet `AgentRuntime` didn't use UTCP in the simplified version.
+      // Existing `AgentRuntime` USES UTCP.
+
+      // I will ADD `execute_task_logic` to the registered tools here with a placeholder handler
+      // that gets replaced or uses context?
+      // Actually, I'll allow `executeTask` to pass the `jobId` via context or similar.
+      // For now, let's assume `jobId` comes from environment or args in execution.
+    }
+
+    await this.client.registerManual({
+      name: "system",
+      call_template_type: "local",
+      tools: toolsToRegister,
+    });
+    // ... load docs ...
+    this.toolDocs = await loadToolDocs(requestedTools, getNativeTools(this.rootPath, this.fsTools));
   }
 
   // ... runAgentLoop ...
@@ -170,13 +171,9 @@ export class AgentRuntime {
           ? currentResponse
           : JSON.stringify(currentResponse);
 
-      // 1. Extract Code
-      const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n?([\s\S]*?)```/g;
-      let match;
-      const blocks: string[] = [];
-      while ((match = codeBlockRegex.exec(responseStr)) !== null) {
-        if (match[1].trim()) blocks.push(match[1].trim());
-      }
+      // 1. Extract Code using deterministic ExecutionStrategies
+      const parsedBlocks = ExecutionStrategies.extractToolCalls(responseStr);
+      const blocks = parsedBlocks.map(b => b.content);
 
       // Fallback: If no blocks but looks like code
       let codeToExecute = blocks.join("\n\n");
@@ -335,30 +332,29 @@ Instructions:
     const roleContext = roleId
       ? await this.contextManager.getContext(roleId)
       : { tone: "", style: "", memory: {} };
-    
+
     // Fetch Conversation History
     let historyStr = "";
     if (sessionId) {
-        const history = await this.contextManager.getHistory(sessionId);
-        if (history.length > 0) {
-            historyStr = "## Conversation History:\n" + 
-                history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n\n");
-        }
-        // Record the NEW user prompt immediately? 
-        // Or record it after success? 
-        // Let's record it now so it's in history for next time if we crash? 
-        // But if we record it now, and then "generate", the model might see it?
-        // No, we are constructing the prompt NOW by fetching history first.
-        // So the CURRENT prompt is NOT in history yet. That's correct.
+      const history = await this.contextManager.getHistory(sessionId);
+      if (history.length > 0) {
+        historyStr = "## Conversation History:\n" +
+          history.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n\n");
+      }
+      // Record the NEW user prompt immediately? 
+      // Or record it after success? 
+      // Let's record it now so it's in history for next time if we crash? 
+      // But if we record it now, and then "generate", the model might see it?
+      // No, we are constructing the prompt NOW by fetching history first.
+      // So the CURRENT prompt is NOT in history yet. That's correct.
     }
 
     const memoryStr = Object.entries(roleContext.memory || {})
       .map(([k, v]) => `${k}: ${v}`)
       .join("\n");
 
-    let enhancedSystemPrompt = `${baseSystemPrompt || ""}\n\n${
-      roleContext.tone || ""
-    }\n\n${memoryStr}\n\n${historyStr}`.trim();
+    let enhancedSystemPrompt = `${baseSystemPrompt || ""}\n\n${roleContext.tone || ""
+      }\n\n${memoryStr}\n\n${historyStr}`.trim();
 
     // Inject Tool Documentation
     if (this.toolDocs) {
@@ -466,16 +462,16 @@ items.forEach(item => {
     }
 
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
-    
+
     // Delegate to the provided agent/provider
     const result = await agent.generate(finalPrompt);
 
     // Record History (if session active)
     if (sessionId && typeof result === 'string') {
-        const userMsg = prompt; // Original user prompt
-        const assistantMsg = result;
-        await this.contextManager.addMessage(sessionId, 'user', userMsg);
-        await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
+      const userMsg = prompt; // Original user prompt
+      const assistantMsg = result;
+      await this.contextManager.addMessage(sessionId, 'user', userMsg);
+      await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
     }
 
     return result;
@@ -487,13 +483,13 @@ items.forEach(item => {
    */
   async executeTask(jobId: string, vfsToken: string, taskContext: string) {
     if (this.tier !== 'Worker') throw new Error("Only Workers execute tasks.");
-    
+
     // const gitTool = CreateGitAwareWorkerTools(jobId, vfsToken);
-    
+
     await this.client.registerManual({
-        name: "volcano", // Separate namespace for dynamic tools
-        call_template_type: "local",
-        tools: [] // [gitTool]
+      name: "volcano", // Separate namespace for dynamic tools
+      call_template_type: "local",
+      tools: [] // [gitTool]
     });
 
     const SYSTEM_PROMPT = `
@@ -511,9 +507,9 @@ items.forEach(item => {
     `;
 
     const result = await this.client.callToolChain(
-        `${SYSTEM_PROMPT}\n\nTASK: ${taskContext}\n\nExecute the task using volcano.execute_task_logic.`
+      `${SYSTEM_PROMPT}\n\nTASK: ${taskContext}\n\nExecute the task using volcano.execute_task_logic.`
     );
-    
+
     return result;
   }
 }
