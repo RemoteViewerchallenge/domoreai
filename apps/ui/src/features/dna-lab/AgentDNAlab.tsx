@@ -29,8 +29,8 @@ export const AgentDNAlab: React.FC = () => {
   const [editingTool, setEditingTool] = useState<string | null>(null);
 
   const utils = trpc.useContext();
-  const { data: roles, isLoading: rolesLoading } = trpc.role.list.useQuery();
-  const { data: categories } = trpc.role.listCategories.useQuery();
+  const { data: roles, isLoading: rolesLoading } = trpc.roles.list.useQuery();
+  const { data: categories } = trpc.roles.listCategories.useQuery();
   const { data: registry } = trpc.orchestrator.getActiveRegistryData.useQuery();
 
   const models = useMemo(() => {
@@ -41,9 +41,9 @@ export const AgentDNAlab: React.FC = () => {
     return rows;
   }, [registry]);
 
-  const updateRoleMutation = trpc.role.update.useMutation({
+  const updateRoleMutation = trpc.roles.update.useMutation({
     onSuccess: () => {
-      void utils.role.list.invalidate();
+      void utils.roles.list.invalidate();
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
       toast.success('DNA Synchronized');
@@ -54,9 +54,9 @@ export const AgentDNAlab: React.FC = () => {
     }
   });
 
-  const createRoleMutation = trpc.role.create.useMutation({
+  const createRoleMutation = trpc.roles.create.useMutation({
     onSuccess: (newRole) => {
-      void utils.role.list.invalidate();
+      void utils.roles.list.invalidate();
       setSelectedRoleId(newRole.id);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -64,9 +64,9 @@ export const AgentDNAlab: React.FC = () => {
     }
   });
 
-  const deleteRoleMutation = trpc.role.delete.useMutation({
+  const deleteRoleMutation = trpc.roles.delete.useMutation({
     onSuccess: () => {
-      void utils.role.list.invalidate();
+      void utils.roles.list.invalidate();
       setSelectedRoleId(null);
       setFormData(DEFAULT_ROLE_FORM_DATA);
       toast.success('Subject Terminated');

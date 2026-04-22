@@ -16,24 +16,24 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 1. Fetch Data
-    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.role.list.useQuery(undefined, {
+    const { data: roles, isLoading: rolesLoading, error: roleError } = trpc.roles.list.useQuery(undefined, {
         refetchInterval: 60000, 
     });
-    const { data: categories, isLoading: catsLoading } = trpc.role.listCategories.useQuery(undefined, {
+    const { data: categories, isLoading: catsLoading } = trpc.roles.listCategories.useQuery(undefined, {
         refetchInterval: 30000, // Categories change less often
     });
 
     const utils = trpc.useContext();
-    const deleteMutation = trpc.role.delete.useMutation({
+    const deleteMutation = trpc.roles.delete.useMutation({
         onSuccess: () => {
-            void utils.role.list.invalidate();
+            void utils.roles.list.invalidate();
         },
         onError: (err) => {
             alert(`Failed to delete role: ${err.message}`);
         }
     });
 
-    const importMutation = trpc.role.importRoles.useMutation({
+    const importMutation = trpc.roles.importRoles.useMutation({
         onSuccess: (stats) => {
             const messages = [];
             if (stats.created > 0) messages.push(`Created ${stats.created} roles`);
@@ -44,7 +44,7 @@ export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ select
             if (stats.errors.length > 0) {
                 console.error('Import errors:', stats.errors);
             }
-            void utils.role.list.invalidate();
+            void utils.roles.list.invalidate();
         },
         onError: (err) => {
             toast.error(`Import failed: ${err.message}`);
