@@ -27,7 +27,7 @@ export const OrchestrationDesigner: React.FC = () => {
   const [orchestrationId, setOrchestrationId] = useState<string | null>(null);
 
   // Fetch Roles from Backend
-  const { data: rolesData, refetch: refetchRoles } = trpc.role.list.useQuery();
+  const { data: rolesData, refetch: refetchRoles } = trpc.roles.list.useQuery();
   const roles: RoleConfig[] = useMemo(() => (rolesData || []).map(r => ({
     id: r.id,
     name: r.name,
@@ -47,12 +47,12 @@ export const OrchestrationDesigner: React.FC = () => {
   // Mutations
   const createOrchestrationMutation = trpc.orchestrationManagement.create.useMutation();
   const updateOrchestrationMutation = trpc.orchestrationManagement.update.useMutation();
-  const createRoleMutation = trpc.role.create.useMutation({
+  const createRoleMutation = trpc.roles.create.useMutation({
     onSuccess: () => {
       void refetchRoles(); // Refetch roles after creation
     }
   });
-  const updateRoleMutation = trpc.role.update.useMutation({
+  const updateRoleMutation = trpc.roles.update.useMutation({
     onSuccess: () => {
       void refetchRoles(); // Refetch roles after update
     }

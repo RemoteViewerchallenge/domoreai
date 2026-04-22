@@ -3,7 +3,7 @@ import { CooperativeGrid } from "../../components/cooperative/primitives/Coopera
 
 export const RoleManagementGrid = () => {
   // 1. Fetch Data (The Soul)
-  const { data: roles } = trpc.role.list.useQuery();
+  const { data: roles } = trpc.roles.list.useQuery();
 
   // 2. Define Configuration for the Primitive
   const columns = [
