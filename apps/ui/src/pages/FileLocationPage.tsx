@@ -14,7 +14,7 @@ export default function FileLocationPage() {
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('idle');
   const [error, setError] = useState<string>('');
 
-  const onboardMutation = trpc.role.onboardProject.useMutation({
+  const onboardMutation = trpc.roles.onboardProject.useMutation({
     onSuccess: () => {
       setOnboardingStep('complete');
       // Save to localStorage

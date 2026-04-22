@@ -32,7 +32,7 @@ export const appRouter = createTRPCRouter({
   codeGraph: codeGraphRouter,
   git: gitRouter,
   providers: providerRouter,
-  role: roleRouter,
+  roles: roleRouter,
   external: externalRouter,
   vfs: vfsRouter,
   model: modelRouter,

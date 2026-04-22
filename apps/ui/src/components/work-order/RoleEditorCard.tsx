@@ -95,7 +95,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
     const [isGenerating, setIsGenerating] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-    const { data: roles } = trpc.role.list.useQuery();
+    const { data: roles } = trpc.roles.list.useQuery();
     const { data: models } = trpc.providers.listAllAvailableModels.useQuery();
     const utils = trpc.useUtils();
 
@@ -140,7 +140,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentRole]);
 
-    const updateVariantMutation = trpc.role.updateVariantConfig.useMutation();
+    const updateVariantMutation = trpc.roles.updateVariantConfig.useMutation();
 
     // Mark as dirty when DNA changes
     const updateDna = (newDna: RoleDNA | ((prev: RoleDNA) => RoleDNA)) => {
@@ -187,7 +187,7 @@ export const RoleEditorCard: React.FC<RoleEditorCardProps> = ({
              });
              
              toast.success("Lifeform Stabilized", { id: loadingToastId });
-             void utils.role.list.invalidate();
+             void utils.roles.list.invalidate();
          } catch (e) {
              console.error(e);
              toast.error("DNA Corruption Detected", { id: loadingToastId });

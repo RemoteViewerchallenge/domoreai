@@ -13,9 +13,18 @@ export const useModelFilter = (models: Model[] | undefined, criteria: FilterCrit
     if (!models) return [];
     return models.filter((m) => {
         const ctx = m.contextWindow || m.specs?.contextWindow || 0;
-        if (ctx < criteria.minContext || ctx > criteria.maxContext) return false;
-        if (criteria.needsVision && !m.specs?.hasVision) return false;
-        if (criteria.needsReasoning && !m.specs?.hasReasoning) return false;
+        
+        // Context Window Filter: filter out if contextWindow < selected min value
+        if (ctx < criteria.minContext) return false;
+        
+        // Also check max if relevant, but the request specifically mentioned < selectedValue
+        if (criteria.maxContext > 0 && ctx > criteria.maxContext) return false;
+
+        // Modalities Filter
+        const mods = m.modalities || [];
+        if (criteria.needsVision && !mods.includes("VISION")) return false;
+        if (criteria.needsReasoning && !mods.includes("REASONING")) return false;
+        
         return true;
     });
   }, [models, criteria.minContext, criteria.maxContext, criteria.needsVision, criteria.needsReasoning]);

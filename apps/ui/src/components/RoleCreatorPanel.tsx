@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { trpc } from '../utils/trpc.js';
-import type { RoleFormState, Role, Tool, CategoryNode, Model } from '../types/role.js'; // type imports
+import type { RoleFormState, Role, CategoryNode, Model } from '../types/role.js'; // type imports
 import { DEFAULT_ROLE_FORM_DATA } from '../constants.js';
 import { 
   Save, Trash2, Sparkles, CheckCircle, FilePlus, Database, Plus
@@ -28,8 +28,8 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
 
   // tRPC hooks
   const utils = trpc.useContext();
-  const { data: categories, refetch: refetchCategories, isLoading: categoriesLoading, error: categoriesError } = trpc.role.listCategories.useQuery();
-  const { data: roles, isLoading: rolesLoading } = trpc.role.list.useQuery();
+  const { data: categories, refetch: refetchCategories, isLoading: categoriesLoading, error: categoriesError } = trpc.roles.listCategories.useQuery();
+  const { data: roles, isLoading: rolesLoading } = trpc.roles.list.useQuery();
   const { data: toolsList } = trpc.tool.list.useQuery();
   const { data: registry } = trpc.orchestrator.getActiveRegistryData.useQuery();
 
@@ -50,49 +50,36 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
   });
   
   // Mutations
-  const createCategoryMutation = trpc.role.createCategory.useMutation({ onSuccess: () => void refetchCategories() });
-  const updateCategoryMutation = trpc.role.updateCategory.useMutation({ onSuccess: () => void refetchCategories() });
-  const deleteCategoryMutation = trpc.role.deleteCategory.useMutation({ onSuccess: () => void refetchCategories() });
-  const moveRoleMutation = trpc.role.moveRoleToCategory.useMutation({ onSuccess: () => { void utils.role.list.invalidate(); } });
+  const createCategoryMutation = trpc.roles.createCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const updateCategoryMutation = trpc.roles.updateCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const deleteCategoryMutation = trpc.roles.deleteCategory.useMutation({ onSuccess: () => void refetchCategories() });
+  const moveRoleMutation = trpc.roles.moveRoleToCategory.useMutation({ onSuccess: () => { void utils.roles.list.invalidate(); } });
   
-  const createRoleMutation = trpc.role.create.useMutation({
+  const upsertMutation = trpc.roles.upsert.useMutation({
     onSuccess: () => {
-        void utils.role.list.invalidate();
+        void utils.roles.list.invalidate();
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
-        toast.success('Role Created');
+        toast.success(selectedRoleId ? 'Role Updated' : 'Role Created');
     },
     onError: (e) => {
         setSaveStatus('error');
-        toast.error(`Error creating role: ${e.message}`);
+        toast.error(`Error saving role: ${e.message}`);
     }
   });
 
-  const updateRoleMutation = trpc.role.update.useMutation({
+  const deleteRoleMutation = trpc.roles.delete.useMutation({
     onSuccess: () => {
-        void utils.role.list.invalidate();
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-        toast.success('Role Updated');
-    },
-    onError: (e) => {
-        setSaveStatus('error');
-        toast.error(`Error updating role: ${e.message}`);
-    }
-  });
-
-  const deleteRoleMutation = trpc.role.delete.useMutation({
-    onSuccess: () => {
-        void utils.role.list.invalidate();
+        void utils.roles.list.invalidate();
         handleCreateNewRole(); // Reset form
         toast.success('Role Deleted');
     },
   });
 
-  const ingestLibraryMutation = trpc.role.ingestLibrary.useMutation({
+  const ingestLibraryMutation = trpc.roles.ingestLibrary.useMutation({
       onSuccess: (data) => {
           toast.success(data.message);
-          void utils.role.list.invalidate();
+          void utils.roles.list.invalidate();
           void refetchCategories();
       }
   });
@@ -184,6 +171,7 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
         useProjectMemory: role.memoryConfig?.useProjectMemory ?? false,
         readOnly: role.memoryConfig?.readOnly ?? false,
       },
+      dna: role.dna || DEFAULT_ROLE_FORM_DATA.dna,
     });
     
     // Refresh tools loaded? (Optional logic here for tool prompts)
@@ -203,13 +191,13 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
     const inputData = { ...formData };
     
     // Clean category
-    if (inputData.category === 'new') inputData.category = ''; 
+    const categoryName = inputData.category === 'new' ? '' : inputData.category;
 
-    if (selectedRoleId) {
-        updateRoleMutation.mutate({ id: selectedRoleId, ...inputData });
-    } else {
-        createRoleMutation.mutate(inputData);
-    }
+    upsertMutation.mutate({ 
+      id: selectedRoleId || undefined, 
+      ...inputData,
+      categoryName
+    });
   };
 
   if (categoriesLoading || rolesLoading) {
@@ -409,7 +397,6 @@ const RoleCreatorPanel: React.FC<RoleCreatorPanelProps> = ({ className = '' }) =
                 </div>
              ) : (
                 <RoleToolSelector 
-                    availableTools={(toolsList as Tool[]) || []}
                     selectedTools={formData.tools}
                     onChange={(newTools) => setFormData(prev => ({ ...prev, tools: newTools }))}
                 />
