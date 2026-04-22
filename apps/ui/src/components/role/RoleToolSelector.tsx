@@ -70,13 +70,13 @@ export const RoleToolSelector: React.FC<RoleToolSelectorProps> = ({ selectedTool
                 selectedIds={selectedTools}
                 accordion
                 defaultExpanded={false}
-                onSelect={(id) => {
+                onSelect={(id: string) => {
                     const newSelection = selectedTools.includes(id)
                         ? selectedTools.filter(t => t !== id)
                         : [...selectedTools, id];
                     onChange(newSelection);
                 }}
-                onCategorySelect={(_cat, itemIds) => {
+                onCategorySelect={(_cat: string, itemIds: string[]) => {
                     const isAllSelected = itemIds.every(id => selectedTools.includes(id));
                     if (isAllSelected) {
                         // Deselect all in category
