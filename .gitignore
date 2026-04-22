@@ -6,7 +6,6 @@
 # Build artifacts
 dist
 .turbo
-out/
 
 # Logs
 *.log
@@ -74,8 +73,17 @@ debug_bashrc.txt
 # MCP Downloads and Extracted Repos
 mcp/extracted/
 
-# Archives (Consolidated historical scripts and docs)
-**/archive/
-
-
+# Debug-Repair Branch Stripped Files
+*.md
+*.txt
+*.json
+!package.json
+!packages/*/package.json
+!apps/*/package.json
+!tsconfig.json
+!tsconfig.*.json
+!**/tsconfig.json
+!turbo.json
+!knip.json
+!*rc.json
 
