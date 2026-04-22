@@ -25,7 +25,6 @@ interface SmartEditorProps {
 }
 
 const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void }) => {
-  const [isInitializing, setIsInitializing] = React.useState(true);
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
   const utils = trpc.useContext();
   
@@ -42,9 +41,6 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
         // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
         contextmenu: () => false,
       },
-    },
-    onCreate: () => {
-      setIsInitializing(false);
     },
     onUpdate: ({ editor }) => {
       // Only trigger onChange if the update was NOT from an external setContent
@@ -179,7 +175,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
           registerContext(() => editor.getText());
         }
 
-        if (isInitializing || !editor) {
+        if (!editor) {
           return (
             <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 gap-3">
                <Loader2 className="animate-spin text-purple-500" size={24} />
