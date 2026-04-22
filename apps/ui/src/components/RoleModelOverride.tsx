@@ -62,9 +62,9 @@ export const RoleModelOverride: FC<RoleModelOverrideProps> = ({ role }) => {
 
   // 4. tRPC mutation to update the role
   const utils = trpc.useContext();
-  const updateRoleMutation = trpc.role.update.useMutation({
+  const updateRoleMutation = trpc.roles.update.useMutation({
     onSuccess: () => {
-      void utils.role.list.invalidate();
+      void utils.roles.list.invalidate();
       alert('Model override updated!');
     },
     onError: (error) => {

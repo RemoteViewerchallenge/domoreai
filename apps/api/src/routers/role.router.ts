@@ -62,95 +62,34 @@ ${goal || "Assist the user with high-quality, accurate responses tailored to thi
 }
 
 
-const createRoleSchema = z.object({
+const upsertRoleSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(1, "Name is required."),
+  description: z.string().optional(),
   basePrompt: z.string().min(1, "Base prompt is required."),
-  category: z.string().optional().default('Uncategorized'),
+  categoryName: z.string().optional().default('Uncategorized'),
   tools: z.array(z.string()).optional().default([]),
 
-  // Metadata fields
-  minContext: z.number().int().optional(),
-  maxContext: z.number().int().optional(),
-  needsVision: z.boolean().optional().default(false),
-  needsReasoning: z.boolean().optional().default(false),
-  needsCoding: z.boolean().optional().default(false),
-  needsTools: z.boolean().optional().default(false),
-  needsJson: z.boolean().optional().default(false),
-  needsUncensored: z.boolean().optional().default(false),
-  needsImageGeneration: z.boolean().optional().default(false),
-
-  defaultTemperature: z.number().min(0).max(2).optional(),
-  defaultMaxTokens: z.number().int().min(1).optional(),
-  defaultTopP: z.number().min(0).max(1).optional(),
-  defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
-  defaultPresencePenalty: z.number().min(-2).max(2).optional(),
-  defaultStop: z.array(z.string()).optional(),
-  defaultSeed: z.number().int().optional(),
-  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
-
-  terminalRestrictions: z.object({
-    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
-    commands: z.array(z.string())
-  }).optional(),
-
-  criteria: z.record(z.unknown()).optional(),
-  orchestrationConfig: z.object({
-    requiresCheck: z.boolean(),
-    judgeRoleId: z.string().optional(),
-    minPassScore: z.number().int()
-  }).optional(),
-  memoryConfig: z.object({
-    useProjectMemory: z.boolean(),
-    readOnly: z.boolean()
-  }).optional(),
-});
-
-const updateRoleSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "Name is required.").optional(),
-  basePrompt: z.string().min(1, "Base prompt is required.").optional(),
-  category: z.string().optional(),
-  categoryString: z.string().optional(),
-  tools: z.array(z.string()).optional(),
-
-  // Metadata fields
-  minContext: z.number().int().optional().nullable(),
-  maxContext: z.number().int().optional().nullable(),
-  hardcodedModelId: z.string().optional().nullable(),
-  hardcodedProviderId: z.string().optional().nullable(),
+  // Modalities / Capabilities
   needsVision: z.boolean().optional(),
   needsReasoning: z.boolean().optional(),
   needsCoding: z.boolean().optional(),
   needsTools: z.boolean().optional(),
   needsJson: z.boolean().optional(),
-  needsUncensored: z.boolean().optional(),
   needsImageGeneration: z.boolean().optional(),
 
-  defaultTemperature: z.number().min(0).max(2).optional(),
-  defaultMaxTokens: z.number().int().min(1).optional(),
-  defaultTopP: z.number().min(0).max(1).optional(),
-  defaultFrequencyPenalty: z.number().min(-2).max(2).optional(),
-  defaultPresencePenalty: z.number().min(-2).max(2).optional(),
-  defaultStop: z.array(z.string()).optional(),
-  defaultSeed: z.number().int().optional(),
-  defaultResponseFormat: z.enum(['text', 'json_object']).optional(),
+  // Context Requirements
+  minContext: z.number().int().optional(),
+  maxContext: z.number().int().optional(),
 
-  terminalRestrictions: z.object({
-    mode: z.enum(['whitelist', 'blacklist', 'unrestricted']),
-    commands: z.array(z.string())
-  }).optional(),
+  // Hardcoded model override
+  hardcodedModelId: z.string().optional().nullable(),
+  hardcodedProviderId: z.string().optional().nullable(),
 
-  criteria: z.record(z.unknown()).optional(),
-  orchestrationConfig: z.object({
-    requiresCheck: z.boolean(),
-    judgeRoleId: z.string().optional(),
-    minPassScore: z.number().int()
-  }).optional(),
-  memoryConfig: z.object({
-    useProjectMemory: z.boolean(),
-    readOnly: z.boolean()
-  }).optional(),
+  // Additional metadata
+  metadata: z.record(z.unknown()).optional(),
 });
+
 
 export const roleRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
@@ -160,7 +99,7 @@ export const roleRouter = createTRPCRouter({
         name: "asc",
       },
       include: {
-        category: true, // Include the category object
+        category: true,
         tools: {
           include: {
             tool: true
@@ -169,8 +108,13 @@ export const roleRouter = createTRPCRouter({
         variants: {
           where: { isActive: true },
           take: 1
+        },
+        modelUsage: {
+          take: 5,
+          orderBy: { createdAt: 'desc' }
         }
       },
+
     });
 
     // OPTIMIZED: Avoid N+1 Model Resolution
@@ -194,15 +138,20 @@ export const roleRouter = createTRPCRouter({
     });
 
 
-    // 2. Bulk Fetch Hardcoded Model Names
-    const modelMap = new Map<string, string>();
+    // 2. Bulk Fetch Hardcoded Models with Capabilities
+    const modelMap = new Map<string, { name: string, capabilities?: any }>();
     if (hardcodedIds.size > 0) {
         const models = await prisma.model.findMany({
             where: { id: { in: Array.from(hardcodedIds) } },
-            select: { id: true, name: true }
+            select: { 
+              id: true, 
+              name: true,
+              capabilities: true
+            }
         });
-        models.forEach(m => modelMap.set(m.id, m.name));
+        models.forEach(m => modelMap.set(m.id, { name: m.name, capabilities: m.capabilities }));
     }
+
 
     const enrichedRoles = roles.map((role) => {
        // Scope Extraction (Simple Heuristic)
@@ -225,9 +174,11 @@ export const roleRouter = createTRPCRouter({
        
        // Priority: Variant Cortex > Role Metadata
        const hardcodedId = (cortex.hardcodedModelId as string) || (meta.hardcodedModelId as string);
-       
+       let currentModelCapabilities = null;
        if (hardcodedId) {
-           currentModelName = modelMap.get(hardcodedId) || 'Unknown Model';
+           const modelInfo = modelMap.get(hardcodedId);
+           currentModelName = modelInfo?.name || 'Unknown Model';
+           currentModelCapabilities = modelInfo?.capabilities || null;
        }
 
        if (activeVariant) {
@@ -291,9 +242,11 @@ export const roleRouter = createTRPCRouter({
            ...fusedRole,
            tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
            currentModel: currentModelName,
+           modelCapabilities: currentModelCapabilities,
            scope: scope,
            healthScore: 100 // Placeholder for AssessmentService score
        };
+
     });
 
     // Return roles, or a default role if none exist (prevents UI crash)
@@ -405,94 +358,135 @@ export const roleRouter = createTRPCRouter({
       return prisma.$transaction(updates);
     }),
 
-  create: publicProcedure
-    .input(createRoleSchema)
+  upsert: publicProcedure
+    .input(upsertRoleSchema)
     .mutation(async ({ input }) => {
-      const { name, basePrompt, category, tools, ...metadata } = input;
-      const categoryName = category || 'Uncategorized';
+      const { id, name, description, basePrompt, categoryName, tools, ...metadataUpdate } = input;
 
-      const cat = await prisma.roleCategory.upsert({
-        where: { name: categoryName },
+      const category = await prisma.roleCategory.upsert({
+        where: { name: categoryName || 'Uncategorized' },
         update: {},
-        create: { name: categoryName }
+        create: { name: categoryName || 'Uncategorized' }
       });
-      const categoryId = cat.id;
 
-      // Create a new role in the database
-      const role = await prisma.role.create({
-        data: {
-          name,
-          basePrompt,
-          // categoryString: categoryName,
-          categoryId,
-          metadata: metadata as Prisma.InputJsonValue,
-          tools: {
-            create: tools.map(toolName => ({
-              tool: { connect: { name: toolName } }
-            }))
-          }
-        },
-      });
-      return role;
-    }),
-
-  update: publicProcedure
-    .input(updateRoleSchema)
-    .mutation(async ({ input }) => {
-      const { id, name, basePrompt, category, categoryString, tools, ...metadataUpdate } = input;
-
-      // Fetch existing metadata to merge
-      const existing = await prisma.role.findUnique({
+      // Prepare metadata
+      const existing = id ? await prisma.role.findUnique({
         where: { id },
-        select: { id: true, name: true, description: true, metadata: true }
-      });
-      const currentMeta = existing?.metadata || {};
-
+        select: { metadata: true }
+      }) : null;
+      
+      const currentMeta = (existing?.metadata as Record<string, unknown>) || {};
       const newMetadata = {
-        ...(currentMeta as Record<string, unknown>),
+        ...currentMeta,
         ...metadataUpdate
       };
 
-      // Filter out undefined values from data object
-      const data: Prisma.RoleUpdateInput = {
-        ...(name !== undefined && { name }),
-        ...(basePrompt !== undefined && { basePrompt }),
-        metadata: newMetadata as Prisma.InputJsonValue,
+      // Perform upsert
+      const role = await prisma.role.upsert({
+        where: { id: id || 'new-role-' + Date.now() },
+        update: {
+          name,
+          description,
+          basePrompt,
+          categoryId: category.id,
+          metadata: newMetadata as Prisma.InputJsonValue,
+          updatedAt: new Date(),
+        },
+        create: {
+          name,
+          description: description || '',
+          basePrompt,
+          categoryId: category.id,
+          metadata: newMetadata as Prisma.InputJsonValue,
+        }
+      });
+
+      // Sync Tools
+      if (tools) {
+        await prisma.roleTool.deleteMany({ where: { roleId: role.id } });
+        for (const toolName of tools) {
+          const tool = await prisma.tool.findUnique({ where: { name: toolName } });
+          if (tool) {
+            await prisma.roleTool.create({
+              data: { roleId: role.id, toolId: tool.id }
+            }).catch(() => {});
+          }
+        }
+      }
+
+      // Sync DNA Variant for Model Capabilities
+      const capabilities = [];
+      if (metadataUpdate.needsVision) capabilities.push('vision');
+      if (metadataUpdate.needsReasoning) capabilities.push('reasoning');
+      if (metadataUpdate.needsCoding) capabilities.push('coding');
+      if (metadataUpdate.needsTools) capabilities.push('tools');
+      if (metadataUpdate.needsJson) capabilities.push('json');
+      if (metadataUpdate.needsImageGeneration) capabilities.push('image_generation');
+
+      const cortexConfig = {
+        capabilities,
+        contextRange: { 
+          min: metadataUpdate.minContext || 4096, 
+          max: metadataUpdate.maxContext || 128000 
+        },
+        hardcodedModelId: metadataUpdate.hardcodedModelId,
+        tools: tools || []
       };
 
-      // Resolve category if provided
-      const resolvedCategoryName = categoryString || category;
-      if (resolvedCategoryName) {
-        const cat = await prisma.roleCategory.upsert({
-          where: { name: resolvedCategoryName },
-          update: {},
-          create: { name: resolvedCategoryName }
-        });
-        data.category = { connect: { id: cat.id } };
-      }
-
-      // Handle tools update if provided
-      if (tools !== undefined) {
-        // First delete existing tool relations
-        await prisma.roleTool.deleteMany({
-          where: { roleId: id }
-        });
-
-        // Then create new ones
-        data.tools = {
-          create: tools.map(toolName => ({
-            tool: { connect: { name: toolName } }
-          }))
-        };
-      }
-
-      // Update the role in the database
-      const role = await prisma.role.update({
-        where: { id },
-        data,
+      const existingVariant = await prisma.roleVariant.findFirst({
+        where: { roleId: role.id, isActive: true }
       });
+
+      if (existingVariant) {
+        await prisma.roleVariant.update({
+          where: { id: existingVariant.id },
+          data: {
+            cortexConfig: {
+              ...(existingVariant.cortexConfig as Record<string, unknown>),
+              ...cortexConfig
+            } as Prisma.InputJsonValue
+          }
+        });
+      } else {
+        await prisma.roleVariant.create({
+          data: {
+            roleId: role.id,
+            isActive: true,
+            cortexConfig: cortexConfig as Prisma.InputJsonValue,
+            identityConfig: { personaName: name } as Prisma.InputJsonValue,
+            governanceConfig: {} as Prisma.InputJsonValue,
+            contextConfig: {} as Prisma.InputJsonValue
+          }
+        });
+      }
+
       return role;
     }),
+
+  create: publicProcedure
+    .input(upsertRoleSchema)
+    .mutation(async ({ input }) => {
+      // Re-use upsert logic for consistency
+      const { id: _id, ...rest } = input;
+      // We don't want to pass an ID to create
+      // Actually, let's just make it a wrapper for clarity if needed, or just let them use upsert
+      return prisma.role.create({
+        data: {
+          name: input.name,
+          basePrompt: input.basePrompt,
+          description: input.description || '',
+          categoryId: (await prisma.roleCategory.upsert({
+            where: { name: input.categoryName || 'Uncategorized' },
+            update: {},
+            create: { name: input.categoryName || 'Uncategorized' }
+          })).id,
+          metadata: input as unknown as Prisma.InputJsonValue
+        }
+      });
+    }),
+
+
+
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
