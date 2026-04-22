@@ -71,11 +71,16 @@ export const ModelContextSelector: React.FC<ModelContextSelectorProps> = ({
         stats[provider].total += 1;
 
         let isMatch = true;
-        const context = model.specs?.contextWindow || 0;
+        const context = model.specs?.contextWindow || model.context_window || 0;
+        
+        // Filter out models where contextWindow < selectedValue (minContext)
         if (context < minContext) isMatch = false;
-        if (context > maxContext) isMatch = false;
-        if (needsVision && !model.specs?.hasVision) isMatch = false;
-        if (needsReasoning && !model.specs?.hasReasoning) isMatch = false;
+        if (maxContext > 0 && context > maxContext) isMatch = false;
+
+        // Modalities check
+        const mods = (model.modalities as string[]) || [];
+        if (needsVision && !mods.includes("VISION")) isMatch = false;
+        if (needsReasoning && !mods.includes("REASONING")) isMatch = false;
 
         if (isMatch) stats[provider].matched += 1;
     });

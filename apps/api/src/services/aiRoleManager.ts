@@ -238,57 +238,15 @@ export function getAIRoleManager(): AIRoleManager {
   if (!managerInstance) {
     managerInstance = new AIRoleManager();
     
-    // Register default roles
+    // Register default roles - REMOVED: Rely on database instead
+    /*
     managerInstance.registerRole({
       id: 'friendly_helper',
       name: 'Friendly Helper',
-      description: 'A warm, approachable assistant that provides helpful guidance',
-      personality: 'friendly_helper',
-      systemPrompt: 'You are a friendly and helpful AI assistant. Be warm, approachable, and supportive in your responses. Use casual language and show empathy.',
-      contextModifiers: {
-        temperature: 0.7,
-        maxTokens: 500,
-      },
-      responseStyle: {
-        verbosity: 'normal',
-        tone: 'casual',
-      },
-      isActive: true,
+      ...
     });
-    
-    managerInstance.registerRole({
-      id: 'formal_assistant',
-      name: 'Formal Assistant',
-      description: 'A professional, business-oriented assistant',
-      personality: 'formal_assistant',
-      systemPrompt: 'You are a professional AI assistant. Be formal, precise, and business-oriented in your responses. Use proper grammar and maintain a professional tone.',
-      contextModifiers: {
-        temperature: 0.5,
-        maxTokens: 800,
-      },
-      responseStyle: {
-        verbosity: 'detailed',
-        tone: 'professional',
-      },
-      isActive: true,
-    });
-    
-    managerInstance.registerRole({
-      id: 'experimental_agent',
-      name: 'Experimental Agent',
-      description: 'An innovative agent that explores creative solutions',
-      personality: 'experimental_agent',
-      systemPrompt: 'You are an experimental AI agent focused on creative and innovative solutions. Think outside the box and explore novel approaches.',
-      contextModifiers: {
-        temperature: 0.9,
-        maxTokens: 1000,
-      },
-      responseStyle: {
-        verbosity: 'detailed',
-        tone: 'technical',
-      },
-      isActive: true,
-    });
+    */
+
   }
   
   return managerInstance;

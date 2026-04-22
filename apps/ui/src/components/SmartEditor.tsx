@@ -117,7 +117,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
              <button type="button" onClick={() => { if(editor) { const text = editor.getHTML(); void navigator.clipboard.writeText(text).then(() => toast.success('Copied')); } }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
               <button 
                 type="button" 
-                onClick={() => { void utils.role.list.invalidate(); toast.success('Roles refreshed'); }} 
+                onClick={() => { void utils.roles.list.invalidate(); toast.success('Roles refreshed'); }} 
                 title="Refresh Role Roster" 
                 className="hover:text-[var(--text-primary)] transition-colors"
               >
@@ -162,7 +162,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
           
           // Auto-refresh roles if we see a success message
           if (targetContent.includes('✅ Role Variant Created Successfully') || targetContent.includes('biologically spawned')) {
-              void utils.role.list.invalidate();
+              void utils.roles.list.invalidate();
               toast.success("New role detected! Roster updated.");
           }
         }

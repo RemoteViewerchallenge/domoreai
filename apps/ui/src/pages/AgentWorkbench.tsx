@@ -41,7 +41,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     columns, cards, setCards, addCard, loadWorkspace, 
     activeWorkspace, activeScreenspaceId, showControlPlane 
   } = useWorkspaceStore();
-  const { data: roles } = trpc.role.list.useQuery(); 
+  const { data: roles } = trpc.roles.list.useQuery(); 
   const availableRoles = Array.isArray(roles) ? roles : [];
 
   useEffect(() => {

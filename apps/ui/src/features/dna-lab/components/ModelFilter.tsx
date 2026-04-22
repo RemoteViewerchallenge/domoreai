@@ -60,7 +60,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     }
                     break;
                 case 'VISION':
-                    isMatch = !!m.visionModel || !!caps.hasVision || !!caps.isMultimodal;
+                    isMatch = !!m.modalities?.includes("VISION") || !!m.visionModel || !!caps.hasVision || !!caps.isMultimodal;
                     break;
                 case 'AUDIO':
                     // Check AudioModel existence + Capabilities
@@ -70,7 +70,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                     isMatch = !!m.embeddingModel || !!caps.hasEmbedding;
                     break;
                 case 'REASONING':
-                    isMatch = !!caps.hasReasoning || !!caps.hasCoding;
+                    isMatch = !!m.modalities?.includes("REASONING") || !!caps.hasReasoning || !!caps.hasCoding;
                     break;
                 case 'IMAGE_GEN':
                     isMatch = !!m.imageModel || !!caps.hasImageGen;
@@ -232,7 +232,7 @@ export const ModelFilter: React.FC<ModelFilterProps> = ({
                                                 <optgroup label={provider}>
                                                     {data.matching.map(m => (
                                                         <option key={m.id} value={m.id} className="text-[var(--text-secondary)]">
-                                                            {m.name} {Math.round(m.score)}
+                                                            {m.name} {m.isFreeTier ? '🎁 [FREE]' : ''} ({Math.round(m.score)})
                                                         </option>
                                                     ))}
                                                 </optgroup>

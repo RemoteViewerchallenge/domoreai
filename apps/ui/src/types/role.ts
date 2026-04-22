@@ -15,6 +15,8 @@ export interface Model {
   providerId: string;
   providerLabel?: string;
   contextWindow?: number;
+  modalities?: string[]; // [NEW] e.g. ["TEXT", "VISION"]
+  isFreeTier?: boolean;  // [NEW]
   specs?: {
     contextWindow?: number;
     maxOutput?: number;
