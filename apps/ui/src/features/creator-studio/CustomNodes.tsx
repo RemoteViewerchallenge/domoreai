@@ -4,6 +4,7 @@ import type { NodeProps } from 'reactflow';
 import { Bot, Scale, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { OrchestrationStep, RoleConfig } from './types.js';
 import SuperNode from './nodes/SuperNode.js';
+import TerminalBatchNode from './nodes/TerminalBatchNode.js';
 
 // Helper to lookup role name for display
 const getRoleName = (roleId: string | undefined, roles: RoleConfig[]) => {
@@ -113,4 +114,5 @@ export const nodeTypes = {
   judge: memo(JudgeNode),
   manager: memo(AgentNode),
   superNode: memo(SuperNode),
+  terminalBatch: memo(TerminalBatchNode),
 };

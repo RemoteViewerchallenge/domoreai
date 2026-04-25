@@ -12,7 +12,7 @@ export class ProviderManager implements IProviderManager {
   private providers: Map<string, BaseLLMProvider> = new Map();
   /*private*/ unhealthyProviders: Map<string, number> = new Map(); // providerId -> cooldownEndTime
   // NEW: Store metadata for logging and filtering
-  /*private*/ providerMetadata: Map<string, { name: string; type: string }> = new Map();
+  /*private*/ providerMetadata: Map<string, { name: string; type: string; providerClass: string }> = new Map();
 
   private repository: IProviderRepository;
 
@@ -105,7 +105,11 @@ export class ProviderManager implements IProviderManager {
           this.providers.set(config.id, provider);
 
           // STORE METADATA HERE
-          this.providerMetadata.set(config.id, { name: config.name, type: config.type });
+          this.providerMetadata.set(config.id, { 
+            name: config.name, 
+            type: config.type,
+            providerClass: config.providerClass 
+          });
 
           console.log(`[ProviderManager] ✅ Online: ${config.name} (${config.type})`);
         } catch (error) {
