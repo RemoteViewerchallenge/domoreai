@@ -38,9 +38,16 @@ class FileWatcherService {
         '**/.next/**',
         '**/build/**',
         '**/.domoreai/shadow/**', // Don't watch shadow files
+        '**/package-lock.json',
+        '**/pnpm-lock.yaml',
+        '**/yarn.lock',
+        '**/*.log',
+        '**/*.sqlite',
+        '**/*.db',
+        '**/tmp/**',
       ],
       persistent: true,
-      ignoreInitial: true, // Don't trigger on initial scan
+      ignoreInitial: false, // Trigger 'add' for existing files on startup
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100
@@ -83,6 +90,16 @@ class FileWatcherService {
   }
 
   /**
+   * Start watching the entire project root automatically
+   */
+  async startAutomatedWatching() {
+    const apiDir = process.cwd();
+    const projectRoot = path.resolve(apiDir, '../../');
+    console.log(`[FileWatcher] 🤖 Initializing automated watching for: ${projectRoot}`);
+    await this.startWatching(projectRoot);
+  }
+
+  /**
    * Handle file change (add or modify)
    */
   private async handleFileChange(filePath: string, changeType: 'added' | 'changed') {
@@ -90,6 +107,11 @@ class FileWatcherService {
     
     // Only process text files
     if (!this.textExtensions.includes(ext)) {
+      return;
+    }
+
+    // Skip hidden files/directories (except .prisma which we explicitly included)
+    if (path.basename(filePath).startsWith('.') && ext !== '.prisma') {
       return;
     }
 
@@ -108,7 +130,7 @@ class FileWatcherService {
 
     // Add to queue and process
     this.indexQueue.add(filePath);
-    await this.processQueue();
+    void this.processQueue();
   }
 
   /**
@@ -148,11 +170,20 @@ class FileWatcherService {
     this.isIndexing = true;
 
     try {
-      const filesToProcess = Array.from(this.indexQueue);
-      this.indexQueue.clear();
+      while (this.indexQueue.size > 0) {
+        const filePath = this.indexQueue.values().next().value;
+        if (!filePath) break;
+        
+        this.indexQueue.delete(filePath);
 
-      for (const filePath of filesToProcess) {
         try {
+          // Check file size before reading
+          const stats = await fs.stat(filePath);
+          if (stats.size > 2 * 1024 * 1024) { // 2MB limit
+            console.log(`[FileWatcher] ⏭️  Skipping ${path.basename(filePath)} — too large (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+            continue;
+          }
+
           const content = await fs.readFile(filePath, 'utf-8');
           await this.indexFile(filePath, content);
         } catch (error) {
@@ -164,7 +195,7 @@ class FileWatcherService {
 
       // Process any files that were added while we were indexing
       if (this.indexQueue.size > 0) {
-        await this.processQueue();
+        void this.processQueue();
       }
     }
   }
@@ -193,18 +224,35 @@ class FileWatcherService {
     const chunks = chunkText(content);
     console.log(`[FileWatcher] 📦 Created ${chunks.length} chunks`);
     
-    const vectors = await Promise.all(chunks.map(async (chunk, i) => {
-      const embedding = await createEmbedding(chunk);
-      return {
-        id: `${filePath}#${i}`,
-        vector: embedding,
-        metadata: {
-          filePath,
-          chunk,
-          contentHash: hash,
-        },
-      };
-    }));
+    // Process chunks SEQUENTIALLY to avoid overloading the model context/queue
+    const vectors = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      try {
+        const embedding = await createEmbedding(chunk);
+        vectors.push({
+          id: `${filePath}#${i}`,
+          vector: embedding,
+          metadata: {
+            filePath,
+            chunk,
+            contentHash: hash,
+          },
+        });
+        
+        // Progress log for large files
+        if (chunks.length > 5 && (i + 1) % 5 === 0) {
+          console.log(`[FileWatcher] ⏳ Progress for ${path.basename(filePath)}: ${i + 1}/${chunks.length} chunks...`);
+        }
+      } catch (err) {
+        console.error(`[FileWatcher] ❌ Failed to embed chunk ${i} of ${filePath}:`, err);
+      }
+    }
+
+    if (vectors.length === 0) {
+      console.warn(`[FileWatcher] ⚠️ No vectors created for ${filePath}`);
+      return;
+    }
 
     // Delete old vectors for this file
     try {

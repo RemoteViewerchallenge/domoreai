@@ -318,6 +318,13 @@ async function startServer() {
       //   console.warn('⚠️ Persistent model doctor failed to start:', err);
       // }
 
+      // [NEW] Start Automated Codebase Embedding
+      void import('./services/FileWatcherService.js').then(({ fileWatcherService }) => {
+        void fileWatcherService.startAutomatedWatching()
+          .then(() => console.log('[FileWatcher] Automated embedding service active'))
+          .catch(err => console.error('[FileWatcher] Failed to start automated embedding:', err));
+      });
+
       // Initialize mock voice engines for development
       try {
         await initializeMockEngines();
