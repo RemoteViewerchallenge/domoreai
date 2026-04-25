@@ -43,17 +43,6 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
       }}
     >
       <div className="flex items-center gap-2">
-        {/* Spark 2: Meta/Refine (Prompt Engineer) */}
-        <SuperAiButton 
-          contextGetter={aiContextGetter}
-          onSuccess={(res: unknown) => onAiAction('REFINE_GOAL', res)}
-          contextId={contextId}
-          defaultRoleId="prompt-engineer"
-          label="Meta"
-          className="scale-90 opacity-70 hover:opacity-100 transition-opacity"
-          style={{ '--ai-btn-primary': 'var(--ai-intent-architect)', '--ai-btn-size': '22px' } as React.CSSProperties} 
-        />
-
         {/* Spark 1: Intent (Primary) */}
         <SuperAiButton 
           contextGetter={aiContextGetter}
