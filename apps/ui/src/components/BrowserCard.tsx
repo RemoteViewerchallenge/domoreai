@@ -42,9 +42,11 @@ interface BrowserCardProps {
   initialUrl?: string;
   onLoad?: (content: string) => void;
   hideWrapper?: boolean;
+  billingModeProviderId?: string;
+  onBillingSessionSaved?: () => void;
 }
 
-export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId, headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper }) => {
+export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId, headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper, billingModeProviderId, onBillingSessionSaved }) => {
   const [url, setUrl] = useState(initialUrl);
   const [input, setInput] = useState(url);
   const webviewRef = useRef<HTMLWebViewElement>(null);
@@ -53,6 +55,44 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
   const [isReaderMode, setIsReaderMode] = useState(false);
   const [readerContent, setReaderContent] = useState<string>('');
   const scrapeMutation = trpc.browser.scrape.useMutation();
+  const saveBillingSessionMutation = trpc.providers.saveBillingSession.useMutation({
+    onSuccess: () => {
+      toast.success('Billing session saved successfully!');
+      if (onBillingSessionSaved) onBillingSessionSaved();
+    },
+    onError: (err) => {
+      toast.error(`Failed to save session: ${err.message}`);
+    }
+  });
+
+  const handleSaveBillingSession = async () => {
+    if (!billingModeProviderId || !webviewRef.current) return;
+    try {
+      // @ts-expect-error Electron webview method
+      const currentUrl = await webviewRef.current.executeJavaScript('window.location.href');
+      // @ts-expect-error Electron webview method
+      const cookieStr = await webviewRef.current.executeJavaScript('document.cookie');
+      
+      const parsedCookies = cookieStr ? cookieStr.split('; ').map((c: string) => {
+        const [name, ...rest] = c.split('=');
+        return {
+          name,
+          value: rest.join('='),
+          domain: new URL(currentUrl).hostname,
+          path: '/'
+        };
+      }) : [];
+
+      saveBillingSessionMutation.mutate({
+        providerId: billingModeProviderId,
+        dashboardUrl: currentUrl,
+        cookies: parsedCookies
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not extract cookies from browser.');
+    }
+  };
 
   // Sync URL/Content to context
   React.useEffect(() => {
@@ -174,7 +214,23 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
   );
 
   const content = (
-    <div className="flex flex-col w-full h-full bg-background">
+    <div className="flex flex-col w-full h-full bg-background relative">
+         {/* BILLING MODE ACTION BAR */}
+         {billingModeProviderId && (
+            <div className="bg-indigo-600 border-b border-indigo-500 p-3 flex items-center justify-between shadow-lg z-50">
+              <div className="text-white font-bold text-sm tracking-wide">
+                Log in to the provider, then click here to save session.
+              </div>
+              <button 
+                onClick={handleSaveBillingSession}
+                disabled={saveBillingSessionMutation.isLoading}
+                className="bg-white text-indigo-600 px-4 py-1.5 rounded font-bold text-xs shadow hover:bg-zinc-100 disabled:opacity-50 transition-colors"
+              >
+                {saveBillingSessionMutation.isLoading ? 'Saving...' : 'Set as Billing Link & Save Session'}
+              </button>
+            </div>
+         )}
+         
          {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
          {!showDebugView && (
             <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border shrink-0">
