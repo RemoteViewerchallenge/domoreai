@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
+import { isModelBlacklisted } from '../rateLimiter.js';
+
 
 // Define a basic interface for the expected data structure.
 interface RawProviderOutput {
@@ -114,10 +116,25 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
       return null;
     }
 
+    // [RESILIENCE] Redis Blacklist Filter
+    const healthyCandidates: typeof candidates = [];
+    for (const c of candidates) {
+        if (!(await isModelBlacklisted(c.id))) {
+            healthyCandidates.push(c);
+        } else {
+            console.warn(`[ModelManager] Skipping blacklisted model: ${c.id}`);
+        }
+    }
+
+    if (healthyCandidates.length === 0) {
+      console.warn(`No healthy models found for role ${roleId} after blacklist filtering`);
+      return null;
+    }
+
     // Intelligent Selection: Provider LRU -> Model LRU
     
     // 1. Fetch usage stats
-    const candidateIds = candidates.map(c => c.id);
+    const candidateIds = healthyCandidates.map(c => c.id);
     const usageStats = await prisma.modelUsage.groupBy({
         by: ['modelId'],
         where: { modelId: { in: candidateIds } },
@@ -134,7 +151,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
 
     // 3. Compute Provider Usage (Max timestamp of any model in that provider)
     const providerUsageMap = new Map<string, number>();
-    for (const c of candidates) {
+    for (const c of healthyCandidates) {
         const mTime = modelUsageMap.get(c.id) || 0;
         const pTime = providerUsageMap.get(c.providerId) || 0;
         if (mTime > pTime) { // We want the *latest* usage to represent the provider's "freshness"
@@ -143,7 +160,7 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     }
 
     // 4. Sort Candidates
-    candidates.sort((a, b) => {
+    healthyCandidates.sort((a, b) => {
         const pTimeA = providerUsageMap.get(a.providerId) || 0;
         const pTimeB = providerUsageMap.get(b.providerId) || 0;
 
@@ -159,7 +176,8 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     });
 
     // 5. Select Winner
-    const selected = candidates[0];
+    const selected = healthyCandidates[0];
+
     const isFree = (selected.costPer1k === 0);
 
     console.log(`✅ Selected model: ${selected.provider.name}/${selected.name} (free: ${isFree})`);

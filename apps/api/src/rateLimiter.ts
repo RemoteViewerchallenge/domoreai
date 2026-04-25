@@ -1,3 +1,5 @@
+import { getRedisClient } from './redis.js';
+
 export interface IAtomicRedisClient {
   get(key: string): Promise<string | null>;
   incr(key: string): Promise<number>;
@@ -55,5 +57,34 @@ export async function executeWithRateLimit(provider: BaseLLMProvider, request: C
         ProviderManager.markUnhealthy(provider.id, 30); // Shorter cooldown for general errors
     }
     throw error;
+  }
+}
+
+/**
+ * Temporarily blacklists a specific model in Redis when a 429 is encountered.
+ */
+export async function blacklistModel(modelId: string, ttlSeconds: number = 60): Promise<void> {
+  try {
+    const client = await getRedisClient();
+    const key = `rate_limit:model:${modelId}`;
+    await client.set(key, 'true', { EX: ttlSeconds });
+    console.warn(`[RateLimit] Blacklisted model ${modelId} for ${ttlSeconds}s`);
+  } catch (err) {
+    console.error(`[RateLimit] Failed to blacklist model ${modelId}:`, err);
+  }
+}
+
+/**
+ * Checks if a model is currently blacklisted in Redis.
+ */
+export async function isModelBlacklisted(modelId: string): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    const key = `rate_limit:model:${modelId}`;
+    const result = await client.get(key);
+    return result === 'true';
+  } catch (err) {
+    console.error(`[RateLimit] Failed to check blacklist for model ${modelId}:`, err);
+    return false;
   }
 }
