@@ -32,9 +32,9 @@ export class RateLimiter {
 }
 
 import { ProviderManager } from './services/ProviderManager.js';
-import { type BaseLLMProvider, type CompletionRequest } from './utils/BaseLLMProvider.js';
+import { type BaseLLMProvider, type CompletionRequest, type CompletionResponse } from './utils/BaseLLMProvider.js';
 
-export async function executeWithRateLimit(provider: BaseLLMProvider, request: CompletionRequest): Promise<string> {
+export async function executeWithRateLimit(provider: BaseLLMProvider, request: CompletionRequest): Promise<CompletionResponse> {
   try {
     if (!ProviderManager.isHealthy(provider.id)) {
       // Create an error object that looks like an axios error

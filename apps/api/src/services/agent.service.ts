@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { LLMSelector, type Role as SelectorRole } from "../orchestrator/LLMSelector.js";
+import { LLMSelector } from "../orchestrator/LLMSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
@@ -332,7 +332,7 @@ export class AgentService {
         );
 
       try {
-        const text = await provider.generateCompletion({
+        const response = await provider.generateCompletion({
           modelId: selectedModel.modelId,
           messages: [{ role: "user", content: finalPrompt }],
           temperature: selectedModel.temperature ?? 0.1,
@@ -340,7 +340,7 @@ export class AgentService {
         });
 
         // Strip markdown code blocks if present
-        queryText = (text || "").trim();
+        queryText = (response.text || "").trim();
         if (queryText.startsWith("```sql")) {
           queryText = queryText
             .replace(/^```sql\s*/, "")

@@ -12,7 +12,9 @@ import {
 import { getNativeTools } from "./tools/NativeToolsRegistry.js";
 import { loadToolDocs } from "./tools/ToolDocumentationLoader.js";
 import { IExecutionStrategy, CodeModeStrategy, JsonRpcStrategy } from "./tooling/ExecutionStrategies.js";
-// import { CreateGitAwareWorkerTools } from "./tools/GitAwareTools.js";
+import { InstructionChain } from "../utils/InstructionChain.js";
+import { logUsage } from "./modelManager.service.js";
+import { PlaybookStep, TerminalPlaybookEngine, PlaybookHaltedError } from "../orchestrator/TerminalPlaybook.js";
 
 // Register the protocol globally (idempotent)
 // ... existing registration code (lines 16-19) ...
@@ -371,7 +373,7 @@ ${hasErrors ?
    * using the ContextManager state for the given roleId.
    */
   async generateWithContext(
-    agent: { generate: (prompt: string) => Promise<unknown> },
+    agent: { generate: (prompt: string) => Promise<{ text: string, usage?: any }>, getConfig: () => any },
     baseSystemPrompt: string,
     prompt: string,
     roleId?: string,
@@ -574,7 +576,18 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
     
     // Delegate to the provided agent/provider
-    const result = await agent.generate(finalPrompt);
+    const response = await agent.generate(finalPrompt);
+    const result = response.text;
+
+    // Log Usage
+    const config = agent.getConfig();
+    void logUsage({
+        modelId: config.modelId,
+        roleId: roleId || 'default',
+        providerId: config.providerId || 'unknown',
+        userId: 'system',
+        usage: response.usage,
+    }).catch(e => console.error("[AgentRuntime] Usage logging failed", e));
 
     // Record History (if session active)
     if (sessionId && typeof result === 'string') {
@@ -653,5 +666,96 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
           if (cortex.executionMode) this.executionMode = cortex.executionMode;
           // Could update basePrompt here if we pass it through system prompt enhancer
       }
+  }
+
+  /**
+   * [STEP 3] Implement the auto-recovery loop when a playbook halts.
+   */
+  public async runTerminalPlaybook(steps: PlaybookStep[], onLog?: (log: string) => void) {
+    const engine = new TerminalPlaybookEngine();
+    let currentSteps = [...steps];
+    
+    while (true) {
+      try {
+        const result = await engine.execute(currentSteps);
+        return result;
+      } catch (error) {
+        if (error instanceof PlaybookHaltedError) {
+          const logMsg = `[AgentRuntime] 🚨 Playbook halted at ${error.failedStep.id}. Triggering Auto-Recovery...`;
+          console.log(logMsg);
+          onLog?.(logMsg);
+          
+          const recoveryFix = await this.triggerRecoveryWorker(error.failedStep, error.errorLog);
+          
+          if (recoveryFix.remediationCommands && recoveryFix.remediationCommands.length > 0) {
+            const logFix = `[AgentRuntime] 🛠️ Recovery Worker suggested remediation: ${recoveryFix.remediationCommands.join(', ')}`;
+            console.log(logFix);
+            onLog?.(logFix);
+
+            // Inject remediation commands BEFORE the failed step
+            const failedIndex = currentSteps.findIndex(s => s.id === error.failedStep.id);
+            const remediationSteps: PlaybookStep[] = recoveryFix.remediationCommands.map((cmd, i) => ({
+              id: `remediation-${error.failedStep.id}-${Date.now()}-${i}`,
+              command: cmd,
+              dependsOn: i === 0 ? error.failedStep.dependsOn : [`remediation-${error.failedStep.id}-${Date.now()}-${i-1}`],
+              runInParallel: false
+            }));
+            
+            // Update the failed step to depend on the last remediation step
+            currentSteps[failedIndex].dependsOn = [remediationSteps[remediationSteps.length - 1].id];
+            if (recoveryFix.fixedCommand) {
+              currentSteps[failedIndex].command = recoveryFix.fixedCommand;
+            }
+            
+            currentSteps.splice(failedIndex, 0, ...remediationSteps);
+          } else if (recoveryFix.fixedCommand) {
+            const logFix = `[AgentRuntime] 🛠️ Recovery Worker suggested fixed command: ${recoveryFix.fixedCommand}`;
+            console.log(logFix);
+            onLog?.(logFix);
+
+            const failedIndex = currentSteps.findIndex(s => s.id === error.failedStep.id);
+            currentSteps[failedIndex].command = recoveryFix.fixedCommand;
+          } else {
+            // No fix provided, propagate error
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private async triggerRecoveryWorker(failedStep: PlaybookStep, errorLog: string): Promise<{ fixedCommand?: string, remediationCommands?: string[] }> {
+    const systemPrompt = `You are the Terminal Recovery Worker. The execution of playbook step [${failedStep.id}] failed with the following error:
+[stderr]
+${errorLog}
+
+Output a JSON response with a 'fixedCommand' to try again, or an array of 'remediationCommands' to run before retrying.
+Format: { "fixedCommand": "string", "remediationCommands": ["string"] }`;
+
+    console.log(`[AgentRuntime] 🧠 Requesting fix from Recovery Worker for: ${failedStep.command}`);
+
+    // We use a simple model call here. In a real scenario, we'd use modelManager.service
+    const { modelManager } = await import("./modelManager.service.js");
+    const activeModel = await modelManager.getActiveModel(); 
+    
+    if (!activeModel) {
+        throw new Error("No active model available for recovery worker.");
+    }
+
+    const response = await activeModel.generate(`${systemPrompt}\n\nFAILED_COMMAND: ${failedStep.command}`);
+    
+    try {
+        // Find JSON in response
+        const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error("Failed to parse recovery worker response.");
+    } catch (e) {
+        console.error("[AgentRuntime] Error parsing recovery JSON:", e);
+        return {};
+    }
   }
 }
