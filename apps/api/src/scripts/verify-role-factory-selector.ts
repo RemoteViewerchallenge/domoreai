@@ -1,14 +1,15 @@
 
 import { RoleFactoryService } from '../services/RoleFactoryService.js';
 import { ProviderManager } from '../services/ProviderManager.js';
-import { LLMSelector } from '../orchestrator/LLMSelector.js';
+import { resolveModelForRole } from '../services/modelManager.service.js';
+
 
 async function main() {
     console.log("Initializing ProviderManager...");
     await ProviderManager.initialize();
 
     console.log("Testing ModelSelector Capability Filtering...");
-    const selector = new LLMSelector();
+
 
     // Test 1: Request Reasoning
     console.log("\n--- TEST 1: Requesting REASONING ---");
@@ -22,7 +23,8 @@ async function main() {
         }
     };
     try {
-        const modelId = await selector.resolveModelForRole(roleReasoning as any);
+        const modelId = await resolveModelForRole(roleReasoning as any);
+
         console.log(`✅ Selected Model for Reasoning: ${modelId}`);
     } catch (e) {
         console.error("❌ Failed to resolve reasoning model", e);
@@ -40,7 +42,8 @@ async function main() {
         }
     };
     try {
-        const modelId = await selector.resolveModelForRole(roleVision as any);
+        const modelId = await resolveModelForRole(roleVision as any);
+
         console.log(`✅ Selected Model for Vision: ${modelId}`);
     } catch (e) {
         console.error("❌ Failed to resolve vision model", e);
@@ -58,7 +61,8 @@ async function main() {
         }
     };
     try {
-        const modelId = await selector.resolveModelForRole(roleImpossible as any);
+        const modelId = await resolveModelForRole(roleImpossible as any);
+
         console.log(`✅ Selected Model for Impossible (Soft Fallback): ${modelId}`);
     } catch (e) {
         console.error("❌ Failed to resolve impossible model", e);
