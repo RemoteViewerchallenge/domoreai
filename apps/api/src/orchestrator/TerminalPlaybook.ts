@@ -1,4 +1,5 @@
-import { terminalTools } from '../tools/terminal';
+import { terminalTools } from '../tools/terminal.js';
+
 
 export interface PlaybookStep {
   id: string;

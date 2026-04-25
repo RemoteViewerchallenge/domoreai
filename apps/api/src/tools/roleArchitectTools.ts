@@ -103,8 +103,8 @@ Status: Ready for deployment.`
         }];
     }
   },
-  },
   {
+
     name: 'upsert_role',
     description: 'Create or update an AI role in the system. Use this to hire or train new agents.',
     inputSchema: {
