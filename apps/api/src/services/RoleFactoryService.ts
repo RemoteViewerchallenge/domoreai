@@ -2,7 +2,8 @@ import { RoleVariant, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
 import { type BaseLLMProvider } from '../utils/BaseLLMProvider.js';
-import { LLMSelector } from '../orchestrator/LLMSelector.js';
+import { resolveModelForRole } from './modelManager.service.js';
+
 import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
@@ -300,10 +301,7 @@ process.stdout.write(JSON.stringify(__result));
      * Resolves the best available model for the Architect to use.
      */
     private async getArchitectBrain(excludedModelIds: string[] = []): Promise<{ provider: BaseLLMProvider, modelId: string }> {
-        const selector = new LLMSelector();
-
         // Define virtual requirements for the Architect
-        // We want a smart model with reasoning if possible
         const architectRequirements = {
             id: 'role-architect-virtual',
             metadata: {
@@ -315,9 +313,10 @@ process.stdout.write(JSON.stringify(__result));
         };
 
         try {
-            // Ask LLMSelector to pick the best model
+            // Ask the Arbitrage Router to pick the best model
             // PASS EXCLUSIONS and estimate context needs (Architect tasks are heavy)
-            const bestModelId = await selector.resolveModelForRole(architectRequirements, 16000, excludedModelIds);
+            const bestModelId = await resolveModelForRole(architectRequirements, 16000, excludedModelIds);
+
 
             // Get the provider details for this model
             const modelDef = await prisma.model.findUnique({

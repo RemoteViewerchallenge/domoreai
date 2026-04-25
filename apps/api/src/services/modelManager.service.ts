@@ -1,6 +1,25 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
 import { isModelBlacklisted } from '../rateLimiter.js';
+import { CreditGuard } from './CreditGuard.js';
+import { prisma } from '../db.js';
+
+/**
+ * Multi-Armed Bandit Router (Arbitrage Engine)
+ */
+export interface RoleRequirement {
+  requiresVision?: boolean;
+  requiresTools?: boolean;
+  minContext?: number;
+}
+
+export interface SelectionResult {
+  providerId: string;
+  modelName: string;
+}
+
+
+
 
 
 // Define a basic interface for the expected data structure.
@@ -28,7 +47,7 @@ export interface ModelSelectionResult {
 }
 
 // This would be your singleton Prisma client, passed in or imported
-const prisma = new PrismaClient();
+
 
 /**
  * This function is the solution to the "messy data" problem.
@@ -59,7 +78,7 @@ export async function logUsage(data: RawProviderOutput) {
         completionTokens: usage?.completion_tokens || 0,
         cost: cost || 0,
         metadata: { ...metadata } as Prisma.InputJsonValue,
-      },
+      } as Prisma.ModelUsageUncheckedCreateInput,
     });
     console.log('Usage log created:', newLog.id);
     return newLog;
@@ -206,45 +225,36 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
 }
 
 export async function getBestModel(roleId?: string, failedModels: string[] = [], failedProviders: string[] = []): Promise<ModelSelectionResult | null> {
-  if (!roleId) {
-    const fallback = await prisma.model.findFirst({
-      where: { provider: { isEnabled: true } },
-      include: { provider: true },
-    });
-    if (!fallback) return null;
-    
-    const providerDataObj = fallback.providerData as Prisma.JsonObject;
-    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
-      ? (providerDataObj['id'] as string) 
-      : fallback.name;
-    
-    return {
-      modelId: externalId,
-      providerId: fallback.providerId,
-      model: fallback,
-      temperature: DEFAULT_MODEL_TEMP,
-      maxTokens: DEFAULT_MAX_TOKENS,
-    };
-  }
-
   try {
-    const dynamicModel = await selectModelFromRegistry(roleId, failedModels, failedProviders);
+    const role = roleId ? await prisma.role.findUnique({ where: { id: roleId } }) : null;
+    const modelId = await resolveModelForRole(role || { id: 'default', metadata: {} }, 0, failedModels, failedProviders);
     
-    if (dynamicModel) {      
-        return {        
-            modelId: dynamicModel.modelId,
-            providerId: dynamicModel.providerId,
-            model: dynamicModel, // Passing the shape we constructed
-            temperature: DEFAULT_MODEL_TEMP,
-            maxTokens: DEFAULT_MAX_TOKENS
-        };
+    const model = await prisma.model.findUnique({
+      where: { id: modelId },
+      include: { provider: true }
+    });
+
+    if (model) {
+      const providerDataObj = model.providerData as Prisma.JsonObject;
+      const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
+        ? (providerDataObj['id'] as string) 
+        : model.name;
+
+      return {
+        modelId: externalId,
+        providerId: model.providerId,
+        model: { ...model, internalId: model.id },
+        temperature: DEFAULT_MODEL_TEMP,
+        maxTokens: DEFAULT_MAX_TOKENS
+      };
     }
   } catch (e: unknown) {
-    console.warn("Dynamic selection failed:", e);
+    console.warn("[Arbitrage] Unified selection failed:", e);
   }
 
+  // Final fallback
   const fallbackModel = await prisma.model.findFirst({
-      where: { provider: { isEnabled: true } },
+      where: { provider: { isEnabled: true }, isActive: true },
       include: { provider: true }
   });
 
@@ -256,7 +266,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
       return {
           modelId: externalId,
           providerId: fallbackModel.providerId,
-          model: fallbackModel,
+          model: { ...fallbackModel, internalId: fallbackModel.id },
           temperature: DEFAULT_MODEL_TEMP,
           maxTokens: DEFAULT_MAX_TOKENS
       };
@@ -264,6 +274,124 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 
   throw new Error(`No models available for role ${roleId}`);
 }
+
+/**
+ * ARBITRAGE ROUTER: Multi-Armed Bandit implementation
+ */
+export async function selectBestModel(requirements: RoleRequirement, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<SelectionResult> {
+  const allModels = await prisma.model.findMany({
+    where: { 
+      isActive: true,
+      provider: { isEnabled: true },
+      NOT: [
+        ...(excludedModelIds.length > 0 ? [{ id: { in: excludedModelIds } }] : []),
+        ...(excludedProviderIds.length > 0 ? [{ providerId: { in: excludedProviderIds } }] : [])
+      ]
+    },
+    include: { 
+      capabilities: true,
+      provider: true 
+    }
+  });
+
+  if (allModels.length === 0) throw new Error('[Arbitrage] No active models found.');
+
+  // Blacklist filter
+  const availableModels: typeof allModels = [];
+  for (const m of allModels) {
+    if (!(await isModelBlacklisted(m.id))) availableModels.push(m);
+  }
+
+  if (availableModels.length === 0) throw new Error('[Arbitrage] All candidates blacklisted.');
+
+  // Hard Requirements
+  let candidates = availableModels.filter(m => {
+    const caps = m.capabilities;
+    if (!caps) return false;
+    if (requirements.minContext && (caps.contextWindow || 0) < requirements.minContext) return false;
+    if (requirements.requiresVision && !caps.hasVision && !caps.modalityTags.includes('VISION')) return false;
+    if (requirements.requiresTools && !caps.supportsFunctionCalling && !caps.modalityTags.includes('TOOL_CALLING')) return false;
+    return true;
+  });
+
+  // Credit/Trust filter
+  const trustCandidates: typeof candidates = [];
+  for (const m of candidates) {
+    const isLocked = await CreditGuard.isProviderLocked(m.providerId);
+    if (!(isLocked && (m.costPer1k || 0) > 0)) trustCandidates.push(m);
+  }
+  candidates = trustCandidates.length > 0 ? trustCandidates : candidates;
+
+  if (candidates.length === 0) throw new Error('[Arbitrage] No models match requirements.');
+
+  // Epsilon-Greedy (90/10)
+  if (Math.random() < 0.1) {
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    return { providerId: selected.providerId, modelName: selected.name };
+  }
+
+  const scored = candidates.map(m => {
+    const caps = m.capabilities!;
+    const successRate = (caps.successCount || 0) / ((caps.successCount || 0) + (caps.failureCount || 0) || 1);
+    const latencyScore = 1 / (caps.latencyAvg || 1000);
+    const freeBonus = (m.costPer1k || 0) === 0 ? 2.0 : 0.0;
+    return { model: m, score: successRate + latencyScore + freeBonus };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0].model;
+  return { providerId: best.providerId, modelName: best.name };
+}
+
+export async function resolveModelForRole(role: any, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
+  const metadata = (role.metadata || {}) as any;
+  const requirements = metadata.requirements || {};
+  
+  const roleReq: RoleRequirement = {
+    minContext: requirements.minContext || metadata.minContext || estimatedInputTokens || 0,
+    requiresVision: requirements.capabilities?.includes('vision') || metadata.requiresVision === true,
+    requiresTools: requirements.capabilities?.includes('tools') || metadata.requiresTools === true
+  };
+
+  try {
+    const { providerId, modelName } = await selectBestModel(roleReq, excludedModelIds, excludedProviderIds);
+    const model = await prisma.model.findFirst({ where: { providerId, name: modelName } });
+    return model?.id || `${providerId}:${modelName}`;
+  } catch (error) {
+    const fallback = await prisma.model.findFirst({ where: { isActive: true } });
+    return fallback?.id || 'google:gemini-pro';
+  }
+}
+
+
+
+/**
+ * Updates the Bandit reward scores for a model.
+ * Applies a massive penalty for 429/401 errors.
+ */
+export async function updateReward(modelId: string, success: boolean, latency?: number, errorType?: string | number) {
+  try {
+    const isRateLimited = errorType === 429 || errorType === '429' || String(errorType).includes('Quota') || String(errorType).includes('RESOURCE_EXHAUSTED');
+    const isAuthError = errorType === 401 || errorType === '401' || String(errorType).includes('unauthorized');
+
+    const penalty = (isRateLimited || isAuthError) ? 100 : 1;
+
+    await prisma.modelCapabilities.update({
+      where: { modelId },
+      data: {
+        successCount: success ? { increment: 1 } : undefined,
+        failureCount: !success ? { increment: penalty } : undefined,
+        latencyAvg: (success && latency) ? { set: latency } : undefined,
+        updatedAt: new Date()
+      }
+    });
+
+    console.log(`[Bandit] Updated reward for ${modelId}: success=${success}, penalty=${penalty}`);
+  } catch (err) {
+    console.error(`[Bandit] Failed to update reward for ${modelId}:`, err);
+  }
+}
+
 
 // Failure helpers
 

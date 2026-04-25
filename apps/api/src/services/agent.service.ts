@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
-import { LLMSelector } from "../orchestrator/LLMSelector.js";
+
 import { ProviderManager } from "./ProviderManager.js";
 import { blacklistModel, isModelBlacklisted } from "../rateLimiter.js";
 
@@ -11,10 +11,14 @@ import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
 import {
   getBestModel,
+  updateReward,
+  resolveModelForRole,
   recordModelFailure,
   recordProviderFailure,
   type ModelSelectionResult
 } from "./modelManager.service.js";
+
+
 import { InstructionChain } from "../utils/InstructionChain.js";
 
 // [RESILIENCE] Standard schema, no changes needed here
@@ -146,8 +150,6 @@ export class AgentService {
         let bestModel: any = null;
 
         if (!resolvedModelId) {
-
-          const selector = new LLMSelector();
           const totalEstimatedChars = (role?.basePrompt?.length || 0) + ctx.finalUserGoal.length + 5000;
           const estimatedTokens = Math.ceil(totalEstimatedChars / 3.5);
           
@@ -166,13 +168,14 @@ export class AgentService {
             }
           } as any;
           
-          const bestSlug = await selector.resolveModelForRole(roleWithMaxOutput, estimatedTokens, []);
+          const bestSlug = await resolveModelForRole(roleWithMaxOutput, estimatedTokens, []);
           bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, include: { provider: true, capabilities: true } });
           if (bestModel) {
             resolvedModelId = bestModel.name;
             resolvedProviderId = bestModel.providerId;
           }
         } else if (resolvedModelId) {
+
           // If modelId was provided, we still want the internal record for failures
           bestModel = await prisma.model.findFirst({ 
             where: { 
@@ -381,6 +384,8 @@ export class AgentService {
           try {
             const failingId = (selectedModel as any).internalId || selectedModel.modelId;
             await blacklistModel(failingId, 60);
+            await updateReward(failingId, false, undefined, errMsg);
+
             
             await recordModelFailure(
               selectedModel.providerId,

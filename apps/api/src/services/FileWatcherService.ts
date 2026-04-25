@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import { vectorStore, chunkText, createEmbedding } from './vector.service.js';
 import { getWebSocketService } from './websocket.singleton.js';
+import ignore from 'ignore';
 
 /**
  * FileWatcherService
@@ -15,13 +16,19 @@ import { getWebSocketService } from './websocket.singleton.js';
 class FileWatcherService {
   private watcher: chokidar.FSWatcher | null = null;
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql', '.prisma'];
+  private readonly highValueExtensions = ['.ts', '.tsx', '.js', '.jsx', '.md', '.prisma'];
   private isIndexing = false;
   private indexQueue: Set<string> = new Set();
+  private projectRoot: string = process.cwd();
+  private ignoreFilter = ignore();
 
   /**
    * Start watching a directory for file changes
    */
-  async startWatching(rootPath: string) {
+  async startWatching(rootPath: string | string[]) {
+    // Initialize ignore filter before starting
+    await this.initializeIgnoreFilter();
+
     if (this.watcher) {
       console.log('[FileWatcher] Already watching. Stopping previous watcher...');
       await this.stopWatching();
@@ -30,22 +37,34 @@ class FileWatcherService {
     console.log(`[FileWatcher] 👁️  Starting file watcher for: ${rootPath}`);
 
     this.watcher = chokidar.watch(rootPath, {
-      ignored: [
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/dist/**',
-        '**/.turbo/**',
-        '**/.next/**',
-        '**/build/**',
-        '**/.domoreai/shadow/**', // Don't watch shadow files
-        '**/package-lock.json',
-        '**/pnpm-lock.yaml',
-        '**/yarn.lock',
-        '**/*.log',
-        '**/*.sqlite',
-        '**/*.db',
-        '**/tmp/**',
-      ],
+      ignored: (filePath: string) => {
+        // 1. Always ignore certain patterns regardless of .gitignore
+        if (
+          filePath.includes('.git') || 
+          filePath.includes('.domoreai/shadow') ||
+          filePath.endsWith('.log') ||
+          filePath.endsWith('.sqlite') ||
+          filePath.endsWith('.db') ||
+          filePath.includes('/tmp/')
+        ) {
+          return true;
+        }
+
+        // 2. Use .gitignore rules
+        const relPath = path.relative(this.projectRoot, filePath);
+        if (relPath && this.ignoreFilter.ignores(relPath)) {
+          return true;
+        }
+
+        // 3. Fallback to basic node_modules/dist/build check for robustness
+        return (
+          filePath.includes('node_modules') || 
+          filePath.includes('/dist/') || 
+          filePath.includes('/build/') ||
+          filePath.includes('/.next/') ||
+          filePath.includes('/.turbo/')
+        );
+      },
       persistent: true,
       ignoreInitial: false, // Trigger 'add' for existing files on startup
       awaitWriteFinish: {
@@ -94,9 +113,32 @@ class FileWatcherService {
    */
   async startAutomatedWatching() {
     const apiDir = process.cwd();
-    const projectRoot = path.resolve(apiDir, '../../');
-    console.log(`[FileWatcher] 🤖 Initializing automated watching for: ${projectRoot}`);
-    await this.startWatching(projectRoot);
+    this.projectRoot = path.resolve(apiDir, '../../');
+    
+    // Specifically watch high-value directories to avoid root-level noise
+    const pathsToWatch = [
+      path.join(this.projectRoot, 'apps'),
+      path.join(this.projectRoot, 'packages'),
+      path.join(this.projectRoot, 'agents')
+    ];
+
+    console.log(`[FileWatcher] 🤖 Initializing automated watching for: ${pathsToWatch.join(', ')}`);
+    await this.startWatching(pathsToWatch);
+  }
+
+  /**
+   * Initialize the ignore filter from .gitignore
+   */
+  private async initializeIgnoreFilter() {
+    try {
+      const gitignorePath = path.join(this.projectRoot, '.gitignore');
+      const content = await fs.readFile(gitignorePath, 'utf-8');
+      this.ignoreFilter = ignore().add(content);
+      console.log('[FileWatcher] 🛡️  Loaded .gitignore rules');
+    } catch (err) {
+      console.warn('[FileWatcher] ⚠️  Could not load .gitignore, using defaults:', err);
+      this.ignoreFilter = ignore();
+    }
   }
 
   /**
@@ -108,6 +150,36 @@ class FileWatcherService {
     // Only process text files
     if (!this.textExtensions.includes(ext)) {
       return;
+    }
+
+    // SMART FILTERING: Skip noise files that are technically text but unhelpful for embeddings
+    const fileName = path.basename(filePath);
+    const normalizedPath = filePath.replace(/\\/g, '/'); // Normalize for cross-platform matching
+    
+    if (
+      fileName === 'package-lock.json' || 
+      fileName === 'pnpm-lock.yaml' || 
+      fileName === 'yarn.lock' ||
+      normalizedPath.includes('/node_modules/') ||
+      normalizedPath.includes('/dist/') ||
+      normalizedPath.includes('/build/') ||
+      normalizedPath.includes('/.next/') ||
+      normalizedPath.includes('/.turbo/')
+    ) {
+      return;
+    }
+
+    // Further restrict JSON files: only small config files are worth embedding
+    if (ext === '.json') {
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.size > 50 * 1024) { // Skip JSON > 50KB (likely data, not config)
+          return;
+        }
+      } catch {
+        // Skip if stat fails
+        return;
+      }
     }
 
     // Skip hidden files/directories (except .prisma which we explicitly included)
@@ -226,7 +298,15 @@ class FileWatcherService {
     
     // Process chunks SEQUENTIALLY to avoid overloading the model context/queue
     const vectors = [];
+    const isHighValue = this.highValueExtensions.includes(path.extname(filePath).toLowerCase());
+    
     for (let i = 0; i < chunks.length; i++) {
+      // If not high value and many chunks, maybe we should skip or limit
+      if (!isHighValue && chunks.length > 50) {
+        console.log(`[FileWatcher] ⏩ Skipping excessive chunks for low-value file: ${path.basename(filePath)}`);
+        break;
+      }
+
       const chunk = chunks[i];
       try {
         const embedding = await createEmbedding(chunk);
