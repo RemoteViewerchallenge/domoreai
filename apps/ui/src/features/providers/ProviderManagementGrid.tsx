@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../../utils/trpc.js';
 import { 
   Plus, 
@@ -39,7 +39,7 @@ interface Provider {
   lastScrapeTime: string | null;
   status: string;
   lastError: string | null;
-  sessionValid?: boolean;
+  providerClass: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL';
   isNew?: boolean;
   isDirty?: boolean;
 }
@@ -124,6 +124,7 @@ export const ProviderManagementGrid: React.FC = () => {
       lastScrapeTime: null,
       status: 'ACTIVE',
       lastError: null,
+      providerClass: 'FOUNDATIONAL',
       isNew: true,
       isDirty: true
     });
@@ -147,6 +148,7 @@ export const ProviderManagementGrid: React.FC = () => {
         promoMonthlyLimit: editingProvider.promoMonthlyLimit || undefined,
         currentScrapedSpend: editingProvider.currentScrapedSpend || undefined,
         billingDashboardUrl: editingProvider.billingDashboardUrl || undefined,
+        providerClass: editingProvider.providerClass,
       });
     } catch (e) {
       console.error(e);
@@ -162,6 +164,28 @@ export const ProviderManagementGrid: React.FC = () => {
   const filteredProviders = localProviders.filter(p => 
     activeTab === 'ALL' || (p.serviceCategories && p.serviceCategories.includes(activeTab))
   );
+
+  const providersByClass = useMemo(() => {
+    const groups: Record<string, Provider[]> = {
+      FOUNDATIONAL: [],
+      AGGREGATOR: [],
+      INFERENCE_ENGINE: [],
+      LOCAL: []
+    };
+    filteredProviders.forEach(p => {
+      const cls = p.providerClass || 'FOUNDATIONAL';
+      if (!groups[cls]) groups[cls] = [];
+      groups[cls].push(p);
+    });
+    return groups;
+  }, [filteredProviders]);
+
+  const classLabels: Record<string, string> = {
+    FOUNDATIONAL: 'Foundational Providers',
+    AGGREGATOR: 'API Aggregators & Proxies',
+    INFERENCE_ENGINE: 'Inference Engines',
+    LOCAL: 'Local Infrastucture'
+  };
 
   if (isLoading) {
     return (
@@ -204,112 +228,137 @@ export const ProviderManagementGrid: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-auto custom-scrollbar">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <AnimatePresence>
-            {filteredProviders.map(provider => {
-              const spend = provider.currentScrapedSpend || 0;
-              const limit = provider.promoMonthlyLimit || 1; // Avoid divide by zero
-              const percent = Math.min(100, Math.max(0, (spend / limit) * 100));
-              const isOverLimit = spend >= limit;
+        {(Object.entries(providersByClass) as [keyof typeof classLabels, Provider[]][]).map(([cls, providers]) => {
+          if (providers.length === 0) return null;
+          
+          return (
+            <div key={cls} className="mb-12">
+              <div className="flex items-center gap-4 mb-6">
+                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 whitespace-nowrap">
+                  {classLabels[cls]}
+                </h2>
+                <div className="h-[1px] w-full bg-zinc-800/50" />
+                <Badge variant="outline" className="text-[10px] bg-zinc-900/50 text-zinc-400 border-zinc-800">
+                  {providers.length}
+                </Badge>
+              </div>
 
-              return (
-                <motion.div
-                  key={provider.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col gap-4 shadow-xl hover:border-zinc-700 transition-all relative overflow-hidden group"
-                >
-                  {/* Health Dot & Risk Level */}
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]",
-                        (provider.status === 'ACTIVE' || provider.sessionValid) ? "bg-emerald-500 shadow-emerald-500/50" : "bg-red-500 shadow-red-500/50"
-                      )} />
-                      <h3 className="text-base font-bold text-white tracking-wide">{provider.name}</h3>
-                    </div>
-                    <Badge className={cn("text-[9px] font-black uppercase tracking-wider border", RISK_COLORS[provider.billingRiskLevel || 'ZERO_RISK'])}>
-                      {RISK_LABELS[provider.billingRiskLevel || 'ZERO_RISK']}
-                    </Badge>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <AnimatePresence>
+                  {providers.map((provider: Provider) => {
+                    const spend = provider.currentScrapedSpend || 0;
+                    const limit = provider.promoMonthlyLimit || 1; 
+                    const percent = Math.min(100, Math.max(0, (spend / limit) * 100));
+                    const isOverLimit = spend >= limit;
 
-                  {/* Categories */}
-                  <div className="flex flex-wrap gap-1">
-                    {provider.serviceCategories?.map(cat => (
-                      <span key={cat} className="text-[9px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 uppercase font-semibold">
-                        {cat}
-                      </span>
-                    ))}
-                  </div>
+                    return (
+                      <motion.div
+                        key={provider.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col gap-4 shadow-xl hover:border-zinc-700 transition-all relative overflow-hidden group"
+                      >
+                        {/* Health Dot & Risk Level */}
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]",
+                              (provider.status === 'ACTIVE') ? "bg-emerald-500 shadow-emerald-500/50" : "bg-red-500 shadow-red-500/50"
+                            )} />
+                            <h3 className="text-base font-bold text-white tracking-wide">{provider.name}</h3>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge className={cn("text-[9px] font-black uppercase tracking-wider border", RISK_COLORS[(provider.billingRiskLevel || 'ZERO_RISK') as keyof typeof RISK_COLORS])}>
+                              {RISK_LABELS[(provider.billingRiskLevel || 'ZERO_RISK') as keyof typeof RISK_LABELS]}
+                            </Badge>
+                            {provider.providerClass === 'AGGREGATOR' && (
+                              <Badge className="text-[8px] bg-indigo-500/10 text-indigo-400 border-indigo-500/30 uppercase font-black">
+                                Multi-Provider Proxy
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
 
-                  {/* Spend Progress */}
-                  <div className="bg-zinc-950/50 rounded-lg p-3 border border-zinc-800">
-                    <div className="flex justify-between text-xs mb-2">
-                      <span className="text-zinc-400 font-mono flex items-center gap-1">
-                        <DollarSign size={12} /> Scraped Spend
-                      </span>
-                      <span className={cn("font-mono font-bold", isOverLimit ? "text-red-400" : "text-emerald-400")}>
-                        ${spend.toFixed(2)} / ${limit.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-1 overflow-hidden">
-                      <div 
-                        className={cn("h-full rounded-full transition-all", isOverLimit ? "bg-red-500" : "bg-emerald-500")}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                    {provider.lastScrapeTime && (
-                      <div className="text-[9px] text-zinc-600 font-mono text-right mt-2">
-                        Last checked: {new Date(provider.lastScrapeTime).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
+                        {/* Categories */}
+                        <div className="flex flex-wrap gap-1">
+                          {provider.serviceCategories?.map((cat: string) => (
+                            <span key={cat} className="text-[9px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 uppercase font-semibold">
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
 
-                  {/* Actions */}
-                  <div className="mt-auto grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700 hover:text-white text-zinc-300 gap-1 text-[10px] uppercase font-bold"
-                      onClick={() => setEditingProvider(provider)}
-                    >
-                      <Edit2 size={12} /> Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setBillingProviderUrl(provider.billingDashboardUrl || `https://console.${provider.type}.com`);
-                        setBillingProviderId(provider.id);
-                      }}
-                      className="bg-zinc-800/50 border-zinc-700 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/50 text-zinc-300 gap-1 text-[10px] uppercase font-bold"
-                    >
-                      <Lock size={12} /> Connect Billing
-                    </Button>
-                  </div>
-                  
-                  {/* Scrape Sync Button (Full width) */}
-                  <Button 
-                    variant="default"
-                    size="sm"
-                    disabled={scrapeMutation.isLoading}
-                    onClick={() => handleScrape(provider.id)}
-                    className="w-full mt-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 gap-2 uppercase tracking-wider text-[10px] font-bold"
-                  >
-                    {scrapeMutation.isLoading && scrapeMutation.variables?.providerId === provider.id ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      <Activity size={12} />
-                    )}
-                    Force Sync Balance
-                  </Button>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                        {/* Spend Progress */}
+                        <div className="bg-zinc-950/50 rounded-lg p-3 border border-zinc-800">
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className="text-zinc-400 font-mono flex items-center gap-1">
+                              <DollarSign size={12} /> Scraped Spend
+                            </span>
+                            <span className={cn("font-mono font-bold", isOverLimit ? "text-red-400" : "text-emerald-400")}>
+                              ${spend.toFixed(2)} / ${limit.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-1 overflow-hidden">
+                            <div 
+                              className={cn("h-full rounded-full transition-all", isOverLimit ? "bg-red-500" : "bg-emerald-500")}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          {provider.lastScrapeTime && (
+                            <div className="text-[9px] text-zinc-600 font-mono text-right mt-2">
+                              Last checked: {new Date(provider.lastScrapeTime).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="mt-auto grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700 hover:text-white text-zinc-300 gap-1 text-[10px] uppercase font-bold"
+                            onClick={() => setEditingProvider(provider)}
+                          >
+                            <Edit2 size={12} /> Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setBillingProviderUrl(provider.billingDashboardUrl || `https://console.${provider.type}.com`);
+                              setBillingProviderId(provider.id);
+                            }}
+                            className="bg-zinc-800/50 border-zinc-700 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/50 text-zinc-300 gap-1 text-[10px] uppercase font-bold"
+                          >
+                            <Lock size={12} /> Connect Billing
+                          </Button>
+                        </div>
+                        
+                        {/* Scrape Sync Button (Full width) */}
+                        <Button 
+                          variant="default"
+                          size="sm"
+                          disabled={scrapeMutation.isLoading}
+                          onClick={() => handleScrape(provider.id)}
+                          className="w-full mt-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 gap-2 uppercase tracking-wider text-[10px] font-bold"
+                        >
+                          {scrapeMutation.isLoading && scrapeMutation.variables?.providerId === provider.id ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Activity size={12} />
+                          )}
+                          Force Sync Balance
+                        </Button>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
+          );
+        })}
 
         {filteredProviders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-zinc-600 h-full">
@@ -364,6 +413,19 @@ export const ProviderManagementGrid: React.FC = () => {
                       onChange={e => setEditingProvider({...editingProvider, baseUrl: e.target.value})} 
                       className="bg-zinc-900 border-zinc-800 text-sm font-mono"
                     />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Provider Class</label>
+                    <select 
+                      value={editingProvider.providerClass}
+                      onChange={e => setEditingProvider({...editingProvider, providerClass: e.target.value as any})}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="FOUNDATIONAL">Foundational</option>
+                      <option value="AGGREGATOR">Aggregator / Proxy</option>
+                      <option value="INFERENCE_ENGINE">Inference Engine</option>
+                      <option value="LOCAL">Local</option>
+                    </select>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Service Categories (comma separated)</label>

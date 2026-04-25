@@ -181,7 +181,7 @@ export class ToolDocumenter {
                     max_tokens: 300
                 });
                 
-                exampleCode = response.trim().replace(/^```typescript\n|^```ts\n|^```/g, '').replace(/```$/g, '');
+                exampleCode = response.text.trim().replace(/^```typescript\n|^```ts\n|^```/g, '').replace(/```$/g, '');
             }
         } catch (e) {
             console.warn(`[ToolDocumenter] Failed to generate smart example for ${toolName}`, e);

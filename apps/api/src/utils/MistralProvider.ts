@@ -46,7 +46,7 @@ export class MistralProvider implements BaseLLMProvider {
     }
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
+  async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {
     try {
       const proxy = process.env.HTTPS_PROXY;
       const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
@@ -80,7 +80,7 @@ export class MistralProvider implements BaseLLMProvider {
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      return { text: data.choices[0]?.message?.content || '', usage: data.usage };
     } catch (error) {
       console.error("Mistral generation failed:", error);
       throw error;
