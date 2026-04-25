@@ -331,6 +331,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
       aiContext={url}
       settings={settingsContent}
       headerEnd={headerEnd}
+      hideAiButton={true}
     >
         {content}
     </UniversalCardWrapper>

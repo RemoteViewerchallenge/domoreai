@@ -349,6 +349,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         content={content}
                         onChange={(val) => void handleSave(val)}
                         onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
+                        roleId={agentConfig.roleId}
+                        onRoleChange={(roleId) => updateCard(id, { roleId })}
                         onNavigate={(url) => {
                             setBrowserUrl(url);
                             setViewMode('browser');
@@ -468,7 +470,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 Dismiss
                             </button>
                             <button 
-                                onClick={() => void runAgent("Retry the last failed command.")}
+                                onClick={() => void runAgent("Retry the last failed command.", agentConfig.roleId)}
                                 className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]"
                             >
                                 <RefreshCcw size={12} />
