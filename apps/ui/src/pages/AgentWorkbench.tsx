@@ -7,8 +7,7 @@ import { useHotkeys } from '../hooks/useHotkeys.js';
 import { trpc } from '../utils/trpc.js';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { cn } from '../lib/utils.js';
-import { AddProviderForm } from '../components/AddProviderForm.js';
-import { ProviderHealth } from '../components/ProviderHealth.js';
+// Provider management components removed in favor of dedicated Control Plane grid
 import { Link } from 'react-router-dom';
 
 
@@ -138,72 +137,26 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     }, {})
   );
 
-  const [activeTab, setActiveTab] = useState<'cards' | 'health'>('cards');
+  // Active tab state removed
 
   return (
     <AgentWorkbenchScaffold
       header={null}
       sidebar={showControlPlane ? (
-        <div className="flex flex-col h-full p-4 space-y-6 overflow-y-auto bg-zinc-950 border-r border-zinc-800 animate-in slide-in-from-left duration-300">
-          
-          <div className="flex bg-zinc-900 rounded-lg p-0.5 border border-zinc-800 mb-2">
-              <button 
-                  onClick={() => setActiveTab('cards')}
-                  className={cn(
-                      "flex-1 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all",
-                      activeTab === 'cards' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
-                  )}
-              >
-                  Workspace
-              </button>
-              <button 
-                  onClick={() => setActiveTab('health')}
-                  className={cn(
-                      "flex-1 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all",
-                      activeTab === 'health' ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
-                  )}
-              >
-                  Health
-              </button>
-              <div className="w-px h-3 bg-zinc-800 mx-1 self-center" />
-              <Link 
-                  to="/control-plane" 
-                  className="px-2 py-1 text-zinc-500 hover:text-emerald-400 transition-colors flex items-center justify-center"
-                  title="Open Full Page"
-              >
-                  <ExternalLink size={10} />
-              </Link>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest px-2 flex items-center gap-2">
-                <ShieldCheck size={12} className="text-emerald-500" /> Control Plane
-            </h4>
-            <AddProviderForm onSuccess={() => console.log('Provider added')} />
-          </div>
-
-          <div className="divider opacity-20"></div>
-
-          <div className="space-y-2">
-            <h4 className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest px-2">Live Insights</h4>
-            <div className="space-y-1">
-                <div className="text-[9px] p-2 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/20">
-                    [16:34] Scouted 12 new models.
-                </div>
-                <div className="text-[9px] p-2 bg-indigo-500/10 text-indigo-400 rounded border border-indigo-500/20">
-                    [16:35] MAB Preference: DeepSeek-V3.
-                </div>
-            </div>
-          </div>
+        <div className="flex flex-col h-full p-4 bg-zinc-950 border-r border-zinc-800 animate-in slide-in-from-left duration-300">
+          <Link 
+            to="/control-plane"
+            className="flex items-center gap-3 p-3 bg-zinc-900 border border-zinc-800 rounded-lg hover:bg-zinc-800 hover:border-zinc-700 transition-colors text-zinc-300 hover:text-white group"
+            title="Open Provider Management Grid"
+          >
+            <ShieldCheck size={16} className="text-indigo-400 group-hover:text-indigo-300" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Manage Providers</span>
+            <ExternalLink size={12} className="ml-auto text-zinc-500 group-hover:text-zinc-400" />
+          </Link>
         </div>
       ) : null}
       content={
         <div className={cn("h-full w-full flex flex-col overflow-hidden relative", className)}>
-          {activeTab === 'health' && showControlPlane ? (
-            <div className="p-6 h-full overflow-hidden bg-zinc-950">
-                <ProviderHealth />
-            </div>
-          ) : (
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex gap-0 overflow-hidden bg-zinc-950">
                   {Array.from({ length: columns }).map((_, columnIndex) => {
@@ -300,7 +253,6 @@ export default function AgentWorkbench({ className }: { className?: string }) {
                   })}
                 </div>
             </div>
-          )}
         </div>
       }
     />

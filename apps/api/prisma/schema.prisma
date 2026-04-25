@@ -8,6 +8,12 @@ datasource db {
   relationMode = "prisma"
 }
 
+enum BillingRiskLevel {
+  ZERO_RISK
+  PROMO_BURN
+  CC_ON_FILE
+}
+
 model ProviderConfig {
   id                 String   @id
   name               String
@@ -18,12 +24,19 @@ model ProviderConfig {
   isCreditCardLinked Boolean  @default(false) // [NEW]
   enforceFreeOnly    Boolean  @default(true)  // [NEW]
   monthlyBudget      Float?   // [NEW]
-  isEnabled          Boolean  @default(true)
-  status             String   @default("ACTIVE")
-  lastError          String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  Model              Model[]
+  isEnabled           Boolean  @default(true)
+  status              String   @default("ACTIVE")
+  lastError           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  serviceCategories   String[] @default([])
+  billingRiskLevel    BillingRiskLevel @default(ZERO_RISK)
+  promoMonthlyLimit   Float?
+  currentScrapedSpend Float?
+  billingDashboardUrl String?
+  lastScrapeTime      DateTime?
+  sessionValid        Boolean? @default(false)
+  Model               Model[]
 }
 
 model Workspace {
