@@ -25,6 +25,8 @@ type SuperAiButtonProps = {
   defaultPrompt?: string;
   defaultRoleId?: string;
   label?: string;
+  selectedRoleId?: string | null;
+  onRoleSelect?: (roleId: string) => void;
 };
 
 
@@ -39,11 +41,15 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   onGenerate,
   defaultPrompt = '',
   defaultRoleId,
-  label
+  label,
+  selectedRoleId: controlledRoleId,
+  onRoleSelect
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [localRoleId, setLocalRoleId] = useState<string | null>(null);
+  
+  const selectedRoleId = controlledRoleId !== undefined ? controlledRoleId : localRoleId;
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -121,9 +127,9 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   useEffect(() => {
     const saved = localStorage.getItem('superAiButton_defaultRole');
     if (saved) {
-      setSelectedRoleId(saved);
+      setLocalRoleId(saved);
     } else if (defaultRoleId) {
-      setSelectedRoleId(defaultRoleId);
+      setLocalRoleId(defaultRoleId);
     }
   }, [defaultRoleId]);
 
@@ -136,8 +142,9 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
     }
 
     const cleanRoleId = result.data;
-    setSelectedRoleId(cleanRoleId);
+    setLocalRoleId(cleanRoleId);
     localStorage.setItem('superAiButton_defaultRole', cleanRoleId);
+    if (onRoleSelect) onRoleSelect(cleanRoleId);
     setState('active'); // Return to prompt view after selection
   };
   

@@ -13,6 +13,8 @@ interface AiToolbarProps {
   contextId?: string; // For role persistence
   actions?: React.ReactNode;
   className?: string;
+  selectedRoleId?: string | null;
+  onRoleSelect?: (roleId: string) => void;
 }
 
 export const AiToolbar: React.FC<AiToolbarProps> = ({
@@ -24,7 +26,9 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
   onGenerate,
   contextId,
   actions,
-  className
+  className,
+  selectedRoleId,
+  onRoleSelect
 }) => {
   const isTop = position === 'top';
 
@@ -49,6 +53,8 @@ export const AiToolbar: React.FC<AiToolbarProps> = ({
           onSuccess={(res: unknown) => onAiAction('APPLY_RESPONSE', res)}
           onGenerate={onGenerate}
           contextId={contextId}
+          selectedRoleId={selectedRoleId}
+          onRoleSelect={onRoleSelect}
           style={{ '--ai-btn-primary': colorVar, '--ai-btn-size': '26px' } as React.CSSProperties} 
         />
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] opacity-80">
