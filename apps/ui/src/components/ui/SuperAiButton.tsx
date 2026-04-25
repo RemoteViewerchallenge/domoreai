@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils.js';
 import { trpc } from '../../utils/trpc.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 // Lazy load the role selector
 import CompactRoleSelector from '../CompactRoleSelector.js';
@@ -42,7 +43,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(defaultRoleId || 'liaison-v1');
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   
   const inputRef = useRef<HTMLInputElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -118,11 +119,13 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 
   // Persistent Role Selection
   useEffect(() => {
-    if (typeof contextId === 'string' && !defaultRoleId) {
-        const saved = localStorage.getItem(`super-ai-role-${contextId}`);
-        if (saved) setSelectedRoleId(saved);
+    const saved = localStorage.getItem('superAiButton_defaultRole');
+    if (saved) {
+      setSelectedRoleId(saved);
+    } else if (defaultRoleId) {
+      setSelectedRoleId(defaultRoleId);
     }
-  }, [contextId, defaultRoleId]);
+  }, [defaultRoleId]);
 
   const handleRoleSelect = (roleId: string) => {
     // Resilience Check: Add a Zod check to the role selection to prevent "String Handoff" errors.
@@ -134,9 +137,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
 
     const cleanRoleId = result.data;
     setSelectedRoleId(cleanRoleId);
-    if (typeof contextId === 'string') {
-        localStorage.setItem(`super-ai-role-${contextId}`, cleanRoleId);
-    }
+    localStorage.setItem('superAiButton_defaultRole', cleanRoleId);
     setState('active'); // Return to prompt view after selection
   };
   
@@ -144,11 +145,12 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   const handleLeftClick = () => {
     if (dispatchMutation.isLoading) return;
     
+    if (!selectedRoleId) {
+        toast.error("Please right-click to assign an AI role.");
+        return;
+    }
+
     // If we have a prompt or onGenerate, try to run.
-    // IMPT: If no prompt is typed, normally we'd do nothing or open input.
-    // User wants "Left click runs immediately". 
-    // If prompt is empty AND we don't have a custom handler (onGenerate), we MUST open the input.
-    // If onGenerate IS present, we assume the parent can handle an empty prompt (by using context/content).
     if (!prompt.trim() && !defaultPrompt && !onGenerate) {
          setState(prev => prev === 'active' ? 'idle' : 'active');
          return;
@@ -167,7 +169,7 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   // Right Click = Open Menu / Settings / Role Selector
   const handleRightClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    setState(state === 'menu' ? 'idle' : 'menu');
+    setState(state === 'role_select' ? 'idle' : 'role_select');
   };
 
   // Determine button aesthetic based on context

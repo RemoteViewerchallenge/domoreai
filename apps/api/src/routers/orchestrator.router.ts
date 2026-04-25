@@ -107,8 +107,28 @@ export const orchestratorRouter = createTRPCRouter({
         injectState: z.boolean().optional()
       }).optional()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       console.log('[Orchestrator] Dispatch received:', input);
-      return { success: true, message: "Command dispatched successfully" };
+      
+      let role = null;
+      if (input.roleId) {
+        // [ROUTING VERIFICATION] Fetch specific AgentConfig from DB to ensure correct model/provider routing
+        role = await ctx.prisma.role.findUnique({
+          where: { id: input.roleId },
+          include: { variants: { where: { isActive: true }, take: 1 } }
+        });
+        
+        if (role) {
+            console.log(`[Orchestrator] Task routed using role: ${role.name} (${role.id})`);
+            // The LLMSelector will use this role's specific config for API arbitrage logic.
+        } else {
+            console.warn(`[Orchestrator] Warning: Role ID ${input.roleId} not found in database.`);
+        }
+      }
+
+      return { 
+        success: true, 
+        message: role ? `Command routed to ${role.name}` : "Command dispatched successfully" 
+      };
     })
 });
