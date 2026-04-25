@@ -6,12 +6,14 @@ interface RawProviderOutput {
   modelId: string;
   roleId: string;
   userId: string;
+  providerId: string;
+  underlyingProvider?: string;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
   };
   cost?: number;
-  [key: string]: unknown; // Using unknown instead of any
+  [key: string]: unknown; 
 }
 
 // Define interface for ModelSelectionResult
@@ -35,7 +37,9 @@ export async function logUsage(data: RawProviderOutput) {
   const {
     modelId,
     roleId,
-    // userId, // Extract but don't save to DB as column is missing
+    providerId,
+    underlyingProvider,
+    // userId, 
     usage,
     cost,
     ...metadata 
@@ -45,16 +49,13 @@ export async function logUsage(data: RawProviderOutput) {
   try {
     const newLog = await prisma.modelUsage.create({
       data: {
-        // userId: userId, // Column missing
         modelId, 
         roleId, 
-
-        promptTokens: usage?.prompt_tokens ?? null,
-        completionTokens: usage?.completion_tokens ?? null,
-
-        cost: cost ?? 0.0,
-
-
+        providerId,
+        underlyingProvider: underlyingProvider || (providerId === 'openrouter' && modelId.includes('/') ? modelId.split('/')[0] : providerId),
+        promptTokens: usage?.prompt_tokens || 0,
+        completionTokens: usage?.completion_tokens || 0,
+        cost: cost || 0,
         metadata: { ...metadata } as Prisma.InputJsonValue,
       },
     });

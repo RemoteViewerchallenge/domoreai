@@ -70,11 +70,12 @@ export class ParallelTaskRunner {
                  const provider = ProviderManager.getProvider('openai'); // Defaulting for now
                  if (!provider) throw new Error("No provider for runner");
                  
-                 return await provider.generateCompletion({
+                 const response = await provider.generateCompletion({
                      modelId: 'gpt-4o',
                      messages: [{ role: 'user', content: prompt }],
                      max_tokens: 4096
                  });
+                 return response.text;
             });
 
             return {

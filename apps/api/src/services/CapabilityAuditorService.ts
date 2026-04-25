@@ -82,7 +82,7 @@ DO NOT engage in conversation. Focus solely on the drill.
                     { role: 'user', content: prompt }
                 ]
             });
-            return response;
+            return response.text;
         };
 
         const initialTurn = await regenerateCallback(drillGoal);

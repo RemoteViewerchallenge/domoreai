@@ -64,7 +64,7 @@ export class OpenAIProvider implements BaseLLMProvider {
     }
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
+  async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {
     // Validate model ID is provided
     if (!request.modelId || request.modelId.trim() === '') {
       throw new Error(`OpenAIProvider: modelId is required but got: "${request.modelId}"`);
@@ -100,12 +100,13 @@ export class OpenAIProvider implements BaseLLMProvider {
       
       const json = await response.json();
       const content = json.choices[0]?.message?.content || '';
+      const usage = json.usage;
       
       if (!content) {
         console.warn('[OpenAIProvider] Empty response from model:', json);
       }
       
-      return content;
+      return { text: content, usage };
     } catch (error: any) {
       // Distinguish between timeout and other errors for better debugging
       const errorMessage = error.message || error.error?.message || String(error);
@@ -133,7 +134,7 @@ export class OpenAIProvider implements BaseLLMProvider {
         }).asResponse();
         
         const json = await response.json();
-        return json.choices[0]?.message?.content || '';
+        return { text: json.choices[0]?.message?.content || '', usage: json.usage };
       }
       throw error;
     }

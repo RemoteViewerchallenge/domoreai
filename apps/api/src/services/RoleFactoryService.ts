@@ -103,7 +103,7 @@ Ensure the output is parseable by JSON.parse().`
             });
 
             // Robust JSON extraction
-            let jsonStr = response.trim();
+            let jsonStr = response.text.trim();
             // Allow ```json, ```JSON, or just ```
             const blockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/i);
             if (blockMatch) {

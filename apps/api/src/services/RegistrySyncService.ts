@@ -11,6 +11,7 @@ interface RawSnapshotData extends LLMModel {
 interface ProviderMetadata {
     name: string;
     type: string;
+    providerClass: string;
 }
 
 // Interface for pricing structure to avoid 'any'
@@ -102,6 +103,17 @@ export class RegistrySyncService {
 
                     const cost = m.costPer1k;
                     const providerData = m as unknown as Prisma.InputJsonValue;
+
+                    // [NEW] Logic for underlyingProvider
+                    let underlyingProvider = providerLabel;
+                    const metaClass = meta?.providerClass || 'FOUNDATIONAL';
+                    
+                    if (metaClass === 'AGGREGATOR' || providerType === 'openrouter') {
+                        // Extract underlying provider from ID (e.g. "google/gemini-pro" -> "google")
+                        if (rawName.includes('/')) {
+                            underlyingProvider = rawName.split('/')[0];
+                        }
+                    }
                     
                     // [DIFF-BASED UPDATE] Calculate checksum
                     const currentChecksum = this.calculateChecksum(providerData);
@@ -142,6 +154,7 @@ export class RegistrySyncService {
                                 name: rawName,
                                 costPer1k: cost || 0,
                                 providerData: providerData,
+                                underlyingProvider: underlyingProvider,
                                 aiData: {}, 
                                 isActive: true
                             },
@@ -149,6 +162,7 @@ export class RegistrySyncService {
                                 isActive: true,
                                 costPer1k: cost || 0,
                                 providerData: providerData, 
+                                underlyingProvider: underlyingProvider,
                                 lastSeenAt: new Date()
                             },
                             include: { provider: true }
