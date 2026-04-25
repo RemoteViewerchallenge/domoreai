@@ -84,7 +84,9 @@ export class PgVectorStore {
 export const vectorStore = new PgVectorStore();
 
 // A simple text chunking function
-export const chunkText = (text: string, chunkSize: number = 512, overlap: number = 100): string[] => {
+// Increased chunkSize to be more efficient while staying under model limits (approx 512-1024 tokens)
+export const chunkText = (text: string, chunkSize: number = 2000, overlap: number = 200): string[] => {
+  if (!text) return [];
   const chunks: string[] = [];
   let i = 0;
   while (i < text.length) {
@@ -100,8 +102,6 @@ import axios from 'axios';
 import { ProviderManager } from './ProviderManager.js';
 import { OllamaProvider } from '../utils/OllamaProvider.js';
 
-// A placeholder for embedding generation
-// TODO: Replace this with a real embedding model. Consider using a library like sentence-transformers.
 // Simple concurrency limiter to prevent overwhelming local Ollama
 class ConcurrencyLimiter {
   private queue: (() => void)[] = [];
@@ -131,35 +131,54 @@ class ConcurrencyLimiter {
 
 const embeddingLimiter = new ConcurrencyLimiter(1); // Limit to 1 concurrent request
 
-export const createEmbedding = async (text: string): Promise<number[]> => {
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const createEmbedding = async (text: string, retryCount = 3): Promise<number[]> => {
   if (!text || !text.trim()) {
     return new Array<number>(1024).fill(0);
   }
 
+  // If text is too large for the model's context, truncate it.
+  // mxbai-embed-large handles up to 512 tokens. 8000 chars is a safe upper bound for truncation.
+  const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
+
   return embeddingLimiter.run(async () => {
-    // console.log(`Creating embedding for text: "${text.substring(0, 50)}..."`);
+    let lastError: any = null;
     
-    // Try to get the 'local' provider first
-    const provider = ProviderManager.getProvider('local');
-    if (provider && provider instanceof OllamaProvider) {
+    for (let attempt = 0; attempt < retryCount; attempt++) {
       try {
-        return await provider.generateEmbedding(text);
-      } catch (err) {
-        console.warn('Failed to use local provider for embedding, falling back to default localhost', err);
+        // Try to get the 'local' provider first
+        const provider = ProviderManager.getProvider('local');
+        if (provider && provider instanceof OllamaProvider) {
+          return await provider.generateEmbedding(truncatedText);
+        }
+
+        const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        const response = await axios.post<{ embedding: number[] }>(`${baseUrl}/api/embeddings`, {
+          model: 'mxbai-embed-large',
+          prompt: truncatedText,
+        }, { timeout: 30000 }); // Increased timeout to 30s
+        
+        if (response.data?.embedding) {
+          return response.data.embedding;
+        }
+        throw new Error('No embedding returned in response');
+      } catch (error: any) {
+        lastError = error;
+        const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+        const isOverload = error.response?.status === 503 || error.response?.status === 429;
+        
+        console.warn(`[Embedding] Attempt ${attempt + 1} failed: ${error.message}${isOverload ? ' (Overloaded)' : ''}`);
+        
+        if (attempt < retryCount - 1) {
+          // Exponential backoff
+          await sleep(Math.pow(2, attempt) * 1000);
+        }
       }
     }
 
-    try {
-      const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-      const response = await axios.post<{ embedding: number[] }>(`${baseUrl}/api/embeddings`, {
-        model: 'mxbai-embed-large',
-        prompt: text,
-      }, { timeout: 10000 }); // Add timeout
-      return response.data.embedding;
-    } catch (error) {
-      console.error(`Error creating embedding for text (${text.length} chars): "${text.substring(0, 20)}..."`, error);
-      // Fallback to random vector if Ollama fails, to keep the app running
-      return Array.from({ length: 1024 }, () => Math.random());
-    }
+    console.error(`Error creating embedding after ${retryCount} attempts: "${truncatedText.substring(0, 20)}..."`, lastError);
+    // Return zeros instead of random noise to avoid poisoning the vector space
+    return new Array<number>(1024).fill(0);
   });
 };
