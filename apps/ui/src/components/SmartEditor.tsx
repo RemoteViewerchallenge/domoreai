@@ -22,9 +22,11 @@ interface SmartEditorProps {
   isAiTyping?: boolean; // New prop to show AI activity
   onRun?: (goal?: string, roleIdOverride?: string) => void;   // Callback for running the agent (Cmd+Enter)
   onNavigate?: (url: string) => void; // New: Handle link clicks
+  roleId?: string | null;
+  onRoleChange?: (roleId: string) => void;
 }
 
-const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void }) => {
+const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void }) => {
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
   const utils = trpc.useContext();
   
@@ -103,6 +105,8 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       type="DOCS" 
       title="Document Editor"
       contextId={fileName}
+      selectedRoleId={roleId}
+      onRoleSelect={onRoleChange}
       extraActions={
           <div className="flex items-center gap-1">
              {/* [NEW] Show Logs Toggle */}
@@ -208,7 +212,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
   );
 };
 
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate }) => {
+const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange }) => {
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
 
   if (isCode) {
@@ -218,6 +222,8 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
         type="MONACO" 
         title={`Code: ${fileName}`}
         contextId={fileName}
+        selectedRoleId={roleId}
+        onRoleSelect={onRoleChange}
         extraActions={
             <div className="flex items-center gap-1">
                 {/* Save Button */}
@@ -264,7 +270,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     );
   }
 
-  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} />;
+  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} />;
 };
 
 export default SmartEditor;
