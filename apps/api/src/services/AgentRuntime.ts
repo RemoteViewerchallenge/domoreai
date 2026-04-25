@@ -1,4 +1,8 @@
 import { CodeModeUtcpClient } from "@utcp/code-mode";
+import { blacklistModel } from '../rateLimiter.js';
+import { LLMSelector } from '../orchestrator/LLMSelector.js';
+import { prisma } from '../db.js';
+
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
 import { mcpOrchestrator } from "../orchestrator/McpOrchestrator.js";
@@ -575,30 +579,96 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
 
     const finalPrompt = `${enhancedSystemPrompt}\n\n${prompt}`.trim();
     
-    // Delegate to the provided agent/provider
-    const response = await agent.generate(finalPrompt);
-    const result = response.text;
+    let attempts = 0;
+    const maxAttempts = 3;
+    let currentAgent = agent;
+    let lastResult = "";
 
-    // Log Usage
-    const config = agent.getConfig();
-    void logUsage({
-        modelId: config.modelId,
-        roleId: roleId || 'default',
-        providerId: config.providerId || 'unknown',
-        userId: 'system',
-        usage: response.usage,
-    }).catch(e => console.error("[AgentRuntime] Usage logging failed", e));
+    while (attempts < maxAttempts) {
+      try {
+        // Delegate to the provided agent/provider
+        const response = await currentAgent.generate(finalPrompt);
+        const result = response.text;
 
-    // Record History (if session active)
-    if (sessionId && typeof result === 'string') {
-        const userMsg = prompt; // Original user prompt
-        const assistantMsg = result;
-        await this.contextManager.addMessage(sessionId, 'user', userMsg);
-        await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
+        // Log Usage
+        const config = currentAgent.getConfig();
+        void logUsage({
+            modelId: config.modelId,
+            roleId: roleId || 'default',
+            providerId: config.providerId || 'unknown',
+            userId: 'system',
+            usage: response.usage,
+        }).catch(e => console.error("[AgentRuntime] Usage logging failed", e));
+
+        // Record History (if session active)
+        if (sessionId && typeof result === 'string') {
+            const userMsg = prompt; // Original user prompt
+            const assistantMsg = result;
+            await this.contextManager.addMessage(sessionId, 'user', userMsg);
+            await this.contextManager.addMessage(sessionId, 'assistant', assistantMsg);
+        }
+
+        return result;
+      } catch (error: any) {
+        const errMsg = error.message || String(error);
+        const status = error.status || error.response?.status;
+
+        // Check if it's a 429, RESOURCE_EXHAUSTED, or quota error
+        if (status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+          const config = currentAgent.getConfig();
+          const failingModelId = config.internalId || config.modelId;
+          
+          console.warn(`[Arbitrage] Model ${failingModelId} rate limited. Swapping...`);
+          await blacklistModel(failingModelId, 60);
+
+          // Get the next best model
+          const selector = new LLMSelector();
+          const role = roleId ? await prisma.role.findUnique({ where: { id: roleId } }) : null;
+          
+          // Estimate tokens for the selection logic
+          const estimatedTokens = Math.ceil(finalPrompt.length / 3.5);
+          
+          const nextModelSlug = await selector.resolveModelForRole(
+            role || { id: 'default', metadata: {} }, 
+            estimatedTokens
+          );
+
+          const nextModel = await prisma.model.findUnique({ 
+            where: { id: nextModelSlug }, 
+            include: { provider: true } 
+          });
+
+          if (!nextModel) {
+            console.error(`[Arbitrage] Failed to find fallback model for slug: ${nextModelSlug}`);
+            throw error; // Throw the original error if we can't find a fallback
+          }
+
+          if (nextModel.id === failingModelId) {
+             console.warn(`[Arbitrage] Selector returned the same failing model. Exhausted candidates.`);
+             throw error;
+          }
+
+          // Instantiate a new VolcanoAgent for the fallback model
+          const { createVolcanoAgent } = await import("./VolcanoAgent.js");
+          currentAgent = await createVolcanoAgent({
+            ...config,
+            modelId: nextModel.name,
+            providerId: nextModel.providerId,
+            internalId: nextModel.id
+          } as any);
+
+          attempts++;
+          console.log(`[Arbitrage] Retrying with ${nextModel.providerId}/${nextModel.name} (Attempt ${attempts}/${maxAttempts})`);
+        } else {
+          // If it's a different error, throw it
+          throw error;
+        }
+      }
     }
 
-    return result;
+    throw new Error("All fallback models exhausted due to rate limits.");
   }
+
 
   /**
    * FUNCTIONAL SYSTEM PROMPT
@@ -737,12 +807,24 @@ Format: { "fixedCommand": "string", "remediationCommands": ["string"] }`;
     console.log(`[AgentRuntime] 🧠 Requesting fix from Recovery Worker for: ${failedStep.command}`);
 
     // We use a simple model call here. In a real scenario, we'd use modelManager.service
-    const { modelManager } = await import("./modelManager.service.js");
-    const activeModel = await modelManager.getActiveModel(); 
+    const { getBestModel } = await import("./modelManager.service.js");
+    const selection = await getBestModel(); 
     
-    if (!activeModel) {
+    if (!selection) {
         throw new Error("No active model available for recovery worker.");
     }
+
+    const { createVolcanoAgent } = await import("./VolcanoAgent.js");
+    const activeModel = await createVolcanoAgent({
+        roleId: 'recovery-worker',
+        modelId: selection.modelId,
+        providerId: selection.providerId,
+        internalId: (selection.model as any)?.id,
+        temperature: selection.temperature,
+        maxTokens: selection.maxTokens,
+        isLocked: false
+    });
+
 
     const response = await activeModel.generate(`${systemPrompt}\n\nFAILED_COMMAND: ${failedStep.command}`);
     
