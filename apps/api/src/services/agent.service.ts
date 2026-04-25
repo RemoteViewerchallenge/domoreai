@@ -5,6 +5,8 @@ import { AgentRuntime } from "./AgentRuntime.js";
 import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
 import { LLMSelector } from "../orchestrator/LLMSelector.js";
 import { ProviderManager } from "./ProviderManager.js";
+import { blacklistModel, isModelBlacklisted } from "../rateLimiter.js";
+
 import { prisma } from "../db.js";
 import type { Role } from "@prisma/client";
 import {
@@ -141,7 +143,10 @@ export class AgentService {
         const metadataMaxTokens = typeof roleMetadata.maxTokens === 'number' ? roleMetadata.maxTokens : null;
         const effectiveMaxTokens = cortexMaxOutputTokens || metadataMaxTokens || modelConfig.maxTokens;
 
+        let bestModel: any = null;
+
         if (!resolvedModelId) {
+
           const selector = new LLMSelector();
           const totalEstimatedChars = (role?.basePrompt?.length || 0) + ctx.finalUserGoal.length + 5000;
           const estimatedTokens = Math.ceil(totalEstimatedChars / 3.5);
@@ -162,12 +167,23 @@ export class AgentService {
           } as any;
           
           const bestSlug = await selector.resolveModelForRole(roleWithMaxOutput, estimatedTokens, []);
-          const bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, include: { provider: true, capabilities: true } });
+          bestModel = await prisma.model.findUnique({ where: { id: bestSlug }, include: { provider: true, capabilities: true } });
           if (bestModel) {
             resolvedModelId = bestModel.name;
             resolvedProviderId = bestModel.providerId;
           }
+        } else if (resolvedModelId) {
+          // If modelId was provided, we still want the internal record for failures
+          bestModel = await prisma.model.findFirst({ 
+            where: { 
+              OR: [
+                { id: resolvedModelId },
+                { name: resolvedModelId }
+              ]
+            } 
+          });
         }
+
 
         ctx.role = role;
         ctx.tools = tools;
@@ -177,12 +193,14 @@ export class AgentService {
           roleId,
           modelId: resolvedModelId!,
           providerId: resolvedProviderId,
+          internalId: (bestModel as any)?.id || resolvedModelId!, // bestModel is from line 165
           isLocked: false,
           temperature: modelConfig.temperature,
           maxTokens: effectiveMaxTokens,
           userGoal: ctx.finalUserGoal,
           projectPrompt: ctx.projectPrompt,
         };
+
         return ctx;
       })
       .addStep("jit_tool_mount", async (ctx) => {
@@ -361,11 +379,15 @@ export class AgentService {
         if (/provider|not found|model|rate limit|429|quota|overloaded|busy|capacity|timeout|APIConnectionTimeoutError|fetch|connection|econnrefused|network/i.test(errMsg)) {
           // Persist the failure
           try {
+            const failingId = (selectedModel as any).internalId || selectedModel.modelId;
+            await blacklistModel(failingId, 60);
+            
             await recordModelFailure(
               selectedModel.providerId,
               selectedModel.modelId,
               role?.id
             );
+
             recordProviderFailure(selectedModel.providerId, role?.id);
           } catch (recErr) {
             console.warn(
