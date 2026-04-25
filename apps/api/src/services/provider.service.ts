@@ -25,7 +25,13 @@ export class ProviderService {
     pricingUrl?: string,
     isCreditCardLinked?: boolean,
     enforceFreeOnly?: boolean,
-    monthlyBudget?: number
+    monthlyBudget?: number,
+    serviceCategories?: string[],
+    billingRiskLevel?: any,
+    promoMonthlyLimit?: number,
+    currentScrapedSpend?: number,
+    billingDashboardUrl?: string,
+    lastScrapeTime?: Date
   }) {
     if (input.id) {
       // PARTIAL UPDATE
@@ -44,6 +50,12 @@ export class ProviderService {
       if (input.isCreditCardLinked !== undefined) data.isCreditCardLinked = input.isCreditCardLinked;
       if (input.enforceFreeOnly !== undefined) data.enforceFreeOnly = input.enforceFreeOnly;
       if (input.monthlyBudget !== undefined) data.monthlyBudget = input.monthlyBudget;
+      if (input.serviceCategories !== undefined) data.serviceCategories = input.serviceCategories;
+      if (input.billingRiskLevel !== undefined) data.billingRiskLevel = input.billingRiskLevel;
+      if (input.promoMonthlyLimit !== undefined) data.promoMonthlyLimit = input.promoMonthlyLimit;
+      if (input.currentScrapedSpend !== undefined) data.currentScrapedSpend = input.currentScrapedSpend;
+      if (input.billingDashboardUrl !== undefined) data.billingDashboardUrl = input.billingDashboardUrl;
+      if (input.lastScrapeTime !== undefined) data.lastScrapeTime = input.lastScrapeTime;
 
       return prisma.providerConfig.update({
         where: { id: input.id },
@@ -66,6 +78,12 @@ export class ProviderService {
           isCreditCardLinked: input.isCreditCardLinked ?? false,
           enforceFreeOnly: input.enforceFreeOnly ?? true,
           monthlyBudget: input.monthlyBudget,
+          serviceCategories: input.serviceCategories ?? [],
+          billingRiskLevel: input.billingRiskLevel ?? 'ZERO_RISK',
+          promoMonthlyLimit: input.promoMonthlyLimit,
+          currentScrapedSpend: input.currentScrapedSpend,
+          billingDashboardUrl: input.billingDashboardUrl,
+          lastScrapeTime: input.lastScrapeTime,
           isEnabled: true,
         }
       });
