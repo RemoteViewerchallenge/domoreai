@@ -13,6 +13,8 @@ interface SmartContainerProps {
   extraActions?: React.ReactNode;
   onGenerate?: (prompt: string, options?: { roleId?: string }) => void; // New prop
   contextId?: string; // For persistent settings
+  selectedRoleId?: string | null;
+  onRoleSelect?: (roleId: string) => void;
 }
 
 // ✅ CORRECT: Mapping Types to SEMANTIC Variables, not colors.
@@ -31,7 +33,9 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
   className,
   extraActions,
   onGenerate,
-  contextId
+  contextId,
+  selectedRoleId,
+  onRoleSelect
 }) => {
   const config = CONFIG_MAP[type];
   const contextRef = useRef<(() => string)>(() => "No context available");
@@ -53,6 +57,8 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
           onAiAction={(_action, payload) => onAiResponse && onAiResponse(payload)}
           onGenerate={onGenerate}
           contextId={contextId}
+          selectedRoleId={selectedRoleId}
+          onRoleSelect={onRoleSelect}
           actions={extraActions}
         />
       )}
@@ -72,6 +78,8 @@ export const SmartContainer: React.FC<SmartContainerProps> = ({
           onAiAction={(_action, payload) => onAiResponse && onAiResponse(payload)}
           onGenerate={onGenerate}
           contextId={contextId}
+          selectedRoleId={selectedRoleId}
+          onRoleSelect={onRoleSelect}
           actions={extraActions}
         />
       )}
