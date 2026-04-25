@@ -23,6 +23,12 @@ export const providerRouter = createTRPCRouter({
       isCreditCardLinked: z.boolean().optional(),
       enforceFreeOnly: z.boolean().optional(),
       monthlyBudget: z.number().optional(),
+      serviceCategories: z.array(z.string()).optional(),
+      billingRiskLevel: z.enum(['ZERO_RISK', 'PROMO_BURN', 'CC_ON_FILE']).optional(),
+      promoMonthlyLimit: z.number().optional(),
+      currentScrapedSpend: z.number().optional(),
+      billingDashboardUrl: z.string().optional(),
+      lastScrapeTime: z.date().optional(),
     }))
     .mutation(async ({ input }) => {
       return providerService.upsertProviderConfig({
@@ -36,6 +42,12 @@ export const providerRouter = createTRPCRouter({
         isCreditCardLinked: input.isCreditCardLinked,
         enforceFreeOnly: input.enforceFreeOnly,
         monthlyBudget: input.monthlyBudget,
+        serviceCategories: input.serviceCategories,
+        billingRiskLevel: input.billingRiskLevel,
+        promoMonthlyLimit: input.promoMonthlyLimit,
+        currentScrapedSpend: input.currentScrapedSpend,
+        billingDashboardUrl: input.billingDashboardUrl,
+        lastScrapeTime: input.lastScrapeTime,
       });
     }),
 
@@ -57,6 +69,57 @@ export const providerRouter = createTRPCRouter({
         ...surveyResult,
         provider
       };
+    }),
+
+  // [NEW] Scrape billing balance
+  scrapeBalance: publicProcedure
+    .input(z.object({ providerId: z.string() }))
+    .mutation(async ({ input }) => {
+      const { BillingScraper } = await import('../services/billingScraper.js');
+      const scraper = new BillingScraper();
+      return scraper.scrapeAndSyncBalance(input.providerId);
+    }),
+
+  // [NEW] Save billing session
+  saveBillingSession: publicProcedure
+    .input(z.object({
+      providerId: z.string(),
+      dashboardUrl: z.string(),
+      cookies: z.array(z.object({
+        name: z.string(),
+        value: z.string(),
+        domain: z.string(),
+        path: z.string(),
+        secure: z.boolean().optional(),
+        httpOnly: z.boolean().optional(),
+        expires: z.number().optional(),
+        sameSite: z.enum(["Strict", "Lax", "None"]).optional()
+      }))
+    }))
+    .mutation(async ({ input }) => {
+      const { providerId, dashboardUrl, cookies } = input;
+      const fs = await import('fs');
+      const path = await import('path');
+      const { prisma } = await import('../db.js');
+
+      // Save cookies to .userData folder (using Playwright context dir structure)
+      const userDataDir = path.resolve(process.cwd(), '.userData', providerId);
+      if (!fs.existsSync(userDataDir)) {
+        fs.mkdirSync(userDataDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(userDataDir, 'cookies.json'), JSON.stringify(cookies, null, 2));
+
+      // Update provider config
+      await prisma.providerConfig.update({
+        where: { id: providerId },
+        data: {
+          billingDashboardUrl: dashboardUrl,
+          sessionValid: true,
+          billingRiskLevel: 'PROMO_BURN' // Upgrading risk due to authenticated session
+        }
+      });
+
+      return { success: true };
     }),
 
   listAllAvailableModels: publicProcedure.query(async () => {
