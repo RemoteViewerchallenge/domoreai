@@ -9,12 +9,14 @@ export const ProviderHealth: React.FC = () => {
   const gridData = useMemo(() => {
     if (!models) return [];
 
-    return models.map((m) => {
+    return models.map((m: any) => {
       const caps = m.capabilities as any;
       return {
         id: m.id,
         modelId: m.name,
-        provider: m.provider.label,
+        provider: m.underlyingProvider && m.underlyingProvider !== m.provider.name
+          ? `${m.provider.name} (${m.underlyingProvider})`
+          : m.provider.name,
         modalities: caps?.modalityTags || [],
         utility: caps?.utilityScore || 0,
         latency: caps?.latencyAvg || 0,

@@ -38,7 +38,7 @@ export class OllamaProvider implements BaseLLMProvider {
     }
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
+  async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {
     const userMessage = request.messages?.[request.messages.length - 1]?.content || '';
     const resp = await axios.post(this.baseURL + 'api/generate', {
       model: request.modelId,
@@ -50,7 +50,13 @@ export class OllamaProvider implements BaseLLMProvider {
       stream: false,
     });
     // Non-streaming response has { response: string, done: boolean }
-    return resp.data?.response || '';
+    return { 
+        text: resp.data?.response || '', 
+        usage: { 
+            prompt_tokens: resp.data?.prompt_eval_count || 0, 
+            completion_tokens: resp.data?.eval_count || 0 
+        } 
+    };
   }
 
   async generateEmbedding(text: string, model: string = 'mxbai-embed-large'): Promise<number[]> {

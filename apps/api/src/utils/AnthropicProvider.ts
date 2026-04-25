@@ -11,7 +11,7 @@ export class AnthropicProvider implements BaseLLMProvider {
     throw new Error("Anthropic getModels not implemented.");
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
+  async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {
     throw new Error("Anthropic generateCompletion not implemented.");
   }
 }

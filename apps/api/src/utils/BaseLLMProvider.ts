@@ -44,8 +44,16 @@ export interface CompletionRequest {
   [key: string]: unknown;
 }
 
+export interface CompletionResponse {
+  text: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+}
+
 export interface BaseLLMProvider {
   id: string;
   getModels(): Promise<LLMModel[]>;
-  generateCompletion(request: CompletionRequest): Promise<string>;
+  generateCompletion(request: CompletionRequest): Promise<CompletionResponse>;
 }

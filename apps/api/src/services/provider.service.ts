@@ -31,7 +31,8 @@ export class ProviderService {
     promoMonthlyLimit?: number,
     currentScrapedSpend?: number,
     billingDashboardUrl?: string,
-    lastScrapeTime?: Date
+    lastScrapeTime?: Date,
+    providerClass?: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL'
   }) {
     if (input.id) {
       // PARTIAL UPDATE
@@ -56,6 +57,7 @@ export class ProviderService {
       if (input.currentScrapedSpend !== undefined) data.currentScrapedSpend = input.currentScrapedSpend;
       if (input.billingDashboardUrl !== undefined) data.billingDashboardUrl = input.billingDashboardUrl;
       if (input.lastScrapeTime !== undefined) data.lastScrapeTime = input.lastScrapeTime;
+      if (input.providerClass !== undefined) data.providerClass = input.providerClass;
 
       return prisma.providerConfig.update({
         where: { id: input.id },
@@ -84,6 +86,7 @@ export class ProviderService {
           currentScrapedSpend: input.currentScrapedSpend,
           billingDashboardUrl: input.billingDashboardUrl,
           lastScrapeTime: input.lastScrapeTime,
+          providerClass: input.providerClass || 'FOUNDATIONAL',
           isEnabled: true,
         }
       });
@@ -257,6 +260,7 @@ export class ProviderService {
             isActive: true,
             lastSeenAt: new Date(),
             providerData: model as any,
+            underlyingProvider: (providerConfig.providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
             updatedAt: new Date(),
           }
         });
@@ -267,6 +271,7 @@ export class ProviderService {
             providerId: providerConfig.id,
             name: displayName,
             providerData: model as any,
+            underlyingProvider: (providerConfig.providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
             isActive: true,
             aiData: {},
           }

@@ -87,7 +87,7 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
     return { contents };
   }
 
-  async generateCompletion(request: CompletionRequest): Promise<string> {
+  async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {
     const { contents } = this.formatMessages(request.messages);
 
     const params: GenerateContentParameters = { 
@@ -109,7 +109,11 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
 
     try {
       const response = await this.client.models.generateContent(params);
-      return response.text || "";
+      const usage = (response as any).usageMetadata ? {
+        prompt_tokens: (response as any).usageMetadata.promptTokenCount,
+        completion_tokens: (response as any).usageMetadata.candidatesTokenCount
+      } : undefined;
+      return { text: response.text || "", usage };
     } catch (error: any) {
       console.error("GoogleGenAIProvider Error:", error);
       throw error;

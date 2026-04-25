@@ -29,6 +29,7 @@ export const providerRouter = createTRPCRouter({
       currentScrapedSpend: z.number().optional(),
       billingDashboardUrl: z.string().optional(),
       lastScrapeTime: z.date().optional(),
+      providerClass: z.enum(['FOUNDATIONAL', 'AGGREGATOR', 'INFERENCE_ENGINE', 'LOCAL']).optional(),
     }))
     .mutation(async ({ input }) => {
       return providerService.upsertProviderConfig({
@@ -48,6 +49,7 @@ export const providerRouter = createTRPCRouter({
         currentScrapedSpend: input.currentScrapedSpend,
         billingDashboardUrl: input.billingDashboardUrl,
         lastScrapeTime: input.lastScrapeTime,
+        providerClass: input.providerClass,
       });
     }),
 
