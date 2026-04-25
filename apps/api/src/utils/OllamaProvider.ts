@@ -59,12 +59,12 @@ export class OllamaProvider implements BaseLLMProvider {
     };
   }
 
-  async generateEmbedding(text: string, model: string = 'mxbai-embed-large'): Promise<number[]> {
+  async generateEmbedding(text: string, model: string = 'mxbai-embed-large:latest'): Promise<number[]> {
     try {
       const response = await axios.post(this.baseURL + 'api/embeddings', {
         model,
         prompt: text,
-      });
+      }, { timeout: 60000 });
       return response.data.embedding;
     } catch (e: any) {
       const msg = e?.message || 'unknown error';

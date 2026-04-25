@@ -1,6 +1,7 @@
 import { CodeModeUtcpClient } from "@utcp/code-mode";
 import { blacklistModel } from '../rateLimiter.js';
-import { LLMSelector } from '../orchestrator/LLMSelector.js';
+import { resolveModelForRole } from './modelManager.service.js';
+
 import { prisma } from '../db.js';
 
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
@@ -620,18 +621,23 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
           
           console.warn(`[Arbitrage] Model ${failingModelId} rate limited. Swapping...`);
           await blacklistModel(failingModelId, 60);
+          
+          // Step 2: Apply Bandit Penalty
+          const { updateReward } = await import("./modelManager.service.js");
+          void updateReward(failingModelId, false, undefined, status || errMsg).catch(e => console.error("[Bandit] Penalty update failed", e));
+
 
           // Get the next best model
-          const selector = new LLMSelector();
           const role = roleId ? await prisma.role.findUnique({ where: { id: roleId } }) : null;
           
           // Estimate tokens for the selection logic
           const estimatedTokens = Math.ceil(finalPrompt.length / 3.5);
           
-          const nextModelSlug = await selector.resolveModelForRole(
+          const nextModelSlug = await resolveModelForRole(
             role || { id: 'default', metadata: {} }, 
             estimatedTokens
           );
+
 
           const nextModel = await prisma.model.findUnique({ 
             where: { id: nextModelSlug }, 
