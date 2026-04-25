@@ -1,6 +1,8 @@
 import { prisma } from '../db.js';
 import { Model, ModelCapabilities, ProviderConfig } from '@prisma/client';
 import { CreditGuard } from '../services/CreditGuard.js';
+import { isModelBlacklisted } from '../rateLimiter.js';
+
 
 /**
  * Role requirements used to filter candidate models.
@@ -38,11 +40,26 @@ export class LLMSelector {
       throw new Error('[LLMSelector] No active models found in database.');
     }
 
+    // FILTER 0: Rate Limit Blacklist
+    const availableModels: typeof allModels = [];
+    for (const m of allModels) {
+      if (!(await isModelBlacklisted(m.id))) {
+        availableModels.push(m);
+      } else {
+        console.warn(`[LLMSelector] Skipping blacklisted model: ${m.id}`);
+      }
+    }
+
+    if (availableModels.length === 0) {
+      throw new Error('[LLMSelector] All candidate models are currently blacklisted due to rate limits.');
+    }
+
     // FILTER 1: Hard Requirements
     // - Drop models that don't satisfy minContext.
     // - If requiresVision, drop models lacking "VISION" in modalityTags.
     // - If requiresTools, drop models lacking "TOOL_CALLING" in modalityTags.
-    let candidates = allModels.filter(m => {
+    let candidates = availableModels.filter(m => {
+
       const caps = m.capabilities;
       if (!caps) return false;
 

@@ -3,8 +3,10 @@ import { CardAgentState } from '../types.js';
 
 export interface AgentConfig extends CardAgentState {
   providerId?: string;
+  internalId?: string;
   // Add any specific properties if needed
 }
+
 
 export class VolcanoAgent {
   private config: AgentConfig;
