@@ -3,7 +3,8 @@ import { AgentRuntime } from './AgentRuntime.js';
 import { RoleFactoryService } from './RoleFactoryService.js';
 import { mcpOrchestrator } from '../orchestrator/McpOrchestrator.js';
 import { ProviderManager } from './ProviderManager.js';
-import { LLMSelector } from '../orchestrator/LLMSelector.js';
+import { resolveModelForRole } from './modelManager.service.js';
+
 
 export class CapabilityAuditorService {
     private factory = new RoleFactoryService();
@@ -57,10 +58,8 @@ DO NOT engage in conversation. Focus solely on the drill.
 
         // 3. Run the agent loop
         const variant = auditorRole.variants[0];
-        const selector = new LLMSelector();
-        
         // Resolve model via selector for high-quality auditing
-        const modelId = await selector.resolveModelForRole({
+        const modelId = await resolveModelForRole({
             id: auditorRole.id,
             metadata: {
                 requirements: {

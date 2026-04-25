@@ -345,6 +345,17 @@ model KnowledgeVector {
   @@index([entityType, entityId])
 }
 
+model VectorEmbedding {
+  id        String   @id
+  vector    Float[]
+  content   String
+  filePath  String
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  @@index([filePath])
+}
+
 model FileIndex {
   filePath    String   @id
   contentHash String
