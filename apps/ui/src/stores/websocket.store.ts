@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import useIngestStore from './ingest.store';
+import useIngestStore from './ingest.store.js';
 import type { TerminalMessage } from '@repo/common/agent';
 
 type WebSocketStatus = 'disconnected' | 'connecting' | 'connected';
@@ -17,6 +17,7 @@ function isTerminalMessage(obj: unknown): obj is TerminalMessage {
 interface WebSocketState {
   status: WebSocketStatus;
   messages: TerminalMessage[];
+  lastEvent: { type: string; [key: string]: any } | null;
   socket: WebSocket | null;
   actions: {
     connect: (vfsToken: string) => void;
@@ -28,19 +29,11 @@ interface WebSocketState {
 
 /**
  * A Zustand store for managing the WebSocket connection and terminal messages.
- *
- * @property {WebSocketStatus} status - The current status of the WebSocket connection.
- * @property {TerminalMessage[]} messages - An array of terminal messages received from the server.
- * @property {WebSocket | null} socket - The WebSocket instance.
- * @property {object} actions - An object containing functions to interact with the WebSocket.
- * @property {(vfsToken: string) => void} actions.connect - Establishes a WebSocket connection.
- * @property {() => void} actions.disconnect - Closes the WebSocket connection.
- * @property {(payload: any) => void} actions.sendMessage - Sends a message to the server.
- * @property {(message: TerminalMessage) => void} actions.addMessage - Adds a message to the message history.
  */
 const useWebSocketStore = create<WebSocketState>((set, get) => ({
   status: 'disconnected',
   messages: [],
+  lastEvent: null,
   socket: null,
   actions: {
     connect: (vfsToken) => {
@@ -58,11 +51,17 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
       newSocket.onmessage = (event) => {
         try {
-          const data: unknown = JSON.parse(event.data as string);
+          const data: any = JSON.parse(event.data as string);
 
           // Pass through terminal-style messages
           if (isTerminalMessage(data)) {
             get().actions.addMessage(data);
+            return;
+          }
+
+          // Handle Role Events
+          if (data && (data.type === 'ROLE_CREATED' || data.type === 'ROLE_UPDATED')) {
+            set({ lastEvent: data });
             return;
           }
 
@@ -71,25 +70,20 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
             const ingest = useIngestStore.getState();
             switch (data.type) {
               case 'ingest.start':
-                // Mark ingest active for this path
                 ingest.increment(data.path || undefined);
                 break;
               case 'ingest.file.start':
-                // update current path display
                 useIngestStore.setState({ currentPath: data.filePath || data.file || null });
                 break;
               case 'ingest.file.complete':
-                // increment processed count
                 const prev = useIngestStore.getState().filesProcessed || 0;
                 useIngestStore.getState().updateProgress(prev + 1);
                 break;
               case 'ingest.file.skipped':
-                // skipped counts as processed for UI purposes
                 const prev2 = useIngestStore.getState().filesProcessed || 0;
                 useIngestStore.getState().updateProgress(prev2 + 1);
                 break;
               case 'ingest.complete':
-                // Done scanning this path
                 useIngestStore.getState().decrement();
                 useIngestStore.getState().updateProgress(0);
                 useIngestStore.setState({ currentPath: null });
@@ -100,7 +94,7 @@ const useWebSocketStore = create<WebSocketState>((set, get) => ({
             return;
           }
 
-          console.warn('Received non-TerminalMessage from WebSocket:', data);
+          console.warn('Received unknown message from WebSocket:', data);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }

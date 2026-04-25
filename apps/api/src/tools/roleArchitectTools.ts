@@ -103,56 +103,105 @@ Status: Ready for deployment.`
         }];
     }
   },
+  },
   {
-    name: 'role_config_patch',
-    description: 'Targeted updates to a role\'s basePrompt or tools array. Use for fine-tuning after evolution.',
+    name: 'upsert_role',
+    description: 'Create or update an AI role in the system. Use this to hire or train new agents.',
     inputSchema: {
       type: 'object',
       properties: {
-        roleId: { type: 'string', description: 'ID of the role to update' },
-        updates: {
-          type: 'object',
-          properties: {
-            basePrompt: { type: 'string' },
-            tools: { type: 'array', items: { type: 'string' } },
-          },
-        },
+        id: { type: 'string', description: 'Optional ID for updating an existing role.' },
+        name: { type: 'string', description: 'Name of the role (e.g. "Security Auditor")' },
+        description: { type: 'string' },
+        basePrompt: { type: 'string', description: 'The detailed system prompt for the role.' },
+        categoryName: { type: 'string', default: 'Uncategorized' },
+        tools: { type: 'array', items: { type: 'string' }, description: 'List of tool names this role can use.' },
+        needsVision: { type: 'boolean' },
+        needsCoding: { type: 'boolean' },
+        needsReasoning: { type: 'boolean' },
+        needsTools: { type: 'boolean' },
+        minContext: { type: 'number' },
+        maxContext: { type: 'number' },
       },
-      required: ['roleId', 'updates'],
+      required: ['name', 'basePrompt'],
     },
     handler: async (args: unknown) => {
-      const typedArgs = args as RoleConfigPatchArgs;
-      const toolNames = typedArgs.updates.tools;
-      const role = await prisma.role.update({
-        where: { id: typedArgs.roleId },
-        data: {
-          basePrompt: typedArgs.updates.basePrompt,
-          ...(toolNames && {
-            tools: {
-              deleteMany: {},
-              create: toolNames.map((t: string) => ({
-                tool: {
-                  connectOrCreate: {
-                    where: { name: t },
-                    create: {
-                      name: t,
-                      description: `Automatically created tool: ${t}`,
-                      instruction: `Use the ${t} tool as needed.`,
-                      schema: '{}'
-                    }
-                  }
-                }
-              }))
-            }
-          })
-        },
-      });
+        const typedArgs = args as any;
+        const factory = new RoleFactoryService();
+        
+        // Ensure category exists
+        let category = await prisma.roleCategory.findUnique({ where: { name: typedArgs.categoryName || 'Uncategorized' } });
+        if (!category) {
+            category = await prisma.roleCategory.create({ data: { name: typedArgs.categoryName || 'Uncategorized' } });
+        }
 
-      return [{
-        type: 'text',
-        text: `✅ Role "${role.name}" patched successfully.`,
-      }];
+        const role = await prisma.role.upsert({
+            where: { id: typedArgs.id || 'new-role-' + Date.now() },
+            update: {
+                name: typedArgs.name,
+                description: typedArgs.description,
+                basePrompt: typedArgs.basePrompt,
+                categoryId: category.id,
+                metadata: {
+                    needsVision: typedArgs.needsVision,
+                    needsCoding: typedArgs.needsCoding,
+                    needsReasoning: typedArgs.needsReasoning,
+                    needsTools: typedArgs.needsTools,
+                    minContext: typedArgs.minContext,
+                    maxContext: typedArgs.maxContext,
+                }
+            },
+            create: {
+                name: typedArgs.name,
+                description: typedArgs.description || '',
+                basePrompt: typedArgs.basePrompt,
+                categoryId: category.id,
+                metadata: {
+                    needsVision: typedArgs.needsVision,
+                    needsCoding: typedArgs.needsCoding,
+                    needsReasoning: typedArgs.needsReasoning,
+                    needsTools: typedArgs.needsTools,
+                    minContext: typedArgs.minContext,
+                    maxContext: typedArgs.maxContext,
+                }
+            }
+        });
+
+        // Sync Tools
+        if (typedArgs.tools) {
+            await prisma.roleTool.deleteMany({ where: { roleId: role.id } });
+            for (const toolName of typedArgs.tools) {
+                const tool = await prisma.tool.findUnique({ where: { name: toolName } });
+                if (tool) {
+                    await prisma.roleTool.create({
+                        data: { roleId: role.id, toolId: tool.id }
+                    }).catch(() => {});
+                }
+            }
+        }
+
+        return [{
+            type: 'text',
+            text: `✅ Role "${role.name}" (${role.id}) has been upserted successfully.`
+        }];
+    }
+  },
+  {
+    name: 'list_available_tools',
+    description: 'List all tools currently registered in the system that can be assigned to roles.',
+    inputSchema: {
+        type: 'object',
+        properties: {}
     },
+    handler: async () => {
+        const tools = await prisma.tool.findMany({
+            select: { name: true, description: true }
+        });
+        return [{
+            type: 'text',
+            text: JSON.stringify(tools, null, 2)
+        }];
+    }
   },
 ];
 
