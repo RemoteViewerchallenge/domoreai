@@ -13,8 +13,17 @@ import { Layers, Server, Layout, Database, Filter, Settings, Network, Users } fr
 import { AgentDNAlab } from '../features/dna-lab/AgentDNAlab.js';
 import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 
+const DirectoryNode = ({ data }: any) => {
+  return (
+    <div className="px-3 py-1 bg-zinc-800/80 backdrop-blur-sm border border-zinc-700 rounded text-[10px] text-zinc-400 font-bold">
+      📁 {data?.label || 'Directory'}
+    </div>
+  );
+};
+
 const nodeTypes = {
   superNode: SuperNode,
+  directory: DirectoryNode,
 };
 
 const OrganizationalStructureContent = () => {
