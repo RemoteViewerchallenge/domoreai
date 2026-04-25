@@ -47,7 +47,17 @@ for TARGET in "${BRANCHES[@]}"; do
   # Merge source into target without committing
   echo "Merging $CURRENT_BRANCH into $TARGET..."
   if ! git merge "$CURRENT_BRANCH" --no-commit --no-ff; then
-    echo "Conflict detected during merge. This is expected for .gitignore."
+    echo "Conflict detected. Resolving all conflicts in favor of $CURRENT_BRANCH..."
+    
+    # Get all files with merge conflicts and resolve them using the source branch
+    git diff --name-only --diff-filter=U | while read -r file; do
+      if git rev-parse --verify "$CURRENT_BRANCH:$file" >/dev/null 2>&1; then
+        git checkout --theirs "$file"
+        git add "$file"
+      else
+        git rm -f "$file"
+      fi
+    done
   fi
 
   # Explicitly restore .gitignore from target's own HEAD
