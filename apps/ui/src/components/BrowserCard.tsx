@@ -1,33 +1,79 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
 import ResearchBrowser from './ResearchBrowser.js';
-import { Globe, ArrowLeft, ArrowRight, RotateCw, Lock, BookOpen, FileText } from 'lucide-react';
+import { 
+  Globe, ArrowLeft, ArrowRight, RotateCw, Lock, 
+  Star, Crosshair, ChevronDown, ExternalLink, Plus, Folder
+} from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 import { toast } from 'sonner';
+import { cn } from '../lib/utils.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { SuperAiButton } from './ui/SuperAiButton.js';
 
 /**
- * BrowserCard: An Electron-only browser card using the <webview> tag.
- * Wraps functionality in the UniversalCardWrapper.
+ * Persistent WebView Component
+ * Memoized to prevent re-renders when parent layout changes.
+ * In a real Portal strategy, this would render to a detached DOM node.
  */
+const PersistentBrowser = React.memo(({ 
+  url, 
+  webviewRef, 
+  onReady, 
+  onFail, 
+  mobileUA, 
+  isReaderMode,
+  isElectron 
+}: {
+  url: string;
+  webviewRef: React.RefObject<HTMLWebViewElement>;
+  onReady: () => void;
+  onFail: (e: any) => void;
+  mobileUA: boolean;
+  isReaderMode: boolean;
+  isElectron: boolean;
+}) => {
+  useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
 
-// Define WebView props for type safety
-interface WebViewProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> {
-    src?: string;
-    allowpopups?: boolean | string;
-    webpreferences?: string;
-    useragent?: string;
-    partition?: string;
-    preload?: string;
-    httpreferrer?: string;
-    nodeintegration?: boolean;
-    plugins?: boolean;
-    disablewebsecurity?: boolean;
-    allowfullscreen?: boolean;
-    autosize?: string;
-    popups?: boolean;
-}
+    const handleDomReady = () => onReady();
+    const handleFail = (e: any) => onFail(e);
 
-const WebView = 'webview' as unknown as React.FC<WebViewProps>;
+    webview.addEventListener('dom-ready', handleDomReady);
+    // @ts-ignore Electron event
+    webview.addEventListener('did-fail-load', handleFail);
+    
+    return () => {
+      webview.removeEventListener('dom-ready', handleDomReady);
+      // @ts-ignore Electron event
+      webview.removeEventListener('did-fail-load', handleFail);
+    };
+  }, [webviewRef, onReady, onFail]);
+
+  if (!isElectron) return null;
+
+  // Use string for webview tag
+  const WebView = 'webview' as any;
+
+  return (
+    <WebView
+      ref={webviewRef}
+      src={url}
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        visibility: isReaderMode ? 'hidden' : 'visible',
+        backgroundColor: 'white'
+      }}
+      allowpopups="true"
+      webpreferences="nativeWindowOpen=yes"
+      useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
+    />
+  );
+});
+
+PersistentBrowser.displayName = 'PersistentBrowser';
 
 const isElectron = () => {
   return typeof window !== 'undefined' &&
@@ -46,16 +92,40 @@ interface BrowserCardProps {
   onBillingSessionSaved?: () => void;
 }
 
-export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId, headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper, billingModeProviderId, onBillingSessionSaved }) => {
+export const BrowserCard: React.FC<BrowserCardProps> = ({ 
+  cardId, 
+  screenspaceId, 
+  headerEnd, 
+  initialUrl = 'https://www.google.com', 
+  onLoad, 
+  hideWrapper, 
+  billingModeProviderId, 
+  onBillingSessionSaved 
+}) => {
   const [url, setUrl] = useState(initialUrl);
   const [input, setInput] = useState(url);
   const [isReady, setIsReady] = useState(false);
+  const [isSelectingDOM, setIsSelectingDOM] = useState(false);
   const webviewRef = useRef<HTMLWebViewElement>(null);
+  
+  // Stores
+  const appendContextBuffer = useWorkspaceStore(state => state.appendContextBuffer);
   
   // Reader Mode State
   const [isReaderMode, setIsReaderMode] = useState(false);
   const [readerContent, setReaderContent] = useState<string>('');
-  const scrapeMutation = trpc.browser.scrape.useMutation();
+
+  // tRPC
+  const utils = trpc.useContext();
+  const extractMutation = trpc.browser.extractMarkdown.useMutation();
+  const { data: folders } = trpc.bookmark.listFolders.useQuery();
+  const createBookmarkMutation = trpc.bookmark.createBookmark.useMutation({
+    onSuccess: () => {
+      toast.success("Bookmark added!");
+      void utils.bookmark.listFolders.invalidate();
+    }
+  });
+
   const saveBillingSessionMutation = trpc.providers.saveBillingSession.useMutation({
     onSuccess: () => {
       toast.success('Billing session saved successfully!');
@@ -95,60 +165,66 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
     }
   };
 
+  const handleExtractContext = async () => {
+    try {
+      const toastId = toast.loading("Extracting clean context for AI...");
+      const result = await extractMutation.mutateAsync({ url });
+      
+      // Dispatch to global context buffer
+      appendContextBuffer(`[Extracted from ${result.url}]\n\n# ${result.title}\n\n${result.markdown}`);
+      
+      setReaderContent(`# ${result.title}\n\n${result.markdown}`);
+      setIsReaderMode(true);
+      toast.dismiss(toastId);
+      toast.success("Context dispatched to Agent buffer!");
+    } catch (err) {
+      toast.error("Extraction Failed", { description: (err as Error).message });
+    }
+  };
+
+  const handleAddBookmark = () => {
+    createBookmarkMutation.mutate({
+      title: "New Bookmark", // Ideally fetch title from webview
+      url: url,
+      folderId: folders?.[0]?.id || null
+    });
+  };
+
+  const handleDomSelection = () => {
+    toast.info("DOM Selector Mode active. Click an element to extract its path.");
+    // Placeholder for handleDomSelection
+  };
+
+  useEffect(() => {
+    if (isSelectingDOM) {
+      handleDomSelection();
+    }
+  }, [isSelectingDOM]);
+
   // Sync URL/Content to context
-  React.useEffect(() => {
+  useEffect(() => {
     if (onLoad) {
-        // If in reader mode, pass the text content so it can be saved!
         if (isReaderMode) onLoad(readerContent);
         else onLoad(url);
     }
   }, [url, onLoad, isReaderMode, readerContent]);
 
-  // Sync internal state with external prop updates (for navigation via links)
-  React.useEffect(() => {
+  // Sync internal state with external prop updates
+  useEffect(() => {
     if (initialUrl && initialUrl !== url) {
         setUrl(initialUrl);
         setInput(initialUrl);
     }
-  }, [initialUrl, url]); 
+  }, [initialUrl]); 
 
-  // Handle WebView dom-ready event
-  React.useEffect(() => {
-    const webview = webviewRef.current;
-    if (!webview) return;
-
-    const handleDomReady = () => setIsReady(true);
-    const handleFail = (e: any) => {
-        // Prevent fatal crashes on navigation errors (like ERR_NAME_NOT_RESOLVED)
-        console.warn('WebView failed to load:', e);
-        if (e.errorCode !== -3) { // Ignore aborted
-             toast.error(`Failed to load: ${e.validatedURL}`, { description: e.errorDescription });
-        }
-    };
-
-    webview.addEventListener('dom-ready', handleDomReady);
-    // @ts-expect-error Electron event
-    webview.addEventListener('did-fail-load', handleFail);
-    
-    return () => {
-      webview.removeEventListener('dom-ready', handleDomReady);
-      // @ts-expect-error Electron event
-      webview.removeEventListener('did-fail-load', handleFail);
-    };
-  }, []);
-  
-  // Settings State
   const [showDebugView, setShowDebugView] = useState(false);
   const [blockAds, setBlockAds] = useState(true);
   const [mobileUA, setMobileUA] = useState(false);
 
-  const handleGo = () => {
-    let target = input.trim();
+  const handleGo = (targetUrl?: string) => {
+    let target = targetUrl || input.trim();
     if (!target) return;
 
-    // Detection logic: 
-    // 1. If it has spaces, it's a search.
-    // 2. If it doesn't have a dot and doesn't look like a URL, it's a search.
     const isUrl = !target.includes(' ') && (target.includes('.') || target.startsWith('localhost') || target.startsWith('http'));
 
     if (isUrl) {
@@ -156,54 +232,45 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
         target = `https://${target}`;
       }
     } else {
-      // Search fallback
       target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
     }
 
     setUrl(target);
     setInput(target);
-    setIsReaderMode(false); // Reset reader on nav
+    setIsReaderMode(false);
   };
 
   const handleBack = () => {
     if (isReaderMode) { setIsReaderMode(false); return; }
     if (webviewRef.current && isReady) {
-      // @ts-ignore Electron webview method
+      // @ts-ignore
       webviewRef.current.goBack();
     }
   };
   const handleForward = () => {
     if (webviewRef.current && isReady) {
-      // @ts-ignore Electron webview method
+      // @ts-ignore
       webviewRef.current.goForward();
     }
   };
   const handleReload = () => {
-    if (isReaderMode) { void handleScrape(); return; }
+    if (isReaderMode) { void handleExtractContext(); return; }
     if (webviewRef.current && isReady) {
-      // @ts-ignore Electron webview method
+      // @ts-ignore
       webviewRef.current.reload();
     }
   };
 
-  const handleScrape = async () => {
-      try {
-          const toastId = toast.loading("Extracting content...");
-          const result = await scrapeMutation.mutateAsync({ url });
-          setReaderContent(`# ${result.title}\n\n${result.content}`);
-          setIsReaderMode(true);
-          toast.dismiss(toastId);
-          toast.success("Content extracted!");
-      } catch (err) {
-          toast.error("Scrape Failed", { description: (err as Error).message });
-      }
-  };
+  const onReady = useCallback(() => setIsReady(true), []);
+  const onFail = useCallback((e: any) => {
+    console.warn('WebView failed to load:', e);
+    if (e.errorCode !== -3) {
+      toast.error(`Failed to load: ${e.validatedURL}`, { description: e.errorDescription });
+    }
+  }, []);
 
-  // Settings Panel Content
   const settingsContent = (
     <div className="space-y-6 text-foreground">
-      
-      {/* Active Role - Mocked for visual */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Role</label>
         <div className="p-3 bg-muted rounded border border-border flex items-center justify-between">
@@ -212,7 +279,6 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
         </div>
       </div>
 
-      {/* Debugging */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Debugging</label>
         <div className="p-3 bg-muted/50 rounded border border-border space-y-3">
@@ -226,13 +292,11 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
                 />
                 <div>
                     <label htmlFor="debug-toggle" className="block text-sm font-medium text-foreground">Show Agent&apos;s &quot;Research Browser&quot; Stream</label>
-                    <p className="text-xs text-muted-foreground">Enable this only if the Agent is stuck or for debugging remote browsing.</p>
                 </div>
             </div>
         </div>
       </div>
 
-      {/* Options */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Options</label>
         <div className="space-y-2">
@@ -260,8 +324,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
   );
 
   const content = (
-    <div className="flex flex-col w-full h-full bg-background relative">
-         {/* BILLING MODE ACTION BAR */}
+    <div className="flex flex-col w-full h-full bg-background relative overflow-hidden">
          {billingModeProviderId && (
             <div className="bg-indigo-600 border-b border-indigo-500 p-3 flex items-center justify-between shadow-lg z-50">
               <div className="text-white font-bold text-sm tracking-wide">
@@ -277,65 +340,134 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
             </div>
          )}
          
-         {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
          {!showDebugView && (
-            <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border shrink-0">
-                <button type="button" onClick={handleBack} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
-                    <ArrowLeft size={16} />
-                </button>
-                <button type="button" onClick={handleForward} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
-                    <ArrowRight size={16} />
-                </button>
-                <button type="button" onClick={handleReload} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
-                    <RotateCw size={16} />
-                </button>
-                
-                {/* Address Input */}
-                <div className="flex-1 relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-                        <Lock size={12} />
+            <div className="flex flex-col shrink-0 bg-background border-b border-border z-30 shadow-sm">
+                {/* Main Toolbar */}
+                <div className="h-10 flex items-center px-2 space-x-2">
+                    <div className="flex items-center space-x-0.5">
+                        <button type="button" onClick={handleBack} disabled={!isReady} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground disabled:opacity-20">
+                            <ArrowLeft size={16} />
+                        </button>
+                        <button type="button" onClick={handleForward} disabled={!isReady} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground disabled:opacity-20">
+                            <ArrowRight size={16} />
+                        </button>
+                        <button type="button" onClick={handleReload} disabled={!isReady} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground disabled:opacity-20">
+                            <RotateCw size={16} />
+                        </button>
                     </div>
-                    <input 
-                        className="w-full bg-card text-foreground text-xs font-mono rounded-full py-1.5 pl-8 pr-4 border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
-                        onFocus={e => e.target.select()}
-                        placeholder="Enter URL or search..."
-                    />
+                    
+                    {/* Draggable URL Input */}
+                    <div 
+                      className="flex-1 relative group"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', url);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                    >
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                            <Lock size={12} className="opacity-50" />
+                        </div>
+                        <input 
+                            className="w-full bg-card/50 text-foreground text-xs font-mono rounded py-1.5 pl-8 pr-12 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all cursor-grab active:cursor-grabbing"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
+                            onFocus={e => e.target.select()}
+                            placeholder="Enter URL or search..."
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-1.5 space-x-1">
+                          <button 
+                            type="button" 
+                            onClick={handleAddBookmark}
+                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-yellow-500 transition-colors"
+                          >
+                            <Star size={14} />
+                          </button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1">
+                        <SuperAiButton 
+                            label="Extract Context"
+                            contextId={url}
+                            onGenerate={() => void handleExtractContext()}
+                            style={{ '--ai-btn-primary': 'var(--ai-intent-browser)', '--ai-btn-size': '28px' } as React.CSSProperties}
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setIsSelectingDOM(!isSelectingDOM)} 
+                            className={cn(
+                              "p-1.5 rounded transition-colors",
+                              isSelectingDOM ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
+                            )}
+                            title="Selector Mode"
+                        >
+                            <Crosshair size={16} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Reader Toggle */}
-                <button 
-                    type="button" 
-                    onClick={() => { if(isReaderMode) { setIsReaderMode(false); } else { void handleScrape(); } }} 
-                    className={`p-1.5 rounded-md transition-colors ${isReaderMode ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
-                    title={isReaderMode ? "Exit Reader" : "Reader Mode (Scrape)"}
-                >
-                    {isReaderMode ? <FileText size={16} /> : <BookOpen size={16} />}
-                </button>
+                {/* Bookmarks Bar */}
+                <div className="h-8 border-t border-border/50 bg-card/30 flex items-center px-3 space-x-4 overflow-x-auto no-scrollbar">
+                  {folders?.map((folder: any) => (
+                    <div key={folder.id} className="group relative flex items-center space-x-1.5 text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer whitespace-nowrap py-1">
+                      <Folder size={12} className="text-muted-foreground/60" />
+                      <span>{folder.name}</span>
+                      <ChevronDown size={10} className="opacity-50" />
+                      
+                      {/* Simple Dropdown Mock */}
+                      <div className="absolute top-full left-0 mt-0 hidden group-hover:block z-[100] bg-zinc-900 border border-zinc-800 rounded shadow-2xl py-1 min-w-[140px]">
+                        {folder.bookmarks?.map((bm: any) => (
+                          <div 
+                            key={bm.id} 
+                            onClick={() => handleGo(bm.url)}
+                            className="px-3 py-1.5 hover:bg-white/5 flex items-center justify-between text-[10px]"
+                          >
+                            <span className="truncate mr-2">{bm.title}</span>
+                            <ExternalLink size={10} className="opacity-30" />
+                          </div>
+                        ))}
+                        {(!folder.bookmarks || folder.bookmarks.length === 0) && (
+                          <div className="px-3 py-2 text-zinc-600 italic">Empty</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <button className="p-1 hover:bg-muted rounded text-muted-foreground opacity-40 hover:opacity-100">
+                    <Plus size={12} />
+                  </button>
+                </div>
             </div>
          )}
 
         {/* BROWSER CONTENT */}
         <div className="flex-1 relative bg-white overflow-hidden">
-            {isReaderMode ? (
+            {isReaderMode && (
                 <div className="absolute inset-0 z-40 bg-[var(--bg-background)] overflow-y-auto p-8 custom-scrollbar">
-                    <div className="max-w-2xl mx-auto prose prose-invert prose-sm">
-                        <pre className="whitespace-pre-wrap font-mono text-xs text-zinc-300 bg-zinc-900/50 p-4 rounded border border-zinc-800">
+                    <div className="max-w-2xl mx-auto">
+                        <div className="flex items-center justify-between mb-8 pb-4 border-b border-border">
+                          <h2 className="text-xl font-bold text-foreground">Reader View</h2>
+                          <button 
+                            onClick={() => setIsReaderMode(false)}
+                            className="text-xs text-muted-foreground hover:text-foreground px-3 py-1 rounded bg-muted"
+                          >
+                            Back to Browser
+                          </button>
+                        </div>
+                        <pre className="whitespace-pre-wrap font-mono text-sm text-zinc-300 leading-relaxed">
                             {readerContent}
                         </pre>
                     </div>
                 </div>
-            ) : null}
+            )}
             
             {!isElectron() && !showDebugView && (
                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-card/80 backdrop-blur-sm p-8">
                     <div className="bg-warning/20 border border-warning/50 p-6 rounded-lg max-w-md text-center">
                         <h3 className="text-warning font-bold mb-2">Electron Required</h3>
                         <p className="text-warning/60 text-sm mb-4">
-                            The native browser view requires the Electron app. 
-                            Enable &quot;Show Agent&apos;s Research Browser&quot; in settings to use the remote browser instead.
+                            The native browser view requires the Electron app for persistence and deep integration.
                         </p>
                         <button 
                             type="button"
@@ -347,22 +479,21 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
                     </div>
                  </div>
             )}
+
             {showDebugView ? (
                 <div className="w-full h-full bg-card">
                     <ResearchBrowser key={`research-${cardId}-${screenspaceId}`} cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
                 </div>
             ) : (
-                isElectron() ? (
-                    <WebView
-                        key={`browser-${cardId}-${screenspaceId}`}
-                        ref={webviewRef}
-                        src={url}
-                        style={{ width: '100%', height: '100%', visibility: isReaderMode ? 'hidden' : 'visible' }}
-                        allowpopups="true"
-                        webpreferences="nativeWindowOpen=yes"
-                        useragent={mobileUA ? "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1" : undefined}
-                    />
-                ) : null
+                <PersistentBrowser 
+                  url={url}
+                  webviewRef={webviewRef}
+                  onReady={onReady}
+                  onFail={onFail}
+                  mobileUA={mobileUA}
+                  isReaderMode={isReaderMode}
+                  isElectron={!!isElectron()}
+                />
             )}
         </div>
     </div>
@@ -372,7 +503,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
 
   return (
     <UniversalCardWrapper
-      title="Browser (Electron)"
+      title="Smart Agentic Browser"
       icon={Globe}
       aiContext={url}
       settings={settingsContent}

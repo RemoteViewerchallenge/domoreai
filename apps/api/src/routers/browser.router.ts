@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { browserService } from '../services/browser.service.js';
 
@@ -100,5 +101,25 @@ export const browserRouter = createTRPCRouter({
            content: markdown,
            excerpt: article.excerpt
        };
+    }),
+
+  extractMarkdown: publicProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ input }) => {
+      const { fetchPageAsMarkdown } = await import('../tools/webScraper.js');
+      const result = await fetchPageAsMarkdown({ url: input.url });
+      
+      if (!result.success) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: result.error || 'Failed to extract markdown',
+        });
+      }
+
+      return {
+        title: result.title,
+        markdown: result.markdown,
+        url: result.url
+      };
     }),
 });

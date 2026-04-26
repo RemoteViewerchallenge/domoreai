@@ -1,8 +1,7 @@
-// turndown has no bundled types in this project; silence TS here
+import { chromium } from 'playwright';
+import * as cheerio from 'cheerio';
 // @ts-ignore
 import TurndownService from 'turndown';
-import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer';
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
@@ -11,20 +10,40 @@ const turndown = new TurndownService({
 
 export async function fetchPageAsMarkdown(args: { url: string, timeoutMs?: number }) {
   const { url, timeoutMs = 30000 } = args;
-  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (compatible; Bot/1.0)');
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: timeoutMs });
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: 'networkidle', timeout: timeoutMs });
     const html = await page.content();
+    
     const $ = cheerio.load(html);
+    
+    // Remove junk elements
+    $('script, style, nav, footer, iframe, noscript, header, aside, .ads, .sidebar, .menu, .nav').remove();
+    
     const title = $('title').first().text() || '';
-    // Attempt to extract main article with common selectors
-    const mainHtml = $('article').html() || $('main').html() || $('body').html() || html;
-    // Convert to markdown
-    const markdown = turndown.turndown(mainHtml);
-    const text = $(mainHtml).text();
-    return { success: true, url, title, markdown, text, html: mainHtml };
+    
+    // Attempt to extract main content
+    let contentElement = $('article').first();
+    if (contentElement.length === 0) contentElement = $('main').first();
+    if (contentElement.length === 0) contentElement = $('#content, .content, #main, .main').first();
+    if (contentElement.length === 0) contentElement = $('body');
+
+    const cleanHtml = contentElement.html() || '';
+    const markdown = turndown.turndown(cleanHtml);
+    const text = contentElement.text().replace(/\s+/g, ' ').trim();
+
+    return { 
+      success: true, 
+      url, 
+      title, 
+      markdown, 
+      text, 
+      html: cleanHtml 
+    };
   } catch (err: any) {
     return { success: false, error: err?.message || String(err) };
   } finally {
