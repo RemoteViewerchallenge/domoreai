@@ -1,59 +1,57 @@
 import React, { useState } from 'react';
 import { SuperAiButton } from '../../components/ui/SuperAiButton.js';
 import { Input } from '../../components/ui/input.js';
-import { Label } from '../../components/ui/label.js';
 import { Switch } from '../../components/ui/switch.js';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Server, Box, Cpu, Activity } from 'lucide-react';
 import { trpc } from '../../utils/trpc.js';
 import { toast } from 'sonner';
 
 interface AddProviderFormProps {
   onSuccessMorph: (providerId: string, fetchedModels: any[]) => void;
   onCancel: () => void;
+  providerName?: string;
 }
 
-export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccessMorph, onCancel }) => {
+export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccessMorph, onCancel, providerName = "New Provider" }) => {
   const [showKey, setShowKey] = useState(false);
-  const [name, setName] = useState('');
-  const [providerType, setProviderType] = useState('openai');
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
-  const [isEnabled, setIsEnabled] = useState(true);
+  const [isActive, setIsActive] = useState(true);
 
   const validateMutation = trpc.providers.validateKey.useMutation();
   const upsertMutation = trpc.providers.upsert.useMutation();
 
-  const handleValidateAndMorph = async () => {
-    if (!name || !apiKey) {
-      toast.error('Please provide a name and API key');
+  // Future: These will be driven by your SQL/AI ingestion workflow
+  const mockModelStats = { llm: 14, embedding: 2, voice: 0 };
+
+  const handleFetchModels = async () => {
+    if (!apiKey) {
+      toast.error('Please provide an API key');
       return;
     }
 
     // Determine Base URL if empty
     let finalBaseUrl = baseUrl;
     if (!finalBaseUrl) {
-      if (providerType === 'openrouter') finalBaseUrl = 'https://openrouter.ai/api/v1';
-      else if (providerType === 'groq') finalBaseUrl = 'https://api.groq.com/openai/v1';
-      else if (providerType === 'mistral') finalBaseUrl = 'https://api.mistral.ai/v1';
-      else if (providerType === 'anthropic') finalBaseUrl = 'https://api.anthropic.com/v1';
-      else if (providerType === 'google') finalBaseUrl = 'https://generativelanguage.googleapis.com';
+      // Assuming providerType is openai for now, adjust as needed
+      finalBaseUrl = 'https://api.openai.com/v1';
     }
 
     try {
       // 1. Validate
       const { models } = await validateMutation.mutateAsync({
-        providerType,
+        providerType: 'openai', // Adjust
         baseUrl: finalBaseUrl,
         apiKey
       });
 
       // 2. Save to DB
       const provider = await upsertMutation.mutateAsync({
-        name,
-        providerType,
+        name: providerName,
+        providerType: 'openai',
         baseUrl: finalBaseUrl,
         apiKey,
-        isEnabled
+        isEnabled: isActive
       });
 
       toast.success('Provider validated and saved!');
@@ -66,99 +64,66 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccessMorph
   };
 
   return (
-    <div className="flex flex-col space-y-6 p-6 w-full h-full bg-zinc-950 text-white rounded-2xl border border-zinc-800 shadow-2xl overflow-hidden">
-      <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
-        <h2 className="text-xl font-bold tracking-tight text-white">Add New Provider</h2>
-        <div className="flex items-center space-x-3">
-          <Label htmlFor="provider-active" className="text-xs font-bold uppercase tracking-widest text-zinc-500">Active</Label>
-          <Switch id="provider-active" checked={isEnabled} onCheckedChange={setIsEnabled} />
+    <div className={`flex flex-col w-full h-full bg-background border border-border rounded-md overflow-hidden transition-opacity ${!isActive ? 'opacity-60' : 'opacity-100'}`}>
+      
+      {/* Ultra-Compact Top Bar */}
+      <div className="flex justify-between items-center px-3 py-2 bg-muted/40 border-b border-border">
+        <div className="flex items-center space-x-2 text-sm font-medium text-foreground">
+          <Server size={14} className="text-primary" />
+          <span>{providerName}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-muted-foreground">{isActive ? 'Active' : 'Offline'}</span>
+          <Switch id="provider-active" checked={isActive} onCheckedChange={setIsActive} className="scale-75 data-[state=checked]:bg-primary" />
         </div>
       </div>
 
-      <div className="space-y-5 overflow-y-auto custom-scrollbar pr-2 flex-grow">
-        <div className="space-y-2">
-          <Label htmlFor="provider-name" className="text-xs font-bold uppercase tracking-widest text-zinc-500">Provider Name</Label>
-          <Input 
-            id="provider-name" 
-            placeholder="e.g. My Personal OpenAI" 
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-zinc-900 border-zinc-800 focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="provider-type" className="text-xs font-bold uppercase tracking-widest text-zinc-500">Service Type</Label>
-          <select 
-            id="provider-type"
-            value={providerType}
-            onChange={(e) => setProviderType(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="google">Google Gemini</option>
-            <option value="openrouter">OpenRouter (Aggregator)</option>
-            <option value="groq">Groq</option>
-            <option value="mistral">Mistral</option>
-            <option value="generic-openai">Generic OpenAI Compatible</option>
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="base-url" className="text-xs font-bold uppercase tracking-widest text-zinc-500">Base API URL</Label>
+      <div className="p-3 space-y-3 flex-grow">
+        {/* Condensed Inputs */}
+        <div className="space-y-1">
           <Input 
             id="base-url" 
-            placeholder="Drag URL from Smart Browser here..." 
+            placeholder="Base API URL..." 
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
-            className="w-full bg-zinc-900 border-zinc-800 focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-mono"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const url = e.dataTransfer.getData('text/plain');
-              if (url) setBaseUrl(url);
-            }}
+            className="h-8 text-xs bg-muted/20 border-border focus:ring-1 focus:ring-primary"
           />
-          <p className="text-[10px] text-zinc-500">Drag from browser or leave blank for official endpoints.</p>
         </div>
 
-        <div className="space-y-2 relative">
-          <Label htmlFor="api-key" className="text-xs font-bold uppercase tracking-widest text-zinc-500">API Key</Label>
-          <div className="relative">
-            <Input 
-              id="api-key" 
-              type={showKey ? "text" : "password"} 
-              placeholder="sk-..." 
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full pr-12 bg-zinc-900 border-zinc-800 focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-mono"
-            />
-            <button 
-              type="button"
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <p className="text-[10px] text-zinc-500 mt-1 italic">
-            Keys are encrypted at rest. We won't judge your compute spend.
-          </p>
+        <div className="relative space-y-1">
+          <Input 
+            id="api-key" 
+            type={showKey ? "text" : "password"} 
+            placeholder="API Key (sk-...)" 
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="h-8 text-xs pr-8 font-mono bg-muted/20 border-border focus:ring-1 focus:ring-primary"
+          />
+          <button 
+            type="button"
+            onClick={() => setShowKey(!showKey)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        </div>
+
+        {/* Models Summary (Replacing Broken Billing) */}
+        <div className="flex justify-between items-center p-2 bg-muted/30 rounded border border-border/50 text-xs">
+          <div className="flex items-center space-x-1 text-muted-foreground"><Cpu size={12}/> <span>LLM: {mockModelStats.llm}</span></div>
+          <div className="flex items-center space-x-1 text-muted-foreground"><Box size={12}/> <span>Embed: {mockModelStats.embedding}</span></div>
+          <div className="flex items-center space-x-1 text-muted-foreground"><Activity size={12}/> <span>Voice: {mockModelStats.voice}</span></div>
         </div>
       </div>
 
-      <div className="flex justify-between items-center pt-6 mt-auto border-t border-zinc-800">
-        <button 
-          onClick={onCancel}
-          className="text-sm font-bold text-zinc-500 hover:text-white transition-colors"
-        >
-          Cancel
-        </button>
+      {/* Action Footer */}
+      <div className="px-3 py-2 bg-muted/20 border-t border-border flex justify-end">
         <SuperAiButton 
-          onClick={handleValidateAndMorph}
-          label="Validate Key & Fetch Models"
+          onClick={handleFetchModels}
+          label="Fetch Models"
           intent="mutation"
+          size="sm"
+          className="h-7 text-xs"
           isLoading={validateMutation.isLoading || upsertMutation.isLoading}
         />
       </div>

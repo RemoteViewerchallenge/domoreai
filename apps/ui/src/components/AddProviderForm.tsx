@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { trpc } from '../utils/trpc.js';
-import { AlertTriangle, Info, Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import { cn } from '../lib/utils.js';
 
 interface AddProviderFormProps {
@@ -16,6 +16,7 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
     baseURL: '',
     apiKeyEnvVar: '',
     pricingUrl: '',
+    isActive: true,
     isCreditCardLinked: false,
     enforceFreeOnly: true,
     monthlyBudget: 0,
@@ -43,7 +44,7 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
       setIsScouting(true);
       await scoutMutation.mutateAsync({ providerId: provider.id });
       setIsScouting(false);
-      
+
       onSuccess?.();
       setIsOpen(false);
       setFormData({
@@ -52,6 +53,7 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
         baseURL: '',
         apiKeyEnvVar: '',
         pricingUrl: '',
+        isActive: true,
         isCreditCardLinked: false,
         enforceFreeOnly: true,
         monthlyBudget: 0,
@@ -65,25 +67,24 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    
+
     setFormData(prev => {
       const next = { ...prev, [name]: val };
-      
-      // Auto-set baseURL for common types
+
       if (name === 'providerType') {
         if (value === 'openai') next.baseURL = 'https://api.openai.com/v1';
         if (value === 'anthropic') next.baseURL = 'https://api.anthropic.com/v1';
         if (value === 'google') next.baseURL = 'https://generativelanguage.googleapis.com/v1beta';
         if (value === 'ollama') next.baseURL = 'http://localhost:11434';
       }
-      
+
       return next;
     });
   };
 
   if (!isOpen) {
     return (
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="btn btn-sm btn-primary gap-2 w-full"
       >
@@ -94,8 +95,17 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
   return (
     <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Add New Provider</h3>
+      <div className="h-8 flex items-center justify-between gap-2">
+        <label className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">LIVE</span>
+          <input
+            type="checkbox"
+            name="isActive"
+            checked={formData.isActive}
+            onChange={handleChange}
+            className="toggle toggle-xs"
+          />
+        </label>
         <button onClick={() => setIsOpen(false)} className="text-zinc-500 hover:text-white">
           <X size={16} />
         </button>
@@ -105,22 +115,22 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-zinc-500">Provider Name</label>
-            <input 
+            <input
               name="name"
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g. OpenRouter"
-              className="input input-xs input-bordered w-full bg-zinc-950"
+              className="input input-xs input-bordered h-7 text-[11px] w-full bg-zinc-950"
               required
             />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-zinc-500">Type</label>
-            <select 
+            <select
               name="providerType"
               value={formData.providerType}
               onChange={handleChange}
-              className="select select-xs select-bordered w-full bg-zinc-950"
+              className="select select-xs select-bordered h-7 text-[11px] w-full bg-zinc-950"
             >
               <option value="openai">OpenAI / OpenRouter</option>
               <option value="anthropic">Anthropic</option>
@@ -133,12 +143,12 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
         <div className="space-y-1">
           <label className="text-[10px] uppercase font-bold text-zinc-500">Base URL</label>
-          <input 
+          <input
             name="baseURL"
             value={formData.baseURL}
             onChange={handleChange}
             placeholder="https://api.openai.com/v1"
-            className="input input-xs input-bordered w-full bg-zinc-950"
+            className="input input-xs input-bordered h-7 text-[11px] w-full bg-zinc-950"
             required
           />
         </div>
@@ -146,54 +156,46 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-zinc-500">API Key Env Var</label>
-            <input 
+            <input
               name="apiKeyEnvVar"
               value={formData.apiKeyEnvVar}
               onChange={handleChange}
               placeholder="OPENROUTER_API_KEY"
-              className="input input-xs input-bordered w-full bg-zinc-950 font-mono"
+              className="input input-xs input-bordered h-7 text-[11px] w-full bg-zinc-950 font-mono"
             />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-zinc-500 flex items-center gap-1">
               Pricing URL <span className="opacity-50">(Optional)</span>
             </label>
-            <input 
+            <input
               name="pricingUrl"
               value={formData.pricingUrl}
               onChange={handleChange}
               placeholder="https://..."
-              className="input input-xs input-bordered w-full bg-zinc-950"
+              className="input input-xs input-bordered h-7 text-[11px] w-full bg-zinc-950"
             />
           </div>
         </div>
 
         <div className="divider my-1 opacity-20"></div>
 
-        <div className="flex items-center justify-between p-2 bg-zinc-950/50 rounded border border-zinc-800/50 group">
-          <div className="flex items-center gap-2">
-            <label className="cursor-pointer flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                name="isCreditCardLinked"
-                checked={formData.isCreditCardLinked}
-                onChange={handleChange}
-                className={cn(
-                  "checkbox checkbox-xs transition-colors",
-                  formData.isCreditCardLinked ? "checkbox-error" : "checkbox-primary"
-                )}
-              />
-              <span className={cn(
-                "text-xs font-medium",
-                formData.isCreditCardLinked ? "text-error" : "text-zinc-400"
-              )}>Credit Card Linked</span>
-            </label>
-            <div className="tooltip tooltip-right" data-tip="Enable only if billing is verified. Enforces strict zero-spend auditing.">
-              <Info size={12} className="text-zinc-600 hover:text-zinc-400 cursor-help" />
-            </div>
-          </div>
+        <div className="flex items-center justify-between p-2 bg-zinc-950/50 rounded border border-zinc-800/50">
+          <label className="cursor-pointer flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="isCreditCardLinked"
+              checked={formData.isCreditCardLinked}
+              onChange={handleChange}
+              className={cn(
+                "checkbox checkbox-xs transition-colors",
+                formData.isCreditCardLinked ? "checkbox-error" : "checkbox-primary"
+              )}
+            />
+            <span className="text-xs font-medium text-zinc-200">Credit Card Linked</span>
+          </label>
           {formData.isCreditCardLinked && (
-            <AlertTriangle size={14} className="text-error animate-pulse" />
+            <span className="text-[10px] uppercase tracking-[0.25em] text-emerald-400">ACTIVE</span>
           )}
         </div>
 
@@ -201,8 +203,8 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
           <div className="space-y-3 p-2 bg-zinc-900/80 rounded border border-zinc-800 animate-in slide-in-from-left-2 duration-300">
             <div className="flex items-center justify-between">
               <label className="text-xs text-zinc-400">Enforce Free Models Only</label>
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 name="enforceFreeOnly"
                 checked={formData.enforceFreeOnly}
                 onChange={handleChange}
@@ -215,12 +217,12 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
                 <label className="text-[10px] uppercase font-bold text-zinc-500">Monthly Budget ($)</label>
                 <div className="relative">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">$</span>
-                  <input 
+                  <input
                     type="number"
                     name="monthlyBudget"
                     value={formData.monthlyBudget}
                     onChange={handleChange}
-                    className="input input-xs input-bordered w-full bg-zinc-950 pl-5"
+                    className="input input-xs input-bordered h-7 text-[11px] w-full bg-zinc-950 pl-5"
                     min="0"
                     step="0.01"
                   />
@@ -232,16 +234,16 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
 
         <div className="pt-2 flex gap-2">
           {onCancel && (
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onCancel}
               className="btn btn-xs btn-ghost flex-1"
             >
               Cancel
             </button>
           )}
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={upsertMutation.isLoading || isScouting}
             className={cn(
               "btn btn-xs flex-1 gap-2",
@@ -262,6 +264,14 @@ export const AddProviderForm: React.FC<AddProviderFormProps> = ({ onSuccess, onC
               'Save & Scout'
             )}
           </button>
+        </div>
+
+        <div className="mt-2 flex items-center gap-2 text-[10px] font-mono text-zinc-400">
+          <span>LLM: 0</span>
+          <span className="opacity-50">|</span>
+          <span>EMB: 0</span>
+          <span className="opacity-50">|</span>
+          <span>IMG: 0</span>
         </div>
       </form>
     </div>

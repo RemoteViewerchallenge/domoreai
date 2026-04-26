@@ -153,7 +153,7 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
       </div>
 
       {/* Browser Content */}
-      <div className="flex-1 relative bg-white">
+      <div className="flex-1 relative bg-black">
         {isElectron ? (
           <>
             {/* eslint-disable-next-line react/no-unknown-property */}
@@ -161,6 +161,7 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
               ref={webviewRef}
               src={browserUrl}
               className="w-full h-full"
+              style={{ backgroundColor: '#000' }}
               // eslint-disable-next-line react/no-unknown-property
               allowpopups
               // eslint-disable-next-line react/no-unknown-property
@@ -182,9 +183,10 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
             <iframe
               ref={iframeRef}
               src={url}
-              className="w-full h-full border-none"
+              className="w-full h-full border-none bg-black"
               title="Web Preview"
               sandbox="allow-same-origin allow-scripts allow-forms"
+              style={{ filter: 'invert(0.9) hue-rotate(180deg) contrast(1.1) brightness(1.1)', background: '#000' }}
             />
           </div>
         )}
