@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Command, Sparkles, X, Layers,
   Workflow, Settings, Palette, Plus, Minus,
@@ -20,14 +21,77 @@ const WORKFLOWS = [
   { id: 'voice',      label: 'Voice Playground',     icon: Mic,         columnCount: 2 },
 ] as const;
 
-
 interface GlobalContextBarProps {
   aiOpen?: boolean;
   setAiOpen?: (open: boolean) => void;
   onToggleTheme?: () => void;
   themeOpen?: boolean;
-  /** Called when user clicks the log ticker — opens a terminal card in col 0 */
   onOpenTerminal?: () => void;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DropdownPortal — renders dropdown content at document.body so it always
+// appears above cards regardless of parent stacking contexts (overflow-hidden,
+// transform, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+interface DropdownPortalProps {
+  anchorRef: React.RefObject<HTMLElement | null>;
+  open: boolean;
+  onClose: () => void;
+  align?: 'left' | 'right';
+  width?: number;
+  children: React.ReactNode;
+}
+
+function DropdownPortal({ anchorRef, open, onClose, align = 'left', width = 208, children }: DropdownPortalProps) {
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const portalRef = useRef<HTMLDivElement>(null);
+
+  // Position relative to the anchor button
+  useEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    const left = align === 'right'
+      ? rect.right - width
+      : rect.left;
+    setPos({ top: rect.bottom + 4, left });
+  }, [open, anchorRef, align, width]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        portalRef.current && !portalRef.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open, onClose, anchorRef]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      ref={portalRef}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, width, zIndex: 99999 }}
+      className="bg-zinc-900 border border-zinc-700 shadow-2xl shadow-black/60 rounded-sm py-1 animate-in fade-in zoom-in-95 duration-100"
+    >
+      {children}
+    </div>,
+    document.body
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,9 +103,6 @@ function LogTicker({ onClick }: { onClick: () => void }) {
     { refetchInterval: 5000, refetchIntervalInBackground: true }
   );
 
-  const tickerRef = useRef<HTMLDivElement>(null);
-
-  // Build a single long string from all log entries (newest → oldest for visual flow)
   const tickerText = logs?.length
     ? logs.map(l => `${l.ts.substring(11, 19)} ${l.msg}`).join('   ·   ')
     : 'System nominal — no recent events';
@@ -52,20 +113,14 @@ function LogTicker({ onClick }: { onClick: () => void }) {
       title="Click to open Terminal"
       className="flex-1 min-w-0 h-full flex items-center overflow-hidden cursor-pointer group relative"
     >
-      {/* Fade edges */}
       <div className="absolute left-0 top-0 bottom-0 w-8 z-10 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-8 z-10 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent pointer-events-none" />
-
-      {/* Scrolling text */}
       <div
-        ref={tickerRef}
-        className="whitespace-nowrap font-mono text-[9px] text-[var(--text-muted)] group-hover:text-[var(--color-primary)] transition-colors animate-ticker"
+        className="whitespace-nowrap font-mono text-[9px] text-[var(--text-muted)] group-hover:text-[var(--color-primary)] transition-colors"
         style={{ animation: 'ticker 40s linear infinite' }}
       >
         {tickerText}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{tickerText}
       </div>
-
-      {/* Terminal hint on hover */}
       <div className="absolute right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-primary)] border border-[var(--border-color)] rounded px-1.5 py-0.5 z-20">
         <Terminal size={9} />
         <span className="text-[8px] font-bold uppercase tracking-wider">Open Terminal</span>
@@ -75,17 +130,20 @@ function LogTicker({ onClick }: { onClick: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Condensed Workspace (Screenspace) Flipper
+// WorkspaceFlipper — portal-based screenspace switcher
 // ─────────────────────────────────────────────────────────────────────────────
 function WorkspaceFlipper() {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const { screenspaces, activeScreenspaceId, switchScreenspace } = useWorkspaceStore();
   const active = screenspaces.find(s => s.id === activeScreenspaceId);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div className="relative">
+    <div>
       <button
-        onClick={() => setOpen(!open)}
+        ref={anchorRef}
+        onClick={() => setOpen(o => !o)}
         title="Switch Workspace"
         className={cn(
           'flex items-center gap-1 px-2 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border',
@@ -99,55 +157,56 @@ function WorkspaceFlipper() {
         <ChevronDown size={9} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className="absolute top-9 left-0 w-40 bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-xl rounded-sm py-1 z-50">
-          <div className="px-3 py-1 text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Screenspaces
-          </div>
-          <div className="h-px bg-[var(--border-color)] my-1" />
-          {screenspaces.map(ss => (
-            <button
-              key={ss.id}
-              onClick={() => { switchScreenspace(ss.id); setOpen(false); }}
-              className={cn(
-                'w-full text-left px-3 py-1.5 text-[10px] transition-colors',
-                ss.id === activeScreenspaceId
-                  ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 font-bold'
-                  : 'hover:bg-[var(--bg-primary)] text-[var(--text-secondary)]'
-              )}
-            >
-              {ss.id === activeScreenspaceId ? '● ' : '○ '}{ss.name}
-            </button>
-          ))}
+      <DropdownPortal anchorRef={anchorRef} open={open} onClose={close} align="left" width={160}>
+        <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+          Screenspaces
         </div>
-      )}
+        <div className="h-px bg-zinc-700 my-1" />
+        {screenspaces.map(ss => (
+          <button
+            key={ss.id}
+            onClick={() => { switchScreenspace(ss.id); close(); }}
+            className={cn(
+              'w-full text-left px-3 py-1.5 text-[10px] transition-colors',
+              ss.id === activeScreenspaceId
+                ? 'text-indigo-400 bg-indigo-400/10 font-bold'
+                : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100'
+            )}
+          >
+            {ss.id === activeScreenspaceId ? '● ' : '○ '}{ss.name}
+          </button>
+        ))}
+      </DropdownPortal>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Workflows Dropdown
+// WorkflowsDropdown — portal-based workflow switcher
 // ─────────────────────────────────────────────────────────────────────────────
 function WorkflowsDropdown() {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const { activeWorkflow, setActiveWorkflow, setColumns } = useWorkspaceStore();
+  const close = useCallback(() => setOpen(false), []);
 
   const handleSelect = (wf: typeof WORKFLOWS[number] | null) => {
     if (wf) {
       setActiveWorkflow(wf.id);
-      setColumns(wf.columnCount); // Soft default — user can still override with +/-
+      setColumns(wf.columnCount);
     } else {
       setActiveWorkflow(null);
     }
-    setOpen(false);
+    close();
   };
 
   const activeWf = WORKFLOWS.find(w => w.id === activeWorkflow);
 
   return (
-    <div className="relative">
+    <div>
       <button
-        onClick={() => setOpen(!open)}
+        ref={anchorRef}
+        onClick={() => setOpen(o => !o)}
         title="Switch Workflow"
         className={cn(
           'flex items-center gap-1.5 px-2 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border',
@@ -161,51 +220,52 @@ function WorkflowsDropdown() {
         <ChevronDown size={9} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className="absolute top-9 left-0 w-52 bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-xl rounded-sm py-1 z-50">
-          <div className="px-3 py-1 text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-            Active Workflows
-          </div>
-          <div className="h-px bg-[var(--border-color)] my-1" />
-          {WORKFLOWS.map(wf => (
-            <button
-              key={wf.id}
-              onClick={() => handleSelect(wf)}
-              className={cn(
-                'w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 transition-colors',
-                wf.id === activeWorkflow
-                  ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 font-bold'
-                  : 'hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              )}
-            >
-              <wf.icon size={12} />
-              {wf.label}
-              <span className="ml-auto text-[8px] text-[var(--text-muted)]">{wf.columnCount}col</span>
-            </button>
-          ))}
-          <div className="h-px bg-[var(--border-color)] my-1" />
-          <button
-            onClick={() => handleSelect(null)}
-            className="w-full text-left px-3 py-1.5 text-[10px] text-[var(--text-muted)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            ✕ Exit Workflow (Free Grid)
-          </button>
+      <DropdownPortal anchorRef={anchorRef} open={open} onClose={close} align="left" width={208}>
+        <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+          Active Workflows
         </div>
-      )}
+        <div className="h-px bg-zinc-700 my-1" />
+        {WORKFLOWS.map(wf => (
+          <button
+            key={wf.id}
+            onClick={() => handleSelect(wf)}
+            className={cn(
+              'w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 transition-colors',
+              wf.id === activeWorkflow
+                ? 'text-indigo-400 bg-indigo-400/10 font-bold'
+                : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100'
+            )}
+          >
+            <wf.icon size={12} />
+            {wf.label}
+            <span className="ml-auto text-[8px] text-zinc-600">{wf.columnCount}col</span>
+          </button>
+        ))}
+        <div className="h-px bg-zinc-700 my-1" />
+        <button
+          onClick={() => handleSelect(null)}
+          className="w-full text-left px-3 py-1.5 text-[10px] text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+        >
+          ✕ Exit Workflow (Free Grid)
+        </button>
+      </DropdownPortal>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings / Theme Dropdown
+// SettingsDropdown — portal-based settings/theme switcher
 // ─────────────────────────────────────────────────────────────────────────────
 function SettingsDropdown({ onToggleTheme, themeOpen }: { onToggleTheme?: () => void; themeOpen?: boolean }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div className="relative">
+    <div>
       <button
-        onClick={() => setOpen(!open)}
+        ref={anchorRef}
+        onClick={() => setOpen(o => !o)}
         title="Settings & Theme"
         className={cn(
           'flex items-center justify-center w-8 h-8 rounded-sm transition-all border',
@@ -217,24 +277,22 @@ function SettingsDropdown({ onToggleTheme, themeOpen }: { onToggleTheme?: () => 
         <Settings size={13} />
       </button>
 
-      {open && (
-        <div className="absolute top-9 right-0 w-48 bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-xl rounded-sm py-1 z-50">
-          <button
-            onClick={() => { onToggleTheme?.(); setOpen(false); }}
-            className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <Palette size={12} />
-            Theme Engine
-          </button>
-          <button
-            onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('settings'); setOpen(false); }}
-            className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <Settings size={12} />
-            Constitution & Settings
-          </button>
-        </div>
-      )}
+      <DropdownPortal anchorRef={anchorRef} open={open} onClose={close} align="right" width={192}>
+        <button
+          onClick={() => { onToggleTheme?.(); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <Palette size={12} />
+          Theme Engine
+        </button>
+        <button
+          onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('settings'); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <Settings size={12} />
+          Constitution & Settings
+        </button>
+      </DropdownPortal>
     </div>
   );
 }
@@ -284,7 +342,6 @@ export const GlobalContextBar = ({
 
   return (
     <>
-      {/* Ticker keyframe — injected once */}
       <style>{`
         @keyframes ticker {
           0%   { transform: translateX(0); }
@@ -307,7 +364,7 @@ export const GlobalContextBar = ({
 
         <div className="w-px h-4 bg-[var(--border-color)] flex-none" />
 
-        {/* ── CENTER: Log Ticker (fills all remaining space) ── */}
+        {/* ── CENTER: Log Ticker ── */}
         <LogTicker onClick={onOpenTerminal ?? (() => {})} />
 
         <div className="w-px h-4 bg-[var(--border-color)] flex-none" />
@@ -351,7 +408,6 @@ export const GlobalContextBar = ({
             </button>
           )}
 
-          {/* Active workflow pill */}
           {activeWorkflow && (
             <div className="hidden sm:flex items-center gap-1 text-[8px] font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded px-2 py-0.5">
               <Command size={8} />
