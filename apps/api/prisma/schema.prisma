@@ -8,72 +8,49 @@ datasource db {
   relationMode = "prisma"
 }
 
-enum BillingRiskLevel {
-  ZERO_RISK
-  PROMO_BURN
-  CC_ON_FILE
-}
-
-enum ProviderClass {
-  FOUNDATIONAL
-  AGGREGATOR
-  INFERENCE_ENGINE
-  LOCAL
-}
-
 model ProviderConfig {
-  id                 String   @id
-  name               String
-  type               String
-  baseUrl            String?
-  apiKeyEnvVar       String?  // [NEW]
-  pricingUrl         String?  // [NEW]
-  isCreditCardLinked Boolean  @default(false) // [NEW]
-  enforceFreeOnly    Boolean  @default(true)  // [NEW]
-  monthlyBudget      Float?   // [NEW]
-  providerClass      ProviderClass @default(FOUNDATIONAL)
-  isEnabled           Boolean  @default(true)
-  status              String   @default("ACTIVE")
+  id                  String           @id
+  name                String
+  type                String
+  baseUrl             String?
+  apiKeyEnvVar        String?
+  pricingUrl          String?
+  isCreditCardLinked  Boolean          @default(false)
+  enforceFreeOnly     Boolean          @default(true)
+  monthlyBudget       Float?
+  isEnabled           Boolean          @default(true)
+  status              String           @default("ACTIVE")
   lastError           String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  serviceCategories   String[] @default([])
-  billingRiskLevel    BillingRiskLevel @default(ZERO_RISK)
-  promoMonthlyLimit   Float?
-  currentScrapedSpend Float?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   billingDashboardUrl String?
+  billingRiskLevel    BillingRiskLevel @default(ZERO_RISK)
+  currentScrapedSpend Float?
   lastScrapeTime      DateTime?
-  sessionValid        Boolean? @default(false)
+  promoMonthlyLimit   Float?
+  serviceCategories   String[]         @default([])
+  sessionValid        Boolean?         @default(false)
+  providerClass       ProviderClass    @default(FOUNDATIONAL)
+  apiKey              String?
   Model               Model[]
   providerModels      ProviderModel[]
 }
 
-// Provider-Specific Model Overrides
-// Used for aggregators (OpenRouter), inference engines (NVIDIA), and custom endpoints
-// that expose models with different API strings, pricing, or context windows than global defaults.
 model ProviderModel {
-  id                    String         @id @default(cuid())
-  providerId            String
-  // The exact string sent to the provider's API (e.g. "openai/gpt-4o" for OpenRouter)
-  apiString             String
-  // Human-readable display name
-  displayName           String
-  // Overrides the global model's context window if set
-  contextWindowOverride Int?
-  // Overrides global cost per 1k tokens (prompt)
+  id                      String         @id @default(cuid())
+  providerId              String
+  apiString               String
+  displayName             String
+  contextWindowOverride   Int?
   inputCostPer1kOverride  Float?
-  // Overrides global cost per 1k tokens (completion)
   outputCostPer1kOverride Float?
-  // Free tier flag for this provider-model pairing
-  isFreeTier            Boolean        @default(false)
-  // JSON blob for any extra provider-specific capability flags
-  capabilityOverrides   Json?          @default("{}")
-  isEnabled             Boolean        @default(true)
-  // Auto-populated by SuperAiButton fetch from provider /models endpoint
-  lastFetchedAt         DateTime?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  provider              ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  isFreeTier              Boolean        @default(false)
+  capabilityOverrides     Json?          @default("{}")
+  isEnabled               Boolean        @default(true)
+  lastFetchedAt           DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  provider                ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, apiString])
   @@index([providerId])
@@ -114,31 +91,29 @@ model ModelRegistry {
 }
 
 model Model {
-  id               String             @id // [READABLE] Manual ID: providerId:modelName
-  providerId       String
-  name             String
-  providerData     Json               @default("{}")
-  aiData           Json               @default("{}")
-  isActive         Boolean            @default(true)
-  costPer1k        Float?
-  firstSeenAt      DateTime           @default(now())
-  lastSeenAt       DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id                 String             @id
+  providerId         String
+  name               String
+  providerData       Json               @default("{}")
+  aiData             Json               @default("{}")
+  isActive           Boolean            @default(true)
+  costPer1k          Float?
+  firstSeenAt        DateTime           @default(now())
+  lastSeenAt         DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   underlyingProvider String?
-  provider         ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  modelUsage       ModelUsage[]
-  knowledgeVectors KnowledgeVector[]
-  capabilities     ModelCapabilities?
-  
-  // Specialized Relations (One-to-One)
-  chatModel        ChatModel?
-  embeddingModel   EmbeddingModel?
-  visionModel      VisionModel?
-  audioModel       AudioModel?
-  imageModel       ImageModel?
-  complianceModel  ComplianceModel?
-  rewardModel      RewardModel?
-  unknownModel     UnknownModel?
+  provider           ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelUsage         ModelUsage[]
+  knowledgeVectors   KnowledgeVector[]
+  capabilities       ModelCapabilities?
+  chatModel          ChatModel?
+  embeddingModel     EmbeddingModel?
+  visionModel        VisionModel?
+  audioModel         AudioModel?
+  imageModel         ImageModel?
+  complianceModel    ComplianceModel?
+  rewardModel        RewardModel?
+  unknownModel       UnknownModel?
 
   @@unique([providerId, name])
 }
@@ -151,7 +126,6 @@ model RoleVariant {
   contextConfig    Json             @default("{}")
   governanceConfig Json             @default("{}")
   behaviorConfig   Json             @default("{}")
-
   isActive         Boolean          @default(true)
   createdAt        DateTime         @default(now())
   role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -197,98 +171,96 @@ model ModelCapabilities {
   confidence              String?
   source                  String?
   specs                   Json?    @default("{}")
-  primaryTask             String?  // [NEW] e.g. "chat", "embedding", "tts", "image_gen"
-  isLocal                 Boolean? @default(false) // [NEW] True for Ollama/local models (fallback only)
-  utilityScore            Float?   @default(0)     // [NEW] MAB preference score
-  latencyAvg              Float?   @default(0)     // [NEW] Latency in ms
-  successRate             Float?   @default(0)     // [NEW] Success percentage
-  successCount            Int?     @default(0)     // [NEW]
-  failureCount            Int?     @default(0)     // [NEW]
-  modalityTags            String[] @default([])    // [NEW] ["text", "vision", etc]
+  primaryTask             String?
+  isLocal                 Boolean? @default(false)
+  utilityScore            Float?   @default(0)
+  latencyAvg              Float?   @default(0)
+  successRate             Float?   @default(0)
+  successCount            Int?     @default(0)
+  failureCount            Int?     @default(0)
+  modalityTags            String[] @default([])
   model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")
 }
 
-// --- SPECIALIZED MODEL TABLES ---
-
 model ChatModel {
-  id               String   @id @default(cuid())
-  modelId          String   @unique
-  contextWindow    Int?
-  supportsTools    Boolean  @default(true)
-  supportsJson     Boolean  @default(true)
-  model            Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  modelId       String  @unique
+  contextWindow Int?
+  supportsTools Boolean @default(true)
+  supportsJson  Boolean @default(true)
+  model         Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model EmbeddingModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  dimensions  Int?
-  maxContext  Int?
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  modelId    String @unique
+  dimensions Int?
+  maxContext Int?
+  model      Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model VisionModel {
-  id              String   @id @default(cuid())
-  modelId         String   @unique
-  maxResolution   String?
-  supportsVideo   Boolean  @default(false)
-  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  modelId       String  @unique
+  maxResolution String?
+  supportsVideo Boolean @default(false)
+  model         Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model AudioModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  voices      Json?    @default("[]") // Supported voice IDs
-  sampleRates Json?    @default("[]") // Supported Hz
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id          String @id @default(cuid())
+  modelId     String @unique
+  voices      Json?  @default("[]")
+  sampleRates Json?  @default("[]")
+  model       Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model ImageModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  resolutions Json?    @default("[]") // ["1024x1024", "512x512"]
-  styles      Json?    @default("[]") // ["vivid", "natural"]
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id          String @id @default(cuid())
+  modelId     String @unique
+  resolutions Json?  @default("[]")
+  styles      Json?  @default("[]")
+  model       Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model ComplianceModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  categories  Json?    @default("[]") // ["hate", "sexual", "violence"]
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  modelId    String @unique
+  categories Json?  @default("[]")
+  model      Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model RewardModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  scoreType   String?  // e.g. " Bradley-Terry"
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  modelId   String  @unique
+  scoreType String?
+  model     Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model UnknownModel {
-  id          String   @id @default(cuid())
-  modelId     String   @unique
-  reason      String?  @default("uncategorized")
-  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  id      String  @id @default(cuid())
+  modelId String  @unique
+  reason  String? @default("uncategorized")
+  model   Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }
 
 model ModelUsage {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  modelId          String
-  roleId           String
-  promptTokens     Int?
-  completionTokens Int?
-  cost             Float    @default(0)
-  usageMetrics     Json?    @default("{}")
-  responseHeaders  Json?
-  providerId       String?
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  modelId            String
+  roleId             String
+  promptTokens       Int?
+  completionTokens   Int?
+  cost               Float    @default(0)
+  usageMetrics       Json?    @default("{}")
+  responseHeaders    Json?
+  metadata           Json?
+  providerId         String?
   underlyingProvider String?
-  metadata         Json?
-  model            Model    @relation(fields: [modelId], references: [id])
-  role             Role     @relation(fields: [roleId], references: [id])
+  model              Model    @relation(fields: [modelId], references: [id])
+  role               Role     @relation(fields: [roleId], references: [id])
 }
 
 model Role {
@@ -312,15 +284,13 @@ model RoleCategory {
   id          String         @id @default(cuid())
   name        String         @unique
   description String?
-  parentId    String?        // For subcategories
-  isSystem    Boolean        @default(false)  // System categories can't be deleted
+  parentId    String?
+  isSystem    Boolean        @default(false)
   order       Int            @default(0)
-  icon        String?        // Optional icon for UI
-  color       String?        // Optional color for UI
+  icon        String?
+  color       String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @default(now()) @updatedAt
-  
-  // Relations
   roles       Role[]
   parent      RoleCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   children    RoleCategory[] @relation("CategoryHierarchy")
@@ -449,13 +419,11 @@ model ComponentRole {
   cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
 }
 
-// --- VOICE PLAYGROUND ---
-
 model VoiceEngine {
   id        String   @id @default(cuid())
   name      String
-  type      String   // 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT'
-  provider  String   // e.g., 'whisper', 'vosk', 'google', 'coqui', 'picovoice'
+  type      String
+  provider  String
   isEnabled Boolean  @default(true)
   config    Json     @default("{}")
   metadata  Json?
@@ -468,7 +436,7 @@ model VoiceRole {
   name             String
   description      String
   personality      String
-  systemPrompt     String   @db.Text
+  systemPrompt     String
   contextModifiers Json?
   responseStyle    Json?
   voiceSettings    Json?
@@ -478,23 +446,18 @@ model VoiceRole {
   updatedAt        DateTime @updatedAt
 }
 
-// --- ORCHESTRATION CANVAS ---
-
 model Orchestration {
   id          String   @id @default(cuid())
   name        String
   description String?
-  userId      String?  // Optional user ownership
-  cells       Json     // Array of OrchestrationCell objects
-  gridSize    Json     // { rows: number, cols: number }
+  userId      String?
+  cells       Json
+  gridSize    Json
   isPublic    Boolean  @default(false)
   tags        String[] @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-
-
-// --- BOOKMARKING SYSTEM ---
 
 model BookmarkFolder {
   id        String           @id @default(cuid())
@@ -502,20 +465,31 @@ model BookmarkFolder {
   parentId  String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
-  
   parent    BookmarkFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   children  BookmarkFolder[] @relation("FolderHierarchy")
   bookmarks Bookmark[]
 }
 
 model Bookmark {
-  id         String         @id @default(cuid())
+  id         String          @id @default(cuid())
   title      String
   url        String
   faviconUrl String?
   folderId   String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
   folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+}
+
+enum BillingRiskLevel {
+  ZERO_RISK
+  PROMO_BURN
+  CC_ON_FILE
+}
+
+enum ProviderClass {
+  FOUNDATIONAL
+  AGGREGATOR
+  INFERENCE_ENGINE
+  LOCAL
 }
