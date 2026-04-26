@@ -56,7 +56,7 @@ const RISK_LABELS = {
   CC_ON_FILE: 'CC ON FILE'
 };
 
-export const ProviderManagementGrid: React.FC = () => {
+export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ workflowMode: _workflowMode = false }) => {
   const utils = trpc.useContext();
   const { data: remoteProviders, isLoading } = trpc.providers.list.useQuery();
   const [localProviders, setLocalProviders] = useState<Provider[]>([]);

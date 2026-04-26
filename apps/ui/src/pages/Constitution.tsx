@@ -4,7 +4,7 @@ import { SuperAiButton } from '../components/ui/SuperAiButton.js';
 import SmartEditor from '../components/SmartEditor.js';
 import { WorkspaceSettings } from '../components/settings/WorkspaceSettings.js';
 
-export default function Constitution() {
+export default function Constitution({ embedded = false }: { embedded?: boolean }) {
   const [activeTab, setActiveTab] = useState<'rules' | 'glossary' | 'settings'>('rules');
   
   // Mock data - In real app, useCardVFS() to load from the paths set in WorkspaceSettings
