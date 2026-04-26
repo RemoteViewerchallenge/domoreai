@@ -1,7 +1,8 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
-import { isModelBlacklisted } from '../rateLimiter.js';
+import { isModelBlacklisted, blacklistModel } from '../rateLimiter.js';
 import { CreditGuard } from './CreditGuard.js';
+import { ProviderManager } from './ProviderManager.js';
 import { prisma } from '../db.js';
 
 /**
@@ -10,6 +11,7 @@ import { prisma } from '../db.js';
 export interface RoleRequirement {
   requiresVision?: boolean;
   requiresTools?: boolean;
+  requiresJson?: boolean;
   minContext?: number;
 }
 
@@ -180,6 +182,13 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
 
     // 4. Sort Candidates
     healthyCandidates.sort((a, b) => {
+        // Priority 0: Billing Risk Level (ZERO_RISK first)
+        const riskA = a.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
+        const riskB = b.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
+        if (riskA !== riskB) {
+            return riskA - riskB;
+        }
+
         const pTimeA = providerUsageMap.get(a.providerId) || 0;
         const pTimeB = providerUsageMap.get(b.providerId) || 0;
 
@@ -299,7 +308,11 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
   // Blacklist filter
   const availableModels: typeof allModels = [];
   for (const m of allModels) {
-    if (!(await isModelBlacklisted(m.id))) availableModels.push(m);
+    const isModelBanned = await isModelBlacklisted(m.id);
+    const isProviderBanned = !ProviderManager.isHealthy(m.providerId);
+    if (!isModelBanned && !isProviderBanned) {
+      availableModels.push(m);
+    }
   }
 
   if (availableModels.length === 0) throw new Error('[Arbitrage] All candidates blacklisted.');
@@ -311,6 +324,7 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
     if (requirements.minContext && (caps.contextWindow || 0) < requirements.minContext) return false;
     if (requirements.requiresVision && !caps.hasVision && !caps.modalityTags.includes('VISION')) return false;
     if (requirements.requiresTools && !caps.supportsFunctionCalling && !caps.modalityTags.includes('TOOL_CALLING')) return false;
+    if (requirements.requiresJson && !caps.supportsJsonMode) return false;
     return true;
   });
 
@@ -335,7 +349,8 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
     const successRate = (caps.successCount || 0) / ((caps.successCount || 0) + (caps.failureCount || 0) || 1);
     const latencyScore = 1 / (caps.latencyAvg || 1000);
     const freeBonus = (m.costPer1k || 0) === 0 ? 2.0 : 0.0;
-    return { model: m, score: successRate + latencyScore + freeBonus };
+    const riskBonus = m.provider.billingRiskLevel === 'ZERO_RISK' ? 10.0 : 0.0;
+    return { model: m, score: successRate + latencyScore + freeBonus + riskBonus };
   });
 
   scored.sort((a, b) => b.score - a.score);
@@ -350,16 +365,17 @@ export async function resolveModelForRole(role: any, estimatedInputTokens?: numb
   const roleReq: RoleRequirement = {
     minContext: requirements.minContext || metadata.minContext || estimatedInputTokens || 0,
     requiresVision: requirements.capabilities?.includes('vision') || metadata.requiresVision === true,
-    requiresTools: requirements.capabilities?.includes('tools') || metadata.requiresTools === true
+    requiresTools: requirements.capabilities?.includes('tools') || metadata.requiresTools === true,
+    requiresJson: requirements.capabilities?.includes('json') || metadata.requiresJson === true
   };
 
   try {
     const { providerId, modelName } = await selectBestModel(roleReq, excludedModelIds, excludedProviderIds);
     const model = await prisma.model.findFirst({ where: { providerId, name: modelName } });
-    return model?.id || `${providerId}:${modelName}`;
+    if (!model) throw new Error("No healthy models available.");
+    return model.id;
   } catch (error) {
-    const fallback = await prisma.model.findFirst({ where: { isActive: true } });
-    return fallback?.id || 'google:gemini-pro';
+    throw error;
   }
 }
 
@@ -375,6 +391,17 @@ export async function updateReward(modelId: string, success: boolean, latency?: 
     const isAuthError = errorType === 401 || errorType === '401' || String(errorType).includes('unauthorized');
 
     const penalty = (isRateLimited || isAuthError) ? 100 : 1;
+
+    if (isRateLimited) {
+      await blacklistModel(modelId, 600);
+      
+      // Also blacklist the entire provider
+      const model = await prisma.model.findUnique({ where: { id: modelId } });
+      if (model) {
+        ProviderManager.markUnhealthy(model.providerId, 600);
+        console.warn(`[Arbitrage] Blacklisted entire provider ${model.providerId} for 600s due to 429`);
+      }
+    }
 
     await prisma.modelCapabilities.update({
       where: { modelId },

@@ -222,39 +222,8 @@ export class JsonRpcStrategy implements IExecutionStrategy {
     let turnLogs: string[] = [];
 
     try {
-      // [HARDENED] Extract JSON: Handle multiple markdown formats from smaller models
-      let jsonStr = response.trim();
-      
-      // 1. Try ```json blocks first
-      const jsonBlockMatch = jsonStr.match(/```json\s*\n([\s\S]*?)```/);
-      if (jsonBlockMatch) {
-        jsonStr = jsonBlockMatch[1].trim();
-        console.log(`[JsonRpcStrategy] Extracted JSON from \`\`\`json block`);
-      } 
-      // 2. Try generic ``` blocks (smaller models often forget the 'json' label)
-      else {
-        const genericBlockMatch = jsonStr.match(/```\s*\n?([\s\S]*?)```/);
-        if (genericBlockMatch) {
-          jsonStr = genericBlockMatch[1].trim();
-          console.log(`[JsonRpcStrategy] Extracted JSON from generic \`\`\` block`);
-        }
-        // 3. Try single backticks (some models wrap JSON in single backticks)
-        else if (jsonStr.startsWith('`') && jsonStr.endsWith('`')) {
-          jsonStr = jsonStr.slice(1, -1).trim();
-          console.log(`[JsonRpcStrategy] Stripped single backticks`);
-        }
-        // 4. Fallback: Extract using brace matching
-        else {
-          const firstBrace = jsonStr.indexOf("{");
-          const lastBrace = jsonStr.lastIndexOf("}");
-          if (firstBrace !== -1 && lastBrace !== -1 && firstBrace < lastBrace) {
-            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-            console.log(`[JsonRpcStrategy] Extracted JSON using brace matching`);
-          }
-        }
-      }
-      
-      const json = JSON.parse(jsonStr) as { tool?: string; args?: Record<string, unknown> };
+      const { VolcanoAgent } = await import("../VolcanoAgent.js");
+      const json = VolcanoAgent.parseResponse(response) as { tool?: string; args?: Record<string, unknown> };
       const toolName = json.tool;
       const args = json.args || {};
 

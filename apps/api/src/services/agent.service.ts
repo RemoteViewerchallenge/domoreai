@@ -383,7 +383,8 @@ export class AgentService {
           // Persist the failure
           try {
             const failingId = (selectedModel as any).internalId || selectedModel.modelId;
-            await blacklistModel(failingId, 60);
+            console.warn(`[Arbitrage] Model ${failingId} rate limited. Swapping...`);
+            await blacklistModel(failingId, 600);
             await updateReward(failingId, false, undefined, errMsg);
 
             
