@@ -49,6 +49,7 @@ interface BrowserCardProps {
 export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId, headerEnd, initialUrl = 'https://www.google.com', onLoad, hideWrapper, billingModeProviderId, onBillingSessionSaved }) => {
   const [url, setUrl] = useState(initialUrl);
   const [input, setInput] = useState(url);
+  const [isReady, setIsReady] = useState(false);
   const webviewRef = useRef<HTMLWebViewElement>(null);
   
   // Reader Mode State
@@ -68,9 +69,9 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
   const handleSaveBillingSession = async () => {
     if (!billingModeProviderId || !webviewRef.current) return;
     try {
-      // @ts-expect-error Electron webview method
+      // @ts-ignore Electron webview method
       const currentUrl = await webviewRef.current.executeJavaScript('window.location.href');
-      // @ts-expect-error Electron webview method
+      // @ts-ignore Electron webview method
       const cookieStr = await webviewRef.current.executeJavaScript('document.cookie');
       
       const parsedCookies = cookieStr ? cookieStr.split('; ').map((c: string) => {
@@ -110,6 +111,31 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
         setInput(initialUrl);
     }
   }, [initialUrl, url]); 
+
+  // Handle WebView dom-ready event
+  React.useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
+
+    const handleDomReady = () => setIsReady(true);
+    const handleFail = (e: any) => {
+        // Prevent fatal crashes on navigation errors (like ERR_NAME_NOT_RESOLVED)
+        console.warn('WebView failed to load:', e);
+        if (e.errorCode !== -3) { // Ignore aborted
+             toast.error(`Failed to load: ${e.validatedURL}`, { description: e.errorDescription });
+        }
+    };
+
+    webview.addEventListener('dom-ready', handleDomReady);
+    // @ts-expect-error Electron event
+    webview.addEventListener('did-fail-load', handleFail);
+    
+    return () => {
+      webview.removeEventListener('dom-ready', handleDomReady);
+      // @ts-expect-error Electron event
+      webview.removeEventListener('did-fail-load', handleFail);
+    };
+  }, []);
   
   // Settings State
   const [showDebugView, setShowDebugView] = useState(false);
@@ -117,27 +143,47 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
   const [mobileUA, setMobileUA] = useState(false);
 
   const handleGo = () => {
-    let target = input;
-    if (!target.startsWith('http')) {
-      target = `https://${target}`;
+    let target = input.trim();
+    if (!target) return;
+
+    // Detection logic: 
+    // 1. If it has spaces, it's a search.
+    // 2. If it doesn't have a dot and doesn't look like a URL, it's a search.
+    const isUrl = !target.includes(' ') && (target.includes('.') || target.startsWith('localhost') || target.startsWith('http'));
+
+    if (isUrl) {
+      if (!target.startsWith('http')) {
+        target = `https://${target}`;
+      }
+    } else {
+      // Search fallback
+      target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
     }
+
     setUrl(target);
+    setInput(target);
     setIsReaderMode(false); // Reset reader on nav
   };
 
   const handleBack = () => {
     if (isReaderMode) { setIsReaderMode(false); return; }
-    // @ts-expect-error Electron webview method
-    if (webviewRef.current) webviewRef.current.goBack();
+    if (webviewRef.current && isReady) {
+      // @ts-ignore Electron webview method
+      webviewRef.current.goBack();
+    }
   };
   const handleForward = () => {
-    // @ts-expect-error Electron webview method
-    if (webviewRef.current) webviewRef.current.goForward();
+    if (webviewRef.current && isReady) {
+      // @ts-ignore Electron webview method
+      webviewRef.current.goForward();
+    }
   };
   const handleReload = () => {
-     if (isReaderMode) { void handleScrape(); return; }
-    // @ts-expect-error Electron webview method
-    if (webviewRef.current) webviewRef.current.reload();
+    if (isReaderMode) { void handleScrape(); return; }
+    if (webviewRef.current && isReady) {
+      // @ts-ignore Electron webview method
+      webviewRef.current.reload();
+    }
   };
 
   const handleScrape = async () => {
@@ -234,13 +280,13 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
          {/* NATIVE-STYLE ADDRESS BAR (Toolbar) */}
          {!showDebugView && (
             <div className="h-10 bg-background flex items-center px-2 space-x-2 border-b border-border shrink-0">
-                <button type="button" onClick={handleBack} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={handleBack} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
                     <ArrowLeft size={16} />
                 </button>
-                <button type="button" onClick={handleForward} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={handleForward} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
                     <ArrowRight size={16} />
                 </button>
-                <button type="button" onClick={handleReload} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={handleReload} disabled={!isReady} className="p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
                     <RotateCw size={16} />
                 </button>
                 
@@ -308,7 +354,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({ cardId, screenspaceId,
             ) : (
                 isElectron() ? (
                     <WebView
-                        key={`browser-${cardId}-${screenspaceId}-${url}`}
+                        key={`browser-${cardId}-${screenspaceId}`}
                         ref={webviewRef}
                         src={url}
                         style={{ width: '100%', height: '100%', visibility: isReaderMode ? 'hidden' : 'visible' }}
