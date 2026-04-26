@@ -27,6 +27,9 @@ type SuperAiButtonProps = {
   label?: string;
   selectedRoleId?: string | null;
   onRoleSelect?: (roleId: string) => void;
+  onClick?: () => void;
+  intent?: 'prompt' | 'mutation' | 'navigation';
+  isLoading?: boolean;
 };
 
 
@@ -43,7 +46,10 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   defaultRoleId,
   label,
   selectedRoleId: controlledRoleId,
-  onRoleSelect
+  onRoleSelect,
+  onClick,
+  intent = 'prompt',
+  isLoading = false
 }) => {
   const [state, setState] = useState<ButtonState>('idle');
   const [prompt, setPrompt] = useState(defaultPrompt);
@@ -150,8 +156,13 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   
   // Left Click = Magic Run (User Request)
   const handleLeftClick = () => {
-    if (dispatchMutation.isLoading) return;
+    if (isLoading || dispatchMutation.isLoading) return;
     
+    if (onClick) {
+        onClick();
+        return;
+    }
+
     if (!selectedRoleId) {
         toast.error("Please right-click to assign an AI role.");
         return;
@@ -213,7 +224,15 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
         style={style}
         title={`AI Context: ${contextLabel} (Right-click for menu)`}
       >
-        {state === 'menu' || state === 'role_select' || state === 'config' ? (
+        {isLoading || dispatchMutation.isLoading ? (
+             <motion.div
+               animate={{ rotate: 360 }}
+               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+               className="flex items-center justify-center"
+             >
+               <Sparkles size={14} />
+             </motion.div>
+          ) : state === 'menu' || state === 'role_select' || state === 'config' ? (
              <X size={14} />
           ) : (
              <div className="flex items-center gap-1.5 px-1.5">

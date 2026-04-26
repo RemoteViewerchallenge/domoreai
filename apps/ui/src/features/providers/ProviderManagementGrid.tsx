@@ -20,6 +20,8 @@ import { cn } from '../../lib/utils.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { SmartBrowser } from '../../components/SmartBrowser.js';
+import { AddProviderForm } from './AddProviderForm.js';
+import { UniversalDataGrid } from '../../components/UniversalDataGrid.js';
 
 interface Provider {
   id: string;
@@ -66,6 +68,10 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
   const [billingProviderId, setBillingProviderId] = useState<string | null>(null);
   const [billingProviderUrl, setBillingProviderUrl] = useState<string>('');
 
+  // Morphing State
+  const [isAdding, setIsAdding] = useState(false);
+  const [morphedModels, setMorphedModels] = useState<any[] | null>(null);
+
   useEffect(() => {
     if (remoteProviders) {
       setLocalProviders(remoteProviders.map((p: any) => ({ ...p, isDirty: false })));
@@ -106,28 +112,8 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
   });
 
   const openAddModal = () => {
-    setEditingProvider({
-      id: `new-${Date.now()}`,
-      name: '',
-      type: 'openai',
-      baseUrl: '',
-      apiKeyEnvVar: '',
-      pricingUrl: '',
-      isCreditCardLinked: false,
-      enforceFreeOnly: true,
-      monthlyBudget: 0,
-      serviceCategories: ['LLM'],
-      billingRiskLevel: 'ZERO_RISK',
-      promoMonthlyLimit: 0,
-      currentScrapedSpend: 0,
-      billingDashboardUrl: '',
-      lastScrapeTime: null,
-      status: 'ACTIVE',
-      lastError: null,
-      providerClass: 'FOUNDATIONAL',
-      isNew: true,
-      isDirty: true
-    });
+    setIsAdding(true);
+    setMorphedModels(null);
   };
 
   const handleSaveModal = async () => {
@@ -138,6 +124,7 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
         name: editingProvider.name,
         providerType: editingProvider.type,
         baseUrl: editingProvider.baseUrl || undefined,
+        apiKey: (editingProvider as any).apiKey || undefined,
         apiKeyEnvVar: editingProvider.apiKeyEnvVar || undefined,
         pricingUrl: editingProvider.pricingUrl || undefined,
         isCreditCardLinked: editingProvider.isCreditCardLinked,
@@ -371,7 +358,50 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
         )}
       </div>
 
-      {/* Editing Modal */}
+      {/* Add Provider / Morph Modal */}
+      <AnimatePresence>
+        {isAdding && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-4xl max-h-[85vh] h-[600px] flex shadow-2xl relative"
+            >
+              {!morphedModels ? (
+                <AddProviderForm 
+                  onSuccessMorph={(_id, models) => setMorphedModels(models)}
+                  onCancel={() => setIsAdding(false)}
+                />
+              ) : (
+                <div className="flex flex-col h-full w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+                   <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                      <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                        <Zap size={14} className="animate-pulse" /> Validation Success: Models Synchronized
+                      </h3>
+                      <button onClick={() => setIsAdding(false)} className="text-zinc-500 hover:text-white transition-colors">
+                        <Plus className="rotate-45" size={20} />
+                      </button>
+                   </div>
+                   <div className="flex-1 overflow-hidden">
+                      <UniversalDataGrid data={morphedModels} />
+                   </div>
+                   <div className="p-4 border-t border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
+                      <p className="text-[10px] text-zinc-500 font-mono italic">Ingested {morphedModels.length} models into registry.</p>
+                      <Button onClick={() => {
+                        setIsAdding(false);
+                        utils.providers.list.invalidate();
+                      }} className="bg-indigo-600 hover:bg-indigo-500 font-bold uppercase tracking-widest text-[10px]">
+                        Go to Dashboard
+                      </Button>
+                   </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {editingProvider && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -413,6 +443,21 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
                       onChange={e => setEditingProvider({...editingProvider, baseUrl: e.target.value})} 
                       className="bg-zinc-900 border-zinc-800 text-sm font-mono"
                     />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">API Key (Secure)</label>
+                    <div className="relative">
+                      <Input 
+                        type="password"
+                        placeholder="••••••••••••••••"
+                        onChange={e => setEditingProvider({...editingProvider, apiKey: e.target.value} as any)} 
+                        className="bg-zinc-900 border-zinc-800 text-sm font-mono pr-10"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">
+                        <Lock size={12} />
+                      </div>
+                    </div>
+                    <p className="text-[8px] text-zinc-600 mt-1 italic">Stored encrypted. Overrides .env if set.</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Provider Class</label>
