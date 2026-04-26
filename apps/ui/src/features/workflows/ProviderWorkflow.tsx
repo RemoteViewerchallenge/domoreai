@@ -1,74 +1,62 @@
-/**
- * Provider Workflow — Phase 3
- *
- * 2-column layout:
- *   Left:  Provider Registry / Financial Arbitrage Dashboard (ProviderManagementGrid)
- *   Right: A free SwappableCard (column 1) — user can switch it to browser mode,
- *          terminal, AI chat, or anything else via the card's own controls.
- *          The card's URL bar is available for dragging billing URLs from the browser
- *          onto a Provider card row.
- */
-import { useEffect } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { UniversalCardWrapper } from '../../components/work-order/UniversalCardWrapper.js';
-import { ProviderManagementGrid } from '../providers/ProviderManagementGrid.js';
-import { SwappableCard } from '../../components/work-order/SwappableCard.js';
-import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import React, { useState } from 'react';
+// Make sure these paths match your folder structure. 
+// If SmartBrowser is in components/, this path is correct.
+import { SmartBrowser } from '../../components/SmartBrowser.js';
+import { SuperAiButton } from '../../components/ui/SuperAiButton.js';
+import { Input } from '../../components/ui/input.js';
+import { Switch } from '../../components/ui/switch.js';
 
-// Stable card id for the right panel — lives for the duration of the workflow session.
-const BILLING_CARD_ID = 'provider-workflow-billing-card';
-
-export default function ProviderWorkflow() {
-  const { addCard, removeCard, cards, activeScreenspaceId } = useWorkspaceStore();
-
-  // Ensure the billing card exists in the store while this workflow is mounted.
-  useEffect(() => {
-    const exists = cards.some(c => c.id === BILLING_CARD_ID);
-    if (!exists) {
-      addCard({
-        id: BILLING_CARD_ID,
-        roleId: '',
-        column: 1,
-        screenspaceId: activeScreenspaceId,
-        title: 'Billing Browser',
-        type: 'browser',
-      });
-    }
-    // Clean up when leaving the workflow so it doesn't pollute the free grid.
-    return () => {
-      removeCard(BILLING_CARD_ID);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+// The dense, zero-waste provider card
+const DenseProviderCard = () => {
+  const [isActive, setIsActive] = useState(true);
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-zinc-950 p-2 gap-2">
-
-      {/* LEFT: Provider Registry */}
-      <div className="flex-1 flex flex-col gap-2 overflow-hidden border-r border-zinc-800 p-2">
-        <UniversalCardWrapper
-          title="Provider & Billing Arbitrage"
-          icon={ShieldCheck}
-          aiContext="provider_workflow"
-          settings={
-            <div className="text-xs text-zinc-400 space-y-2">
-              <p>Configure providers, set budgets, and manage billing risk levels.</p>
-              <p className="text-zinc-500">
-                Use the card on the right to navigate to a billing dashboard —
-                copy the URL and paste it into the Provider's Billing URL field.
-              </p>
-            </div>
-          }
-        >
-          <ProviderManagementGrid workflowMode />
-        </UniversalCardWrapper>
+    <div className={`flex flex-col w-full h-full bg-background p-3 transition-opacity ${!isActive ? 'opacity-50 grayscale' : ''}`}>
+      <div className="flex justify-between items-center h-8 mb-3 border-b border-border pb-2">
+        <span className="text-xs font-bold text-primary tracking-wider">PROVIDER ARBITRAGE</span>
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] uppercase font-bold text-muted-foreground">{isActive ? 'Live' : 'Offline'}</span>
+          <Switch checked={isActive} onCheckedChange={setIsActive} className="scale-75 m-0" />
+        </div>
       </div>
 
-      {/* RIGHT: Free SwappableCard — user controls mode (browser, terminal, AI, etc.) */}
-      <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0 p-2">
-        <SwappableCard id={BILLING_CARD_ID} />
+      <div className="space-y-2 flex-grow">
+        <Input placeholder="Provider Name (e.g. OpenRouter)" className="h-7 text-[11px] bg-muted/20 border-border" />
+        <Input placeholder="Base API URL..." className="h-7 text-[11px] bg-muted/20 border-border" />
+        <Input type="password" placeholder="sk-API-Key..." className="h-7 text-[11px] font-mono bg-muted/20 border-border" />
+      </div>
+
+      <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+        <div className="flex space-x-2 text-[10px] font-mono bg-muted px-2 py-1 rounded text-muted-foreground">
+          <span>LLM: 0</span><span className="opacity-50">|</span>
+          <span>EMB: 0</span><span className="opacity-50">|</span>
+          <span>IMG: 0</span>
+        </div>
+        <SuperAiButton label="Fetch Models" intent="mutation" className="h-7 text-[11px] px-3" />
+      </div>
+    </div>
+  );
+};
+
+// The strict 2-column layout that completely ignores the old workspace/screenspace logic
+export const ProviderWorkflow: React.FC = () => {
+  return (
+    <div className="grid grid-cols-2 gap-2 w-full h-full p-2 bg-background overflow-hidden">
+      
+      {/* Left Column: The Provider Form & Future Table */}
+      <div className="flex flex-col h-full overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <DenseProviderCard />
+        
+        <div className="flex-grow p-3 bg-muted/10 border-t border-border flex items-center justify-center">
+          <span className="text-xs text-muted-foreground font-mono">Models table will render here...</span>
+        </div>
+      </div>
+
+   {/* Right Column: The Agentic Browser */}
+      <div className="flex flex-col h-full overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+        <SmartBrowser initialUrl="https://duckduckgo.com" />
       </div>
 
     </div>
   );
-}
+};
