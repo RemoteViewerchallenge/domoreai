@@ -1,0 +1,68 @@
+[
+  {
+    "name": "_ga",
+    "value": "GA1.1.1330407550.1777219317",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_id",
+    "value": "5c97b958-d08f-45f4-80ae-cd87dc60c30d.7fe98fe0-5ca7-4fd0-b0f2-a56ccb65c75a",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_id_s",
+    "value": "5c97b958-d08f-45f4-80ae-cd87dc60c30d.a73ed7a3-0c26-4d0f-97f1-dd1b8c95db98",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_version_s",
+    "value": "e513ff79-00fc-410f-8f49-9cc2d9ce0770",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "__stripe_mid",
+    "value": "aed74204-91e7-4ee6-a184-e2ad302f6dc74af40d",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "__stripe_sid",
+    "value": "e42fd465-8d93-4946-9bf4-6f4c5ed8723f0920f8",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_twpid",
+    "value": "tw.1777219317978.191668173409868624",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1777219318026.987492917236095746",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_ga_CQ9K0VPEEQ",
+    "value": "GS2.1.s1777219317$o1$g1$t1777219356$j21$l0$h0",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "ph_phc_MrAAAWfjIrmzC8OHWp4uJWpv6lHCc4U2Hu8NDgyxCrl_posthog",
+    "value": "%7B%22distinct_id%22%3A%226621ba32-fac7-48ea-bf1a-ca96324f440a%22%2C%22%24sesid%22%3A%5B1777219356574%2C%22019dca86-acf7-7094-a350-0eb0fcbffd25%22%2C1777219316981%5D%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22%24direct%22%2C%22u%22%3A%22https%3A%2F%2Fconsole.groq.com%2Fhome%22%7D%7D",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_rdt_uuid",
+    "value": "1777219317578.30a70331-48cd-4d1e-a5d6-e744972044f6",
+    "domain": "console.groq.com",
+    "path": "/"
+  }
+]
