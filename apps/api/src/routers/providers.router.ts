@@ -2,15 +2,26 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { ProviderService } from '../services/provider.service.js';
+import { prisma } from '../db.js';
 
 const providerService = new ProviderService();
+
+// ── In-process observable event log ──────────────────────────────────────────
+// Shared with systemHealth.getLogs for the navbar ticker (V1 ring buffer).
+export const providerEventLog: Array<{ ts: string; msg: string }> = [];
+export function logProviderEvent(message: string) {
+  providerEventLog.push({ ts: new Date().toISOString(), msg: message });
+  if (providerEventLog.length > 200) providerEventLog.shift();
+}
 
 export const providerRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
     return providerService.listProviders();
   }),
 
-  // [UPDATED] Expanded to support new financial/metadata fields
+  // [UPDATED] After saving, logs an event so the Datacenter workflow can reflect
+  // the updated provider via systemHealth.getLogs. ProviderModel rows become
+  // available immediately via the providerModel router.
   upsert: publicProcedure
     .input(z.object({
       id: z.string().optional(),
@@ -32,7 +43,7 @@ export const providerRouter = createTRPCRouter({
       providerClass: z.enum(['FOUNDATIONAL', 'AGGREGATOR', 'INFERENCE_ENGINE', 'LOCAL']).optional(),
     }))
     .mutation(async ({ input }) => {
-      return providerService.upsertProviderConfig({
+      const result = await providerService.upsertProviderConfig({
         id: input.id,
         name: input.name,
         type: input.providerType,
@@ -51,26 +62,41 @@ export const providerRouter = createTRPCRouter({
         lastScrapeTime: input.lastScrapeTime,
         providerClass: input.providerClass,
       });
+
+      // [BACKEND SIDE-EFFECT — Phase 5]
+      // Log the upsert so the navbar ticker and Datacenter workflow reflect changes.
+      const providerName = input.name ?? (result as any)?.name;
+      if (providerName) {
+        logProviderEvent(`[ProviderSaved] "${providerName}" config updated — ProviderModel table ready`);
+      }
+
+      return result;
+    }),
+
+  // [NEW] Soft enable/disable a provider without deleting it (toggle switch on Provider Card)
+  setEnabled: publicProcedure
+    .input(z.object({
+      id: z.string(),
+      isEnabled: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const updated = await prisma.providerConfig.update({
+        where: { id: input.id },
+        data: { isEnabled: input.isEnabled },
+      });
+      logProviderEvent(`[ProviderToggle] "${updated.name}" → ${input.isEnabled ? 'ENABLED' : 'DISABLED'}`);
+      return updated;
     }),
 
   // [NEW] Trigger the Surveyor for a specific provider
   scout: publicProcedure
     .input(z.object({ providerId: z.string() }))
     .mutation(async ({ input }) => {
-      // 1. Fetch models
       const syncResult = await providerService.fetchAndNormalizeModels(input.providerId);
-      
-      // 2. Run Surveyor to identify capabilities and populate specialized tables
       const { Surveyor } = await import('../services/Surveyor.js');
-      const surveyResult = await Surveyor.surveyAll(); 
-
-      // 3. Return combined result with updated provider state
+      const surveyResult = await Surveyor.surveyAll();
       const provider = await providerService.getProvider(input.providerId);
-      return {
-        ...syncResult,
-        ...surveyResult,
-        provider
-      };
+      return { ...syncResult, ...surveyResult, provider };
     }),
 
   // [NEW] Scrape billing balance
@@ -82,7 +108,7 @@ export const providerRouter = createTRPCRouter({
       return scraper.scrapeAndSyncBalance(input.providerId);
     }),
 
-  // [NEW] Save billing session
+  // [NEW] Save billing session cookies
   saveBillingSession: publicProcedure
     .input(z.object({
       providerId: z.string(),
@@ -102,22 +128,19 @@ export const providerRouter = createTRPCRouter({
       const { providerId, dashboardUrl, cookies } = input;
       const fs = await import('fs');
       const path = await import('path');
-      const { prisma } = await import('../db.js');
 
-      // Save cookies to .userData folder (using Playwright context dir structure)
       const userDataDir = path.resolve(process.cwd(), '.userData', providerId);
       if (!fs.existsSync(userDataDir)) {
         fs.mkdirSync(userDataDir, { recursive: true });
       }
       fs.writeFileSync(path.join(userDataDir, 'cookies.json'), JSON.stringify(cookies, null, 2));
 
-      // Update provider config
       await prisma.providerConfig.update({
         where: { id: providerId },
         data: {
           billingDashboardUrl: dashboardUrl,
           sessionValid: true,
-          billingRiskLevel: 'PROMO_BURN' // Upgrading risk due to authenticated session
+          billingRiskLevel: 'PROMO_BURN',
         }
       });
 
@@ -139,10 +162,7 @@ export const providerRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const syncResult = await providerService.fetchAndNormalizeModels(input.providerId);
       const provider = await providerService.getProvider(input.providerId);
-      return {
-        ...syncResult,
-        provider
-      };
+      return { ...syncResult, provider };
     }),
 
   // Legacy/Debug endpoints

@@ -43,21 +43,26 @@ export interface WorkspaceState {
   };
   setAiContext: (context: Partial<WorkspaceState['aiContext']>) => void;
 
-  // [NEW] Screenspaces
+  // Screenspaces
   activeScreenspaceId: number;
   screenspaces: Screenspace[];
   switchScreenspace: (id: number) => void;
 
-  // [NEW] Zero-Trust Control Plane
+  // Zero-Trust Control Plane
   showControlPlane: boolean;
   toggleControlPlane: () => void;
+
+  // [NEW] Workflow system — drives AgentWorkbench column layout
+  activeWorkflow: string | null; // e.g. 'provider' | 'org' | 'datacenter' | 'settings' | 'voice'
+  setActiveWorkflow: (workflow: string | null) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
       columns: 3,
-      setColumns: (columns) => set({ columns }),
+      // Clamp to 2–4; workflows may lock this value
+      setColumns: (columns) => set({ columns: Math.max(2, Math.min(4, columns)) }),
       showSidebar: false,
       toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
       setSidebarOpen: (open) => set({ showSidebar: open }),
@@ -104,10 +109,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         { id: 3, name: 'Logs', cardIds: [] },
       ],
       switchScreenspace: (id) => set({ activeScreenspaceId: id }),
+
+      activeWorkflow: null,
+      setActiveWorkflow: (workflow) => set({ activeWorkflow: workflow }),
     }),
     {
-      name: 'workspace-storage', // unique name
-      partialize: (state) => ({ columns: state.columns, cards: state.cards, activeScreenspaceId: state.activeScreenspaceId }), // Persist cards!
+      name: 'workspace-storage',
+      partialize: (state) => ({
+        columns: state.columns,
+        cards: state.cards,
+        activeScreenspaceId: state.activeScreenspaceId,
+        // Do NOT persist activeWorkflow — always start fresh
+      }),
     }
   )
 );
