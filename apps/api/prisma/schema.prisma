@@ -493,3 +493,29 @@ model Orchestration {
   updatedAt   DateTime @updatedAt
 }
 
+
+// --- BOOKMARKING SYSTEM ---
+
+model BookmarkFolder {
+  id        String           @id @default(cuid())
+  name      String
+  parentId  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  parent    BookmarkFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children  BookmarkFolder[] @relation("FolderHierarchy")
+  bookmarks Bookmark[]
+}
+
+model Bookmark {
+  id         String         @id @default(cuid())
+  title      String
+  url        String
+  faviconUrl String?
+  folderId   String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  
+  folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+}
