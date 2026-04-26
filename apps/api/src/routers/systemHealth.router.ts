@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc.js';
 import { backupService } from '../services/BackupService.js';
-// import { persistentModelDoctor } from '../services/PersistentModelDoctor.js';
 import { Surveyor } from '../services/Surveyor.js';
+import { providerEventLog } from './providers.router.js';
 
 /**
  * SYSTEM HEALTH ROUTER
@@ -62,8 +62,18 @@ export const systemHealthRouter = createTRPCRouter({
   getBackupServiceStatus: publicProcedure
     .query(() => {
       return {
-        isRunning: true, // backupService doesn't expose this yet
-        lastBackup: null // TODO: Add this to BackupService
+        isRunning: true,
+        lastBackup: null
       };
-    })
+    }),
+
+  // ── Observability log ring buffer for the navbar ticker ──────────────────
+  // Returns the last `limit` log entries. Frontend polls every 5s.
+  // V2 will push these over WebSocket once volume warrants it.
+  getLogs: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }))
+    .query(({ input }) => {
+      const slice = providerEventLog.slice(-input.limit);
+      return slice.reverse(); // newest first
+    }),
 });

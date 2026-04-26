@@ -45,6 +45,38 @@ model ProviderConfig {
   lastScrapeTime      DateTime?
   sessionValid        Boolean? @default(false)
   Model               Model[]
+  providerModels      ProviderModel[]
+}
+
+// Provider-Specific Model Overrides
+// Used for aggregators (OpenRouter), inference engines (NVIDIA), and custom endpoints
+// that expose models with different API strings, pricing, or context windows than global defaults.
+model ProviderModel {
+  id                    String         @id @default(cuid())
+  providerId            String
+  // The exact string sent to the provider's API (e.g. "openai/gpt-4o" for OpenRouter)
+  apiString             String
+  // Human-readable display name
+  displayName           String
+  // Overrides the global model's context window if set
+  contextWindowOverride Int?
+  // Overrides global cost per 1k tokens (prompt)
+  inputCostPer1kOverride  Float?
+  // Overrides global cost per 1k tokens (completion)
+  outputCostPer1kOverride Float?
+  // Free tier flag for this provider-model pairing
+  isFreeTier            Boolean        @default(false)
+  // JSON blob for any extra provider-specific capability flags
+  capabilityOverrides   Json?          @default("{}")
+  isEnabled             Boolean        @default(true)
+  // Auto-populated by SuperAiButton fetch from provider /models endpoint
+  lastFetchedAt         DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  provider              ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, apiString])
+  @@index([providerId])
 }
 
 model Workspace {
