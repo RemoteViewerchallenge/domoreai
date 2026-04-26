@@ -84,6 +84,7 @@ export class OpenAIProvider implements BaseLLMProvider {
         messages: request.messages as any,
         temperature: request.temperature,
         max_tokens: request.max_tokens,
+        response_format: request.response_format,
       }, {
         timeout, // Dynamic timeout in options object
         maxRetries: LLM_MAX_RETRIES, // Ensure retries are applied per-request

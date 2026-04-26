@@ -620,7 +620,7 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
           const failingModelId = config.internalId || config.modelId;
           
           console.warn(`[Arbitrage] Model ${failingModelId} rate limited. Swapping...`);
-          await blacklistModel(failingModelId, 60);
+          await blacklistModel(failingModelId, 600);
           
           // Step 2: Apply Bandit Penalty
           const { updateReward } = await import("./modelManager.service.js");
@@ -834,13 +834,9 @@ Format: { "fixedCommand": "string", "remediationCommands": ["string"] }`;
 
     const response = await activeModel.generate(`${systemPrompt}\n\nFAILED_COMMAND: ${failedStep.command}`);
     
+    const { VolcanoAgent } = await import("./VolcanoAgent.js");
     try {
-        // Find JSON in response
-        const jsonMatch = response.text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        throw new Error("Failed to parse recovery worker response.");
+        return VolcanoAgent.parseResponse(response.text);
     } catch (e) {
         console.error("[AgentRuntime] Error parsing recovery JSON:", e);
         return {};
