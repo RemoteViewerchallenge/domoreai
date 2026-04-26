@@ -18,10 +18,11 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
   }
   const webviewRef = useRef<WebviewTag>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Check for Electron
-    // @ts-expect-error process is injected by Electron
+    // @ts-ignore process is injected by Electron
     if (window.process?.type === 'renderer') {
       setIsElectron(true);
     } else {
@@ -33,8 +34,27 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
     }
   }, []);
 
+  useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
+
+    const handleDomReady = () => setIsReady(true);
+    const handleFail = (e: any) => {
+        console.warn('NativeBrowser failed load:', e);
+        // We don't have toast here, so we'll just log and maybe add a UI indicator later
+    };
+
+    webview.addEventListener('dom-ready', handleDomReady);
+    webview.addEventListener('did-fail-load', handleFail);
+    
+    return () => {
+      webview.removeEventListener('dom-ready', handleDomReady);
+      webview.removeEventListener('did-fail-load', handleFail);
+    };
+  }, [isElectron]);
+
   const handleGoBack = () => {
-    if (isElectron && webviewRef.current) {
+    if (isElectron && webviewRef.current && isReady) {
       if (webviewRef.current.canGoBack()) {
         webviewRef.current.goBack();
       }
@@ -45,7 +65,7 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
   };
 
   const handleGoForward = () => {
-    if (isElectron && webviewRef.current) {
+    if (isElectron && webviewRef.current && isReady) {
       if (webviewRef.current.canGoForward()) {
         webviewRef.current.goForward();
       }
@@ -53,37 +73,71 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
   };
 
   const handleReload = () => {
-    if (isElectron && webviewRef.current) {
+    if (isElectron && webviewRef.current && isReady) {
       webviewRef.current.reload();
     } else if (iframeRef.current) {
       iframeRef.current.src = iframeRef.current.src;
     }
   };
 
-  const [currentUrl, setCurrentUrl] = useState(url);
+  const [browserUrl, setBrowserUrl] = useState(url);
   const [inputUrl, setInputUrl] = useState(url);
   
+  // Update internal state if the prop changes from outside
+  useEffect(() => {
+    setBrowserUrl(url);
+    setInputUrl(url);
+  }, [url]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      let target = inputUrl;
-      if (!target.startsWith('http')) {
-        target = `https://${target}`;
+      let target = inputUrl.trim();
+      if (!target) return;
+
+      const isUrl = !target.includes(' ') && (target.includes('.') || target.startsWith('localhost') || target.startsWith('http'));
+
+      if (isUrl) {
+        if (!target.startsWith('http')) {
+          target = `https://${target}`;
+        }
+      } else {
+        target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
       }
-      setCurrentUrl(target);
+
+      setBrowserUrl(target);
+      setInputUrl(target);
     }
   };
+
+  useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
+
+    const handleNavigate = (e: any) => {
+      setBrowserUrl(e.url);
+      setInputUrl(e.url);
+    };
+
+    webview.addEventListener('did-navigate', handleNavigate);
+    webview.addEventListener('did-navigate-in-page', handleNavigate);
+    
+    return () => {
+      webview.removeEventListener('did-navigate', handleNavigate);
+      webview.removeEventListener('did-navigate-in-page', handleNavigate);
+    };
+  }, [isReady]);
 
   return (
     <div className="flex flex-col w-full h-full bg-zinc-900 overflow-hidden rounded-md border border-zinc-800">
       {/* Browser Toolbar */}
       <div className="h-10 bg-zinc-950 flex items-center px-2 space-x-2 border-b border-zinc-800">
-        <Button variant="ghost" size="icon" onClick={handleGoBack} className="h-8 w-8 text-zinc-400 hover:text-emerald-400">
+        <Button variant="ghost" size="icon" onClick={handleGoBack} disabled={isElectron && !isReady} className="h-8 w-8 text-zinc-400 hover:text-emerald-400 disabled:opacity-30">
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleGoForward} className="h-8 w-8 text-zinc-400 hover:text-emerald-400">
+        <Button variant="ghost" size="icon" onClick={handleGoForward} disabled={isElectron && !isReady} className="h-8 w-8 text-zinc-400 hover:text-emerald-400 disabled:opacity-30">
           <ArrowRight className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleReload} className="h-8 w-8 text-zinc-400 hover:text-emerald-400">
+        <Button variant="ghost" size="icon" onClick={handleReload} disabled={isElectron && !isReady} className="h-8 w-8 text-zinc-400 hover:text-emerald-400 disabled:opacity-30">
           <RotateCw className="w-4 h-4" />
         </Button>
         
@@ -105,7 +159,7 @@ export const NativeBrowser: React.FC<NativeBrowserProps> = ({ url }) => {
             {/* eslint-disable-next-line react/no-unknown-property */}
             <webview
               ref={webviewRef}
-              src={url}
+              src={browserUrl}
               className="w-full h-full"
               // eslint-disable-next-line react/no-unknown-property
               allowpopups
