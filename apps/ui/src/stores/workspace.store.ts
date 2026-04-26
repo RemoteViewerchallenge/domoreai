@@ -40,8 +40,10 @@ export interface WorkspaceState {
     scope: string; // 'Global', 'Workspace', 'Card:ID'
     isLimiting: boolean;
     injectedState: boolean;
+    contextBuffer: string[]; // [NEW]
   };
   setAiContext: (context: Partial<WorkspaceState['aiContext']>) => void;
+  appendContextBuffer: (markdown: string) => void; // [NEW]
 
   // Screenspaces
   activeScreenspaceId: number;
@@ -98,9 +100,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       aiContext: {
         scope: 'Global',
         isLimiting: false,
-        injectedState: false
+        injectedState: false,
+        contextBuffer: []
       },
       setAiContext: (ctx) => set((state) => ({ aiContext: { ...state.aiContext, ...ctx } })),
+      appendContextBuffer: (markdown) => set((state) => ({ 
+        aiContext: { 
+          ...state.aiContext, 
+          contextBuffer: [...state.aiContext.contextBuffer, markdown] 
+        } 
+      })),
 
       activeScreenspaceId: 1,
       screenspaces: [
