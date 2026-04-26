@@ -42,10 +42,10 @@ export default function ProviderWorkflow() {
   }, []);
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-zinc-950">
+    <div className="h-full w-full flex overflow-hidden bg-zinc-950 p-2 gap-2">
 
       {/* LEFT: Provider Registry */}
-      <div className="flex-1 flex flex-col overflow-hidden border-r border-zinc-800">
+      <div className="flex-1 flex flex-col gap-2 overflow-hidden border-r border-zinc-800 p-2">
         <UniversalCardWrapper
           title="Provider & Billing Arbitrage"
           icon={ShieldCheck}
@@ -65,7 +65,7 @@ export default function ProviderWorkflow() {
       </div>
 
       {/* RIGHT: Free SwappableCard — user controls mode (browser, terminal, AI, etc.) */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0 p-2">
         <SwappableCard id={BILLING_CARD_ID} />
       </div>
 

@@ -136,11 +136,24 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   const [showBookmarkPopover, setShowBookmarkPopover] = useState(false);
   const [bookmarkTitle, setBookmarkTitle] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   const createBookmarkMutation = trpc.bookmark.createBookmark.useMutation({
     onSuccess: () => {
       toast.success("Bookmark added!");
       setShowBookmarkPopover(false);
+      setIsCreatingFolder(false);
+      setNewFolderName('');
+      void utils.bookmark.listFolders.invalidate();
+    }
+  });
+
+  const createFolderMutation = trpc.bookmark.createFolder.useMutation({
+    onSuccess: () => {
+      toast.success("Folder created!");
+      setIsCreatingFolder(false);
+      setNewFolderName('');
       void utils.bookmark.listFolders.invalidate();
     }
   });
@@ -223,6 +236,13 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       title: bookmarkTitle || "New Bookmark",
       url: url,
       folderId: selectedFolderId
+    });
+  };
+
+  const handleSaveFolder = () => {
+    if (!newFolderName.trim()) return;
+    createFolderMutation.mutate({
+      name: newFolderName.trim()
     });
   };
 
@@ -501,19 +521,46 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] text-muted-foreground font-bold uppercase">Folder</label>
-                              <select 
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
-                                value={selectedFolderId || ''}
-                                onChange={e => setSelectedFolderId(e.target.value || null)}
-                              >
-                                <option value="">No Folder</option>
-                                {folders?.map((f: any) => (
-                                  <option key={f.id} value={f.id}>{f.name}</option>
-                                ))}
-                              </select>
+                              {isCreatingFolder ? (
+                                <div className="flex space-x-2">
+                                  <input 
+                                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-primary"
+                                    placeholder="New folder name..."
+                                    value={newFolderName}
+                                    onChange={e => setNewFolderName(e.target.value)}
+                                    autoFocus
+                                  />
+                                  <button 
+                                    onClick={handleSaveFolder}
+                                    disabled={createFolderMutation.isLoading}
+                                    className="px-2 py-1 text-xs bg-primary text-primary-foreground font-bold rounded shadow hover:opacity-90"
+                                  >
+                                    {createFolderMutation.isLoading ? '...' : 'Save'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex space-x-2">
+                                  <select 
+                                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                                    value={selectedFolderId || ''}
+                                    onChange={e => setSelectedFolderId(e.target.value || null)}
+                                  >
+                                    <option value="">No Folder</option>
+                                    {folders?.map((f: any) => (
+                                      <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                  </select>
+                                  <button 
+                                    onClick={() => setIsCreatingFolder(true)}
+                                    className="px-2 py-1 text-xs bg-muted text-muted-foreground hover:text-white rounded"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <div className="flex justify-end gap-2 pt-2">
-                              <button onClick={() => setShowBookmarkPopover(false)} className="px-3 py-1 text-xs text-muted-foreground hover:text-white">Cancel</button>
+                              <button onClick={() => { setShowBookmarkPopover(false); setIsCreatingFolder(false); setNewFolderName(''); }} className="px-3 py-1 text-xs text-muted-foreground hover:text-white">Cancel</button>
                               <button 
                                 onClick={handleSaveBookmark} 
                                 disabled={createBookmarkMutation.isLoading}
