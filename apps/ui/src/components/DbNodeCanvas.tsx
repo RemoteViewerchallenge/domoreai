@@ -102,7 +102,15 @@ const nodeTypes = {
 
 // --- MAIN CANVAS COMPONENT ---
 
-export const DbNodeCanvas = () => {
+export const DbNodeCanvas = ({
+  orgMode: _orgMode = false,
+  schemaMode: _schemaMode = false,
+  showColumnHeaders: _showColumnHeaders = false,
+}: {
+  orgMode?: boolean;
+  schemaMode?: boolean;
+  showColumnHeaders?: boolean;
+}) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const _reactFlowWrapper = useRef(null);

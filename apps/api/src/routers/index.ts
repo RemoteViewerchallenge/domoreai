@@ -24,6 +24,7 @@ import { schemaRouter } from './schema.router.js';
 import { nebulaRouter } from './nebula.router.js';
 import { voiceRouter } from './voice.router.js';
 import { basetoolRouter } from './basetool.router.js';
+import { providerModelRouter } from './providerModel.router.js';
 
 export const appRouter = createTRPCRouter({
   agent: agentRouter,
@@ -51,6 +52,7 @@ export const appRouter = createTRPCRouter({
   nebula: nebulaRouter,
   voice: voiceRouter,
   basetool: basetoolRouter,
+  providerModel: providerModelRouter,
 });
 
 export type AppRouter = typeof appRouter;

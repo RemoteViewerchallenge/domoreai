@@ -20,7 +20,7 @@ import { cn } from '../../lib/utils.js';
 
 type LabTab = 'identity' | 'behavior' | 'cortex' | 'tools' | 'tuning' | 'governance' | 'context' | 'preview';
 
-export const AgentDNAlab: React.FC = () => {
+export const AgentDNAlab: React.FC<{ embeddedMode?: boolean }> = ({ embeddedMode: _embeddedMode = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [formData, setFormData] = useState<RoleFormState>(DEFAULT_ROLE_FORM_DATA);
@@ -41,14 +41,14 @@ export const AgentDNAlab: React.FC = () => {
     return rows;
   }, [registry]);
 
-  const updateRoleMutation = trpc.roles.update.useMutation({
+  const updateRoleMutation = trpc.roles.upsert.useMutation({
     onSuccess: () => {
       void utils.roles.list.invalidate();
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
       toast.success('DNA Synchronized');
     },
-    onError: (e) => {
+    onError: (e: { message: string }) => {
       setSaveStatus('error');
       toast.error(`Sync Failed: ${e.message}`);
     }
@@ -305,7 +305,7 @@ export const AgentDNAlab: React.FC = () => {
                                         side="left"
                                         onGenerate={(p, opts) => {
                                             void (async () => {
-                                                const res = await utils.client.role.generatePrompt.mutate({
+                                                const res = await utils.client.roles.generatePrompt.mutate({
                                                     name: formData.name,
                                                     goal: p,
                                                     context: formData.basePrompt,
