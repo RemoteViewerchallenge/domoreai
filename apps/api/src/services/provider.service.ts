@@ -46,6 +46,7 @@ export class ProviderService {
       if (input.name !== undefined) data.name = input.name;
       if (input.type !== undefined) data.type = input.type;
       if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl;
+      if (input.apiKey !== undefined) data.apiKey = input.apiKey;
       if (input.apiKeyEnvVar !== undefined) data.apiKeyEnvVar = input.apiKeyEnvVar;
       if (input.pricingUrl !== undefined) data.pricingUrl = input.pricingUrl;
       if (input.isCreditCardLinked !== undefined) data.isCreditCardLinked = input.isCreditCardLinked;
@@ -75,6 +76,7 @@ export class ProviderService {
           name: input.name,
           type: input.type,
           baseUrl: input.baseUrl,
+          apiKey: input.apiKey,
           apiKeyEnvVar: input.apiKeyEnvVar,
           pricingUrl: input.pricingUrl,
           isCreditCardLinked: input.isCreditCardLinked ?? false,
@@ -88,7 +90,7 @@ export class ProviderService {
           lastScrapeTime: input.lastScrapeTime,
           providerClass: input.providerClass || 'FOUNDATIONAL',
           isEnabled: true,
-        }
+        } as any
       });
     }
   }
@@ -172,9 +174,13 @@ export class ProviderService {
     if (!providerConfig) throw new Error('Provider not found');
 
     // API Key Strategy:
-    // 1. Check type-based env var (MISTRAL_API_KEY, GOOGLE_API_KEY, etc.)
-    // 2. Check generic provider-id-based env var
-    let apiKey = process.env[`${providerConfig.type.toUpperCase()}_API_KEY`] || '';
+    // 1. Check DB-stored key (highest priority)
+    // 2. Check type-based env var (MISTRAL_API_KEY, GOOGLE_API_KEY, etc.)
+    // 3. Check generic provider-id-based env var
+    let apiKey = (providerConfig as any).apiKey || '';
+    if (!apiKey) {
+      apiKey = process.env[`${providerConfig.type.toUpperCase()}_API_KEY`] || '';
+    }
     if (!apiKey) {
       apiKey = process.env[`${providerConfig.id.toUpperCase()}_API_KEY`] || '';
     }
@@ -260,9 +266,9 @@ export class ProviderService {
             isActive: true,
             lastSeenAt: new Date(),
             providerData: model as any,
-            underlyingProvider: (providerConfig.providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
+            underlyingProvider: ((providerConfig as any).providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
             updatedAt: new Date(),
-          }
+          } as any
         });
       } else {
         dbModel = await prisma.model.create({
@@ -271,10 +277,10 @@ export class ProviderService {
             providerId: providerConfig.id,
             name: displayName,
             providerData: model as any,
-            underlyingProvider: (providerConfig.providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
+            underlyingProvider: ((providerConfig as any).providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
             isActive: true,
             aiData: {},
-          }
+          } as any
         });
       }
 
