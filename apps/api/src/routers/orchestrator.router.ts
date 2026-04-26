@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc.js';
+import { AgentService } from '../services/agent.service.js';
+
+const agentService = new AgentService();
+
 
 export const orchestratorRouter = createTRPCRouter({
   getConfig: protectedProcedure.query(async () => {
@@ -107,28 +111,21 @@ export const orchestratorRouter = createTRPCRouter({
         injectState: z.boolean().optional()
       }).optional()
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       console.log('[Orchestrator] Dispatch received:', input);
       
-      let role = null;
-      if (input.roleId) {
-        // [ROUTING VERIFICATION] Fetch specific AgentConfig from DB to ensure correct model/provider routing
-        role = await ctx.prisma.role.findUnique({
-          where: { id: input.roleId },
-          include: { variants: { where: { isActive: true }, take: 1 } }
-        });
-        
-        if (role) {
-            console.log(`[Orchestrator] Task routed using role: ${role.name} (${role.id})`);
-            // The LLMSelector will use this role's specific config for API arbitrage logic.
-        } else {
-            console.warn(`[Orchestrator] Warning: Role ID ${input.roleId} not found in database.`);
-        }
-      }
+      // Call the AgentService to start an execution session
+      // This will resolve the model, tools, and run the agent loop
+      const result = await agentService.startSession({
+        roleId: input.roleId || 'default',
+        userGoal: input.prompt,
+        cardId: input.contextId || 'default',
+        modelConfig: {
+          temperature: 0.7,
+          maxTokens: 1024,
+        },
+      });
 
-      return { 
-        success: true, 
-        message: role ? `Command routed to ${role.name}` : "Command dispatched successfully" 
-      };
+      return result;
     })
 });
