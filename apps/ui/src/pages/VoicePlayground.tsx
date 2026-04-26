@@ -27,7 +27,7 @@ interface VoiceRole {
   description: string;
 }
 
-export default function VoicePlayground() {
+export default function VoicePlayground({ embedded = false }: { embedded?: boolean }) {
   const [selectedInputSource, setSelectedInputSource] = useState<InputSource>('microphone');
   const [selectedSTTEngine, setSelectedSTTEngine] = useState<string>('');
   const [selectedTTSEngine, setSelectedTTSEngine] = useState<string>('');
@@ -108,8 +108,9 @@ export default function VoicePlayground() {
 
   return (
     <div className="flex flex-col h-full w-full bg-zinc-950">
-      {/* Header */}
-      <div className="flex-none h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900">
+      {/* Header — hidden when embedded inside a workflow card */}
+      {!embedded && (
+        <div className="flex-none h-14 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900">
         <div className="flex items-center gap-4">
           <div className="flex flex-col">
             <span className="font-bold text-xl text-zinc-200 tracking-tight leading-none">
@@ -131,7 +132,8 @@ export default function VoicePlayground() {
             Settings
           </Button>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -401,7 +403,6 @@ export default function VoicePlayground() {
           setVoiceKeyboardOpen(false);
         }}
         position={{ x: window.innerWidth / 2, y: window.innerHeight / 2 }}
-        engineId={selectedSTTEngine}
       />
     </div>
   );

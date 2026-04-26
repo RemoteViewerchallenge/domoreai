@@ -9,7 +9,7 @@ import {
 // A Wrapper for Cell Data that handles Protection
 // const ProtectedCell = ... (removed unused)
 
-export const DatabaseBrowser: React.FC = () => {
+export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean }> = ({ showCreateTable: _showCreateTable = false }) => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
