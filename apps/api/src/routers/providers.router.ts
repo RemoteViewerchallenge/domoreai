@@ -1,7 +1,9 @@
 // --- providers.router.ts ---
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
 import { ProviderService } from '../services/provider.service.js';
+import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { prisma } from '../db.js';
 
 const providerService = new ProviderService();
@@ -163,6 +165,29 @@ export const providerRouter = createTRPCRouter({
       const syncResult = await providerService.fetchAndNormalizeModels(input.providerId);
       const provider = await providerService.getProvider(input.providerId);
       return { ...syncResult, provider };
+    }),
+
+  validateKey: publicProcedure
+    .input(z.object({
+      providerType: z.string(),
+      baseUrl: z.string(),
+      apiKey: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const providerInstance = ProviderFactory.createProvider(input.providerType, {
+          apiKey: input.apiKey,
+          baseURL: input.baseUrl,
+        });
+        
+        const models = await providerInstance.getModels();
+        return { success: true, models };
+      } catch (error) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: `Validation failed: ${error instanceof Error ? error.message : 'Invalid API Key or URL'}`,
+        });
+      }
     }),
 
   // Legacy/Debug endpoints
