@@ -16,9 +16,12 @@ function createWindow() {
     webPreferences: {
       webviewTag: true,
       nodeIntegration: true,
-      contextIsolation: false, // Required for nodeIntegration to work easily without preload
+      contextIsolation: true,
     },
   });
+
+  // Force native dark mode rendering for web contents
+  mainWindow.webContents.forceDark = true;
 
   const isDev = !app.isPackaged;
   // In dev, wait for Vite to serve. In prod, load the local index.html
