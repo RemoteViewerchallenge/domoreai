@@ -96,6 +96,7 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
       config: {
         temperature: request.temperature,
         maxOutputTokens: request.max_tokens,
+        responseMimeType: request.response_format?.type === 'json_object' ? 'application/json' : undefined,
       },
     };
 

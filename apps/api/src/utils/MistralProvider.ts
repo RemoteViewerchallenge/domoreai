@@ -63,6 +63,7 @@ export class MistralProvider implements BaseLLMProvider {
           messages: request.messages,
           temperature: request.temperature,
           max_tokens: request.max_tokens,
+          response_format: request.response_format,
           stream: false
         })
       } as any);
