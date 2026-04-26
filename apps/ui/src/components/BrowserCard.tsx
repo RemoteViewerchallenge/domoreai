@@ -3,13 +3,15 @@ import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
 import ResearchBrowser from './ResearchBrowser.js';
 import { 
   Globe, ArrowLeft, ArrowRight, RotateCw, Lock, 
-  Star, Crosshair, ChevronDown, ExternalLink, Plus, Folder
+  Star, Crosshair, ChevronDown, ExternalLink, Folder
 } from 'lucide-react';
 import { trpc } from '../utils/trpc.js';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { SuperAiButton } from './ui/SuperAiButton.js';
+import { parseOmniboxInput } from '../utils/browser.utils.js';
+import { Plus, X as CloseIcon } from 'lucide-react';
 
 /**
  * Persistent WebView Component
@@ -17,28 +19,30 @@ import { SuperAiButton } from './ui/SuperAiButton.js';
  * In a real Portal strategy, this would render to a detached DOM node.
  */
 const PersistentBrowser = React.memo(({ 
-  url, 
+  url,
   webviewRef, 
   onReady, 
   onFail, 
+  id,
   mobileUA, 
   isReaderMode,
   isElectron 
 }: {
   url: string;
-  webviewRef: React.RefObject<HTMLWebViewElement>;
-  onReady: () => void;
-  onFail: (e: any) => void;
+  webviewRef: (node: HTMLWebViewElement | null) => void;
+  onReady: (id: string) => void;
+  onFail: (id: string, e: any) => void;
+  id: string;
   mobileUA: boolean;
   isReaderMode: boolean;
   isElectron: boolean;
 }) => {
   useEffect(() => {
-    const webview = webviewRef.current;
+    const webview = document.getElementById(`webview-${id}`) as any;
     if (!webview) return;
 
-    const handleDomReady = () => onReady();
-    const handleFail = (e: any) => onFail(e);
+    const handleDomReady = () => onReady(id);
+    const handleFail = (e: any) => onFail(id, e);
 
     webview.addEventListener('dom-ready', handleDomReady);
     // @ts-ignore Electron event
@@ -58,6 +62,7 @@ const PersistentBrowser = React.memo(({
 
   return (
     <WebView
+      id={`webview-${id}`}
       ref={webviewRef}
       src={url}
       style={{ 
@@ -102,11 +107,19 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   billingModeProviderId, 
   onBillingSessionSaved 
 }) => {
-  const [url, setUrl] = useState(initialUrl);
-  const [input, setInput] = useState(url);
-  const [isReady, setIsReady] = useState(false);
+  const [activeTabId, setActiveTabId] = useState<string>('default');
+  const [tabs, setTabs] = useState<Array<{ id: string; url: string; title: string; isReady: boolean }>>([
+    { id: 'default', url: initialUrl, title: 'New Tab', isReady: false }
+  ]);
+  const [input, setInput] = useState(initialUrl);
   const [isSelectingDOM, setIsSelectingDOM] = useState(false);
-  const webviewRef = useRef<HTMLWebViewElement>(null);
+  
+  // Ref map for multiple webviews
+  const webviewRefs = useRef<Map<string, HTMLWebViewElement>>(new Map());
+  
+  const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
+  const url = activeTab.url;
+  const isReady = activeTab.isReady;
   
   // Stores
   const appendContextBuffer = useWorkspaceStore(state => state.appendContextBuffer);
@@ -119,9 +132,15 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   const utils = trpc.useContext();
   const extractMutation = trpc.browser.extractMarkdown.useMutation();
   const { data: folders } = trpc.bookmark.listFolders.useQuery();
+  // Bookmark Popover State
+  const [showBookmarkPopover, setShowBookmarkPopover] = useState(false);
+  const [bookmarkTitle, setBookmarkTitle] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
   const createBookmarkMutation = trpc.bookmark.createBookmark.useMutation({
     onSuccess: () => {
       toast.success("Bookmark added!");
+      setShowBookmarkPopover(false);
       void utils.bookmark.listFolders.invalidate();
     }
   });
@@ -137,12 +156,13 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   });
 
   const handleSaveBillingSession = async () => {
-    if (!billingModeProviderId || !webviewRef.current) return;
+    const webview = webviewRefs.current.get(activeTabId);
+    if (!billingModeProviderId || !webview) return;
     try {
       // @ts-ignore Electron webview method
-      const currentUrl = await webviewRef.current.executeJavaScript('window.location.href');
+      const currentUrl = await webview.executeJavaScript('window.location.href');
       // @ts-ignore Electron webview method
-      const cookieStr = await webviewRef.current.executeJavaScript('document.cookie');
+      const cookieStr = await webview.executeJavaScript('document.cookie');
       
       const parsedCookies = cookieStr ? cookieStr.split('; ').map((c: string) => {
         const [name, ...rest] = c.split('=');
@@ -182,11 +202,27 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     }
   };
 
-  const handleAddBookmark = () => {
+  const handleAddBookmark = async () => {
+    const webview = webviewRefs.current.get(activeTabId);
+    let title = activeTab.title;
+    
+    if (webview && isElectron()) {
+      try {
+        // @ts-ignore
+        title = await webview.executeJavaScript('document.title');
+      } catch (e) { console.error(e); }
+    }
+    
+    setBookmarkTitle(title);
+    setSelectedFolderId(folders?.[0]?.id || null);
+    setShowBookmarkPopover(true);
+  };
+
+  const handleSaveBookmark = () => {
     createBookmarkMutation.mutate({
-      title: "New Bookmark", // Ideally fetch title from webview
+      title: bookmarkTitle || "New Bookmark",
       url: url,
-      folderId: folders?.[0]?.id || null
+      folderId: selectedFolderId
     });
   };
 
@@ -209,11 +245,17 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     }
   }, [url, onLoad, isReaderMode, readerContent]);
 
+  // Update input when active tab changes
+  useEffect(() => {
+    setInput(activeTab.url);
+  }, [activeTabId, activeTab.url]);
+
   // Sync internal state with external prop updates
   useEffect(() => {
-    if (initialUrl && initialUrl !== url) {
-        setUrl(initialUrl);
-        setInput(initialUrl);
+    if (initialUrl && !tabs.some(t => t.url === initialUrl)) {
+        const newId = `tab-${Date.now()}`;
+        setTabs(prev => [...prev, { id: newId, url: initialUrl, title: 'External Link', isReady: false }]);
+        setActiveTabId(newId);
     }
   }, [initialUrl]); 
 
@@ -222,46 +264,70 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   const [mobileUA, setMobileUA] = useState(false);
 
   const handleGo = (targetUrl?: string) => {
-    let target = targetUrl || input.trim();
-    if (!target) return;
-
-    const isUrl = !target.includes(' ') && (target.includes('.') || target.startsWith('localhost') || target.startsWith('http'));
-
-    if (isUrl) {
-      if (!target.startsWith('http')) {
-        target = `https://${target}`;
-      }
-    } else {
-      target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
-    }
-
-    setUrl(target);
+    const target = targetUrl || parseOmniboxInput(input);
+    
+    setTabs(prev => prev.map(t => 
+      t.id === activeTabId ? { ...t, url: target, isReady: false } : t
+    ));
     setInput(target);
     setIsReaderMode(false);
   };
 
+  const handleAddTab = () => {
+    const newId = `tab-${Date.now()}`;
+    setTabs(prev => [...prev, { id: newId, url: 'https://duckduckgo.com', title: 'New Tab', isReady: false }]);
+    setActiveTabId(newId);
+  };
+
+  const handleCloseTab = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (tabs.length === 1) return;
+    
+    const newTabs = tabs.filter(t => t.id !== id);
+    setTabs(newTabs);
+    webviewRefs.current.delete(id);
+    
+    if (activeTabId === id) {
+      setActiveTabId(newTabs[newTabs.length - 1].id);
+    }
+  };
+
   const handleBack = () => {
     if (isReaderMode) { setIsReaderMode(false); return; }
-    if (webviewRef.current && isReady) {
+    const webview = webviewRefs.current.get(activeTabId);
+    if (webview && isReady) {
       // @ts-ignore
-      webviewRef.current.goBack();
+      webview.goBack();
     }
   };
   const handleForward = () => {
-    if (webviewRef.current && isReady) {
+    const webview = webviewRefs.current.get(activeTabId);
+    if (webview && isReady) {
       // @ts-ignore
-      webviewRef.current.goForward();
+      webview.goForward();
     }
   };
   const handleReload = () => {
     if (isReaderMode) { void handleExtractContext(); return; }
-    if (webviewRef.current && isReady) {
+    const webview = webviewRefs.current.get(activeTabId);
+    if (webview && isReady) {
       // @ts-ignore
-      webviewRef.current.reload();
+      webview.reload();
     }
   };
 
-  const onReady = useCallback(() => setIsReady(true), []);
+  const onReady = useCallback(async (id: string) => {
+    const webview = webviewRefs.current.get(id);
+    let title = '';
+    if (webview && isElectron()) {
+      try {
+        // @ts-ignore
+        title = await webview.executeJavaScript('document.title');
+      } catch (e) { console.error(e); }
+    }
+    
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, isReady: true, title: title || t.title } : t));
+  }, []);
   const onFail = useCallback((e: any) => {
     console.warn('WebView failed to load:', e);
     if (e.errorCode !== -3) {
@@ -342,6 +408,37 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
          
          {!showDebugView && (
             <div className="flex flex-col shrink-0 bg-background border-b border-border z-30 shadow-sm">
+                {/* Compact Tab Bar */}
+                <div className="h-9 flex items-center bg-muted/20 border-b border-border/50 overflow-x-auto no-scrollbar px-1">
+                  {tabs.map(tab => (
+                    <div 
+                      key={tab.id}
+                      onClick={() => setActiveTabId(tab.id)}
+                      className={cn(
+                        "group flex items-center min-w-[120px] max-w-[180px] h-7 px-3 text-[10px] font-bold cursor-pointer rounded-t-md transition-all mr-0.5 border-x border-t",
+                        activeTabId === tab.id 
+                          ? "bg-background border-border text-foreground border-b-background z-10" 
+                          : "bg-muted/40 border-transparent text-muted-foreground hover:bg-muted/60"
+                      )}
+                    >
+                      <Globe size={10} className={cn("mr-2", activeTabId === tab.id ? "text-primary" : "text-muted-foreground/50")} />
+                      <span className="truncate flex-1">{tab.title}</span>
+                      <button 
+                        onClick={(e) => handleCloseTab(e, tab.id)}
+                        className="ml-2 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                      >
+                        <CloseIcon size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={handleAddTab}
+                    className="p-1.5 hover:bg-muted rounded text-muted-foreground ml-1"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+
                 {/* Main Toolbar */}
                 <div className="h-10 flex items-center px-2 space-x-2">
                     <div className="flex items-center space-x-0.5">
@@ -380,11 +477,53 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                           <button 
                             type="button" 
                             onClick={handleAddBookmark}
-                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-yellow-500 transition-colors"
+                            className={cn(
+                              "p-1 hover:bg-muted rounded transition-colors",
+                              showBookmarkPopover ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"
+                            )}
                           >
                             <Star size={14} />
                           </button>
                         </div>
+
+                        {/* Bookmark Popover */}
+                        {showBookmarkPopover && (
+                          <div className="absolute top-full right-0 mt-2 w-64 bg-zinc-950 border border-border shadow-2xl rounded-lg p-4 z-50 flex flex-col space-y-3">
+                            <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Add Bookmark</h4>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-bold uppercase">Title</label>
+                              <input 
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-primary"
+                                value={bookmarkTitle}
+                                onChange={e => setBookmarkTitle(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-bold uppercase">Folder</label>
+                              <select 
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                                value={selectedFolderId || ''}
+                                onChange={e => setSelectedFolderId(e.target.value || null)}
+                              >
+                                <option value="">No Folder</option>
+                                {folders?.map((f: any) => (
+                                  <option key={f.id} value={f.id}>{f.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                              <button onClick={() => setShowBookmarkPopover(false)} className="px-3 py-1 text-xs text-muted-foreground hover:text-white">Cancel</button>
+                              <button 
+                                onClick={handleSaveBookmark} 
+                                disabled={createBookmarkMutation.isLoading}
+                                className="px-3 py-1 text-xs bg-primary text-primary-foreground font-bold rounded shadow hover:opacity-90"
+                              >
+                                {createBookmarkMutation.isLoading ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-1">
@@ -485,15 +624,25 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                     <ResearchBrowser key={`research-${cardId}-${screenspaceId}`} cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
                 </div>
             ) : (
-                <PersistentBrowser 
-                  url={url}
-                  webviewRef={webviewRef}
-                  onReady={onReady}
-                  onFail={onFail}
-                  mobileUA={mobileUA}
-                  isReaderMode={isReaderMode}
-                  isElectron={!!isElectron()}
-                />
+                <>
+                  {tabs.map(tab => (
+                    <div key={tab.id} className={cn("w-full h-full", activeTabId === tab.id ? "block" : "hidden")}>
+                      <PersistentBrowser 
+                        id={tab.id}
+                        url={tab.url}
+                        webviewRef={(node) => {
+                          if (node) webviewRefs.current.set(tab.id, node);
+                          else webviewRefs.current.delete(tab.id);
+                        }}
+                        onReady={onReady}
+                        onFail={onFail}
+                        mobileUA={mobileUA}
+                        isReaderMode={isReaderMode}
+                        isElectron={!!isElectron()}
+                      />
+                    </div>
+                  ))}
+                </>
             )}
         </div>
     </div>
