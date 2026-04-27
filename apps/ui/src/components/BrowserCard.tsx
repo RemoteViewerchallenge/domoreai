@@ -81,9 +81,10 @@ const PersistentBrowser = React.memo(({
 PersistentBrowser.displayName = 'PersistentBrowser';
 
 const isElectron = () => {
-  return typeof window !== 'undefined' &&
-    typeof window.process === 'object' &&
-    (window.process as unknown as { versions?: { electron?: string } }).versions?.electron;
+  if (typeof window === 'undefined') return false;
+  if (typeof window.process === 'object' && (window.process as any).versions?.electron) return true;
+  if (window.navigator.userAgent.toLowerCase().includes('electron')) return true;
+  return false;
 };
 
 interface BrowserCardProps {
