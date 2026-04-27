@@ -28,6 +28,51 @@ interface ToRegClass {
 }
 
 export const schemaRouter = createTRPCRouter({
+  proposeMigration: publicProcedure
+    .input(z.object({
+      tableName: z.string(),
+      columnName: z.string(),
+      type: z.enum(['TEXT', 'BOOLEAN', 'INTEGER', 'FLOAT', 'JSONB', 'TIMESTAMP']),
+    }))
+    .mutation(async ({ input }) => {
+      const table = sanitize(input.tableName);
+      const col = sanitize(input.columnName);
+      
+      let sql = '';
+      switch (input.type) {
+        case 'TEXT': sql = `ALTER TABLE ${table} ADD COLUMN ${col} TEXT;`; break;
+        case 'BOOLEAN': sql = `ALTER TABLE ${table} ADD COLUMN ${col} BOOLEAN DEFAULT false;`; break;
+        case 'INTEGER': sql = `ALTER TABLE ${table} ADD COLUMN ${col} INTEGER;`; break;
+        case 'FLOAT': sql = `ALTER TABLE ${table} ADD COLUMN ${col} DOUBLE PRECISION;`; break;
+        case 'JSONB': sql = `ALTER TABLE ${table} ADD COLUMN ${col} JSONB DEFAULT '{}';`; break;
+        case 'TIMESTAMP': sql = `ALTER TABLE ${table} ADD COLUMN ${col} TIMESTAMP(3);`; break;
+      }
+      
+      return { 
+        success: true, 
+        sql,
+        tableName: input.tableName,
+        columnName: input.columnName,
+        type: input.type 
+      };
+    }),
+
+  commitMigration: publicProcedure
+    .input(z.object({
+      sql: z.string(),
+      userSignature: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      if (!input.userSignature) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'User signature required for schema changes'
+        });
+      }
+      
+      await prisma.$executeRawUnsafe(input.sql);
+      return { success: true };
+    }),
   // 1. Get Table Schema (Crucial for seeing empty tables)
   getTableSchema: publicProcedure
     .input(z.object({ tableName: z.string() }))
