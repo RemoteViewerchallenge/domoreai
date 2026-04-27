@@ -58,6 +58,7 @@ export class ProviderManager implements IProviderManager {
         'groq': 'GROQ_API_KEY',
         'nvidia': 'NVIDIA_API_KEY',
         'cerebras': 'CEREBRAS_API_KEY', // [FIX] Added missing mapping
+        'xai': 'XAI_API_KEY',
         'ollama': 'OLLAMA_API_KEY' // Usually empty for local Ollama
       };
 
@@ -105,10 +106,10 @@ export class ProviderManager implements IProviderManager {
           this.providers.set(config.id, provider);
 
           // STORE METADATA HERE
-          this.providerMetadata.set(config.id, { 
-            name: config.name, 
+          this.providerMetadata.set(config.id, {
+            name: config.name,
             type: config.type,
-            providerClass: config.providerClass 
+            providerClass: config.providerClass
           });
 
           console.log(`[ProviderManager] ✅ Online: ${config.name} (${config.type})`);
@@ -132,7 +133,8 @@ export class ProviderManager implements IProviderManager {
       { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: OPENROUTER_API_URL },
       { env: 'GROQ_API_KEY', type: 'groq', label: 'Groq (Env)', url: GROQ_API_URL },
       { env: 'NVIDIA_API_KEY', type: 'nvidia', label: 'NVIDIA (Env)', url: NVIDIA_API_URL },
-      { env: 'CEREBRAS_API_KEY', type: 'cerebras', label: 'Cerebras (Env)', url: 'https://api.cerebras.ai/v1' }
+      { env: 'CEREBRAS_API_KEY', type: 'cerebras', label: 'Cerebras (Env)', url: 'https://api.cerebras.ai/v1' },
+      { env: 'XAI_API_KEY', type: 'xai', label: 'xAI (Env)', url: 'https://api.x.ai/v1' }
     ];
 
     for (const map of mappings) {
@@ -279,7 +281,7 @@ export class ProviderManager implements IProviderManager {
   }
 
   static getProviders() {
-      return this.instance.providers;
+    return this.instance.providers;
   }
 
   static async syncModelsToRegistry() {
@@ -291,11 +293,11 @@ export class ProviderManager implements IProviderManager {
   }
 
   static getProviderMetadata() {
-      return this.instance.providerMetadata;
+    return this.instance.providerMetadata;
   }
 
   static getProviderIds() {
-      return Array.from(this.instance.providers.keys());
+    return Array.from(this.instance.providers.keys());
   }
 
 

@@ -1,8 +1,6 @@
-import axios from 'axios';
 import { prisma } from '../db.js';
-import { AgentRuntime } from './AgentRuntime.js';
-import { createVolcanoAgent } from './VolcanoAgent.js';
-import { ModelSelector } from '../orchestrator/ModelSelector.js';
+import { resolveModelForRole } from './modelManager.service.js';
+
 
 // import { saveModelKnowledge } from './ModelKnowledgeBase.js';
 import type { Model, ProviderConfig, ModelCapabilities } from '@prisma/client';
@@ -176,6 +174,35 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
     }
   ],
 
+  // ===== XAI / GROK =====
+  xai: [
+    {
+      pattern: /grok.*reasoning/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "tool_use", "reasoning"],
+        costPer1k: 2.0
+      }
+    },
+    {
+      pattern: /grok.*vision/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "tool_use", "vision"],
+        costPer1k: 2.0
+      }
+    },
+    {
+      pattern: /grok/i,
+      specs: {
+        contextWindow: 128000,
+        capabilities: ["text", "tool_use"],
+        costPer1k: 2.0
+      }
+    }
+  ],
+
+
   // ===== OPENAI =====
   openai: [
     {
@@ -239,6 +266,24 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         capabilities: ["embedding"],
         primaryTask: "embedding",
         costPer1k: 0.0001
+      }
+    },
+    {
+      pattern: /tts-1/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["audio_out", "tts"],
+        primaryTask: "tts",
+        costPer1k: 15.00
+      }
+    },
+    {
+      pattern: /whisper/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["audio_in", "stt"],
+        primaryTask: "stt",
+        costPer1k: 0.006
       }
     }
   ],
@@ -368,24 +413,25 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 0,
         capabilities: ["audio_in"],
-        primaryTask: "tts",
+        primaryTask: "stt",
         costPer1k: 0
       }
     },
     {
-      pattern: /whisper/i,
+      pattern: /whisper|orpheus/i,
       specs: {
         contextWindow: 0,
         capabilities: ["audio_in"],
-        primaryTask: "tts",
+        primaryTask: "stt",
         costPer1k: 0
       }
     },
     {
-      pattern: /orpheus/i,
+      pattern: /tts-([1234]|hd)|playai-tts/i,
       specs: {
-        contextWindow: 32768,
-        capabilities: ["audio_in", "text"],
+        contextWindow: 0,
+        capabilities: ["audio_out", "tts"],
+        primaryTask: "tts",
         costPer1k: 0
       }
     },
@@ -1152,7 +1198,7 @@ export class Surveyor {
   static formatError(error: any): string {
     const status = error.response?.status || error.status || '500';
     const rawMessage = error.response?.data?.error?.message || error.message || 'Unknown provider error';
-    
+
     // Normalize some common provider error structures
     let message = rawMessage;
     if (typeof rawMessage === 'object') message = JSON.stringify(rawMessage);
@@ -1166,7 +1212,7 @@ export class Surveyor {
   static async updateProviderStatus(providerId: string, status: 'ACTIVE' | 'ERROR', lastError: string | null = null) {
     const { prisma } = await import('../db.js');
     console.log(`[Surveyor] Updating status for ${providerId} to ${status}`);
-    
+
     return prisma.providerConfig.update({
       where: { id: providerId },
       data: {
@@ -1183,7 +1229,7 @@ export class Surveyor {
    */
   static sanitizeModelList(models: any[]): any[] {
     const canonicalModels = new Set<string>();
-    
+
     // Pass 1: Identify all canonical or latest models
     for (const m of models) {
       const id = m.id.toLowerCase();
@@ -1197,7 +1243,7 @@ export class Surveyor {
 
     return models.filter(m => {
       const id = m.id.toLowerCase();
-      
+
       // Check for date stamps (e.g. -2402, -2312)
       const dateMatch = id.match(/(.*)-(\d{4})$/);
       if (dateMatch) {
@@ -1208,7 +1254,7 @@ export class Surveyor {
           return false;
         }
       }
-      
+
       return true;
     });
   }
@@ -1225,12 +1271,12 @@ export class Surveyor {
 
     // 0. GLOBAL PRE-FILTERS (EMBEDDINGS)
     if (modelName.toLowerCase().includes('embed') || modelName.toLowerCase().includes('embedding')) {
-        return {
-            contextWindow: 8192,
-            capabilities: ["embedding"],
-            primaryTask: "embedding",
-            confidence: "high"
-        };
+      return {
+        contextWindow: 8192,
+        capabilities: ["embedding"],
+        primaryTask: "embedding",
+        confidence: "high"
+      };
     }
 
     // [ORIGINAL LOGIC CONTINUES]
@@ -1261,7 +1307,7 @@ export class Surveyor {
 
     // 1. Try Specific Provider Rules
     const specificRules = PROVIDER_PATTERNS[providerKey] || [];
-    
+
     // 2. Build prioritized ruleset: Specific -> Global Fallbacks
     // OpenRouter acts as our "Global" knowledge base for generic model names.
     const globalFallbacks = PROVIDER_PATTERNS['openrouter'] || [];
@@ -1292,7 +1338,7 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "vision"], confidence: 'low', source: 'surveyor_heuristic' };
       } else if (lower.includes('image') || lower.includes('flux')) {
         specs = { contextWindow: 0, capabilities: ["image_gen"], confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('deepseek-r1') || lower.includes('reasoner')) {
+      } else if (lower.includes('deepseek-r1') || lower.includes('reasoner') || lower.includes('o1-') || lower.includes('o3-') || lower.includes('thought')) {
         specs = { contextWindow: 32768, capabilities: ["text", "reasoning"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('reward')) {
         specs = { contextWindow: 4096, capabilities: ["text", "reward_model"], confidence: 'medium', source: 'surveyor_heuristic' };
@@ -1304,10 +1350,16 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "weather"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('math') || lower.includes('physics')) {
         specs = { contextWindow: 4096, capabilities: ["text", "specialized_science"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('code') || lower.includes('coder')) {
+        specs = { contextWindow: 32768, capabilities: ["text", "code"], primaryTask: "code", confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('embed')) {
         specs = { contextWindow: 2048, capabilities: ["embedding"], primaryTask: "embedding", confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('tts') || lower.includes('whisper')) {
-        specs = { contextWindow: 0, capabilities: ["audio"], primaryTask: "tts", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('tts') || lower.includes('elevenlabs') || lower.includes('playai')) {
+        specs = { contextWindow: 0, capabilities: ["audio", "tts", "audio_out"], primaryTask: "tts", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('whisper')) {
+        specs = { contextWindow: 0, capabilities: ["audio", "stt", "audio_in"], primaryTask: "stt", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('instruct') || lower.includes('chat')) {
+        specs = { contextWindow: 32768, capabilities: ["text", "tool_use"], primaryTask: "chat", confidence: 'medium', source: 'surveyor_heuristic' };
       }
     }
 
@@ -1343,11 +1395,17 @@ export class Surveyor {
     const { prisma } = await import('../db.js');
 
     // 0. Inspect the model using the general `inspect` method
-    const specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
+    let specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
 
     if (!specs) {
-      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.name}/${model.name}`);
-      return null;
+      console.log(`[Surveyor] ⚠️ Could not identify specialized specs for ${model.provider.name}/${model.name} — using base defaults.`);
+      specs = {
+        contextWindow: 4096,
+        capabilities: ["text"],
+        primaryTask: "chat",
+        confidence: "none",
+        source: "default_fallback"
+      };
     }
 
     // 1. Update ModelCapabilities record
@@ -1392,58 +1450,58 @@ export class Surveyor {
 
     // 2. Populate Specialized Tables based on detected specs
     if (specs.capabilities.includes('embedding')) {
-        await prisma.embeddingModel.upsert({
-            where: { modelId: model.id },
-            create: { modelId: model.id, dimensions: specs.embedding_length || 1536 },
-            update: {}
-        });
+      await prisma.embeddingModel.upsert({
+        where: { modelId: model.id },
+        create: { modelId: model.id, dimensions: specs.embedding_length || 1536 },
+        update: {}
+      });
     }
 
     if (specs.capabilities.includes('vision') || specs.capabilities.includes('ocr')) {
-        await prisma.visionModel.upsert({
-            where: { modelId: model.id },
-            create: { modelId: model.id },
-            update: {}
-        });
+      await prisma.visionModel.upsert({
+        where: { modelId: model.id },
+        create: { modelId: model.id },
+        update: {}
+      });
     }
 
     if (specs.capabilities.includes('tts') || specs.capabilities.includes('audio_in') || specs.capabilities.includes('audio_out')) {
-        await prisma.audioModel.upsert({
-            where: { modelId: model.id },
-            create: { modelId: model.id },
-            update: {}
-        });
+      await prisma.audioModel.upsert({
+        where: { modelId: model.id },
+        create: { modelId: model.id },
+        update: {}
+      });
     }
 
     if (specs.capabilities.includes('moderation') || specs.capabilities.includes('compliance')) {
-        await prisma.complianceModel.upsert({
-            where: { modelId: model.id },
-            create: { modelId: model.id },
-            update: {}
-        });
+      await prisma.complianceModel.upsert({
+        where: { modelId: model.id },
+        create: { modelId: model.id },
+        update: {}
+      });
     }
 
     if (specs.capabilities.includes('reward') || specs.capabilities.includes('reward_model')) {
-        await prisma.rewardModel.upsert({
-            where: { modelId: model.id },
-            create: { modelId: model.id },
-            update: {}
-        });
+      await prisma.rewardModel.upsert({
+        where: { modelId: model.id },
+        create: { modelId: model.id },
+        update: {}
+      });
     }
 
     if (specs.primaryTask === 'chat' || specs.capabilities.includes('text')) {
-        await prisma.chatModel.upsert({
-            where: { modelId: model.id },
-            create: { 
-                modelId: model.id,
-                contextWindow: specs.contextWindow || 4096,
-                supportsTools: specs.capabilities.includes('tool_use')
-            },
-            update: {
-                contextWindow: specs.contextWindow || 4096,
-                supportsTools: specs.capabilities.includes('tool_use')
-            }
-        });
+      await prisma.chatModel.upsert({
+        where: { modelId: model.id },
+        create: {
+          modelId: model.id,
+          contextWindow: specs.contextWindow || 4096,
+          supportsTools: specs.capabilities.includes('tool_use')
+        },
+        update: {
+          contextWindow: specs.contextWindow || 4096,
+          supportsTools: specs.capabilities.includes('tool_use')
+        }
+      });
     }
 
     return capabilities;
@@ -1452,50 +1510,50 @@ export class Surveyor {
   static async surveyAll(): Promise<{ surveyed: number; unknown: number }> {
     const { prisma } = await import('../db.js');
     const p = prisma as any;
-    
+
     // [UNKNOWN MODELS] Process Unchecked / Unknown Models
     // NOTE: This now only processes models where we haven't successfully identified them yet.
     const unknowns = await p.unknownModel.findMany({
-        where: { reason: { notIn: ['surveyor_identified', 'skipped', 'surveyor_deferred'] } },
-        include: { model: { include: { provider: true } } },
-        take: 20 
+      where: { reason: { notIn: ['surveyor_identified', 'skipped', 'surveyor_deferred'] } },
+      include: { model: { include: { provider: true } } },
+      take: 20
     });
-    
+
     if (unknowns.length > 0) {
-        console.log(`[Surveyor] Found ${unknowns.length} unknowns to re-process...`);
+      console.log(`[Surveyor] Found ${unknowns.length} unknowns to re-process...`);
     }
     for (const unknown of unknowns) {
-        const m = unknown.model;
-        if (!m.isActive) continue;
-        
-        // Survey individual model
-        const capabilities = await Surveyor.surveyModel(m);
-        if (capabilities) {
-             console.log(`[Surveyor] ✅ Identified ${m.name}. Removing from UnknownModel.`);
-             await p.unknownModel.delete({ where: { id: unknown.id } });
-        } else {
-             // Mark as tried so we don't spam logs every startup
-             await p.unknownModel.update({ 
-               where: { id: unknown.id }, 
-               data: { reason: 'surveyor_deferred' } 
-             });
-        }
+      const m = unknown.model;
+      if (!m.isActive) continue;
+
+      // Survey individual model
+      const capabilities = await Surveyor.surveyModel(m);
+      if (capabilities) {
+        console.log(`[Surveyor] ✅ Identified ${m.name}. Removing from UnknownModel.`);
+        await p.unknownModel.delete({ where: { id: unknown.id } });
+      } else {
+        // Mark as tried so we don't spam logs every startup
+        await p.unknownModel.update({
+          where: { id: unknown.id },
+          data: { reason: 'surveyor_deferred' }
+        });
+      }
     }
 
     // [NEED HELP] Find models that are totally missing capabilities
     // High-confidence models are skipped to avoid redundant I/O and log noise.
     const modelsNeedingHelp = await prisma.model.findMany({
-      where: { 
-          isActive: true,
-          capabilities: { is: null } 
+      where: {
+        isActive: true,
+        capabilities: { is: null }
       },
       include: { provider: true, capabilities: true }
     });
-    
+
     if (modelsNeedingHelp.length > 0) {
-        console.log(`[Surveyor] 🔍 Found ${modelsNeedingHelp.length} models missing signatures.`);
+      console.log(`[Surveyor] 🔍 Found ${modelsNeedingHelp.length} models missing signatures.`);
     }
-    
+
     let surveyed = 0;
     let unknownCount = 0;
 
@@ -1511,15 +1569,15 @@ export class Surveyor {
       } else {
         // [UNKNOWN] Mark as unknown so we don't try to survey every turn
         await p.unknownModel.upsert({
-             where: { modelId: model.id },
-             create: { modelId: model.id, reason: 'surveyor_failed' },
-             update: {}
+          where: { modelId: model.id },
+          create: { modelId: model.id, reason: 'surveyor_failed' },
+          update: {}
         });
         unknownCount++;
       }
     }
     if (surveyed > 0) {
-        console.log(`[Surveyor] 📊 Audit complete: Identified ${surveyed} models. ${unknownCount} still unknown.`);
+      console.log(`[Surveyor] 📊 Audit complete: Identified ${surveyed} models. ${unknownCount} still unknown.`);
     }
     return { surveyed, unknown: unknownCount };
   }
@@ -1536,8 +1594,8 @@ export class Surveyor {
       where: { id: providerId }
     });
 
-    if (!provider || !provider.baseURL) {
-      console.error(`[Surveyor] Provider ${providerId} not found or has no baseURL`);
+    if (!provider || !provider.baseUrl) {
+      console.error(`[Surveyor] Provider ${providerId} not found or has no baseUrl`);
       return [];
     }
 
@@ -1546,8 +1604,9 @@ export class Surveyor {
     // STEP 1: THE DETERMINISTIC PASS
     let rawJsonResponse: any = null;
     try {
+      const axios = (await import('axios')).default;
       const apiKey = process.env[`${providerId.toUpperCase()}_API_KEY`] || '';
-      const response = await axios.get(`${provider.baseURL}/models`, {
+      const response = await axios.get(`${provider.baseUrl}/models`, {
         headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
       });
       rawJsonResponse = response.data;
@@ -1587,11 +1646,12 @@ export class Surveyor {
     if (rawJsonResponse) {
       console.log(`[Surveyor] 🧠 Starting Agentic JSON Diagnostics for ${providerId}`);
       try {
-        const selector = new ModelSelector();
-        const bestModelSlug = await selector.resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
+        const bestModelSlug = await resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
         const bestModel = await prisma.model.findUnique({ where: { id: bestModelSlug } });
 
         if (bestModel) {
+          const { AgentRuntime } = await import('./AgentRuntime.js');
+          const { createVolcanoAgent } = await import('./VolcanoAgent.js');
           const runtime = await AgentRuntime.create(undefined, []);
           const agent = await createVolcanoAgent({
             roleId: 'researcher',
@@ -1650,12 +1710,13 @@ Requirements:
     // STEP 4: AGENTIC WEB ESCALATION (The Final Fallback)
     console.log(`[Surveyor] 🌐 Escalating to WEB SCAPE for ${providerId}`);
     try {
-      const selector = new ModelSelector();
-      const bestModelSlug = await selector.resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
+      const bestModelSlug = await resolveModelForRole({ id: 'researcher', metadata: {} } as any, 0, []);
       const bestModel = await prisma.model.findUnique({ where: { id: bestModelSlug } });
 
       if (!bestModel) throw new Error("No model available for research");
 
+      const { AgentRuntime } = await import('./AgentRuntime.js');
+      const { createVolcanoAgent } = await import('./VolcanoAgent.js');
       const runtime = await AgentRuntime.create(undefined, ['browse', 'research.web_scrape']);
       const agent = await createVolcanoAgent({
         roleId: 'researcher',
@@ -1669,7 +1730,7 @@ Requirements:
 
       const prompt = `
 The API does not contain pricing data for ${providerId}. 
-Use the 'browse' or 'research.web_scrape' tool to navigate to ${(provider as any).pricingUrl || provider.baseURL} or search the web for '${provider.label || providerId} free API models'. 
+Use the 'browse' or 'research.web_scrape' tool to navigate to ${(provider as any).pricingUrl || provider.baseUrl} or search the web for '${provider.name || providerId} free API models'. 
 Read the documentation and extract the exact model IDs that are available on the free tier. 
 
 Return a strictly formatted JSON array of strings containing only the model IDs.
@@ -1703,6 +1764,7 @@ Example: ["model-x-free", "model-y-free"]
     if (!model) {
       model = await prisma.model.create({
         data: {
+          id: `${providerId}:${modelName}`,
           providerId,
           name: modelName,
           isActive: true,

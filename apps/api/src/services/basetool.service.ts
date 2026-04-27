@@ -36,7 +36,6 @@ interface QueryFilters {
 const MODEL_DELEGATES: Record<string, keyof typeof prisma> = {
   'ProviderConfig': 'providerConfig',
   'Workspace': 'workspace',
-  'ModelRegistry': 'modelRegistry',
   'Model': 'model',
   'RoleVariant': 'roleVariant',
   'RoleAssessment': 'roleAssessment',
@@ -83,7 +82,7 @@ export class BasetoolService {
       `;
 
       const schemas: TableSchema[] = [];
-      
+
       for (const table of tables) {
         const columns = await prisma.$queryRaw<Array<{
           column_name: string;
@@ -173,7 +172,7 @@ export class BasetoolService {
   ): Promise<TableData> {
     try {
       const delegateName = MODEL_DELEGATES[tableName];
-      
+
       if (!delegateName) {
         // Fallback to raw SQL for unmapped tables
         const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
@@ -183,7 +182,7 @@ export class BasetoolService {
       }
 
       const delegate = prisma[delegateName] as any;
-      
+
       const [rows, totalCount] = await Promise.all([
         delegate.findMany({
           where: filters?.where,
@@ -213,7 +212,7 @@ export class BasetoolService {
   ): Promise<Record<string, unknown>> {
     try {
       const delegateName = MODEL_DELEGATES[tableName];
-      
+
       if (!delegateName) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -223,7 +222,7 @@ export class BasetoolService {
 
       const delegate = prisma[delegateName] as any;
       const result = await delegate.create({ data: values });
-      
+
       return result;
     } catch (error) {
       console.error(`Error creating row in table ${tableName}:`, error);
@@ -244,7 +243,7 @@ export class BasetoolService {
   ): Promise<Record<string, unknown>> {
     try {
       const delegateName = MODEL_DELEGATES[tableName];
-      
+
       if (!delegateName) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -257,7 +256,7 @@ export class BasetoolService {
         where: { id: rowId },
         data: values
       });
-      
+
       return result;
     } catch (error) {
       console.error(`Error updating row in table ${tableName}:`, error);
@@ -274,7 +273,7 @@ export class BasetoolService {
   async deleteRow(tableName: string, rowId: string): Promise<void> {
     try {
       const delegateName = MODEL_DELEGATES[tableName];
-      
+
       if (!delegateName) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -349,7 +348,7 @@ export class BasetoolService {
   ): Promise<Record<string, unknown>[]> {
     try {
       const delegateName = MODEL_DELEGATES[tableName];
-      
+
       if (!delegateName) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -358,12 +357,12 @@ export class BasetoolService {
       }
 
       const delegate = prisma[delegateName] as any;
-      
+
       // Use transaction for batch operations
       const results = await prisma.$transaction(
         rows.map(row => delegate.create({ data: row }))
       );
-      
+
       return results;
     } catch (error) {
       console.error(`Error batch creating rows in table ${tableName}:`, error);
