@@ -12,7 +12,7 @@ interface CompactRoleSelectorProps {
     className?: string;
 }
 
-export const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ selectedRoleId, onSelect, onEdit, className }) => {
+const CompactRoleSelector: React.FC<CompactRoleSelectorProps> = ({ selectedRoleId, onSelect, onEdit, className }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // 1. Fetch Data
