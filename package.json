@@ -15,33 +15,17 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/picomatch": "^4.0.2",
-    "baseline-browser-mapping": "^2.10.18",
-    "cross-env": "^7.0.3",
     "husky": "^9.1.7",
     "knip": "^5.73.3",
-    "lint-staged": "^16.2.7",
     "prettier": "^2.8.8",
     "prisma": "5.19.1",
-    "tsx": "^4.21.0",
     "turbo": "latest",
     "typescript": "^5.4.5"
   },
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
     "ignore": "^7.0.5",
-    "vitest": "^2.1.9",
-    "vscode-ws-jsonrpc": "^3.5.0",
     "zod": "^3.23.8"
-  },
-  "lint-staged": {
-    "apps/api/**/*.{ts,tsx}": [
-      "eslint --config apps/api/.eslintrc.cjs --fix"
-    ],
-    "apps/ui/**/*.{ts,tsx}": [
-      "eslint --config apps/ui/eslint.config.mjs --fix"
-    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [
