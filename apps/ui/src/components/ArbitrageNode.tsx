@@ -1,162 +1,102 @@
-import React, { useState, useCallback } from 'react';
-import { Handle, Position, type NodeProps } from 'reactflow';
-import { Eye, EyeOff, KeyRound } from 'lucide-react';
-import { cn } from '../lib/utils.js';
+import React, { useState } from 'react';
+import { Handle, Position } from 'reactflow';
+import { Eye, Key } from 'lucide-react';
 
-interface Column {
+interface ArbitrageNodeProps {
+  data: {
+    label: string;
+    columns: string[];
+    columnMapping?: Record<string, string>;
+    onColumnMapChange?: (original: string, mapped: string) => void;
+    onColumnToggle?: (column: string, visible: boolean) => void;
+    onColumnKey?: (column: string) => void;
+    primaryKey?: string;
+  };
   id: string;
-  name: string;
-  isVisible: boolean;
-  isPrimaryKey: boolean;
 }
 
-interface ArbitrageNodeData {
-  label: string;
-  provider: { id: string; name: string };
-  columns: Column[];
-}
+export const ArbitrageNode: React.FC<ArbitrageNodeProps> = ({ data }) => {
+  const [editingCol, setEditingCol] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
 
-const ArbitrageNode: React.FC<NodeProps<ArbitrageNodeData>> = ({ data }) => {
-  const [columns, setColumns] = useState<Column[]>(data.columns);
-  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
-  const [editedColumnName, setEditedColumnName] = useState<string>('');
+  const handleDoubleClick = (col: string, mappedName: string) => {
+    setEditingCol(col);
+    setEditValue(mappedName);
+  };
 
-  const handleToggleVisibility = useCallback((id: string) => {
-    setColumns((prevCols) =>
-      prevCols.map((col) =>
-        col.id === id ? { ...col, isVisible: !col.isVisible } : col
-      )
-    );
-  }, []);
-
-  const handleTogglePrimaryKey = useCallback((id: string) => {
-    setColumns((prevCols) =>
-      prevCols.map((col) => ({
-        ...col,
-        isPrimaryKey: col.id === id ? !col.isPrimaryKey : false, // Only one primary key per node
-      }))
-    );
-  }, []);
-
-  const handleDoubleClickColumn = useCallback((id: string, currentName: string) => {
-    setEditingColumnId(id);
-    setEditedColumnName(currentName);
-  }, []);
-
-  const handleSaveColumnName = useCallback((id: string) => {
-    setColumns((prevCols) =>
-      prevCols.map((col) =>
-        col.id === id ? { ...col, name: editedColumnName } : col
-      )
-    );
-    setEditingColumnId(null);
-    setEditedColumnName('');
-  }, [editedColumnName]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, id: string) => {
-    if (e.key === 'Enter') {
-      handleSaveColumnName(id);
+  const handleEditSave = (col: string) => {
+    if (data.onColumnMapChange && editValue) {
+      data.onColumnMapChange(col, editValue);
     }
-    if (e.key === 'Escape') {
-      setEditingColumnId(null);
-      setEditedColumnName('');
-    }
-  }, [handleSaveColumnName]);
+    setEditingCol(null);
+    setEditValue('');
+  };
 
   return (
-    <div
-      className={cn(
-        'bg-[var(--color-background-secondary)] border border-[var(--color-border)] rounded-lg shadow-xl overflow-hidden',
-        'min-w-[200px] text-[10pt] font-mono'
-      )}
-      style={{ fontFamily: 'Fira Code, monospace' }}
-    >
-      <div
-        className={cn(
-          'px-3 py-2 border-b border-[var(--color-border)]',
-          'bg-zinc-900 text-zinc-200 font-bold uppercase tracking-wide'
-        )}
-      >
-        {data.label}
+    <div className="bg-zinc-950 border border-zinc-800 rounded-sm w-60 overflow-hidden shadow-2xl shadow-black">
+      <div className="bg-zinc-900 border-b border-zinc-800 px-2 py-1 flex justify-between items-center">
+        <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-tighter">
+          {data.label}
+        </span>
+        <div className="flex gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_5px_cyan]" />
+        </div>
       </div>
-      <div className="p-2">
-        {columns.map((col) => (
-          <div
-            key={col.id}
-            className={cn(
-              'flex items-center gap-1 py-1 px-2 rounded-md transition-opacity',
-              'hover:bg-zinc-800/50',
-              col.isVisible ? 'opacity-100' : 'opacity-30'
-            )}
-          >
-            {/* Target Handle (Left) */}
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`${col.id}-target`}
-              className="!w-2 !h-2 !bg-indigo-500 !border-none"
-              style={{ top: '50%', transform: 'translateY(-50%)' }}
-            />
+      <div className="py-1 max-h-96 overflow-y-auto">
+        {data.columns.map((col) => {
+          const mappedName = data.columnMapping?.[col] || col;
+          const isEditing = editingCol === col;
+          const isKey = data.primaryKey === col;
 
-            {/* Column Name / Input */}
-            <div
-              className="flex-1 text-zinc-300 cursor-pointer"
-              onDoubleClick={() => handleDoubleClickColumn(col.id, col.name)}
-            >
-              {editingColumnId === col.id ? (
+          return (
+            <div key={col} className="flex items-center px-2 py-0.5 group hover:bg-zinc-900 transition-colors">
+              <Handle
+                type="target"
+                position={Position.Left}
+                className="!bg-zinc-700 !w-1.5 !h-1.5"
+              />
+              <Key
+                size={10}
+                className={`cursor-pointer transition-colors flex-shrink-0 ${isKey ? 'text-amber-500 shadow-[0_0_3px_#f59e0b]' : 'text-zinc-800 group-hover:text-amber-500'}`}
+                onClick={() => data.onColumnKey?.(col)}
+              />
+              <span
+                className={`text-[10px] font-mono text-zinc-400 px-2 truncate flex-1 cursor-text select-none ${isEditing ? 'hidden' : ''}`}
+                onDoubleClick={() => handleDoubleClick(col, mappedName)}
+                title={mappedName}
+              >
+                {mappedName}
+              </span>
+              {isEditing && (
                 <input
-                  type="text"
-                  value={editedColumnName}
-                  onChange={(e) => setEditedColumnName(e.target.value)}
-                  onBlur={() => handleSaveColumnName(col.id)}
-                  onKeyDown={(e) => handleKeyDown(e, col.id)}
-                  className={cn(
-                    'w-full bg-zinc-700 border border-cyan-500 rounded px-1',
-                    'text-zinc-200 text-[10pt] font-mono focus:outline-none'
-                  )}
+                  className="text-[10px] font-mono bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-white outline-none flex-1 ml-2"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={() => handleEditSave(col)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditSave(col);
+                    if (e.key === 'Escape') {
+                      setEditingCol(null);
+                      setEditValue('');
+                    }
+                  }}
                   autoFocus
                 />
-              ) : (
-                <span className={cn(col.isPrimaryKey && 'text-cyan-400 font-bold')}>
-                  {col.name}
-                </span>
               )}
+              <Eye
+                size={10}
+                className="text-zinc-600 opacity-0 group-hover:opacity-100 cursor-pointer flex-shrink-0 ml-1"
+                onClick={() => data.onColumnToggle?.(col, !data.columnMapping?.[col])}
+              />
+              <Handle
+                type="source"
+                position={Position.Right}
+                className="!bg-zinc-700 !w-1.5 !h-1.5"
+              />
             </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handleTogglePrimaryKey(col.id)}
-                className={cn(
-                  'p-0.5 rounded-sm transition-colors',
-                  col.isPrimaryKey ? 'text-cyan-400 hover:bg-cyan-500/20' : 'text-zinc-500 hover:text-zinc-300'
-                )}
-                title="Set as Primary Key"
-              >
-                <KeyRound size={12} />
-              </button>
-              <button
-                onClick={() => handleToggleVisibility(col.id)}
-                className="text-zinc-500 hover:text-zinc-300 p-0.5 rounded-sm transition-colors"
-                title={col.isVisible ? 'Hide Column' : 'Show Column'}
-              >
-                {col.isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
-              </button>
-            </div>
-
-            {/* Source Handle (Right) */}
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={`${col.id}-source`}
-              className="!w-2 !h-2 !bg-cyan-500 !border-none"
-              style={{ top: '50%', transform: 'translateY(-50%)' }}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 };
-
-export default ArbitrageNode;
