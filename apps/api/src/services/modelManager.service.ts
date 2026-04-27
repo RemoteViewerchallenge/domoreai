@@ -3,6 +3,7 @@ import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from
 import { isModelBlacklisted, blacklistModel } from '../rateLimiter.js';
 import { CreditGuard } from './CreditGuard.js';
 import { ProviderManager } from './ProviderManager.js';
+import { PricingRegistry } from './PricingRegistry.js';
 import { prisma } from '../db.js';
 
 /**
@@ -36,7 +37,7 @@ interface RawProviderOutput {
     completion_tokens: number;
   };
   cost?: number;
-  [key: string]: unknown; 
+  [key: string]: unknown;
 }
 
 // Define interface for ModelSelectionResult
@@ -52,40 +53,53 @@ export interface ModelSelectionResult {
 
 
 /**
- * This function is the solution to the "messy data" problem.
- * It uses the "rest" operator to catch all unknown fields.
+ * Logs model usage to the DB, computing real USD cost via PricingRegistry.
+ * Cost precedence: explicit `cost` arg > PricingRegistry lookup > 0.
  */
 export async function logUsage(data: RawProviderOutput) {
-  // 1. Destructure the *known* fields and capture the "rest"
   const {
     modelId,
     roleId,
     providerId,
     underlyingProvider,
-    // userId, 
     usage,
-    cost,
-    ...metadata 
+    cost: explicitCost,
+    ...metadata
   } = data;
 
-  // 2. Map the data to the flexible Prisma schema
+  const promptTokens = usage?.prompt_tokens || 0;
+  const completionTokens = usage?.completion_tokens || 0;
+
+  // Compute real cost if not explicitly provided by the caller
+  let resolvedCost = explicitCost ?? 0;
+  if (resolvedCost === 0 && (promptTokens > 0 || completionTokens > 0)) {
+    try {
+      resolvedCost = await PricingRegistry.computeCost(modelId, promptTokens, completionTokens);
+      if (resolvedCost > 0) {
+        console.log(`[PricingRegistry] Cost for ${modelId}: $${resolvedCost.toFixed(6)} (${promptTokens}p + ${completionTokens}c tokens)`);
+      }
+    } catch (e) {
+      console.warn('[logUsage] PricingRegistry lookup failed — recording $0 cost', e);
+    }
+  }
+
   try {
     const newLog = await prisma.modelUsage.create({
       data: {
-        modelId, 
-        roleId, 
+        modelId,
+        roleId,
         providerId,
         underlyingProvider: underlyingProvider || (providerId === 'openrouter' && modelId.includes('/') ? modelId.split('/')[0] : providerId),
-        promptTokens: usage?.prompt_tokens || 0,
-        completionTokens: usage?.completion_tokens || 0,
-        cost: cost || 0,
+        promptTokens,
+        completionTokens,
+        cost: resolvedCost,
         metadata: { ...metadata } as Prisma.InputJsonValue,
       } as Prisma.ModelUsageUncheckedCreateInput,
     });
-    console.log('Usage log created:', newLog.id);
+    console.log(`[logUsage] Recorded: ${modelId} $${resolvedCost.toFixed(6)} — log id ${newLog.id}`);
     return newLog;
   } catch (error) {
-    console.error('Failed to log model usage:', error);
+    console.error('[logUsage] Failed to write usage log:', error);
   }
 }
 
@@ -127,9 +141,9 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
         provider: true
       },
       orderBy: [
-        { lastSeenAt: 'desc' }, 
+        { lastSeenAt: 'desc' },
       ],
-      take: DEFAULT_MODEL_TAKE_LIMIT 
+      take: DEFAULT_MODEL_TAKE_LIMIT
     });
 
     if (candidates.length === 0) {
@@ -140,11 +154,11 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     // [RESILIENCE] Redis Blacklist Filter
     const healthyCandidates: typeof candidates = [];
     for (const c of candidates) {
-        if (!(await isModelBlacklisted(c.id))) {
-            healthyCandidates.push(c);
-        } else {
-            console.warn(`[ModelManager] Skipping blacklisted model: ${c.id}`);
-        }
+      if (!(await isModelBlacklisted(c.id))) {
+        healthyCandidates.push(c);
+      } else {
+        console.warn(`[ModelManager] Skipping blacklisted model: ${c.id}`);
+      }
     }
 
     if (healthyCandidates.length === 0) {
@@ -153,54 +167,54 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     }
 
     // Intelligent Selection: Provider LRU -> Model LRU
-    
+
     // 1. Fetch usage stats
     const candidateIds = healthyCandidates.map(c => c.id);
     const usageStats = await prisma.modelUsage.groupBy({
-        by: ['modelId'],
-        where: { modelId: { in: candidateIds } },
-        _max: { createdAt: true }
+      by: ['modelId'],
+      where: { modelId: { in: candidateIds } },
+      _max: { createdAt: true }
     });
 
     // 2. Map model usages
     const modelUsageMap = new Map<string, number>();
     usageStats.forEach(stat => {
-        if (stat.modelId && stat._max.createdAt) {
-            modelUsageMap.set(stat.modelId, stat._max.createdAt.getTime());
-        }
+      if (stat.modelId && stat._max.createdAt) {
+        modelUsageMap.set(stat.modelId, stat._max.createdAt.getTime());
+      }
     });
 
     // 3. Compute Provider Usage (Max timestamp of any model in that provider)
     const providerUsageMap = new Map<string, number>();
     for (const c of healthyCandidates) {
-        const mTime = modelUsageMap.get(c.id) || 0;
-        const pTime = providerUsageMap.get(c.providerId) || 0;
-        if (mTime > pTime) { // We want the *latest* usage to represent the provider's "freshness"
-            providerUsageMap.set(c.providerId, mTime);
-        }
+      const mTime = modelUsageMap.get(c.id) || 0;
+      const pTime = providerUsageMap.get(c.providerId) || 0;
+      if (mTime > pTime) { // We want the *latest* usage to represent the provider's "freshness"
+        providerUsageMap.set(c.providerId, mTime);
+      }
     }
 
     // 4. Sort Candidates
     healthyCandidates.sort((a, b) => {
-        // Priority 0: Billing Risk Level (ZERO_RISK first)
-        const riskA = a.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
-        const riskB = b.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
-        if (riskA !== riskB) {
-            return riskA - riskB;
-        }
+      // Priority 0: Billing Risk Level (ZERO_RISK first)
+      const riskA = a.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
+      const riskB = b.provider.billingRiskLevel === 'ZERO_RISK' ? 0 : 1;
+      if (riskA !== riskB) {
+        return riskA - riskB;
+      }
 
-        const pTimeA = providerUsageMap.get(a.providerId) || 0;
-        const pTimeB = providerUsageMap.get(b.providerId) || 0;
+      const pTimeA = providerUsageMap.get(a.providerId) || 0;
+      const pTimeB = providerUsageMap.get(b.providerId) || 0;
 
-        // Primary Sort: Provider Usage (Oldest first)
-        if (pTimeA !== pTimeB) {
-            return pTimeA - pTimeB;
-        }
+      // Primary Sort: Provider Usage (Oldest first)
+      if (pTimeA !== pTimeB) {
+        return pTimeA - pTimeB;
+      }
 
-        // Secondary Sort: Model Usage (Oldest first)
-        const mTimeA = modelUsageMap.get(a.id) || 0;
-        const mTimeB = modelUsageMap.get(b.id) || 0;
-        return mTimeA - mTimeB;
+      // Secondary Sort: Model Usage (Oldest first)
+      const mTimeA = modelUsageMap.get(a.id) || 0;
+      const mTimeB = modelUsageMap.get(b.id) || 0;
+      return mTimeA - mTimeB;
     });
 
     // 5. Select Winner
@@ -213,17 +227,17 @@ export async function selectModelFromRegistry(roleId: string, failedModels: stri
     // Use external ID from providerData, fallback to name, never usage internal CUID
     const providerDataObj = selected.providerData as Prisma.JsonObject;
     // Helper to safely access 'id' from the JSON object
-    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
-      ? (providerDataObj['id'] as string) 
+    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj)
+      ? (providerDataObj['id'] as string)
       : selected.name;
 
     return {
-      modelId: externalId, 
+      modelId: externalId,
       internalId: selected.id,
       providerId: selected.providerId,
       name: selected.name,
       isFree: isFree,
-      source: 'registry', 
+      source: 'registry',
       provider: selected.provider,
       specs: {},
     };
@@ -237,7 +251,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
   try {
     const role = roleId ? await prisma.role.findUnique({ where: { id: roleId } }) : null;
     const modelId = await resolveModelForRole(role || { id: 'default', metadata: {} }, 0, failedModels, failedProviders);
-    
+
     const model = await prisma.model.findUnique({
       where: { id: modelId },
       include: { provider: true }
@@ -245,8 +259,8 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 
     if (model) {
       const providerDataObj = model.providerData as Prisma.JsonObject;
-      const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
-        ? (providerDataObj['id'] as string) 
+      const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj)
+        ? (providerDataObj['id'] as string)
         : model.name;
 
       return {
@@ -263,22 +277,22 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 
   // Final fallback
   const fallbackModel = await prisma.model.findFirst({
-      where: { provider: { isEnabled: true }, isActive: true },
-      include: { provider: true }
+    where: { provider: { isEnabled: true }, isActive: true },
+    include: { provider: true }
   });
 
   if (fallbackModel) {
-      const providerDataObj = fallbackModel.providerData as Prisma.JsonObject;
-      const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj) 
-        ? (providerDataObj['id'] as string) 
-        : fallbackModel.name;
-      return {
-          modelId: externalId,
-          providerId: fallbackModel.providerId,
-          model: { ...fallbackModel, internalId: fallbackModel.id },
-          temperature: DEFAULT_MODEL_TEMP,
-          maxTokens: DEFAULT_MAX_TOKENS
-      };
+    const providerDataObj = fallbackModel.providerData as Prisma.JsonObject;
+    const externalId = (typeof providerDataObj === 'object' && providerDataObj !== null && 'id' in providerDataObj)
+      ? (providerDataObj['id'] as string)
+      : fallbackModel.name;
+    return {
+      modelId: externalId,
+      providerId: fallbackModel.providerId,
+      model: { ...fallbackModel, internalId: fallbackModel.id },
+      temperature: DEFAULT_MODEL_TEMP,
+      maxTokens: DEFAULT_MAX_TOKENS
+    };
   }
 
   throw new Error(`No models available for role ${roleId}`);
@@ -289,7 +303,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
  */
 export async function selectBestModel(requirements: RoleRequirement, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<SelectionResult> {
   const allModels = await prisma.model.findMany({
-    where: { 
+    where: {
       isActive: true,
       provider: { isEnabled: true },
       NOT: [
@@ -297,9 +311,9 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
         ...(excludedProviderIds.length > 0 ? [{ providerId: { in: excludedProviderIds } }] : [])
       ]
     },
-    include: { 
+    include: {
       capabilities: true,
-      provider: true 
+      provider: true
     }
   });
 
@@ -361,7 +375,7 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
 export async function resolveModelForRole(role: any, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
   const metadata = (role.metadata || {}) as any;
   const requirements = metadata.requirements || {};
-  
+
   const roleReq: RoleRequirement = {
     minContext: requirements.minContext || metadata.minContext || estimatedInputTokens || 0,
     requiresVision: requirements.capabilities?.includes('vision') || metadata.requiresVision === true,
@@ -394,7 +408,7 @@ export async function updateReward(modelId: string, success: boolean, latency?: 
 
     if (isRateLimited) {
       await blacklistModel(modelId, 600);
-      
+
       // Also blacklist the entire provider
       const model = await prisma.model.findUnique({ where: { id: modelId } });
       if (model) {
@@ -429,18 +443,18 @@ export async function recordModelFailure(providerId: string, modelId: string, _r
   try {
     // Manual upsert to avoid type issues with unique constraints
     const existing = await prisma.modelFailure.findFirst({
-        where: { providerId, modelId }
+      where: { providerId, modelId }
     });
 
     if (existing) {
-        await prisma.modelFailure.update({
-            where: { id: existing.id },
-            data: { failures: { increment: 1 } }
-        });
+      await prisma.modelFailure.update({
+        where: { id: existing.id },
+        data: { failures: { increment: 1 } }
+      });
     } else {
-        await prisma.modelFailure.create({
-            data: { providerId, modelId, failures: 1 }
-        });
+      await prisma.modelFailure.create({
+        data: { providerId, modelId, failures: 1 }
+      });
     }
     console.log(`[Model Failure] Recorded failure for ${modelId} on ${providerId}`);
   } catch (err) {

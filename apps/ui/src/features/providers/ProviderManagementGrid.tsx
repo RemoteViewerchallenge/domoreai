@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../../utils/trpc.js';
-import { 
-  Plus, 
-  Trash2, 
+import {
+  Plus,
+  Trash2,
   Save,
   Zap,
   Loader2,
   Database,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
   DollarSign,
-  Activity,
-  Edit2,
-  Lock
+  AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
@@ -19,194 +20,561 @@ import { Switch } from '../../components/ui/switch.js';
 import { cn } from '../../lib/utils.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { SmartBrowser } from '../../components/SmartBrowser.js';
 import { AddProviderForm } from './AddProviderForm.js';
-import { UniversalDataGrid } from '../../components/UniversalDataGrid.js';
+import { ModelInventoryModal } from './ModelInventoryModal.js';
+import { RefreshCw as RefreshIcon } from 'lucide-react';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 interface Provider {
   id: string;
   name: string;
   type: string;
   baseUrl: string | null;
+  apiKey: string | null;
   apiKeyEnvVar: string | null;
-  pricingUrl: string | null;
-  isCreditCardLinked: boolean;
-  enforceFreeOnly: boolean;
-  monthlyBudget: number | null;
   serviceCategories: string[];
   billingRiskLevel: 'ZERO_RISK' | 'PROMO_BURN' | 'CC_ON_FILE';
   promoMonthlyLimit: number | null;
-  currentScrapedSpend: number | null;
-  billingDashboardUrl: string | null;
-  lastScrapeTime: string | null;
+  monthlyBudget: number | null;
+  enforceFreeOnly: boolean;
+  isCreditCardLinked: boolean;
+  providerClass: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL';
+  isEnabled: boolean;
   status: string;
   lastError: string | null;
-  providerClass: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL';
-  isNew?: boolean;
-  isDirty?: boolean;
 }
 
 const RISK_COLORS = {
-  ZERO_RISK: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  PROMO_BURN: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  CC_ON_FILE: 'bg-red-500/20 text-red-400 border-red-500/30'
+  ZERO_RISK: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  PROMO_BURN: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+  CC_ON_FILE: 'bg-red-500/10 text-red-400 border-red-500/30',
 };
 
-const RISK_LABELS = {
-  ZERO_RISK: 'ZERO RISK',
-  PROMO_BURN: 'PROMO BURN',
-  CC_ON_FILE: 'CC ON FILE'
+const CLASS_LABELS: Record<string, string> = {
+  FOUNDATIONAL: 'Foundational',
+  AGGREGATOR: 'Aggregator / Proxy',
+  INFERENCE_ENGINE: 'Inference Engine',
+  LOCAL: 'Local',
 };
 
-export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ workflowMode: _workflowMode = false }) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// ProviderCard — inline-editable, all real data
+// ─────────────────────────────────────────────────────────────────────────────
+function ProviderCard({ provider, onSaved, onDeleted, onViewInventory }: {
+  provider: Provider;
+  onSaved: () => void;
+  onDeleted: () => void;
+  onViewInventory: (id: string, name: string) => void;
+}) {
+  const utils = trpc.useContext();
+  const [expanded, setExpanded] = useState(false);
+
+  const [draft, setDraft] = useState<Provider>({ ...provider });
+  const [dirty, setDirty] = useState(false);
+
+  // Real model counts — reads from Model table (populated by fetchAndNormalizeModels)
+  const { data: modelData, isLoading: modelsLoading, refetch: refetchModels } = trpc.model.listByProvider.useQuery(
+    { providerId: provider.id },
+    { staleTime: 30_000 }
+  );
+
+  // Real spend — sums ModelUsage.cost for this provider
+  const { data: spendData } = trpc.model.getProviderSpend.useQuery(
+    { providerId: provider.id },
+    { staleTime: 30_000 }
+  );
+
+  const counts = modelData?.counts ?? { llm: 0, embedding: 0, image: 0, audio: 0, vision: 0, other: 0, total: 0 };
+  const spend = spendData?.totalCost ?? 0;
+  const budget = draft.monthlyBudget ?? 0;
+  const budgetPct = budget > 0 ? Math.min(100, (spend / budget) * 100) : 0;
+  const overBudget = budget > 0 && spend >= budget;
+
+  // Mutations
+  const upsertMutation = trpc.providers.upsert.useMutation({
+    onSuccess: () => { toast.success('Provider saved'); setDirty(false); onSaved(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const setEnabledMutation = trpc.providers.setEnabled.useMutation({
+    onSuccess: (updated) => {
+      toast.success(`Provider ${updated.isEnabled ? 'enabled' : 'disabled'}`);
+      setDraft(d => ({ ...d, isEnabled: updated.isEnabled }));
+      onSaved();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const fetchModelsMutation = trpc.providers.fetchAndNormalizeModels.useMutation({
+    onSuccess: (res) => {
+      toast.success(`Synced ${res.count} models for ${provider.name}`);
+      // Force immediate re-fetch of relevant data
+      utils.model.listByProvider.invalidate({ providerId: provider.id });
+      utils.providers.list.invalidate();
+      refetchModels();
+    },
+    onError: (e) => toast.error(`Fetch failed: ${e.message}`),
+  });
+
+
+  const deleteMutation = trpc.providers.delete.useMutation({
+    onSuccess: () => { toast.success('Deleted'); onDeleted(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const update = (patch: Partial<Provider>) => {
+    setDraft(d => ({ ...d, ...patch }));
+    setDirty(true);
+  };
+
+  const save = () => {
+    upsertMutation.mutate({
+      id: draft.id,
+      name: draft.name,
+      providerType: draft.type,
+      baseUrl: draft.baseUrl || undefined,
+      apiKey: (draft.apiKey && draft.apiKey !== '••••••••') ? draft.apiKey : undefined,
+      apiKeyEnvVar: draft.apiKeyEnvVar || undefined,
+      serviceCategories: draft.serviceCategories,
+      billingRiskLevel: draft.billingRiskLevel,
+      promoMonthlyLimit: draft.promoMonthlyLimit || undefined,
+      monthlyBudget: draft.monthlyBudget || undefined,
+      enforceFreeOnly: draft.enforceFreeOnly,
+      isCreditCardLinked: draft.isCreditCardLinked,
+      providerClass: draft.providerClass,
+      isEnabled: draft.isEnabled,
+    });
+  };
+
+  const isEnabled = draft.isEnabled;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className={cn(
+        'bg-slate-900 border rounded-lg overflow-hidden transition-all',
+        isEnabled ? 'border-slate-800' : 'border-slate-800/50 opacity-60 grayscale',
+      )}
+    >
+      {/* ── Header Row ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800 bg-slate-900/80">
+        {/* Enable/Disable toggle — wired to providers.setEnabled */}
+        <Switch
+          checked={isEnabled}
+          onCheckedChange={(val) => setEnabledMutation.mutate({ id: provider.id, isEnabled: val })}
+          className="scale-75 data-[state=checked]:bg-blue-500 shrink-0"
+        />
+        <span className={cn('text-[10px] font-black uppercase tracking-widest shrink-0', isEnabled ? 'text-blue-400' : 'text-slate-600')}>
+          {isEnabled ? 'Live' : 'Off'}
+        </span>
+
+        <div className="flex-1 min-w-0">
+          <Input
+            value={draft.name}
+            onChange={e => update({ name: e.target.value })}
+            className="h-6 text-[11px] font-bold bg-transparent border-transparent hover:border-slate-700 focus:border-blue-500 text-slate-100 p-0 px-1"
+          />
+        </div>
+
+        <Badge className={cn('text-[8px] font-black border px-1 h-4 uppercase shrink-0', RISK_COLORS[draft.billingRiskLevel])}>
+          {draft.billingRiskLevel.replace('_', ' ')}
+        </Badge>
+
+        {/* Model count pill — real data & opens inventory */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onViewInventory(provider.id, provider.name); }}
+          className="flex items-center gap-1 text-[9px] font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-slate-500 shrink-0 hover:border-blue-500/50 hover:text-blue-400 transition-all cursor-pointer group"
+        >
+          {modelsLoading
+            ? <Loader2 size={8} className="animate-spin" />
+            : counts.total > 0
+              ? <>
+                <span className="text-blue-400 group-hover:scale-110 transition-transform">{counts.total}</span>
+                <span className="opacity-40">mdl</span>
+              </>
+              : <span className="text-slate-700">no models</span>
+          }
+        </button>
+        {/* Real spend vs budget */}
+        {budget > 0 && (
+          <div className={cn(
+            'text-[9px] font-mono px-2 py-0.5 rounded border shrink-0',
+            overBudget ? 'text-red-400 border-red-500/30 bg-red-500/10' : 'text-slate-500 border-slate-800 bg-slate-950'
+          )}>
+            {overBudget && <AlertTriangle size={8} className="inline mr-0.5" />}
+            ${spend.toFixed(2)} / ${budget}
+          </div>
+        )}
+
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="text-slate-500 hover:text-slate-200 transition-colors shrink-0"
+        >
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+
+      {/* ── Expanded Inline Edit Form ────────────────────────────── */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="p-3 space-y-3">
+
+              {/* Row 1: Provider type + Class */}
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Type</span>
+                  <Input
+                    value={draft.type}
+                    onChange={e => update({ type: e.target.value })}
+                    placeholder="openai / groq / anthropic…"
+                    className="h-7 text-[11px] bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Class</span>
+                  <select
+                    value={draft.providerClass}
+                    onChange={e => update({ providerClass: e.target.value as any })}
+                    className="w-full h-7 text-[11px] bg-slate-950 border border-slate-800 rounded text-slate-200 focus:border-blue-500 px-2"
+                  >
+                    {Object.entries(CLASS_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Row 2: Base URL */}
+              <label className="block space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Base URL</span>
+                <Input
+                  value={draft.baseUrl ?? ''}
+                  onChange={e => update({ baseUrl: e.target.value })}
+                  placeholder="https://api.openai.com/v1"
+                  className="h-7 text-[11px] bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                />
+              </label>
+
+              {/* Row 3: API Key */}
+              <label className="block space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">API Key (leave blank to keep existing)</span>
+                <Input
+                  type="password"
+                  placeholder="sk-…  (stored encrypted)"
+                  onChange={e => update({ apiKey: e.target.value })}
+                  className="h-7 text-[11px] font-mono bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                />
+              </label>
+
+              {/* Row 4: ENV var fallback */}
+              <label className="block space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">ENV Var Override</span>
+                  <span className="text-[8px] text-slate-600 font-medium">Variable Name (e.g. XAI_API_KEY)</span>
+                </div>
+                <Input
+                  value={draft.apiKeyEnvVar ?? ''}
+                  onChange={e => update({ apiKeyEnvVar: e.target.value })}
+                  placeholder="OPENAI_API_KEY"
+                  className="h-7 text-[11px] font-mono bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                />
+              </label>
+
+
+              {/* Row 5: Service categories */}
+              <label className="block space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Categories (comma-separated)</span>
+                <Input
+                  value={draft.serviceCategories.join(', ')}
+                  onChange={e => update({ serviceCategories: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                  placeholder="LLM, VISION, EMBEDDING, TTS"
+                  className="h-7 text-[11px] bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                />
+              </label>
+
+              {/* Row 6: Financial guardrails */}
+              <div className="grid grid-cols-3 gap-2">
+                <label className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Risk</span>
+                  <select
+                    value={draft.billingRiskLevel}
+                    onChange={e => update({ billingRiskLevel: e.target.value as any })}
+                    className="w-full h-7 text-[11px] bg-slate-950 border border-slate-800 rounded text-slate-200 focus:border-blue-500 px-2"
+                  >
+                    <option value="ZERO_RISK">Zero Risk</option>
+                    <option value="PROMO_BURN">Promo Burn</option>
+                    <option value="CC_ON_FILE">CC On File</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Promo Limit ($)</span>
+                  <Input
+                    type="number"
+                    value={draft.promoMonthlyLimit ?? 0}
+                    onChange={e => update({ promoMonthlyLimit: parseFloat(e.target.value) })}
+                    className="h-7 text-[11px] font-mono bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Hard Budget ($)</span>
+                  <Input
+                    type="number"
+                    value={draft.monthlyBudget ?? 0}
+                    onChange={e => update({ monthlyBudget: parseFloat(e.target.value) })}
+                    className="h-7 text-[11px] font-mono bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500"
+                  />
+                </label>
+              </div>
+
+              {/* Row 7: Guardrail toggles */}
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Switch
+                    checked={draft.enforceFreeOnly}
+                    onCheckedChange={v => update({ enforceFreeOnly: v })}
+                    className="scale-75 data-[state=checked]:bg-emerald-500"
+                  />
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Free-Only</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Switch
+                    checked={draft.isCreditCardLinked}
+                    onCheckedChange={v => update({ isCreditCardLinked: v })}
+                    className="scale-75 data-[state=checked]:bg-red-500"
+                  />
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">CC Linked</span>
+                </label>
+              </div>
+
+              {/* Real model breakdown from Model table */}
+              <div className="p-2 bg-slate-950 rounded border border-slate-800 text-[9px] font-mono space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-black uppercase tracking-widest text-slate-600">Synced Models</span>
+                  {modelsLoading && <Loader2 size={9} className="animate-spin text-slate-600" />}
+                </div>
+                {counts.total > 0 ? (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {counts.llm > 0 && <span className="text-blue-400">LLM: {counts.llm}</span>}
+                    {counts.embedding > 0 && <span className="text-purple-400">EMBED: {counts.embedding}</span>}
+                    {counts.image > 0 && <span className="text-pink-400">IMG: {counts.image}</span>}
+                    {counts.audio > 0 && <span className="text-amber-400">AUDIO: {counts.audio}</span>}
+                    {counts.vision > 0 && <span className="text-emerald-400">VISION: {counts.vision}</span>}
+                    {counts.other > 0 && <span className="text-slate-500">OTHER: {counts.other}</span>}
+                  </div>
+                ) : (
+                  <div className="text-slate-700">
+                    {modelsLoading ? 'Loading…' : 'No models — click Fetch Models below'}
+                  </div>
+                )}
+
+                {/* Real spend from ModelUsage */}
+                <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                  <span className="flex items-center gap-1 text-slate-600">
+                    <DollarSign size={9} /> Actual Spend (DB)
+                  </span>
+                  <span className={cn('font-black', overBudget ? 'text-red-400' : spend > 0 ? 'text-emerald-400' : 'text-slate-700')}>
+                    ${spend.toFixed(4)}
+                  </span>
+                </div>
+
+                {/* Budget utilisation bar — only if budget is set */}
+                {budget > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[8px] text-slate-600 mb-0.5">
+                      <span>Budget</span>
+                      <span className={overBudget ? 'text-red-400 font-black' : ''}>{budgetPct.toFixed(0)}% of ${budget}</span>
+                    </div>
+                    <div className="w-full h-1 bg-slate-800 rounded overflow-hidden">
+                      <div
+                        className={cn('h-full transition-all', overBudget ? 'bg-red-500' : budgetPct > 80 ? 'bg-amber-500' : 'bg-blue-500')}
+                        style={{ width: `${budgetPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Request count */}
+                {(spendData?.totalRequests ?? 0) > 0 && (
+                  <div className="text-slate-700">
+                    {spendData!.totalRequests} requests · {((spendData!.totalPromptTokens + spendData!.totalCompletionTokens) / 1000).toFixed(1)}k tokens
+                  </div>
+                )}
+
+                {provider.lastError && (
+                  <div className="text-red-400 truncate flex items-center gap-1" title={provider.lastError}>
+                    <AlertTriangle size={9} /> {provider.lastError}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                <div className="flex gap-2">
+                  {/* Fetch & sync models from provider API */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={fetchModelsMutation.isLoading}
+                    onClick={() => fetchModelsMutation.mutate({ providerId: provider.id })}
+                    className="h-6 text-[9px] font-black uppercase tracking-widest bg-slate-950 border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-500/50 gap-1"
+                  >
+                    {fetchModelsMutation.isLoading
+                      ? <Loader2 size={10} className="animate-spin" />
+                      : <RefreshCw size={10} />
+                    }
+                    Fetch Models
+                  </Button>
+
+                  {/* Delete */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { if (confirm(`Delete "${provider.name}"?`)) deleteMutation.mutate({ id: provider.id }); }}
+                    className="h-6 text-[9px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-400 hover:bg-red-500/10 gap-1"
+                  >
+                    <Trash2 size={10} /> Delete
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onViewInventory(provider.id, provider.name)}
+                    className="h-6 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white gap-1"
+                  >
+                    <Database size={10} /> Inventory
+                  </Button>
+                </div>
+
+                {/* Save changes */}
+                {dirty && (
+                  <Button
+                    size="sm"
+                    onClick={save}
+                    disabled={upsertMutation.isLoading}
+                    className="h-6 text-[9px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-500 text-white gap-1"
+                  >
+                    {upsertMutation.isLoading ? <Loader2 size={10} className="animate-spin" /> : <Save size={10} />}
+                    Save
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Grid
+// ─────────────────────────────────────────────────────────────────────────────
+export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = () => {
   const utils = trpc.useContext();
   const { data: remoteProviders, isLoading } = trpc.providers.list.useQuery();
   const [localProviders, setLocalProviders] = useState<Provider[]>([]);
-  
-  const [activeTab, setActiveTab] = useState<string>('ALL');
-  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
-  const [billingProviderId, setBillingProviderId] = useState<string | null>(null);
-  const [billingProviderUrl, setBillingProviderUrl] = useState<string>('');
-
-  // Morphing State
   const [isAdding, setIsAdding] = useState(false);
-  const [morphedModels, setMorphedModels] = useState<any[] | null>(null);
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [inventoryModalProvider, setInventoryModalProvider] = useState<{ id: string; name: string } | null>(null);
+
+  const globalSyncMutation = trpc.model.sync.useMutation({
+    onSuccess: () => {
+      toast.success('Global model sync started');
+      invalidate();
+    },
+    onError: (e) => toast.error(`Sync failed: ${e.message}`),
+  });
 
   useEffect(() => {
-    if (remoteProviders) {
-      setLocalProviders(remoteProviders.map((p: any) => ({ ...p, isDirty: false })));
-    }
+    if (remoteProviders) setLocalProviders(remoteProviders as Provider[]);
   }, [remoteProviders]);
 
-  const upsertMutation = trpc.providers.upsert.useMutation({
-    onSuccess: () => {
-      utils.providers.list.invalidate();
-      toast.success('Provider saved successfully');
-      setEditingProvider(null);
-    },
-    onError: (err) => {
-      toast.error(`Failed to save: ${err.message}`);
-    }
-  });
-
-
-
-  const scrapeMutation = trpc.providers.scrapeBalance.useMutation({
-    onSuccess: () => {
-      utils.providers.list.invalidate();
-      toast.success('Balance sync complete.');
-    },
-    onError: (err) => {
-      toast.error(`Scrape failed: ${err.message}`);
-    }
-  });
-
-  const deleteMutation = trpc.providers.delete.useMutation({
-    onSuccess: () => {
-      utils.providers.list.invalidate();
-      toast.success('Provider deleted');
-    },
-    onError: (err) => {
-      toast.error(`Failed to delete: ${err.message}`);
-    }
-  });
-
-  const openAddModal = () => {
-    setIsAdding(true);
-    setMorphedModels(null);
-  };
-
-  const handleSaveModal = async () => {
-    if (!editingProvider) return;
-    try {
-      await upsertMutation.mutateAsync({
-        id: editingProvider.isNew ? undefined : editingProvider.id,
-        name: editingProvider.name,
-        providerType: editingProvider.type,
-        baseUrl: editingProvider.baseUrl || undefined,
-        apiKey: (editingProvider as any).apiKey || undefined,
-        apiKeyEnvVar: editingProvider.apiKeyEnvVar || undefined,
-        pricingUrl: editingProvider.pricingUrl || undefined,
-        isCreditCardLinked: editingProvider.isCreditCardLinked,
-        enforceFreeOnly: editingProvider.enforceFreeOnly,
-        monthlyBudget: editingProvider.monthlyBudget || undefined,
-        serviceCategories: editingProvider.serviceCategories,
-        billingRiskLevel: editingProvider.billingRiskLevel,
-        promoMonthlyLimit: editingProvider.promoMonthlyLimit || undefined,
-        currentScrapedSpend: editingProvider.currentScrapedSpend || undefined,
-        billingDashboardUrl: editingProvider.billingDashboardUrl || undefined,
-        providerClass: editingProvider.providerClass,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleScrape = (providerId: string) => {
-    scrapeMutation.mutate({ providerId });
-  };
-
-  const categories = ['ALL', ...Array.from(new Set(localProviders.flatMap(p => p.serviceCategories || [])))];
-  
-  const filteredProviders = localProviders.filter(p => 
-    activeTab === 'ALL' || (p.serviceCategories && p.serviceCategories.includes(activeTab))
+  const categories = useMemo(() =>
+    ['ALL', ...Array.from(new Set(localProviders.flatMap(p => p.serviceCategories)))],
+    [localProviders]
   );
 
-  const providersByClass = useMemo(() => {
-    const groups: Record<string, Provider[]> = {
-      FOUNDATIONAL: [],
-      AGGREGATOR: [],
-      INFERENCE_ENGINE: [],
-      LOCAL: []
-    };
-    filteredProviders.forEach(p => {
-      const cls = p.providerClass || 'FOUNDATIONAL';
-      if (!groups[cls]) groups[cls] = [];
-      groups[cls].push(p);
-    });
-    return groups;
-  }, [filteredProviders]);
+  const filtered = useMemo(() =>
+    localProviders.filter(p =>
+      activeTab === 'ALL' || p.serviceCategories.includes(activeTab)
+    ),
+    [localProviders, activeTab]
+  );
 
-  const classLabels: Record<string, string> = {
-    FOUNDATIONAL: 'Foundational Providers',
-    AGGREGATOR: 'API Aggregators & Proxies',
-    INFERENCE_ENGINE: 'Inference Engines',
-    LOCAL: 'Local Infrastucture'
-  };
+  const byClass = useMemo(() => {
+    const g: Record<string, Provider[]> = { FOUNDATIONAL: [], AGGREGATOR: [], INFERENCE_ENGINE: [], LOCAL: [] };
+    filtered.forEach(p => { (g[p.providerClass] ??= []).push(p); });
+    return g;
+  }, [filtered]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full w-full text-zinc-500 gap-3">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
-        <span className="text-xs uppercase font-bold tracking-widest">Loading Dashboard...</span>
-      </div>
-    );
-  }
+  const invalidate = () => utils.providers.list.invalidate();
+
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-3">
+      <Loader2 className="animate-spin text-blue-500" size={28} />
+      <span className="text-[10px] uppercase font-black tracking-widest">Loading Providers…</span>
+    </div>
+  );
 
   return (
-    <div className="relative flex flex-col h-full bg-zinc-950 p-6 overflow-hidden">
-      <div className="flex justify-between items-center mb-8">
+    <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
+
+      {/* Header */}
+      <div className="flex-none flex justify-between items-center px-4 py-3 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-            <Zap className="text-indigo-400" /> Financial & Capability Arbitrage Dashboard
+          <h1 className="text-base font-black text-white tracking-tighter flex items-center gap-2">
+            <Zap className="text-blue-400" size={16} /> PROVIDER & CAPABILITY ARBITRAGE
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">Maximize free labor and enforce strict financial guardrails.</p>
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-0.5">
+            {localProviders.filter(p => p.isEnabled).length} active · {localProviders.length} total
+          </p>
         </div>
-        <Button onClick={openAddModal} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold gap-2">
-          <Plus size={16} /> Add Provider
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Global Refresh */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => globalSyncMutation.mutate()}
+            disabled={globalSyncMutation.isLoading}
+            className="h-7 text-[9px] uppercase font-black tracking-widest bg-slate-900 border-slate-800 text-slate-500 hover:text-white"
+          >
+            {globalSyncMutation.isLoading ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <RefreshIcon size={12} className="mr-1.5" />}
+            Global Sync
+          </Button>
+
+          <Button
+            onClick={() => setIsAdding(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] h-7 px-3 gap-1 uppercase tracking-widest"
+          >
+            <Plus size={12} /> Add Provider
+          </Button>
+        </div>
       </div>
 
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 border-b border-zinc-800">
+      {/* Category tabs */}
+      <div className="flex-none flex gap-1 px-4 pt-2 border-b border-slate-800 overflow-x-auto">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setActiveTab(cat)}
             className={cn(
-              "px-4 py-2 rounded-t-lg text-xs font-bold transition-all uppercase tracking-wider",
-              activeTab === cat 
-                ? "bg-zinc-800 text-white border-b-2 border-indigo-500" 
-                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
+              'px-3 py-1 text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-colors border-b-2',
+              activeTab === cat
+                ? 'text-blue-400 border-blue-500'
+                : 'text-slate-600 border-transparent hover:text-slate-300',
             )}
           >
             {cat}
@@ -214,392 +582,73 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = ({ w
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto custom-scrollbar">
-        {(Object.entries(providersByClass) as [keyof typeof classLabels, Provider[]][]).map(([cls, providers]) => {
-          if (providers.length === 0) return null;
-          
+      {/* Provider cards */}
+      <div className="flex-1 overflow-auto p-4 space-y-6">
+        {(Object.entries(byClass) as [string, Provider[]][]).map(([cls, providers]) => {
+          if (!providers.length) return null;
           return (
-            <div key={cls} className="mb-12">
-              <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 whitespace-nowrap">
-                  {classLabels[cls]}
-                </h2>
-                <div className="h-[1px] w-full bg-zinc-800/50" />
-                <Badge variant="outline" className="text-[10px] bg-zinc-900/50 text-zinc-400 border-zinc-800">
-                  {providers.length}
-                </Badge>
+            <div key={cls}>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 whitespace-nowrap">
+                  {CLASS_LABELS[cls]}
+                </span>
+                <div className="h-px flex-1 bg-slate-800" />
+                <span className="text-[9px] text-slate-700 font-mono">{providers.length}</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <AnimatePresence>
-                  {providers.map((provider: Provider) => {
-                    const spend = provider.currentScrapedSpend || 0;
-                    const limit = provider.promoMonthlyLimit || 1; 
-                    const percent = Math.min(100, Math.max(0, (spend / limit) * 100));
-                    const isOverLimit = spend >= limit;
-
-                    return (
-                      <motion.div
-                        key={provider.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col gap-4 shadow-xl hover:border-zinc-700 transition-all relative overflow-hidden group"
-                      >
-                        {/* Health Dot & Risk Level */}
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]",
-                              (provider.status === 'ACTIVE') ? "bg-emerald-500 shadow-emerald-500/50" : "bg-red-500 shadow-red-500/50"
-                            )} />
-                            <h3 className="text-base font-bold text-white tracking-wide">{provider.name}</h3>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge className={cn("text-[9px] font-black uppercase tracking-wider border", RISK_COLORS[(provider.billingRiskLevel || 'ZERO_RISK') as keyof typeof RISK_COLORS])}>
-                              {RISK_LABELS[(provider.billingRiskLevel || 'ZERO_RISK') as keyof typeof RISK_LABELS]}
-                            </Badge>
-                            {provider.providerClass === 'AGGREGATOR' && (
-                              <Badge className="text-[8px] bg-indigo-500/10 text-indigo-400 border-indigo-500/30 uppercase font-black">
-                                Multi-Provider Proxy
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Categories */}
-                        <div className="flex flex-wrap gap-1">
-                          {provider.serviceCategories?.map((cat: string) => (
-                            <span key={cat} className="text-[9px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 uppercase font-semibold">
-                              {cat}
-                            </span>
-                          ))}
-                        </div>
-
-                        {/* Spend Progress */}
-                        <div className="bg-zinc-950/50 rounded-lg p-3 border border-zinc-800">
-                          <div className="flex justify-between text-xs mb-2">
-                            <span className="text-zinc-400 font-mono flex items-center gap-1">
-                              <DollarSign size={12} /> Scraped Spend
-                            </span>
-                            <span className={cn("font-mono font-bold", isOverLimit ? "text-red-400" : "text-emerald-400")}>
-                              ${spend.toFixed(2)} / ${limit.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-1 overflow-hidden">
-                            <div 
-                              className={cn("h-full rounded-full transition-all", isOverLimit ? "bg-red-500" : "bg-emerald-500")}
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                          {provider.lastScrapeTime && (
-                            <div className="text-[9px] text-zinc-600 font-mono text-right mt-2">
-                              Last checked: {new Date(provider.lastScrapeTime).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="mt-auto grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700 hover:text-white text-zinc-300 gap-1 text-[10px] uppercase font-bold"
-                            onClick={() => setEditingProvider(provider)}
-                          >
-                            <Edit2 size={12} /> Edit
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setBillingProviderUrl(provider.billingDashboardUrl || `https://console.${provider.type}.com`);
-                              setBillingProviderId(provider.id);
-                            }}
-                            className="bg-zinc-800/50 border-zinc-700 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/50 text-zinc-300 gap-1 text-[10px] uppercase font-bold"
-                          >
-                            <Lock size={12} /> Connect Billing
-                          </Button>
-                        </div>
-                        
-                        {/* Scrape Sync Button (Full width) */}
-                        <Button 
-                          variant="default"
-                          size="sm"
-                          disabled={scrapeMutation.isLoading}
-                          onClick={() => handleScrape(provider.id)}
-                          className="w-full mt-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 gap-2 uppercase tracking-wider text-[10px] font-bold"
-                        >
-                          {scrapeMutation.isLoading && scrapeMutation.variables?.providerId === provider.id ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <Activity size={12} />
-                          )}
-                          Force Sync Balance
-                        </Button>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
+              <AnimatePresence>
+                <div className="space-y-2">
+                  {providers.map(p => (
+                    <ProviderCard
+                      key={p.id}
+                      provider={p}
+                      onSaved={invalidate}
+                      onDeleted={invalidate}
+                      onViewInventory={(id, name) => setInventoryModalProvider({ id, name })}
+                    />
+                  ))}
+                </div>
+              </AnimatePresence>
             </div>
           );
         })}
 
-        {filteredProviders.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-zinc-600 h-full">
-            <div className="p-4 bg-zinc-900 rounded-full mb-4 border border-zinc-800">
-              <Database size={32} className="text-zinc-700" />
-            </div>
-            <div className="text-sm font-bold uppercase tracking-widest mb-1">No Providers Configured</div>
-            <p className="text-xs text-zinc-500 mb-6">Start capitalizing on free AI labor by adding a provider.</p>
+        {filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-600">
+            <Database size={28} className="mb-3 text-slate-800" />
+            <div className="text-[11px] font-black uppercase tracking-widest mb-1">No Providers</div>
+            <p className="text-[10px] text-slate-600">Add a provider to get started.</p>
           </div>
         )}
       </div>
 
-      {/* Add Provider / Morph Modal */}
+      {/* Add Provider Modal */}
       <AnimatePresence>
         {isAdding && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-4xl max-h-[85vh] h-[600px] flex shadow-2xl relative"
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="w-full max-w-sm"
             >
-              {!morphedModels ? (
-                <AddProviderForm 
-                  onSuccessMorph={(_id, models) => setMorphedModels(models)}
-                  onCancel={() => setIsAdding(false)}
-                />
-              ) : (
-                <div className="flex flex-col h-full w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
-                   <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                      <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                        <Zap size={14} className="animate-pulse" /> Validation Success: Models Synchronized
-                      </h3>
-                      <button onClick={() => setIsAdding(false)} className="text-zinc-500 hover:text-white transition-colors">
-                        <Plus className="rotate-45" size={20} />
-                      </button>
-                   </div>
-                   <div className="flex-1 overflow-hidden">
-                      <UniversalDataGrid data={morphedModels} />
-                   </div>
-                   <div className="p-4 border-t border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
-                      <p className="text-[10px] text-zinc-500 font-mono italic">Ingested {morphedModels.length} models into registry.</p>
-                      <Button onClick={() => {
-                        setIsAdding(false);
-                        utils.providers.list.invalidate();
-                      }} className="bg-indigo-600 hover:bg-indigo-500 font-bold uppercase tracking-widest text-[10px]">
-                        Go to Dashboard
-                      </Button>
-                   </div>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {editingProvider && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto shadow-2xl flex flex-col"
-            >
-              <div className="p-6 border-b border-zinc-800 flex justify-between items-center sticky top-0 bg-zinc-950/80 backdrop-blur z-10">
-                <h2 className="text-lg font-bold text-white">{editingProvider.isNew ? 'Add Provider' : 'Edit Provider'}</h2>
-                <button onClick={() => setEditingProvider(null)} className="text-zinc-500 hover:text-white"><Plus className="rotate-45" /></button>
-              </div>
-
-              <div className="p-6 grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-400 border-b border-zinc-800 pb-2">Core Config</h3>
-                  
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Name</label>
-                    <Input 
-                      value={editingProvider.name} 
-                      onChange={e => setEditingProvider({...editingProvider, name: e.target.value})} 
-                      className="bg-zinc-900 border-zinc-800 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Provider Type</label>
-                    <Input 
-                      value={editingProvider.type} 
-                      onChange={e => setEditingProvider({...editingProvider, type: e.target.value})} 
-                      className="bg-zinc-900 border-zinc-800 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Base URL</label>
-                    <Input 
-                      value={editingProvider.baseUrl || ''} 
-                      onChange={e => setEditingProvider({...editingProvider, baseUrl: e.target.value})} 
-                      className="bg-zinc-900 border-zinc-800 text-sm font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">API Key (Secure)</label>
-                    <div className="relative">
-                      <Input 
-                        type="password"
-                        placeholder="••••••••••••••••"
-                        onChange={e => setEditingProvider({...editingProvider, apiKey: e.target.value} as any)} 
-                        className="bg-zinc-900 border-zinc-800 text-sm font-mono pr-10"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">
-                        <Lock size={12} />
-                      </div>
-                    </div>
-                    <p className="text-[8px] text-zinc-600 mt-1 italic">Stored encrypted. Overrides .env if set.</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Provider Class</label>
-                    <select 
-                      value={editingProvider.providerClass}
-                      onChange={e => setEditingProvider({...editingProvider, providerClass: e.target.value as any})}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="FOUNDATIONAL">Foundational</option>
-                      <option value="AGGREGATOR">Aggregator / Proxy</option>
-                      <option value="INFERENCE_ENGINE">Inference Engine</option>
-                      <option value="LOCAL">Local</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Service Categories (comma separated)</label>
-                    <Input 
-                      value={editingProvider.serviceCategories?.join(', ')} 
-                      onChange={e => setEditingProvider({...editingProvider, serviceCategories: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})} 
-                      className="bg-zinc-900 border-zinc-800 text-sm"
-                      placeholder="LLM, VOICE, VISION"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-zinc-800 pb-2">Financial Guardrails</h3>
-                  
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Billing Risk Level</label>
-                    <select 
-                      value={editingProvider.billingRiskLevel}
-                      onChange={e => setEditingProvider({...editingProvider, billingRiskLevel: e.target.value as any})}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="ZERO_RISK">Zero Risk</option>
-                      <option value="PROMO_BURN">Promo Burn</option>
-                      <option value="CC_ON_FILE">Credit Card On File</option>
-                    </select>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Promo Limit ($)</label>
-                      <Input 
-                        type="number"
-                        value={editingProvider.promoMonthlyLimit || 0} 
-                        onChange={e => setEditingProvider({...editingProvider, promoMonthlyLimit: parseFloat(e.target.value)})} 
-                        className="bg-zinc-900 border-zinc-800 text-sm font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Hard Budget ($)</label>
-                      <Input 
-                        type="number"
-                        value={editingProvider.monthlyBudget || 0} 
-                        onChange={e => setEditingProvider({...editingProvider, monthlyBudget: parseFloat(e.target.value)})} 
-                        className="bg-zinc-900 border-zinc-800 text-sm font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 block">Billing Dashboard URL</label>
-                    <Input 
-                      value={editingProvider.billingDashboardUrl || ''} 
-                      onChange={e => setEditingProvider({...editingProvider, billingDashboardUrl: e.target.value})} 
-                      className="bg-zinc-900 border-zinc-800 text-sm"
-                      placeholder="https://console.provider.com/billing"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
-                    <span className="text-xs font-bold text-zinc-400">Enforce Free Only</span>
-                    <Switch checked={editingProvider.enforceFreeOnly} onCheckedChange={c => setEditingProvider({...editingProvider, enforceFreeOnly: c})} />
-                  </div>
-                  <div className="flex items-center justify-between bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
-                    <span className="text-xs font-bold text-zinc-400">Credit Card Linked</span>
-                    <Switch checked={editingProvider.isCreditCardLinked} onCheckedChange={c => setEditingProvider({...editingProvider, isCreditCardLinked: c})} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 border-t border-zinc-800 bg-zinc-950 flex justify-between sticky bottom-0 z-10">
-                {!editingProvider.isNew ? (
-                  <Button 
-                    variant="ghost" 
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-2"
-                    onClick={() => {
-                      if (confirm('Delete this provider?')) {
-                        deleteMutation.mutate({ id: editingProvider.id });
-                        setEditingProvider(null);
-                      }
-                    }}
-                  >
-                    <Trash2 size={16} /> Delete
-                  </Button>
-                ) : <div />}
-                <div className="flex gap-3">
-                  <Button variant="ghost" onClick={() => setEditingProvider(null)}>Cancel</Button>
-                  <Button 
-                    onClick={handleSaveModal} 
-                    disabled={upsertMutation.isLoading}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold gap-2"
-                  >
-                    {upsertMutation.isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    Save Configuration
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Billing Browser Modal */}
-      <AnimatePresence>
-        {billingProviderId && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col overflow-hidden relative"
-            >
-              <div className="absolute top-4 right-4 z-50">
-                <button onClick={() => setBillingProviderId(null)} className="p-2 bg-black/50 hover:bg-black text-white rounded-full transition-colors backdrop-blur">
-                  <Plus className="rotate-45" size={24} />
-                </button>
-              </div>
-              <SmartBrowser 
-                cardId="billing-browser"
-                screenspaceId={1}
-                url={billingProviderUrl}
-                billingModeProviderId={billingProviderId}
-                onBillingSessionSaved={() => {
-                  setBillingProviderId(null);
-                  utils.providers.list.invalidate();
-                }}
+              <AddProviderForm
+                onCancel={() => setIsAdding(false)}
+                onSuccessMorph={() => { setIsAdding(false); invalidate(); }}
               />
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Model Inventory Drawer */}
+      <AnimatePresence>
+        {inventoryModalProvider && (
+          <ModelInventoryModal
+            providerId={inventoryModalProvider.id}
+            providerName={inventoryModalProvider.name}
+            onClose={() => setInventoryModalProvider(null)}
+          />
         )}
       </AnimatePresence>
     </div>

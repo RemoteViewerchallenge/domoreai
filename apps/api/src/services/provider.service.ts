@@ -1,7 +1,8 @@
+import { EnvManager } from './EnvManager.js';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../db.js';
-// import { encrypt, decrypt } from '../utils/encryption.js'; // REMOVED
 import { ProviderFactory, LLMModel } from '../utils/ProviderFactory.js';
+import { PricingRegistry } from './PricingRegistry.js';
 
 export class ProviderService {
   async listProviders() {
@@ -62,6 +63,29 @@ export class ProviderService {
       if (input.providerClass !== undefined) data.providerClass = input.providerClass;
       if (input.isEnabled !== undefined) data.isEnabled = input.isEnabled;
 
+      // [NORMALIZATION] Handle common URL mistakes
+      if (input.baseUrl) {
+        let url = input.baseUrl.trim();
+        if (url.endsWith('/')) url = url.slice(0, -1);
+
+        // xAI needs /v1
+        if (url.includes('api.x.ai') && !url.endsWith('/v1')) {
+          url += '/v1';
+        }
+        // Groq needs /openai/v1 (usually)
+        if (url.includes('api.groq.com/openai') && !url.endsWith('/v1')) {
+          url += '/v1';
+        }
+        data.baseUrl = url;
+      }
+
+      // [SIDE-EFFECT] Update environment files if apiKey is provided
+      if (input.apiKey) {
+        const type = input.type || existing.type;
+        const envKey = input.apiKeyEnvVar || `${(type || '').toUpperCase()}_API_KEY`;
+        if (envKey) await EnvManager.updateEnvVariable(envKey, input.apiKey);
+      }
+
       return prisma.providerConfig.update({
         where: { id: input.id },
         data
@@ -72,7 +96,7 @@ export class ProviderService {
         throw new Error('Name, type, and baseUrl are required for new providers');
       }
 
-      return prisma.providerConfig.create({
+      const result = await prisma.providerConfig.create({
         data: {
           id: uuidv4(),
           name: input.name,
@@ -94,6 +118,22 @@ export class ProviderService {
           isEnabled: input.isEnabled ?? true,
         } as any
       });
+
+      // [SIDE-EFFECT] Update environment files if apiKey is provided
+      if (input.apiKey) {
+        let envKey = input.apiKeyEnvVar || `${(input.type || '').toUpperCase()}_API_KEY`;
+
+        // Sanity Check: If the user accidentally pasted the KEY into the VAR name field
+        // (common mistake: fields are next to each other), fallback to default.
+        const isLikelyAKey = envKey.includes('.') || envKey.includes('-') || envKey.length > 50;
+        if (isLikelyAKey || !envKey) {
+          envKey = `${(input.type || 'UNKNOWN').toUpperCase()}_API_KEY`;
+        }
+
+        await EnvManager.updateEnvVariable(envKey, input.apiKey);
+      }
+
+      return result;
     }
   }
 
@@ -169,182 +209,27 @@ export class ProviderService {
 
   // [UPDATED] Ingest Logic - "Fail-Open" & Populate Capabilities
   async fetchAndNormalizeModels(providerId: string) {
-    const { Surveyor } = await import('./Surveyor.js');
-    const providerConfig = await prisma.providerConfig.findUnique({
-      where: { id: providerId }
-    });
-    if (!providerConfig) throw new Error('Provider not found');
+    const { RegistrySyncService } = await import('./RegistrySyncService.js');
+    console.log(`[ProviderService] Triggering UNIFIED sync for provider: ${providerId}`);
 
-    // API Key Strategy:
-    // 1. Check DB-stored key (highest priority)
-    // 2. Check type-based env var (MISTRAL_API_KEY, GOOGLE_API_KEY, etc.)
-    // 3. Check generic provider-id-based env var
-    let apiKey = (providerConfig as any).apiKey || '';
-    if (!apiKey) {
-      apiKey = process.env[`${providerConfig.type.toUpperCase()}_API_KEY`] || '';
-    }
-    if (!apiKey) {
-      apiKey = process.env[`${providerConfig.id.toUpperCase()}_API_KEY`] || '';
-    }
+    // 1. Run the core registry sync
+    await RegistrySyncService.syncSingleProvider(providerId);
 
-    // NEW: Validate API key exists for providers that require it
-    const requiresApiKey = !['ollama'].includes(providerConfig.type);
-    if (requiresApiKey && !apiKey) {
-      const errorMsg = 'Missing API key. Please check your environment variables.';
-      console.warn(`[Ingestion] Skipping ${providerConfig.name} (${providerConfig.type}): ${errorMsg}`);
-      await Surveyor.updateProviderStatus(providerId, 'ERROR', `[Config] ${errorMsg}`);
-      return { count: 0, skipped: true, reason: errorMsg };
-    }
-
-    const providerInstance = ProviderFactory.createProvider(providerConfig.type, {
-      id: providerConfig.id,
-      apiKey,
-      baseURL: providerConfig.baseUrl || undefined,
-    });
-
-    console.log(`[Ingestion] Fetching models for ${providerConfig.name} (${providerConfig.type})...`);
-    let rawModelList: any[] = [];
-
+    // 2. Seed pricing
     try {
-      rawModelList = await providerInstance.getModels();
-      console.log(`[Ingestion] Found ${rawModelList.length} models.`);
-
-      // [NEW] Clear error state on success
-      await Surveyor.updateProviderStatus(providerId, 'ACTIVE', null);
-    } catch (error) {
-      const errorMsg = Surveyor.formatError(error);
-      console.error(`[Ingestion] Failed to fetch models for ${providerConfig.name}: ${errorMsg}`);
-
-      // [NEW] Set error state in DB
-      await Surveyor.updateProviderStatus(providerId, 'ERROR', errorMsg);
-
-      return { count: 0, skipped: true, reason: errorMsg };
+      const seed = await PricingRegistry.seedPricingToDB(providerId);
+      if (seed.updated > 0) {
+        console.log(`[ProviderService] Pricing seeded: ${seed.updated} models updated`);
+      }
+    } catch (e) {
+      console.warn('[ProviderService] Pricing seed failed (non-fatal):', e);
     }
 
-    // [NEW] Sanitize the list to remove deprecated/utility junk
-    rawModelList = Surveyor.sanitizeModelList(rawModelList);
-    console.log(`[Ingestion] After sanitization: ${rawModelList.length} models.`);
-
-    const isLikelyFree = (id: string) => {
-      const lower = id.toLowerCase();
-      if (providerConfig.type === 'groq') return true;
-      if (lower.includes('free') || lower.includes('beta')) return true;
-      return false;
-    };
-
-    const upsertPromises = rawModelList.map(async (model: LLMModel) => {
-      const modelSlug = model.id; // slug from provider
-      if (!modelSlug) return;
-
-      // [USER-REQ] OpenRouter: Only ingest FREE models to reduce noise (user reports 513 -> 163 models)
-      if (providerConfig.type === 'openrouter') {
-        // 'isFree' populated by OpenAIProvider (patched) or isLikelyFree
-        if (!model.isFree) return;
-      }
-
-      // 1. Create/Update the Core Identity
-      // We calculate display name
-      const displayName = (model.name as string) || modelSlug;
-
-      // Upsert by [providerId, name] unique constraint
-      // Note: Prisma 5.x upsert requires simple unique input. 
-      // If providerId_name is not generated in types yet, we might have issues.
-      // We will try standard access.
-
-      // Manual upsert because providerId_name constraint might not be recognized by client types yet
-      const existingModel = await prisma.model.findFirst({
-        where: {
-          providerId: providerConfig.id,
-          name: displayName
-        }
-      });
-
-      const stableId = `${providerConfig.id}:${displayName}`;
-      let dbModel;
-      if (existingModel) {
-        dbModel = await prisma.model.update({
-          where: { id: existingModel.id },
-          data: {
-            isActive: true,
-            lastSeenAt: new Date(),
-            providerData: model as any,
-            underlyingProvider: ((providerConfig as any).providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
-            updatedAt: new Date(),
-          } as any
-        });
-      } else {
-        dbModel = await prisma.model.create({
-          data: {
-            id: stableId,
-            providerId: providerConfig.id,
-            name: displayName,
-            providerData: model as any,
-            underlyingProvider: ((providerConfig as any).providerClass === 'AGGREGATOR' || providerConfig.type === 'openrouter') && modelSlug.includes('/') ? modelSlug.split('/')[0] : providerConfig.name,
-            isActive: true,
-            aiData: {},
-          } as any
-        });
-      }
-
-      // 2. Populate/Update the Related Capabilities Table
-      const contextWindow = (model.specs?.contextWindow as number) || (model.context_window as number) || 4096;
-      const maxOutput = (model.specs?.maxOutput as number) || (model.max_tokens as number) || 2048;
-
-      const hasVision = modelSlug.toLowerCase().includes('vision') ||
-        modelSlug.toLowerCase().includes('vl') ||
-        !!model.specs?.hasVision;
-
-      const hasReasoning = modelSlug.toLowerCase().includes('reasoning') ||
-        modelSlug.toLowerCase().includes('o1') || modelSlug.toLowerCase().includes('o3');
-
-      const hasEmbedding = modelSlug.toLowerCase().includes('embedding') || modelSlug.toLowerCase().includes('embed');
-      const hasImageGen = modelSlug.toLowerCase().includes('dall-e') || modelSlug.toLowerCase().includes('stable-diffusion');
-      const hasModeration = modelSlug.toLowerCase().includes('moderation');
-      const hasOCR = modelSlug.toLowerCase().includes('ocr') || (hasVision && !!model.specs?.hasOCR);
-      const hasTTS = modelSlug.toLowerCase().includes('tts') || modelSlug.toLowerCase().includes('whisper');
-
-      await (prisma.modelCapabilities as any).upsert({
-        where: { modelId: dbModel.id },
-        update: {
-          modelName: displayName,
-          contextWindow,
-          maxOutput,
-          hasVision,
-          hasReasoning,
-          hasTTS,
-          hasImageGen,
-          hasEmbedding,
-          hasOCR,
-          hasModeration,
-          hasReward: false,
-          supportsFunctionCalling: !!model.specs?.supportsFunctionCalling,
-          supportsJsonMode: !!model.specs?.supportsJsonMode,
-          isMultimodal: hasVision || !!model.specs?.hasAudioInput,
-          updatedAt: new Date(),
-        },
-        create: {
-          modelId: dbModel.id,
-          modelName: displayName,
-          contextWindow,
-          maxOutput,
-          hasVision,
-          hasReasoning,
-          hasTTS,
-          hasImageGen,
-          hasEmbedding,
-          hasOCR,
-          hasModeration,
-          hasReward: false,
-          supportsFunctionCalling: !!model.specs?.supportsFunctionCalling,
-          supportsJsonMode: !!model.specs?.supportsJsonMode,
-          isMultimodal: hasVision || !!model.specs?.hasAudioInput,
-        }
-      });
-    });
-
-    await Promise.all(upsertPromises);
-    return { count: rawModelList.length };
+    // 3. Return real count from DB
+    const count = await prisma.model.count({ where: { providerId, isActive: true } });
+    return { count };
   }
+
 
   async syncAll() {
     const providers = await this.listProviders();
