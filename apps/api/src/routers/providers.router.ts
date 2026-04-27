@@ -43,6 +43,7 @@ export const providerRouter = createTRPCRouter({
       billingDashboardUrl: z.string().optional(),
       lastScrapeTime: z.date().optional(),
       providerClass: z.enum(['FOUNDATIONAL', 'AGGREGATOR', 'INFERENCE_ENGINE', 'LOCAL']).optional(),
+      isEnabled: z.boolean().optional(),
     }))
     .mutation(async ({ input }) => {
       const result = await providerService.upsertProviderConfig({
@@ -63,6 +64,7 @@ export const providerRouter = createTRPCRouter({
         billingDashboardUrl: input.billingDashboardUrl,
         lastScrapeTime: input.lastScrapeTime,
         providerClass: input.providerClass,
+        isEnabled: input.isEnabled,
       });
 
       // [BACKEND SIDE-EFFECT — Phase 5]
@@ -179,7 +181,7 @@ export const providerRouter = createTRPCRouter({
           apiKey: input.apiKey,
           baseURL: input.baseUrl,
         });
-        
+
         const models = await providerInstance.getModels();
         return { success: true, models };
       } catch (error) {
