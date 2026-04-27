@@ -48,7 +48,6 @@ export class ProviderService {
       if (input.name !== undefined) data.name = input.name;
       if (input.type !== undefined) data.type = input.type;
       if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl;
-      if (input.apiKey !== undefined) data.apiKey = input.apiKey;
       if (input.apiKeyEnvVar !== undefined) data.apiKeyEnvVar = input.apiKeyEnvVar;
       if (input.pricingUrl !== undefined) data.pricingUrl = input.pricingUrl;
       if (input.isCreditCardLinked !== undefined) data.isCreditCardLinked = input.isCreditCardLinked;
@@ -102,7 +101,6 @@ export class ProviderService {
           name: input.name,
           type: input.type,
           baseUrl: input.baseUrl,
-          apiKey: input.apiKey,
           apiKeyEnvVar: input.apiKeyEnvVar,
           pricingUrl: input.pricingUrl,
           isCreditCardLinked: input.isCreditCardLinked ?? false,
