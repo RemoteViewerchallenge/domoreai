@@ -1,13 +1,39 @@
 {
+  "eslint.packageManager": "pnpm",
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "eslint.workingDirectories": [
+    {
+      "pattern": "apps/*"
+    },
+    {
+      "pattern": "packages/*"
+    },
+    {
+      "directory": "apps/ui",
+      "changeProcessCwd": true
+    },
+    {
+      "mode": "auto"
+    }
+  ],
+  "eslint.run": "onSave",
+  "eslint.enable": true,
+  "eslint.quiet": false,
+  "eslint.alwaysShowStatus": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
   // Recommended setting for auto-formatting code on save.
   "editor.formatOnSave": true,
-
   // Use .gitignore to hide files from the explorer.
   // This is what's currently hiding your .env file.
   "explorer.excludeGitIgnore": false,
-
   "terminal.integrated.gpuAcceleration": "on",
-
   // This is the fix: Override the rule above to ALWAYS show .env files.
   "files.exclude": {
     "**/.env": false,
