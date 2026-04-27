@@ -15,11 +15,11 @@ export class ProviderService {
   }
 
   // [NEW] Manage Providers via UI
-  async upsertProviderConfig(input: { 
-    id?: string, 
-    name?: string, 
-    type?: string, 
-    baseUrl?: string, 
+  async upsertProviderConfig(input: {
+    id?: string,
+    name?: string,
+    type?: string,
+    baseUrl?: string,
     apiKey?: string,
     apiKeyEnvVar?: string,
     pricingUrl?: string,
@@ -32,7 +32,8 @@ export class ProviderService {
     currentScrapedSpend?: number,
     billingDashboardUrl?: string,
     lastScrapeTime?: Date,
-    providerClass?: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL'
+    providerClass?: 'FOUNDATIONAL' | 'AGGREGATOR' | 'INFERENCE_ENGINE' | 'LOCAL',
+    isEnabled?: boolean
   }) {
     if (input.id) {
       // PARTIAL UPDATE
@@ -59,6 +60,7 @@ export class ProviderService {
       if (input.billingDashboardUrl !== undefined) data.billingDashboardUrl = input.billingDashboardUrl;
       if (input.lastScrapeTime !== undefined) data.lastScrapeTime = input.lastScrapeTime;
       if (input.providerClass !== undefined) data.providerClass = input.providerClass;
+      if (input.isEnabled !== undefined) data.isEnabled = input.isEnabled;
 
       return prisma.providerConfig.update({
         where: { id: input.id },
@@ -89,7 +91,7 @@ export class ProviderService {
           billingDashboardUrl: input.billingDashboardUrl,
           lastScrapeTime: input.lastScrapeTime,
           providerClass: input.providerClass || 'FOUNDATIONAL',
-          isEnabled: true,
+          isEnabled: input.isEnabled ?? true,
         } as any
       });
     }
@@ -202,20 +204,20 @@ export class ProviderService {
 
     console.log(`[Ingestion] Fetching models for ${providerConfig.name} (${providerConfig.type})...`);
     let rawModelList: any[] = [];
-    
+
     try {
       rawModelList = await providerInstance.getModels();
       console.log(`[Ingestion] Found ${rawModelList.length} models.`);
-      
+
       // [NEW] Clear error state on success
       await Surveyor.updateProviderStatus(providerId, 'ACTIVE', null);
     } catch (error) {
       const errorMsg = Surveyor.formatError(error);
       console.error(`[Ingestion] Failed to fetch models for ${providerConfig.name}: ${errorMsg}`);
-      
+
       // [NEW] Set error state in DB
       await Surveyor.updateProviderStatus(providerId, 'ERROR', errorMsg);
-      
+
       return { count: 0, skipped: true, reason: errorMsg };
     }
 
