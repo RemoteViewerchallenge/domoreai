@@ -22,17 +22,11 @@ const ArbitrageFactory: React.FC = () => {
 
   return (
     <div
-      className={cn(
-        'h-screen w-screen flex flex-col font-mono text-[10pt]',
-        'bg-[var(--color-background)] text-white'
-      )}
+      className="h-screen w-screen flex flex-col font-mono text-[10px] bg-zinc-950 text-zinc-400"
       style={{ fontFamily: 'Fira Code, monospace' }}
     >
       <header
-        className={cn(
-          'h-14 flex items-center px-4 border-b',
-          'bg-[var(--color-background-secondary)] border-[var(--color-border)]'
-        )}
+        className="h-14 flex items-center px-4 border-b border-zinc-800 bg-zinc-900"
       >
         <ZapIcon className="w-6 h-6 mr-2 text-cyan-400" />
         <h1 className="font-bold flex-1">ARBITRAGE FACTORY</h1>
@@ -58,10 +52,7 @@ const ArbitrageFactory: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         <aside
-          className={cn(
-            'w-64 p-2 overflow-y-auto',
-            'bg-[var(--color-background-secondary)] border-r border-[var(--color-border)]'
-          )}
+          className="w-64 p-2 overflow-y-auto bg-zinc-950 border-r border-zinc-800"
         >
           <h2 className="mb-2 text-zinc-400 text-xs uppercase tracking-wider">Available Providers</h2>
           {providers?.map((provider) => (
@@ -85,10 +76,7 @@ const ArbitrageFactory: React.FC = () => {
       </div>
 
       <div
-        className={cn(
-          'flex-none h-24 border-t p-4 flex flex-col gap-2',
-          'bg-[var(--color-background-secondary)] border-[var(--color-border)]'
-        )}
+        className="flex-none h-8 border-t border-zinc-800 p-1 flex flex-col gap-1 bg-zinc-900"
       >
         {aiSuggestions.length > 0 && (
           <div className="flex gap-2 text-xs text-zinc-400">
