@@ -67,6 +67,10 @@ for TARGET in "${BRANCHES[@]}"; do
   # Stage the .gitignore
   git add .gitignore
 
+  # Enforce the target's .gitignore by removing newly merged but restricted files
+  echo "Applying .gitignore to strip restricted files..."
+  git ls-files -i -c --exclude-standard -z | xargs -0 -r git rm -q
+
   # Check if the target branch is behind the source branch
   BEHIND=false
   if ! git merge-base --is-ancestor "$CURRENT_BRANCH" HEAD; then
