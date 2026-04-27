@@ -31,6 +31,14 @@ export class InMemoryVectorStore {
 
 import { prisma } from '../db.js';
 
+interface DbVectorResult {
+  id: string;
+  content: string;
+  filePath: string;
+  metadata: Record<string, unknown>;
+  similarity: number;
+}
+
 export class PgVectorStore {
   async add(vectors: Vector[]) {
     for (const v of vectors) {
@@ -73,14 +81,6 @@ export class PgVectorStore {
   }
 
   async search(queryVector: number[], topK: number): Promise<Vector[]> {
-    interface DbVectorResult {
-      id: string;
-      content: string;
-      filePath: string;
-      metadata: Record<string, unknown>;
-      similarity: number;
-    }
-
     try {
       // 1. Try pgvector first
       const vectorString = `[${queryVector.join(',')}]`;
@@ -98,10 +98,9 @@ export class PgVectorStore {
       // 2. Fallback to standard SQL if pgvector extension is missing
       if (err.message?.includes('vector') || err.message?.includes('<=>')) {
         console.warn('[PgVectorStore] pgvector extension not found. Using fallback similarity search.');
-        
+
         // This is a crude dot product fallback for standard arrays. 
         // For production without pgvector, fetching and calculating in JS or using a specialized function is better.
-        const vectorArray = `{${queryVector.join(',')}}`;
         const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
           `SELECT "id", "content", "filePath", "metadata", 0 as similarity
            FROM "VectorEmbedding"
@@ -109,11 +108,6 @@ export class PgVectorStore {
         );
 
         // Sort in memory for the fallback
-        const scored = results.map(r => {
-          // Manual dot product if vector was returned (query above needs to select vector)
-          return { ...r, similarity: 0 }; // Simplified fallback
-        });
-        
         return this.mapResults(results.slice(0, topK));
       }
       throw err;
@@ -193,7 +187,7 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
 
   return embeddingLimiter.run(async () => {
     let lastError: any = null;
-    
+
     for (let attempt = 0; attempt < retryCount; attempt++) {
       try {
         // Try to get the 'local' provider first
@@ -207,7 +201,7 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
           model: 'mxbai-embed-large:latest',
           prompt: truncatedText,
         }, { timeout: 60000 }); // Increased timeout to 60s
-        
+
         if (response.data?.embedding) {
           return response.data.embedding;
         }
@@ -216,9 +210,9 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
         lastError = error;
         const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
         const isOverload = error.response?.status === 503 || error.response?.status === 429;
-        
+
         console.warn(`[Embedding] Attempt ${attempt + 1} failed: ${error.message}${isOverload ? ' (Overloaded)' : ''}`);
-        
+
         if (attempt < retryCount - 1) {
           // Exponential backoff with a higher base
           const delay = Math.pow(3, attempt) * 1000;

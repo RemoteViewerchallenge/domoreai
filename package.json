@@ -18,13 +18,13 @@
     "husky": "^9.1.7",
     "knip": "^5.73.3",
     "prettier": "^2.8.8",
-    "prisma": "^6.19.3",
+    "prisma": "5.19.1",
     "turbo": "latest",
     "typescript": "^5.4.5"
   },
   "packageManager": "pnpm@10.22.0",
   "dependencies": {
-    "@prisma/client": "^7.8.0",
+    "@prisma/client": "5.19.1",
     "ignore": "^7.0.5",
     "zod": "^3.23.8"
   },
