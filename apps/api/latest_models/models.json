@@ -1,0 +1,290 @@
+[
+  {
+    "provider": "google",
+    "model_id": "gemini-2.0-flash",
+    "context_window": 1000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 2.0 Flash"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-2.0-flash-lite-preview-02-05",
+    "context_window": 1000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 2.0 Flash-Lite"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-1.5-flash",
+    "context_window": 1000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 1.5 Flash"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-1.5-flash-8b",
+    "context_window": 1000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 1.5 Flash-8B"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-2.0-pro-exp-02-05",
+    "context_window": 2000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 2.0 Pro Experimental"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-2.0-flash-thinking-exp-01-21",
+    "context_window": 1000000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Gemini 2.0 Flash Thinking"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-1.5-pro",
+    "context_window": 2000000,
+    "type": "multimodal",
+    "is_free": false,
+    "name": "Gemini 1.5 Pro"
+  },
+  {
+    "provider": "google",
+    "model_id": "gemini-3-pro-preview",
+    "context_window": 2000000,
+    "type": "multimodal",
+    "is_free": false,
+    "name": "Gemini 3 Pro (Antigravity)"
+  },
+  {
+    "provider": "groq",
+    "model_id": "meta-llama/llama-prompt-guard-2-22m",
+    "context_window": 512,
+    "type": "moderation",
+    "is_free": true,
+    "name": "Llama Prompt Guard 22M"
+  },
+  {
+    "provider": "groq",
+    "model_id": "openai/gpt-oss-20b",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "GPT-OSS 20B"
+  },
+  {
+    "provider": "groq",
+    "model_id": "playai-tts",
+    "context_window": 8192,
+    "type": "tts",
+    "is_free": true,
+    "name": "PlayAI TTS"
+  },
+  {
+    "provider": "groq",
+    "model_id": "meta-llama/llama-guard-4-12b",
+    "context_window": 131072,
+    "type": "moderation",
+    "is_free": true,
+    "name": "Llama Guard 4 12B"
+  },
+  {
+    "provider": "groq",
+    "model_id": "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Llama-4 Maverick 17B 128E Instruct"
+  },
+  {
+    "provider": "groq",
+    "model_id": "moonshotai/kimi-k2-instruct",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Kimi K2 Instruct"
+  },
+  {
+    "provider": "groq",
+    "model_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Llama-4 Scout 17B 16E Instruct"
+  },
+  {
+    "provider": "groq",
+    "model_id": "whisper-large-v3-turbo",
+    "context_window": 448,
+    "type": "stt",
+    "is_free": true,
+    "name": "Whisper Large v3 Turbo"
+  },
+  {
+    "provider": "groq",
+    "model_id": "qwen/qwen3-32b",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Qwen3 32B"
+  },
+  {
+    "provider": "groq",
+    "model_id": "groq/compound",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Groq Compound"
+  },
+  {
+    "provider": "groq",
+    "model_id": "openai/gpt-oss-safeguard-20b",
+    "context_window": 131072,
+    "type": "moderation",
+    "is_free": true,
+    "name": "GPT-OSS Safeguard 20B"
+  },
+  {
+    "provider": "groq",
+    "model_id": "playai-tts-arabic",
+    "context_window": 8192,
+    "type": "tts",
+    "is_free": true,
+    "name": "PlayAI TTS Arabic"
+  },
+  {
+    "provider": "groq",
+    "model_id": "moonshotai/kimi-k2-instruct-0905",
+    "context_window": 262144,
+    "type": "llm",
+    "is_free": true,
+    "name": "Kimi K2 Instruct (Sept 2025)"
+  },
+  {
+    "provider": "groq",
+    "model_id": "llama-3.3-70b-versatile",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Llama 3.3 70B Versatile"
+  },
+  {
+    "provider": "groq",
+    "model_id": "whisper-large-v3",
+    "context_window": 448,
+    "type": "stt",
+    "is_free": true,
+    "name": "Whisper Large v3"
+  },
+  {
+    "provider": "groq",
+    "model_id": "llama-3.1-8b-instant",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Llama 3.1 8B Instant"
+  },
+  {
+    "provider": "groq",
+    "model_id": "groq/compound-mini",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "Groq Compound Mini"
+  },
+  {
+    "provider": "groq",
+    "model_id": "meta-llama/llama-prompt-guard-2-86m",
+    "context_window": 512,
+    "type": "moderation",
+    "is_free": true,
+    "name": "Llama Prompt Guard 86M"
+  },
+  {
+    "provider": "groq",
+    "model_id": "allam-2-7b",
+    "context_window": 4096,
+    "type": "llm",
+    "is_free": true,
+    "name": "Allam-2 7B"
+  },
+  {
+    "provider": "groq",
+    "model_id": "openai/gpt-oss-120b",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": true,
+    "name": "GPT-OSS 120B"
+  },
+  {
+    "provider": "mistral",
+    "model_id": "mistral-large-2512",
+    "context_window": 32000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Mistral Large (Dec 2025)"
+  },
+  {
+    "provider": "mistral",
+    "model_id": "mistral-large-latest",
+    "context_window": 32000,
+    "type": "multimodal",
+    "is_free": true,
+    "name": "Mistral Large Latest"
+  },
+  {
+    "provider": "mistral",
+    "model_id": "pixtral-12b-latest",
+    "context_window": 32000,
+    "type": "vision",
+    "is_free": true,
+    "name": "Pixtral 12B Latest"
+  },
+  {
+    "provider": "mistral",
+    "model_id": "codestral-latest",
+    "context_window": 32000,
+    "type": "code",
+    "is_free": true,
+    "name": "Codestral Latest"
+  },
+  {
+    "provider": "mistral",
+    "model_id": "open-mistral-nemo",
+    "context_window": 32000,
+    "type": "llm",
+    "is_free": true,
+    "name": "Open Mistral Nemo"
+  },
+  {
+    "provider": "ollama",
+    "model_id": "mxbai-embed-large:latest",
+    "context_window": null,
+    "type": "embedding",
+    "is_free": true,
+    "name": "MixedBread Embed Large"
+  },
+  {
+    "provider": "ollama",
+    "model_id": "granite4:micro",
+    "context_window": null,
+    "type": "llm",
+    "is_free": true,
+    "name": "Granite 4 Micro"
+  },
+  {
+    "provider": "ollama",
+    "model_id": "hengwen/watt-tool-8B:latest",
+    "context_window": null,
+    "type": "tool-calling",
+    "is_free": true,
+    "name": "Watt Tool 8B"
+  }
+]
