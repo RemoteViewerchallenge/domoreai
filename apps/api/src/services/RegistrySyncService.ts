@@ -130,33 +130,9 @@ export class RegistrySyncService {
                             include: { provider: true }
                         });
 
-                        // [BACKWARD COMPAT] Sync to ModelRegistry table 
-                        try {
-                            await prisma.modelRegistry.upsert({
-                                where: { id: stableId },
-                                create: {
-                                    id: stableId,
-                                    providerId: providerId,
-                                    model_id: rawName,
-                                    name: rawName,
-                                    providerData: providerData,
-                                    specs: (providerData as any).specs || {},
-                                    isFree: (providerData as any).isFree || false,
-                                    isActive: true,
-                                    source: 'smart_registry_sync'
-                                },
-                                update: {
-                                    isActive: true,
-                                    providerData: providerData,
-                                    updatedAt: new Date().toISOString()
-                                } as any
-                            });
-                        } catch (legacyError) {
-                            // Silent legacy failure
-                        }
-
                         const { Surveyor } = await import('./Surveyor.js');
                         await Surveyor.surveyModel(modelRecord);
+
 
                         await this.populateSpecializedTables(stableId, rawName, m);
 

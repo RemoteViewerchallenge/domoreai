@@ -286,5 +286,37 @@
     "type": "tool-calling",
     "is_free": true,
     "name": "Watt Tool 8B"
+  },
+  {
+    "provider": "xai",
+    "model_id": "grok-3",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": false,
+    "name": "Grok 3"
+  },
+  {
+    "provider": "xai",
+    "model_id": "grok-2-1212",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": false,
+    "name": "Grok 2"
+  },
+  {
+    "provider": "xai",
+    "model_id": "grok-2-vision-1212",
+    "context_window": 131072,
+    "type": "vision",
+    "is_free": false,
+    "name": "Grok 2 Vision"
+  },
+  {
+    "provider": "xai",
+    "model_id": "grok-beta",
+    "context_window": 131072,
+    "type": "llm",
+    "is_free": false,
+    "name": "Grok Beta"
   }
 ]

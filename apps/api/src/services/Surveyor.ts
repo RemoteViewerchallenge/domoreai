@@ -267,6 +267,24 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
         primaryTask: "embedding",
         costPer1k: 0.0001
       }
+    },
+    {
+      pattern: /tts-1/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["audio_out", "tts"],
+        primaryTask: "tts",
+        costPer1k: 15.00
+      }
+    },
+    {
+      pattern: /whisper/i,
+      specs: {
+        contextWindow: 0,
+        capabilities: ["audio_in", "stt"],
+        primaryTask: "stt",
+        costPer1k: 0.006
+      }
     }
   ],
 
@@ -395,24 +413,25 @@ const PROVIDER_PATTERNS: Record<string, ProviderPattern[]> = {
       specs: {
         contextWindow: 0,
         capabilities: ["audio_in"],
-        primaryTask: "tts",
+        primaryTask: "stt",
         costPer1k: 0
       }
     },
     {
-      pattern: /whisper/i,
+      pattern: /whisper|orpheus/i,
       specs: {
         contextWindow: 0,
         capabilities: ["audio_in"],
-        primaryTask: "tts",
+        primaryTask: "stt",
         costPer1k: 0
       }
     },
     {
-      pattern: /orpheus/i,
+      pattern: /tts-([1234]|hd)|playai-tts/i,
       specs: {
-        contextWindow: 32768,
-        capabilities: ["audio_in", "text"],
+        contextWindow: 0,
+        capabilities: ["audio_out", "tts"],
+        primaryTask: "tts",
         costPer1k: 0
       }
     },
@@ -1319,7 +1338,7 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "vision"], confidence: 'low', source: 'surveyor_heuristic' };
       } else if (lower.includes('image') || lower.includes('flux')) {
         specs = { contextWindow: 0, capabilities: ["image_gen"], confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('deepseek-r1') || lower.includes('reasoner')) {
+      } else if (lower.includes('deepseek-r1') || lower.includes('reasoner') || lower.includes('o1-') || lower.includes('o3-') || lower.includes('thought')) {
         specs = { contextWindow: 32768, capabilities: ["text", "reasoning"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('reward')) {
         specs = { contextWindow: 4096, capabilities: ["text", "reward_model"], confidence: 'medium', source: 'surveyor_heuristic' };
@@ -1331,10 +1350,16 @@ export class Surveyor {
         specs = { contextWindow: 4096, capabilities: ["text", "weather"], confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('math') || lower.includes('physics')) {
         specs = { contextWindow: 4096, capabilities: ["text", "specialized_science"], confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('code') || lower.includes('coder')) {
+        specs = { contextWindow: 32768, capabilities: ["text", "code"], primaryTask: "code", confidence: 'medium', source: 'surveyor_heuristic' };
       } else if (lower.includes('embed')) {
         specs = { contextWindow: 2048, capabilities: ["embedding"], primaryTask: "embedding", confidence: 'medium', source: 'surveyor_heuristic' };
-      } else if (lower.includes('tts') || lower.includes('whisper')) {
-        specs = { contextWindow: 0, capabilities: ["audio"], primaryTask: "tts", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('tts') || lower.includes('elevenlabs') || lower.includes('playai')) {
+        specs = { contextWindow: 0, capabilities: ["audio", "tts", "audio_out"], primaryTask: "tts", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('whisper')) {
+        specs = { contextWindow: 0, capabilities: ["audio", "stt", "audio_in"], primaryTask: "stt", confidence: 'medium', source: 'surveyor_heuristic' };
+      } else if (lower.includes('instruct') || lower.includes('chat')) {
+        specs = { contextWindow: 32768, capabilities: ["text", "tool_use"], primaryTask: "chat", confidence: 'medium', source: 'surveyor_heuristic' };
       }
     }
 
@@ -1370,11 +1395,17 @@ export class Surveyor {
     const { prisma } = await import('../db.js');
 
     // 0. Inspect the model using the general `inspect` method
-    const specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
+    let specs = Surveyor.inspect(model.provider.name, model.name, model.providerData as Record<string, unknown>);
 
     if (!specs) {
-      console.log(`[Surveyor] ⚠️ Could not identify specs for ${model.provider.name}/${model.name}`);
-      return null;
+      console.log(`[Surveyor] ⚠️ Could not identify specialized specs for ${model.provider.name}/${model.name} — using base defaults.`);
+      specs = {
+        contextWindow: 4096,
+        capabilities: ["text"],
+        primaryTask: "chat",
+        confidence: "none",
+        source: "default_fallback"
+      };
     }
 
     // 1. Update ModelCapabilities record

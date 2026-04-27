@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { AddProviderForm } from './AddProviderForm.js';
 import { ModelInventoryModal } from './ModelInventoryModal.js';
+import { ProviderModelModal } from './ProviderModelModal.js';
 import { RefreshCw as RefreshIcon } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,11 +63,12 @@ const CLASS_LABELS: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // ProviderCard — inline-editable, all real data
 // ─────────────────────────────────────────────────────────────────────────────
-function ProviderCard({ provider, onSaved, onDeleted, onViewInventory }: {
+function ProviderCard({ provider, onSaved, onDeleted, onViewInventory, onViewOverrides }: {
   provider: Provider;
   onSaved: () => void;
   onDeleted: () => void;
   onViewInventory: (id: string, name: string) => void;
+  onViewOverrides: (id: string, name: string) => void;
 }) {
   const utils = trpc.useContext();
   const [expanded, setExpanded] = useState(false);
@@ -456,6 +458,15 @@ function ProviderCard({ provider, onSaved, onDeleted, onViewInventory }: {
                   >
                     <Database size={10} /> Inventory
                   </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onViewOverrides(provider.id, provider.name)}
+                    className="h-6 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white gap-1"
+                  >
+                    <Zap size={10} /> Overrides
+                  </Button>
                 </div>
 
                 {/* Save changes */}
@@ -489,6 +500,7 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = () =
   const [isAdding, setIsAdding] = useState(false);
   const [activeTab, setActiveTab] = useState('ALL');
   const [inventoryModalProvider, setInventoryModalProvider] = useState<{ id: string; name: string } | null>(null);
+  const [providerModelModalProvider, setProviderModelModalProvider] = useState<{ id: string; name: string } | null>(null);
 
   const globalSyncMutation = trpc.model.sync.useMutation({
     onSuccess: () => {
@@ -605,6 +617,7 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = () =
                       onSaved={invalidate}
                       onDeleted={invalidate}
                       onViewInventory={(id, name) => setInventoryModalProvider({ id, name })}
+                      onViewOverrides={(id, name) => setProviderModelModalProvider({ id, name })}
                     />
                   ))}
                 </div>
@@ -648,6 +661,17 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = () =
             providerId={inventoryModalProvider.id}
             providerName={inventoryModalProvider.name}
             onClose={() => setInventoryModalProvider(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ProviderModel Modal */}
+      <AnimatePresence>
+        {providerModelModalProvider && (
+          <ProviderModelModal
+            providerId={providerModelModalProvider.id}
+            providerName={providerModelModalProvider.name}
+            onClose={() => setProviderModelModalProvider(null)}
           />
         )}
       </AnimatePresence>

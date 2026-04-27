@@ -10,28 +10,28 @@ datasource db {
 
 model ProviderConfig {
   id                  String           @id
-  name                String
   type                String
-  baseUrl             String?
-  apiKeyEnvVar        String?
-  pricingUrl          String?
-  isCreditCardLinked  Boolean          @default(false)
-  enforceFreeOnly     Boolean          @default(true)
-  monthlyBudget       Float?
   isEnabled           Boolean          @default(true)
-  status              String           @default("ACTIVE")
-  lastError           String?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+  apiKey              String?
+  apiKeyEnvVar        String?
+  baseUrl             String?
   billingDashboardUrl String?
   billingRiskLevel    BillingRiskLevel @default(ZERO_RISK)
   currentScrapedSpend Float?
+  enforceFreeOnly     Boolean          @default(true)
+  isCreditCardLinked  Boolean          @default(false)
+  lastError           String?
   lastScrapeTime      DateTime?
+  monthlyBudget       Float?
+  name                String
+  pricingUrl          String?
   promoMonthlyLimit   Float?
+  providerClass       ProviderClass    @default(FOUNDATIONAL)
   serviceCategories   String[]         @default([])
   sessionValid        Boolean?         @default(false)
-  providerClass       ProviderClass    @default(FOUNDATIONAL)
-  apiKey              String?
+  status              String           @default("ACTIVE")
   Model               Model[]
   providerModels      ProviderModel[]
 }
@@ -66,28 +66,6 @@ model Workspace {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   cards        WorkOrderCard[]
-}
-
-model ModelRegistry {
-  id              String   @id @default(cuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now()) @updatedAt
-  providerId      String?  @map("provider_id")
-  model_id        String?
-  name            String?  @map("model_name")
-  providerData    Json?    @map("provider_data")
-  aiData          Json?    @map("ai_data")
-  specs           Json?
-  isFree          Boolean? @map("is_free")
-  cost_per_1k     String?
-  updated_at      String?
-  capability_tags Json?
-  first_seen_at   String?
-  isActive        Boolean? @map("is_active")
-  last_seen_at    String?
-  source          String?
-
-  @@map("model_registry")
 }
 
 model Model {
@@ -125,9 +103,9 @@ model RoleVariant {
   cortexConfig     Json             @default("{}")
   contextConfig    Json             @default("{}")
   governanceConfig Json             @default("{}")
-  behaviorConfig   Json             @default("{}")
   isActive         Boolean          @default(true)
   createdAt        DateTime         @default(now())
+  behaviorConfig   Json             @default("{}")
   role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
   assessments      RoleAssessment[]
 }
@@ -173,12 +151,12 @@ model ModelCapabilities {
   specs                   Json?    @default("{}")
   primaryTask             String?
   isLocal                 Boolean? @default(false)
-  utilityScore            Float?   @default(0)
-  latencyAvg              Float?   @default(0)
-  successRate             Float?   @default(0)
-  successCount            Int?     @default(0)
   failureCount            Int?     @default(0)
+  latencyAvg              Float?   @default(0)
   modalityTags            String[] @default([])
+  successCount            Int?     @default(0)
+  successRate             Float?   @default(0)
+  utilityScore            Float?   @default(0)
   model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@map("modelcapabilities")
@@ -283,13 +261,13 @@ model Role {
 model RoleCategory {
   id          String         @id @default(cuid())
   name        String         @unique
-  description String?
-  parentId    String?
-  isSystem    Boolean        @default(false)
   order       Int            @default(0)
-  icon        String?
   color       String?
   createdAt   DateTime       @default(now())
+  description String?
+  icon        String?
+  isSystem    Boolean        @default(false)
+  parentId    String?
   updatedAt   DateTime       @default(now()) @updatedAt
   roles       Role[]
   parent      RoleCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -479,6 +457,26 @@ model Bookmark {
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+}
+
+model model_registry {
+  id              String   @id
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+  provider_id     String?
+  model_id        String?
+  model_name      String?
+  provider_data   Json?
+  ai_data         Json?
+  specs           Json?
+  is_free         Boolean?
+  cost_per_1k     String?
+  updated_at      String?
+  capability_tags Json?
+  first_seen_at   String?
+  is_active       Boolean?
+  last_seen_at    String?
+  source          String?
 }
 
 enum BillingRiskLevel {

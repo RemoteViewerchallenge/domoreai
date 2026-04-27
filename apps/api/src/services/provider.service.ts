@@ -106,7 +106,7 @@ export class ProviderService {
           apiKeyEnvVar: input.apiKeyEnvVar,
           pricingUrl: input.pricingUrl,
           isCreditCardLinked: input.isCreditCardLinked ?? false,
-          enforceFreeOnly: input.enforceFreeOnly ?? true,
+          enforceFreeOnly: input.enforceFreeOnly ?? false,
           monthlyBudget: input.monthlyBudget,
           serviceCategories: input.serviceCategories ?? [],
           billingRiskLevel: input.billingRiskLevel ?? 'ZERO_RISK',
@@ -215,17 +215,7 @@ export class ProviderService {
     // 1. Run the core registry sync
     await RegistrySyncService.syncSingleProvider(providerId);
 
-    // 2. Seed pricing
-    try {
-      const seed = await PricingRegistry.seedPricingToDB(providerId);
-      if (seed.updated > 0) {
-        console.log(`[ProviderService] Pricing seeded: ${seed.updated} models updated`);
-      }
-    } catch (e) {
-      console.warn('[ProviderService] Pricing seed failed (non-fatal):', e);
-    }
-
-    // 3. Return real count from DB
+    // Return real count from DB
     const count = await prisma.model.count({ where: { providerId, isActive: true } });
     return { count };
   }

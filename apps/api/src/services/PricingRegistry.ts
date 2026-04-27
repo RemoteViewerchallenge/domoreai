@@ -3,11 +3,9 @@
  *
  * Architecture:
  *  1. STATIC layer   — hard-coded known rates (fast, no DB round-trip)
- *  2. DB layer       — ModelCapabilities.specs.inputCostPer1k / outputCostPer1k
- *                      (populated by fetchAndNormalizeModels / Surveyor)
  *  3. Fallback       — zero cost with a warning (never silently wrong)
  *
- * Prices are in USD per 1 000 tokens (same unit as ModelCapabilities).
+ * Prices are in USD per 1 000 tokens.
  *
  * ── Updating prices ──────────────────────────────────────────────────────────
  * When xAI / any provider changes pricing, update the STATIC_PRICING map below.
@@ -19,12 +17,10 @@
  * longest matching prefix wins.
  */
 
-import { prisma } from '../db.js';
-
 export interface ModelPrice {
     inputPer1kTokens: number;   // USD
     outputPer1kTokens: number;  // USD
-    source: 'static' | 'db' | 'zero';
+    source: 'static' | 'zero';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +105,7 @@ export const PricingRegistry = {
 
     /**
      * Look up pricing for a model. Checks static table first (fast path),
-     * then falls back to ModelCapabilities.specs in the DB.
+     * then falls back to zero.
      */
     async getPrice(modelId: string): Promise<ModelPrice> {
         // 1. Static table
@@ -122,31 +118,7 @@ export const PricingRegistry = {
             };
         }
 
-        // 2. DB — ModelCapabilities.specs
-        try {
-            const caps = await prisma.modelCapabilities.findFirst({
-                where: {
-                    OR: [
-                        { modelName: { contains: modelId, mode: 'insensitive' } },
-                        { model: { name: { contains: modelId, mode: 'insensitive' } } },
-                    ],
-                },
-                select: { specs: true },
-            });
-
-            if (caps?.specs) {
-                const specs = caps.specs as any;
-                const inp = parseFloat(specs.inputCostPer1k ?? specs.input_cost_per_1k ?? 0);
-                const out = parseFloat(specs.outputCostPer1k ?? specs.output_cost_per_1k ?? 0);
-                if (inp > 0 || out > 0) {
-                    return { inputPer1kTokens: inp, outputPer1kTokens: out, source: 'db' };
-                }
-            }
-        } catch (_) {
-            // DB unavailable — fall through
-        }
-
-        // 3. Zero fallback
+        // 2. Zero fallback
         console.warn(`[PricingRegistry] No pricing found for model "${modelId}" — recording $0 cost`);
         return { inputPer1kTokens: 0, outputPer1kTokens: 0, source: 'zero' };
     },
@@ -167,44 +139,5 @@ export const PricingRegistry = {
     async computeCost(modelId: string, promptTokens: number, completionTokens: number): Promise<number> {
         const price = await this.getPrice(modelId);
         return this.calcCost(price, promptTokens, completionTokens);
-    },
-
-    /**
-     * Seed / refresh pricing from static table into ModelCapabilities.specs.
-     * Call this after fetchAndNormalizeModels to persist known prices to DB.
-     */
-    async seedPricingToDB(providerId: string): Promise<{ updated: number; skipped: number }> {
-        const models = await prisma.model.findMany({
-            where: { providerId },
-            include: { capabilities: true },
-        });
-
-        let updated = 0;
-        let skipped = 0;
-
-        for (const m of models) {
-            const price = lookupStatic(m.name);
-            if (!price) { skipped++; continue; }
-
-            const caps = m.capabilities as any;
-            if (!caps) { skipped++; continue; }
-
-            await (prisma.modelCapabilities as any).update({
-                where: { modelId: m.id },
-                data: {
-                    specs: {
-                        ...(typeof caps.specs === 'object' && caps.specs !== null ? caps.specs : {}),
-                        inputCostPer1k: price.input,
-                        outputCostPer1k: price.output,
-                    },
-                    updatedAt: new Date(),
-                },
-            });
-
-            updated++;
-        }
-
-        console.log(`[PricingRegistry] Seeded pricing for ${updated} models (${skipped} skipped — no static entry)`);
-        return { updated, skipped };
-    },
+    }
 };

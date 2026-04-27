@@ -28,6 +28,8 @@ export class RawModelService {
       else if (config.type === 'google') url = 'https://generativelanguage.googleapis.com/v1beta';
       else if (config.type === 'nvidia') url = 'https://integrate.api.nvidia.com/v1';
       else if (config.type === 'cerebras') url = 'https://api.cerebras.ai/v1';
+      else if (config.type === 'xai') url = 'https://api.x.ai/v1';
+      else if (config.type === 'deepseek') url = 'https://api.deepseek.com';
     }
 
     // Normalize Ollama URL (strip trailing /v1 if present)
@@ -141,9 +143,34 @@ export class RawModelService {
 
     } catch (error: unknown) {
       clearTimeout(timeoutId);
-      console.error(`[RawModelService] Fetch failed for ${fetchUrl}:`, error);
+      console.error(`[RawModelService] Dynamic fetch failed for ${fetchUrl}:`, error);
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch models: ${message}`);
+
+      // Fallback to static JSON
+      console.log(`[RawModelService] Attempting static fallback for ${config.type}...`);
+      try {
+        const staticPath = new URL('../../latest_models/models.json', import.meta.url).pathname;
+        const staticContent = await import('fs/promises').then(fs => fs.readFile(staticPath, 'utf-8'));
+        const allModels = JSON.parse(staticContent);
+        const providerModels = allModels.filter((m: any) => m.provider === config.type);
+
+        if (providerModels.length === 0) {
+          throw new Error(`No static models found for ${config.type}`);
+        }
+
+        console.log(`[RawModelService] Loaded ${providerModels.length} static models for ${config.type}`);
+
+        return {
+          id: `${config.type}-static-${Date.now()}`,
+          provider: config.type,
+          rawData: providerModels,
+          ingestedAt: new Date()
+        };
+      } catch (staticError) {
+        console.error(`[RawModelService] Static fallback failed:`, staticError);
+        const staticMsg = staticError instanceof Error ? staticError.message : String(staticError);
+        throw new Error(`Dynamic and static fetch both failed: ${message}. Static error: ${staticMsg}`);
+      }
     }
   }
 }

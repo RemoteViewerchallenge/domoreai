@@ -10,8 +10,10 @@ export * from './BaseLLMProvider.js';
 
 export class ProviderFactory {
 
-  static createProvider(type: string, config: any): BaseLLMProvider {
-    console.log(`[ProviderFactory] Initializing: ${type} (${config.baseURL || 'default url'})`);
+  static createProvider(rawType: string, config: any): BaseLLMProvider {
+    const type = (rawType || '').toLowerCase().trim();
+    console.log(`[ProviderFactory] Initializing: "${type}" (raw: "${rawType}")`);
+
 
     switch (type) {
       // --- GROUP 1: NATIVE PROVIDERS ---
@@ -47,13 +49,15 @@ export class ProviderFactory {
         return new OllamaProvider(config);
 
       default:
-        throw new Error(`Provider type '${type}' is not supported yet.`);
+        throw new Error(`Provider type '${type}' (from raw: '${rawType}') is not supported yet.`);
     }
   }
 
   // Helper to keep the switch clean
-  private static getDefaultBaseURL(type: string): string | undefined {
+  private static getDefaultBaseURL(rawType: string): string | undefined {
+    const type = (rawType || '').toLowerCase().trim();
     switch (type) {
+
       case 'openrouter': return 'https://openrouter.ai/api/v1';
       case 'mistral': return 'https://api.mistral.ai/v1';
       case 'groq': return 'https://api.groq.com/openai/v1';
