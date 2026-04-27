@@ -14,12 +14,41 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { nanoid } from 'nanoid';
-import ArbitrageNode from './ArbitrageNode.js';
+import { ArbitrageNode } from './ArbitrageNode.js';
 
 const nodeTypes = { arbitrageNode: ArbitrageNode };
 
-const initialNodes: Node[] = [];
-const initialEdges: any[] = []; // Usually Edge[] from reactflow
+const initialNodes: Node[] = [
+  {
+    id: 'target-model-capabilities',
+    type: 'arbitrageNode',
+    position: { x: 400, y: 200 },
+    data: {
+      label: 'TARGET: ModelCapabilities',
+      columns: ['id', 'provider_id', 'model_name', 'context_length', 'max_output_tokens', 'pricing_input', 'pricing_output', 'is_local', 'created_at'],
+      columnMapping: {},
+      primaryKey: 'id',
+      onColumnMapChange: () => { },
+      onColumnToggle: () => { },
+      onColumnKey: () => { },
+    },
+  },
+  {
+    id: 'source-openrouter',
+    type: 'arbitrageNode',
+    position: { x: 0, y: 200 },
+    data: {
+      label: 'SRC: OpenRouter_API',
+      columns: ['id', 'model_name', 'context_length', 'pricing_input', 'pricing_output'],
+      columnMapping: {},
+      primaryKey: undefined,
+      onColumnMapChange: () => { },
+      onColumnToggle: () => { },
+      onColumnKey: () => { },
+    },
+  }
+];
+const initialEdges: any[] = [];
 
 const ArbitrageCanvas = ({ reactFlowInstanceRef }: { reactFlowInstanceRef: React.MutableRefObject<any> }) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
