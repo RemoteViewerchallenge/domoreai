@@ -1,4 +1,5 @@
 
+
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc.js";
 import { prisma } from "../db.js";
@@ -26,6 +27,8 @@ const updateToolSchema = z.object({
 
 import { McpToolSyncService } from "../services/McpToolSyncService.js";
 
+import { LanguageServerService } from '../services/LanguageServerService.js';
+
 export const toolRouter = createTRPCRouter({
   syncRegistry: publicProcedure.mutation(async () => {
     return await McpToolSyncService.syncAllTools();
@@ -48,51 +51,63 @@ export const toolRouter = createTRPCRouter({
 
   create: publicProcedure
     .input(createToolSchema)
-    .mutation(async ({ input }) => {
-        // Validate Schema JSON
-        try {
-            JSON.parse(input.schema);
-        } catch {
-            throw new Error("Invalid JSON Schema.");
-        }
+    .mutation(async ({ input }: { input: z.infer<typeof createToolSchema> }) => {
+      // Validate Schema JSON
+      try {
+        JSON.parse(input.schema);
+      } catch {
+        throw new Error("Invalid JSON Schema.");
+      }
 
-        return prisma.tool.create({
-            data: {
-                name: input.name,
-                description: input.description,
-                instruction: input.instruction,
-                schema: input.schema,
-                isEnabled: input.isEnabled,
-                serverId: input.serverId,
-                // implementation: input.implementation
-            }
-        });
+      return prisma.tool.create({
+        data: {
+          name: input.name,
+          description: input.description,
+          instruction: input.instruction,
+          schema: input.schema,
+          isEnabled: input.isEnabled,
+          serverId: input.serverId,
+          // implementation: input.implementation
+        }
+      });
+    }),
+
+  validateCode: publicProcedure
+    .input(z.object({
+      code: z.string().min(1),
+      fileName: z.string().default('validate.ts'),
+    }))
+    .mutation(async ({ input }: { input: { code: string; fileName: string } }) => {
+      const lsp = new LanguageServerService();
+      const { errors, isValid } = await lsp.validateTypeScript(input.code, input.fileName);
+      const feedback = await lsp.generateFeedback(errors);
+      return { isValid, errors, feedback };
     }),
 
   update: publicProcedure
     .input(updateToolSchema)
-    .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        
-        if (data.schema) {
-             try {
-                JSON.parse(data.schema);
-            } catch {
-                throw new Error("Invalid JSON Schema.");
-            }
-        }
+    .mutation(async ({ input }: { input: z.infer<typeof updateToolSchema> }) => {
+      const { id, ...data } = input;
 
-        return prisma.tool.update({
-            where: { id },
-            data: data
-        });
+      if (data.schema) {
+        try {
+          JSON.parse(data.schema);
+        } catch {
+          throw new Error("Invalid JSON Schema.");
+        }
+      }
+
+      return prisma.tool.update({
+        where: { id },
+        data: data
+      });
     }),
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-        return prisma.tool.delete({
-            where: { id: input.id }
-        });
+      return prisma.tool.delete({
+        where: { id: input.id }
+      });
     }),
 });

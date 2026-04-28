@@ -32,7 +32,7 @@ export default function OrgWorkflow() {
       </div>
 
       {/* RIGHT: Role Creator/Editor */}
-      <div className="w-[420px] min-w-[320px] flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-[25vw] flex flex-col overflow-hidden">
         <UniversalCardWrapper
           title="Role Creator"
           icon={Fingerprint}

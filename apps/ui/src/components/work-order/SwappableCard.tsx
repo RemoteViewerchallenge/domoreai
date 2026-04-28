@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -17,6 +17,7 @@ import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
 import { RefreshCcw, Activity } from 'lucide-react';
+import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -55,7 +56,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config'>('editor');
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab'>('editor');
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -65,6 +66,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [recoveryStep, setRecoveryStep] = useState('');
     const [showSupplementary, setShowSupplementary] = useState(false);
     const [supplementaryLogs, setSupplementaryLogs] = useState<TerminalMessage[]>([]);
+    const [isRunning, setIsRunning] = useState(false);
+    const abortController = useRef<AbortController | null>(null);
 
     // Sync header filename with active file
     useEffect(() => {
@@ -109,26 +112,26 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             const initDefaultFile = async () => {
                 const sessionsDir = `${currentPath}/sessions`;
                 const filePath = `${sessionsDir}/card-${id}.md`;
-                
+
                 try {
-                    await mkdir(sessionsDir); 
+                    await mkdir(sessionsDir);
                 } catch {
                     // Ignore if dir exists
                 }
 
                 try {
-                   // Only write if we are sure we want a fresh start
-                   await writeFile(filePath, ''); 
-                   setActiveFile(filePath);
+                    // Only write if we are sure we want a fresh start
+                    await writeFile(filePath, '');
+                    setActiveFile(filePath);
                 } catch (e) {
-                   console.error("Failed to create default session file", e);
-                   // Absolute fallback
-                   const fallbackPath = `${currentPath}/card-${id}.md`;
-                   void writeFile(fallbackPath, '').catch(() => {});
-                   setActiveFile(fallbackPath);
+                    console.error("Failed to create default session file", e);
+                    // Absolute fallback
+                    const fallbackPath = `${currentPath}/card-${id}.md`;
+                    void writeFile(fallbackPath, '').catch(() => { });
+                    setActiveFile(fallbackPath);
                 }
             };
-            
+
             void initDefaultFile();
         }
     }, [activeFile, viewMode, id, currentPath, writeFile, mkdir]);
@@ -140,8 +143,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 setBrowserUrl(prev => prev === activeFile ? prev : activeFile);
                 setViewMode('browser');
             } else if (/\.(png|jpg|jpeg|gif|svg|html)$/i.test(activeFile)) {
-                 setBrowserUrl(`file://${activeFile}`);
-                 setViewMode('browser');
+                setBrowserUrl(`file://${activeFile}`);
+                setViewMode('browser');
             } else {
                 void readFile(activeFile)
                     .then(setContent)
@@ -186,17 +189,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const versionFilename = `${getBasename(targetPath)}.${timestamp}.md`;
             const versionPath = `/home/guy/nebula-docs-versions/${versionFilename}`;
-            
+
             // Fire-and-forget version save
             void writeFile(versionPath, val).catch(() => { /* Silent fail on versioning is ok */ });
         }
 
         // Legacy Backup (Optional, keeping for safety)
         const backupPath = `${currentPath}/.nebula/backups/${getBasename(targetPath)}.bak`;
-        void writeFile(backupPath, val).catch(() => {});
+        void writeFile(backupPath, val).catch(() => { });
     }, [activeFile, writeFile, currentPath, headerFilename]);
 
     const runAgent = useCallback(async (goal: string, roleIdOverride?: string) => {
+        if (isRunning) return;
         const effectiveRoleId = roleIdOverride || agentConfig.roleId;
         if (!effectiveRoleId) {
             toast.error("Role Required", { description: "Select a role first." });
@@ -204,11 +208,12 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             return;
         }
 
-        setIsRecovering(false);
+        setIsRunning(true);
+        abortController.current = new AbortController();
         toast.loading("Running Agent...", { id: 'agent-run' });
-        
+
         try {
-            const session = await startSessionMutation.mutateAsync({
+            const input = {
                 cardId: id,
                 userGoal: goal,
                 roleId: effectiveRoleId,
@@ -219,30 +224,38 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     maxTokens: agentConfig.maxTokens
                 },
                 context: { targetDir: currentPath }
-            });
+            };
+            const session = await startSessionMutation.mutateAsync(input, { signal: abortController.current.signal } as any);
             toast.success("Done", { id: 'agent-run' });
             if (session.logs) {
                 setTerminalLogs(p => [...p, ...session.logs.map((l: string) => ({ message: l, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage))]);
             }
             // Auto-refresh content after agent run
             if (activeFile) {
-                void refresh().then(() => readFile(activeFile)).then(setContent).catch(() => {});
+                void refresh().then(() => readFile(activeFile)).then(setContent).catch(() => { });
             }
             setViewMode('terminal');
-        } catch (err) {
-            const msg = (err as Error).message;
-            if (msg.includes('Watchdog') || msg.includes('timeout') || msg.includes('429')) {
-                setIsRecovering(true);
-                setRecoveryStep('OODA: OBSERVING FAILURE -> ORIENTING TO FALLBACK');
-                setTimeout(() => setRecoveryStep('OODA: DECIDING ON RECOVERY PATH -> ACTING: RETRYING WITH NPX/FALLBACK'), 1500);
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                toast.info("Run cancelled", { id: 'agent-run' });
+            } else {
+                const msg = err.message;
+                if (msg.includes('Watchdog') || msg.includes('timeout') || msg.includes('429')) {
+                    setIsRecovering(true);
+                    setRecoveryStep('OODA: OBSERVING FAILURE -> ORIENTING TO FALLBACK');
+                    setTimeout(() => setRecoveryStep('OODA: DECIDING ON RECOVERY PATH -> ACTING: RETRYING WITH NPX/FALLBACK'), 1500);
+                }
+                toast.error("Failed", { id: 'agent-run', description: msg });
             }
-            toast.error("Failed", { id: 'agent-run', description: msg });
+        } finally {
+            setIsRunning(false);
+            abortController.current = null;
         }
-    }, [id, agentConfig, startSessionMutation, currentPath, sessionId]);
+    }, [id, agentConfig, startSessionMutation, currentPath, sessionId, isRunning, activeFile, readFile, refresh]);
 
     return (
         <div className="flex h-full w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] overflow-hidden relative flex-col">
-            
+
             {/* 1. Header with Clean Filename Display */}
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
                 <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
@@ -261,16 +274,16 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         placeholder="filename.md"
                     />
                     <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap ml-1">
-                       {activeFile.includes('/sessions/') ? '(Session)' : ''}
+                        {activeFile.includes('/sessions/') ? '(Session)' : ''}
                     </span>
-                    <button 
+                    <button
                         onClick={() => void handleSave(content)}
                         className="p-1 hover:text-[var(--color-primary)] text-[var(--text-muted)] transition-colors"
                         title="Save (Ctrl+S)"
                     >
                         <Save size={10} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => setShowHistory(!showHistory)}
                         className={cn("p-1 hover:text-[var(--color-primary)] transition-colors", showHistory ? "text-[var(--color-primary)]" : "text-[var(--text-muted)]")}
                         title="Version History"
@@ -285,7 +298,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         { id: 'editor', icon: Code },
                         { id: 'terminal', icon: Terminal },
                         { id: 'browser', icon: Globe },
-                        { id: 'role', icon: Fingerprint }
+                        { id: 'role', icon: Fingerprint },
+                        { id: 'dna-lab', icon: Dna }
                     ].map(t => (
                         <button
                             key={t.id}
@@ -316,169 +330,184 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     >
                         <Activity size={12} />
                     </button>
+                    {isRunning && (
+                        <button
+                            onClick={() => {
+                                abortController.current?.abort();
+                                setIsRunning(false);
+                            }}
+                            className="p-1 text-red-500 hover:text-red-400 rounded"
+                            title="Stop Agent Run"
+                        >
+                            <StopCircle size={12} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-
             {/* 2. Content Split */}
             <div className="flex-1 flex overflow-hidden relative select-text">
-                <div 
+                <div
                     className={cn(
                         "flex-1 min-h-0 overflow-hidden relative",
                         "bg-[var(--color-background)]"
                     )}
                 >
-                {viewMode === 'config' && (
-                    <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
-                        <div className="max-w-xs space-y-4">
-                            <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
-                            <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
-                            <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
-                            <button 
-                                onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
-                                className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
-                            >
-                                Open DNA Lab
-                            </button>
+                    {viewMode === 'config' && (
+                        <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
+                            <div className="max-w-xs space-y-4">
+                                <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
+                                <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
+                                <button
+                                    onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
+                                    className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
+                                >
+                                    Open DNA Lab
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
-                {viewMode === 'editor' && (
-                    <SmartEditor
-                        fileName={activeFile}
-                        content={content}
-                        onChange={(val) => void handleSave(val)}
-                        onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
-                        roleId={agentConfig.roleId}
-                        onRoleChange={(roleId) => updateCard(id, { roleId })}
-                        onNavigate={(url) => {
-                            setBrowserUrl(url);
-                            setViewMode('browser');
+                    )}
+                    {viewMode === 'editor' && (
+                        <SmartEditor
+                            fileName={activeFile}
+                            content={content}
+                            onChange={(val) => void handleSave(val)}
+                            onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
+                            roleId={agentConfig.roleId}
+                            onRoleChange={(roleId) => updateCard(id, { roleId: roleId })}
+                            onNavigate={(url) => {
+                                setBrowserUrl(url);
+                                setViewMode('browser');
+                            }}
+                        />
+                    )}
+                    {showHistory && (
+                        <HistoryPanel
+                            activeFile={activeFile}
+                            onRestore={(content) => {
+                                setContent(content);
+                                void writeFile(activeFile, content); // Save restored content immediately
+                            }}
+                            onClose={() => setShowHistory(false)}
+                        />
+                    )}
+                    {viewMode === 'diff' && (
+                        <div className="h-full w-full flex flex-col">
+                            <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
+                                <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
+                                <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
+                            </div>
+                            <div className="flex-1 min-h-0">
+                                <MonacoDiffEditor
+                                    original={`// Previous version\n${content}`}
+                                    modified={content + '\n// New changes'}
+                                    language="typescript"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {viewMode === 'files' && <FileExplorer
+                        files={files}
+                        currentPath={currentPath}
+                        onNavigate={(p) => void navigateTo(p)}
+                        onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewMode('editor'); }}
+                        onCreateNode={(t, n) => void createNode(t, n)}
+                        onRefresh={() => void refresh()}
+                        onEmbedDir={(p) => void ingestDirectory(p)}
+                        onLoadChildren={loadChildren}
+                        className="p-2"
+                        activeContent={content}
+                        onSaveContent={(path, text) => {
+                            void (async () => {
+                                await writeFile(path, text);
+                                toast.success("Saved content to " + getBasename(path));
+                                setActiveFile(path);
+                                setViewMode('editor');
+                            })();
                         }}
-                    />
-                )}
-                {showHistory && (
-                    <HistoryPanel 
-                        activeFile={activeFile} 
-                        onRestore={(content) => {
-                            setContent(content);
-                            void writeFile(activeFile, content); // Save restored content immediately
-                        }}
-                        onClose={() => setShowHistory(false)}
-                    />
-                )}
-                {viewMode === 'diff' && (
-                    <div className="h-full w-full flex flex-col">
-                        <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
-                            <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
-                            <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
-                        </div>
-                        <div className="flex-1 min-h-0">
-                            <MonacoDiffEditor
-                                original={`// Previous version\n${content}`}
-                                modified={content + '\n// New changes'}
-                                language="typescript"
-                            />
-                        </div>
-                    </div>
-                )}
-                {viewMode === 'files' && <FileExplorer
-                    files={files}
-                    currentPath={currentPath}
-                    onNavigate={(p) => void navigateTo(p)}
-                    onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewMode('editor'); }}
-                    onCreateNode={(t, n) => void createNode(t, n)}
-                    onRefresh={() => void refresh()}
-                    onEmbedDir={(p) => void ingestDirectory(p)}
-                    onLoadChildren={loadChildren}
-                    className="p-2"
-                    activeContent={content}
-                    onSaveContent={(path, text) => {
-                        void (async () => {
-                            await writeFile(path, text);
-                            toast.success("Saved content to " + getBasename(path));
-                            setActiveFile(path);
-                            setViewMode('editor');
-                        })();
-                    }}
-                />}
-                {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
-                {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
-                
-                {/* [NEW] SupplementaryAgentSlot */}
-                {showSupplementary && (
-                    <div className="absolute right-0 top-0 bottom-0 w-[30%] min-w-[200px] border-l border-[var(--border-color)] bg-zinc-950 flex flex-col z-[40] animate-in slide-in-from-right duration-300">
-                        <div className="h-8 border-b border-zinc-900 bg-zinc-900/50 flex items-center px-4 justify-between">
-                            <span className="text-[9px] font-black tracking-widest text-zinc-500 uppercase">Worker Liaison</span>
-                            <button onClick={() => setShowSupplementary(false)} className="hover:text-white text-zinc-600"><X size={10} /></button>
-                        </div>
-                        <div className="flex-1 min-h-0 bg-black/40">
-                             <SmartTerminal 
-                                workingDirectory={currentPath} 
-                                logs={supplementaryLogs} 
-                                onInput={(msg) => {
-                                    // Worker logic: Start a separate session or delegate
-                                    setSupplementaryLogs(p => [...p, { message: `Queuing: ${msg}`, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage]);
-                                }} 
-                             />
-                        </div>
-                    </div>
-                )}
+                    />}
+                    {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
+                    {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
+                    {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
 
-                {showRolePicker && (
-                    <div className="absolute top-9 right-2 w-72 h-[350px] bg-zinc-950 border border-zinc-800 z-50 shadow-2xl rounded-lg animate-in fade-in zoom-in-95 duration-100 flex flex-col">
-                        <div className="flex items-center justify-between p-2.5 border-b border-zinc-800 bg-zinc-900/50 rounded-t-lg">
-                            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 flex items-center gap-1.5 px-0.5">
-                                <Fingerprint size={12} className="text-blue-500" />
-                                Role Selector
-                            </span>
-                            <button onClick={() => setShowRolePicker(false)} className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-all">
-                                <X size={12} />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <CompactRoleSelector
-                                selectedRoleId={card?.roleId || ''}
-                                onSelect={(roleId) => {
-                                    updateCard(id, { roleId });
-                                    setShowRolePicker(false);
-                                }}
-                                onEdit={(roleId) => {
-                                    setShowRolePicker(false);
-                                    navigate(`/org-structure?roleId=${roleId}`);
-                                }}
-                                className="border-none"
-                            />
-                        </div>
-                    </div>
-                )}
+                    {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
 
-                {isRecovering && (
-                    <div className="absolute inset-0 z-[100] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-                        <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4 animate-pulse border border-orange-500/50">
-                            <Activity className="text-orange-500" size={32} />
+                    {/* [NEW] SupplementaryAgentSlot */}
+                    {showSupplementary && (
+                        <div className="absolute right-0 top-0 bottom-0 w-[30%] min-w-[200px] border-l border-[var(--border-color)] bg-zinc-950 flex flex-col z-[40] animate-in slide-in-from-right duration-300">
+                            <div className="h-8 border-b border-zinc-900 bg-zinc-900/50 flex items-center px-4 justify-between">
+                                <span className="text-[9px] font-black tracking-widest text-zinc-500 uppercase">Worker Liaison</span>
+                                <button onClick={() => setShowSupplementary(false)} className="hover:text-white text-zinc-600"><X size={10} /></button>
+                            </div>
+                            <div className="flex-1 min-h-0 bg-black/40">
+                                <SmartTerminal
+                                    workingDirectory={currentPath}
+                                    logs={supplementaryLogs}
+                                    onInput={(msg) => {
+                                        // Worker logic: Start a separate session or delegate
+                                        setSupplementaryLogs(p => [...p, { message: `Queuing: ${msg}`, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage]);
+                                    }}
+                                />
+                            </div>
                         </div>
-                        <h2 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Autonomic Recovery Active</h2>
-                        <div className="bg-zinc-900 border border-zinc-800 rounded px-4 py-2 mb-6">
-                            <span className="text-[10px] font-mono text-orange-400 animate-pulse">{recoveryStep}</span>
+                    )}
+
+                    {showRolePicker && (
+                        <div className="absolute top-9 right-2 w-72 h-[350px] bg-zinc-950 border border-zinc-800 z-50 shadow-2xl rounded-lg animate-in fade-in zoom-in-95 duration-100 flex flex-col">
+                            <div className="flex items-center justify-between p-2.5 border-b border-zinc-800 bg-zinc-900/50 rounded-t-lg">
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 flex items-center gap-1.5 px-0.5">
+                                    <Fingerprint size={12} className="text-blue-500" />
+                                    Role Selector
+                                </span>
+                                <button onClick={() => setShowRolePicker(false)} className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-all">
+                                    <X size={12} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <CompactRoleSelector
+                                    selectedRoleId={card?.roleId || ''}
+                                    onSelect={(roleId) => {
+                                        updateCard(id, { roleId: roleId });
+                                        setShowRolePicker(false);
+                                    }}
+                                    onEdit={(roleId) => {
+                                        updateCard(id, { roleId: roleId });
+                                        setShowRolePicker(false);
+                                        setViewMode('dna-lab');
+                                    }}
+                                    className="border-none"
+                                />
+                            </div>
                         </div>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => setIsRecovering(false)}
-                                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-[10px] font-bold uppercase tracking-widest transition-all"
-                            >
-                                Dismiss
-                            </button>
-                            <button 
-                                onClick={() => void runAgent("Retry the last failed command.", agentConfig.roleId)}
-                                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]"
-                            >
-                                <RefreshCcw size={12} />
-                                Force Retry
-                            </button>
+                    )}
+
+                    {isRecovering && (
+                        <div className="absolute inset-0 z-[100] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                            <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4 animate-pulse border border-orange-500/50">
+                                <Activity className="text-orange-500" size={32} />
+                            </div>
+                            <h2 className="text-lg font-black text-white uppercase tracking-tighter mb-2">Autonomic Recovery Active</h2>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded px-4 py-2 mb-6">
+                                <span className="text-[10px] font-mono text-orange-400 animate-pulse">{recoveryStep}</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsRecovering(false)}
+                                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-[10px] font-bold uppercase tracking-widest transition-all"
+                                >
+                                    Dismiss
+                                </button>
+                                <button
+                                    onClick={() => void runAgent("Retry the last failed command.", agentConfig.roleId)}
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]"
+                                >
+                                    <RefreshCcw size={12} />
+                                    Force Retry
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
                 </div> {/* End Main Content Area */}
             </div> {/* End Content Split */}
         </div>

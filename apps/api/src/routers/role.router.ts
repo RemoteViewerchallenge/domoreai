@@ -23,6 +23,7 @@ import { prisma } from "../db.js";
 import { ingestAgentLibrary, onboardProject } from "../services/RoleIngestionService.js";
 
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
+import { SkillFinderService } from "../services/SkillFinderService.js";
 
 
 // Helper function for template-based prompt generation (fallback)
@@ -119,133 +120,133 @@ export const roleRouter = createTRPCRouter({
 
     // OPTIMIZED: Avoid N+1 Model Resolution
     // Only resolve hardcoded models. Otherwise, return 'Auto-Detect'.
-    
+
     // 1. Collect all hardcoded model IDs
     // 1. Collect all hardcoded model IDs
     const hardcodedIds = new Set<string>();
     roles.forEach(r => {
-        const meta = r.metadata as Record<string, unknown>;
-        if (typeof meta?.hardcodedModelId === 'string') hardcodedIds.add(meta.hardcodedModelId);
-        
-        // Also check variant
-        if (r.variants?.length > 0) {
-             const variant = r.variants[0];
-             // Variant doesn't have 'metadata', assume conf is in cortexConfig
-             const cortex = (variant.cortexConfig as Record<string, unknown>) || {};
-             // Check if hardcodedModelId is in cortexConfig (schema adjustment assumption)
-             if (typeof cortex?.hardcodedModelId === 'string') hardcodedIds.add(cortex.hardcodedModelId);
-        }
+      const meta = r.metadata as Record<string, unknown>;
+      if (typeof meta?.hardcodedModelId === 'string') hardcodedIds.add(meta.hardcodedModelId);
+
+      // Also check variant
+      if (r.variants?.length > 0) {
+        const variant = r.variants[0];
+        // Variant doesn't have 'metadata', assume conf is in cortexConfig
+        const cortex = (variant.cortexConfig as Record<string, unknown>) || {};
+        // Check if hardcodedModelId is in cortexConfig (schema adjustment assumption)
+        if (typeof cortex?.hardcodedModelId === 'string') hardcodedIds.add(cortex.hardcodedModelId);
+      }
     });
 
 
     // 2. Bulk Fetch Hardcoded Models with Capabilities
     const modelMap = new Map<string, { name: string, capabilities?: any }>();
     if (hardcodedIds.size > 0) {
-        const models = await prisma.model.findMany({
-            where: { id: { in: Array.from(hardcodedIds) } },
-            select: { 
-              id: true, 
-              name: true,
-              capabilities: true
-            }
-        });
-        models.forEach(m => modelMap.set(m.id, { name: m.name, capabilities: m.capabilities }));
+      const models = await prisma.model.findMany({
+        where: { id: { in: Array.from(hardcodedIds) } },
+        select: {
+          id: true,
+          name: true,
+          capabilities: true
+        }
+      });
+      models.forEach(m => modelMap.set(m.id, { name: m.name, capabilities: m.capabilities }));
     }
 
 
     const enrichedRoles = roles.map((role) => {
-       // Scope Extraction (Simple Heuristic)
-       let scope = 'Global';
-       const desc = (role.description || '').toLowerCase();
-       if (desc.includes('frontend') || desc.includes('react') || desc.includes('ui')) scope = 'Frontend (src/components)';
-       else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
-       else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
+      // Scope Extraction (Simple Heuristic)
+      let scope = 'Global';
+      const desc = (role.description || '').toLowerCase();
+      if (desc.includes('frontend') || desc.includes('react') || desc.includes('ui')) scope = 'Frontend (src/components)';
+      else if (desc.includes('backend') || desc.includes('api') || desc.includes('database')) scope = 'Backend (apps/api)';
+      else if (desc.includes('test') || desc.includes('qa')) scope = 'Tests (*.test.ts)';
 
-       // DNA Fusion: Overlay Variant Config if available
-       const activeVariant = role.variants?.[0];
-       const fusedRole = { ...role } as RouterExtendedRole;
-       
-       // Resolve Model Name logic
-       // Resolve Model Name logic
-       let currentModelName = 'Auto-Detect';
-       const meta = (role.metadata as Record<string, unknown>) || {};
-               
-       const cortex = (activeVariant?.cortexConfig as Record<string, unknown>) || {};
-       
-       // Priority: Variant Cortex > Role Metadata
-       const hardcodedId = (cortex.hardcodedModelId as string) || (meta.hardcodedModelId as string);
-       let currentModelCapabilities = null;
-       if (hardcodedId) {
-           const modelInfo = modelMap.get(hardcodedId);
-           currentModelName = modelInfo?.name || 'Unknown Model';
-           currentModelCapabilities = modelInfo?.capabilities || null;
-       }
+      // DNA Fusion: Overlay Variant Config if available
+      const activeVariant = role.variants?.[0];
+      const fusedRole = { ...role } as RouterExtendedRole;
 
-       if (activeVariant) {
-         // Safely cast JSON config with type check
-         const cortexConfig = (activeVariant.cortexConfig && typeof activeVariant.cortexConfig === 'object')
-           ? activeVariant.cortexConfig as Record<string, unknown>
-           : {};
+      // Resolve Model Name logic
+      // Resolve Model Name logic
+      let currentModelName = 'Auto-Detect';
+      const meta = (role.metadata as Record<string, unknown>) || {};
+
+      const cortex = (activeVariant?.cortexConfig as Record<string, unknown>) || {};
+
+      // Priority: Variant Cortex > Role Metadata
+      const hardcodedId = (cortex.hardcodedModelId as string) || (meta.hardcodedModelId as string);
+      let currentModelCapabilities = null;
+      if (hardcodedId) {
+        const modelInfo = modelMap.get(hardcodedId);
+        currentModelName = modelInfo?.name || 'Unknown Model';
+        currentModelCapabilities = modelInfo?.capabilities || null;
+      }
+
+      if (activeVariant) {
+        // Safely cast JSON config with type check
+        const cortexConfig = (activeVariant.cortexConfig && typeof activeVariant.cortexConfig === 'object')
+          ? activeVariant.cortexConfig as Record<string, unknown>
+          : {};
 
 
-         const capabilities = Array.isArray(cortexConfig.capabilities) ? cortexConfig.capabilities as string[] : [];
+        const capabilities = Array.isArray(cortexConfig.capabilities) ? cortexConfig.capabilities as string[] : [];
 
-         // 1. Overlay Capabilities (DNA -> Legacy Boolean Flags)
-         fusedRole.needsVision = capabilities.includes('vision');
-         fusedRole.needsCoding = capabilities.includes('coding');
-         fusedRole.needsReasoning = capabilities.includes('reasoning');
-         fusedRole.needsTools = capabilities.includes('tools');
-         fusedRole.needsJson = capabilities.includes('json');
-         fusedRole.needsImageGeneration = capabilities.includes('image_generation') || capabilities.includes('dalle');
+        // 1. Overlay Capabilities (DNA -> Legacy Boolean Flags)
+        fusedRole.needsVision = capabilities.includes('vision');
+        fusedRole.needsCoding = capabilities.includes('coding');
+        fusedRole.needsReasoning = capabilities.includes('reasoning');
+        fusedRole.needsTools = capabilities.includes('tools');
+        fusedRole.needsJson = capabilities.includes('json');
+        fusedRole.needsImageGeneration = capabilities.includes('image_generation') || capabilities.includes('dalle');
 
-         // 2. Overlay Context Window (DNA Context Range -> Legacy Metadata)
-         if (cortexConfig.contextRange) {
-           // Map context range if needed, e.g. fusedRole.maxContext = ...
-         }
-
-         // 3. Overlay System Prompt (DNA Identity -> Legacy basePrompt)
-         // Assuming this part was acceptable from common ancestor or HEAD, checking...
-         // Actually HEAD has this, ai-context block DOES NOT show it explicitly in the diff I saw, 
-         // but I should probably keep it if it's useful.
-         // Wait, the diff showed ai-context ENDING at line 249, then some common code, then HEAD at 275.
-         // Ah, the conflict markers were weirdly nested or I misread.
-         // Let's look at the view_file output again.
-         // 215 =======
-         // ... ai-context code ...
-         // 249 >>>>>>> ai-context
-         // 250 (Common code?)
- 
-         
-         // Okay, so lines 251-274 are common.
-         // Then 275 HEAD vs 290 ======= ??
-         // Let's keep common code.
-       }
-       
-       // RE-INSTATE COMMON CODE logic for System Prompt overlay if needed
-       // ...
-       
-        // Explicitly map metadata fields to top-level properties effectively
-        fusedRole.minContext = typeof meta.minContext === 'number' ? meta.minContext : undefined;
-        fusedRole.maxContext = typeof meta.maxContext === 'number' ? meta.maxContext : undefined;
-
-        if (activeVariant) {
-             // If DNA exists, it overrides legacy metadata
-             const cortex = (activeVariant.cortexConfig as Record<string, unknown>) || {};
-             const range = cortex.contextRange as { min: number, max: number } | undefined;
-             if (range) {
-                 fusedRole.minContext = range.min;
-                 fusedRole.maxContext = range.max;
-             }
+        // 2. Overlay Context Window (DNA Context Range -> Legacy Metadata)
+        if (cortexConfig.contextRange) {
+          // Map context range if needed, e.g. fusedRole.maxContext = ...
         }
 
-       return {
-           ...fusedRole,
-           tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
-           currentModel: currentModelName,
-           modelCapabilities: currentModelCapabilities,
-           scope: scope,
-           healthScore: 100 // Placeholder for AssessmentService score
-       };
+        // 3. Overlay System Prompt (DNA Identity -> Legacy basePrompt)
+        // Assuming this part was acceptable from common ancestor or HEAD, checking...
+        // Actually HEAD has this, ai-context block DOES NOT show it explicitly in the diff I saw, 
+        // but I should probably keep it if it's useful.
+        // Wait, the diff showed ai-context ENDING at line 249, then some common code, then HEAD at 275.
+        // Ah, the conflict markers were weirdly nested or I misread.
+        // Let's look at the view_file output again.
+        // 215 =======
+        // ... ai-context code ...
+        // 249 >>>>>>> ai-context
+        // 250 (Common code?)
+
+
+        // Okay, so lines 251-274 are common.
+        // Then 275 HEAD vs 290 ======= ??
+        // Let's keep common code.
+      }
+
+      // RE-INSTATE COMMON CODE logic for System Prompt overlay if needed
+      // ...
+
+      // Explicitly map metadata fields to top-level properties effectively
+      fusedRole.minContext = typeof meta.minContext === 'number' ? meta.minContext : undefined;
+      fusedRole.maxContext = typeof meta.maxContext === 'number' ? meta.maxContext : undefined;
+
+      if (activeVariant) {
+        // If DNA exists, it overrides legacy metadata
+        const cortex = (activeVariant.cortexConfig as Record<string, unknown>) || {};
+        const range = cortex.contextRange as { min: number, max: number } | undefined;
+        if (range) {
+          fusedRole.minContext = range.min;
+          fusedRole.maxContext = range.max;
+        }
+      }
+
+      return {
+        ...fusedRole,
+        tools: role.tools.map(t => t.tool.name), // Flatten tools to string[]
+        currentModel: currentModelName,
+        modelCapabilities: currentModelCapabilities,
+        scope: scope,
+        healthScore: 100 // Placeholder for AssessmentService score
+      };
 
     });
 
@@ -374,7 +375,7 @@ export const roleRouter = createTRPCRouter({
         where: { id },
         select: { metadata: true }
       }) : null;
-      
+
       const currentMeta = (existing?.metadata as Record<string, unknown>) || {};
       const newMetadata = {
         ...currentMeta,
@@ -409,7 +410,7 @@ export const roleRouter = createTRPCRouter({
           if (tool) {
             await prisma.roleTool.create({
               data: { roleId: role.id, toolId: tool.id }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
       }
@@ -425,9 +426,9 @@ export const roleRouter = createTRPCRouter({
 
       const cortexConfig = {
         capabilities,
-        contextRange: { 
-          min: metadataUpdate.minContext || 4096, 
-          max: metadataUpdate.maxContext || 128000 
+        contextRange: {
+          min: metadataUpdate.minContext || 4096,
+          max: metadataUpdate.maxContext || 128000
         },
         hardcodedModelId: metadataUpdate.hardcodedModelId,
         tools: tools || []
@@ -696,15 +697,15 @@ Return ONLY the system prompt, no additional commentary.`;
       if (!variantId) {
         console.log(`[RoleRouter] 🧬 Auto-creating missing DNA Variant for role ${input.roleId}`);
         const newVariant = await prisma.roleVariant.create({
-            data: {
-                role: { connect: { id: input.roleId } },
-                isActive: true,
-                identityConfig: {},
-                cortexConfig: { executionMode: 'HYBRID_AUTO', contextRange: { min: 4096, max: 128000 }, capabilities: [], tools: [] },
-                governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' },
-                contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
-                behaviorConfig: { silenceConfirmation: false }
-            } as Prisma.RoleVariantCreateInput
+          data: {
+            role: { connect: { id: input.roleId } },
+            isActive: true,
+            identityConfig: {},
+            cortexConfig: { executionMode: 'HYBRID_AUTO', contextRange: { min: 4096, max: 128000 }, capabilities: [], tools: [] },
+            governanceConfig: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' },
+            contextConfig: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
+            behaviorConfig: { silenceConfirmation: false }
+          } as Prisma.RoleVariantCreateInput
         });
 
         variantId = newVariant.id;
@@ -719,7 +720,7 @@ Return ONLY the system prompt, no additional commentary.`;
       if (input.configType === 'governance') updateData.governanceConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'context') updateData.contextConfig = input.data as Prisma.InputJsonValue;
       if (input.configType === 'behavior') {
-          (updateData as Prisma.RoleVariantUpdateInput & { behaviorConfig: Prisma.InputJsonValue }).behaviorConfig = input.data as Prisma.InputJsonValue;
+        (updateData as Prisma.RoleVariantUpdateInput & { behaviorConfig: Prisma.InputJsonValue }).behaviorConfig = input.data as Prisma.InputJsonValue;
       }
 
 
@@ -739,52 +740,52 @@ Return ONLY the system prompt, no additional commentary.`;
         // B. Sync the relational table (RoleTool) for MCP tools only
         // Native tools (meta, nebula, read_file, etc.) don't have Tool records
         const NATIVE_TOOL_NAMES = [
-            'meta', 'nebula', 'read_file', 'write_file', 'list_files', 
-            'browse', 'terminal_execute', 'search_codebase', 'list_files_tree', 
-            'scan_ui_components', 'research.web_scrape', 'analysis.complexity',
-            'ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate',
-            'role_registry_list', 'role_variant_evolve', 'role_config_patch'
+          'meta', 'nebula', 'read_file', 'write_file', 'list_files',
+          'browse', 'terminal_execute', 'search_codebase', 'list_files_tree',
+          'scan_ui_components', 'research.web_scrape', 'analysis.complexity',
+          'ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate',
+          'role_registry_list', 'role_variant_evolve', 'role_config_patch'
         ];
-          
+
         // Filter out native tools
         const mcpToolNames = tools.filter(name => !NATIVE_TOOL_NAMES.includes(name));
-          
+
         // Clear existing RoleTool entries
         await prisma.roleTool.deleteMany({ where: { roleId: input.roleId } });
-          
+
         // Create RoleTool entries ONLY for MCP tools
         for (const toolName of mcpToolNames) {
-            const toolRecord = await prisma.tool.findUnique({ where: { name: toolName } });
-            if (toolRecord) {
-                await prisma.roleTool.create({ 
-                    data: { roleId: input.roleId, toolId: toolRecord.id } 
-                }).catch(e => {
-                    console.warn(`Failed to create RoleTool for ${toolName}:`, e);
-                });
-            } else {
-                console.warn(`Tool '${toolName}' not found in database - skipping RoleTool creation`);
-            }
+          const toolRecord = await prisma.tool.findUnique({ where: { name: toolName } });
+          if (toolRecord) {
+            await prisma.roleTool.create({
+              data: { roleId: input.roleId, toolId: toolRecord.id }
+            }).catch(e => {
+              console.warn(`Failed to create RoleTool for ${toolName}:`, e);
+            });
+          } else {
+            console.warn(`Tool '${toolName}' not found in database - skipping RoleTool creation`);
+          }
         }
       }
-      
+
       // Special handling for 'tuning' - store in metadata
       if (input.configType === 'tuning') {
-          const role = await prisma.role.findUnique({
-              where: { id: input.roleId },
-              select: { metadata: true }
-          });
-          const currentMeta = (role?.metadata as Record<string, unknown>) || {};
-          
-          await prisma.role.update({
-              where: { id: input.roleId },
-              data: {
-                  metadata: {
-                      ...currentMeta,
-                      defaultTemperature: (input.data).defaultTemperature,
-                      defaultMaxTokens: (input.data).defaultMaxTokens
-                  } as Prisma.InputJsonValue
-              }
-          });
+        const role = await prisma.role.findUnique({
+          where: { id: input.roleId },
+          select: { metadata: true }
+        });
+        const currentMeta = (role?.metadata as Record<string, unknown>) || {};
+
+        await prisma.role.update({
+          where: { id: input.roleId },
+          data: {
+            metadata: {
+              ...currentMeta,
+              defaultTemperature: (input.data).defaultTemperature,
+              defaultMaxTokens: (input.data).defaultMaxTokens
+            } as Prisma.InputJsonValue
+          }
+        });
       }
 
       return prisma.roleVariant.update({
