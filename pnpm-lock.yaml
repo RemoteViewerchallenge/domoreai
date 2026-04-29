@@ -212,7 +212,7 @@ importers:
         specifier: ^1.9.9
         version: 1.9.10
       '@types/node':
-        specifier: ^20.12.12
+        specifier: ^20.19.25
         version: 20.19.25
       '@types/pdf-parse':
         specifier: ^1.1.5

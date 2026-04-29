@@ -132,8 +132,10 @@ const ArbitrageCanvas = ({ reactFlowInstanceRef }: { reactFlowInstanceRef: React
   );
 };
 
-export default ({ reactFlowInstanceRef }: { reactFlowInstanceRef: React.MutableRefObject<any> }) => (
+const ArbitrageCanvasWrapper = ({ reactFlowInstanceRef }: { reactFlowInstanceRef: React.MutableRefObject<ReturnType<typeof useReactFlow> | null> }) => (
   <ReactFlowProvider>
     <ArbitrageCanvas reactFlowInstanceRef={reactFlowInstanceRef} />
   </ReactFlowProvider>
 );
+
+export default ArbitrageCanvasWrapper;

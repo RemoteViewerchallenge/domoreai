@@ -1,81 +1,75 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Dependencies
-**/node_modules
+### Dependencies ###
+**/node_modules/
+.pnpm-store/
 
-# Build artifacts
-dist
-.turbo
+### Build & Cache ###
+dist/
+build/
+.turbo/
 out/
+.next/
+.out/
+*.tsbuildinfo
+.cache/
+.npm/
+.flat-cache/
 
-# Logs
+### Logs ###
+logs/
 *.log
+npm-debug.log*
+pnpm-debug.log*
 
-# Local Environment Variables
+# Runtime Data
+*.timestamp-*.mjs
+
+### Environment Variables ###
 # Never commit .env files! They contain secrets.
+# Provide a .env.example file instead for other developers.
 .env
 .env.local
 .env.*
+!*.env.example
 
-# IDE and Editor directories
-.idea
-# Ignore the .vscode folder by default...
-.vscode/
-.git/.trash
-# ...but DO commit the following files inside it.
-!.vscode/settings.json
-!.vscode/extensions.json
-# OS-specific files
+### OS & Editor Specific ###
 .DS_Store
 Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+*.suo
+*.sw?
 
-# Ignore generated JavaScript and declaration files in source folders
-**/*.js
-**/*.d.ts
-**/*.d.ts.map
-*.tsbuildinfo
+### Test Reports ###
+coverage/
+.nyc_output/
 
-# Large files
-mono.zip
-
-# Config files exception
-!**/tailwind.config.js
-!**/postcss.config.js
-!**/eslint.config.js
-!**/vite.config.js
-test.txt
+### Project-Specific Ignores ###
 
 # Secrets
 apps/api/token.json
 apps/api/src/scripts/antigravity.ts
 
-# Zips
+# Large files, backups, and archives
 *.zip
-
-# Role Markdown Files
-apps/api/data/agents/en/*.md
-agents/*.md
-
-# Provider model JSON exports (should be in database, not filesystem)
-*_models_*.json
-
-# Build artifacts that shouldn't be in source directories
-apps/api/list_tables.*
-!/apps/api/list_tables.ts
-
-# Database backups (timestamped SQL dumps and metadata)
+*.tar.gz
 apps/api/backups/
-# Temporary build artifacts
-*.timestamp-*.mjs
-
-# Debug files
-debug_bashrc.txt
-
-# MCP Downloads and Extracted Repos
 mcp/extracted/
-
-# Archives (Consolidated historical scripts and docs)
+opencodetmp/
 **/archive/
 
+# Generated data (models, tables, etc.)
+*_models_*.json
+apps/api/list_tables.*
+!/apps/api/list_tables.ts
+latest_models/
 
-
+# Ignored content
+apps/api/data/agents/en/*.md
+agents/*.md
+debug_bashrc.txt
+test.txt
